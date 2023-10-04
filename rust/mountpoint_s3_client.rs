@@ -7,6 +7,7 @@ use pyo3::{pyclass, pymethods, PyRef, PyResult};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
+use crate::list_object_stream::ListObjectStream;
 
 #[pyclass(name = "MountpointS3Client", module="_s3dataset", frozen)]
 #[derive(Debug)]
@@ -53,6 +54,11 @@ impl MountpointS3Client {
         let request = slf.py().allow_threads(|| {block_on(request).map_err(python_exception)})?;
 
         Ok(GetObjectStream::new(request, bucket, key))
+    }
+
+    #[pyo3(signature = (bucket, prefix=String::from(""), delimiter=String::from(""), max_keys=1000))]
+    pub fn list_objects(&self, bucket: String, prefix: String, delimiter: String, max_keys: usize) -> PyResult<ListObjectStream> {
+        Ok(ListObjectStream::new(self.client.clone(), bucket, prefix, delimiter, max_keys))
     }
 }
 
