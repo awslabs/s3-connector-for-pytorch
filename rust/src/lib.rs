@@ -7,6 +7,7 @@ use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
 use crate::mock_client::PyMockClient;
 use crate::mountpoint_s3_client::MountpointS3Client;
+use crate::put_object_stream::PutObjectStream;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
 use crate::python_structs::py_restore_status::PyRestoreStatus;
@@ -17,6 +18,7 @@ mod list_object_stream;
 mod mock_client;
 mod mountpoint_s3_client;
 mod mountpoint_s3_client_inner;
+mod put_object_stream;
 mod python_structs;
 
 #[pymodule]
@@ -29,6 +31,7 @@ fn make_lib(py: Python, s3dataset: &PyModule) -> PyResult<()> {
     s3dataset.add_class::<PyMockClient>()?;
     s3dataset.add_class::<GetObjectStream>()?;
     s3dataset.add_class::<ListObjectStream>()?;
+    s3dataset.add_class::<PutObjectStream>()?;
     s3dataset.add_class::<PyListObjectResult>()?;
     s3dataset.add_class::<PyObjectInfo>()?;
     s3dataset.add_class::<PyRestoreStatus>()?;

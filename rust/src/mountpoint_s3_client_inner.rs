@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use futures::executor::block_on;
 use futures::TryStreamExt;
-use mountpoint_s3_client::types::ListObjectsResult;
+use mountpoint_s3_client::types::{ListObjectsResult, PutObjectParams};
 use mountpoint_s3_client::ObjectClient;
 use pyo3::{PyResult, Python};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
+use crate::put_object_stream::{PutObjectRequestWrapperImpl, PutObjectStream};
 
 pub type MPGetObjectClosure =
     Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>;
@@ -26,6 +27,12 @@ pub(crate) trait MountpointS3ClientInner {
         max_keys: usize,
         prefix: &str,
     ) -> PyResult<ListObjectsResult>;
+    fn put_object(
+        &self,
+        bucket: String,
+        key: String,
+        params: PutObjectParams,
+    ) -> PyResult<PutObjectStream>;
 }
 
 pub(crate) struct MountpointS3ClientInnerImpl<T: ObjectClient> {
@@ -42,6 +49,7 @@ impl<Client> MountpointS3ClientInner for MountpointS3ClientInnerImpl<Client>
 where
     Client: ObjectClient,
     <Client as ObjectClient>::GetObjectResult: Sync + Send + Unpin + 'static,
+    <Client as ObjectClient>::PutObjectRequest: Sync + 'static,
 {
     fn get_object(&self, py: Python, bucket: String, key: String) -> PyResult<GetObjectStream> {
         let request = self.client.get_object(&bucket, &key, None, None);
@@ -69,5 +77,18 @@ where
                 .list_objects(bucket, continuation_token, delimiter, max_keys, prefix),
         )
         .map_err(python_exception)
+    }
+
+    fn put_object(
+        &self,
+        bucket: String,
+        key: String,
+        params: PutObjectParams,
+    ) -> PyResult<PutObjectStream> {
+        let request = self.client.put_object(&bucket, &key, &params);
+        // TODO - Look at use of `block_on` and see if we can future this.
+        let request = block_on(request).map_err(python_exception)?;
+        let request_wrapper = Box::new(PutObjectRequestWrapperImpl::new(request));
+        Ok(PutObjectStream::new(request_wrapper, bucket, key))
     }
 }
