@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use futures::executor::block_on;
+use futures::TryStreamExt;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
-use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use pyo3::{pyclass, pymethods, PyRef, PyResult, Python};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
@@ -50,10 +51,16 @@ impl MountpointS3Client {
 
     pub fn get_object(slf: PyRef<'_, Self>, bucket: String, key: String) -> PyResult<GetObjectStream> {
         let request = slf.client.get_object(&bucket, &key, None, None);
-        // TODO - Look at use of `block_on` and see if we can future this.
-        let request = slf.py().allow_threads(|| {block_on(request).map_err(python_exception)})?;
 
-        Ok(GetObjectStream::new(request, bucket, key))
+        // TODO - Look at use of `block_on` and see if we can future this.
+        let mut request = slf.py().allow_threads(|| {block_on(request).map_err(python_exception)})?;
+        let next_part = move |py: Python| {
+            py.allow_threads(|| {
+                block_on(request.try_next()).map_err(python_exception)
+            })
+        };
+
+        Ok(GetObjectStream::new(Box::new(next_part), bucket, key))
     }
 
     #[pyo3(signature = (bucket, prefix=String::from(""), delimiter=String::from(""), max_keys=1000))]

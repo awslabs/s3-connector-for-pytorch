@@ -1,21 +1,20 @@
 use std::sync::Arc;
 
 use futures::executor::block_on;
-use mountpoint_s3_client::{ObjectClient, S3CrtClient};
+use mountpoint_s3_client::ObjectClient;
 use mountpoint_s3_client::types::ListObjectsResult;
 use pyo3::{py_run, pyclass, pymethods, PyRef, PyRefMut, PyResult, Python};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::exception::python_exception;
-use crate::mountpoint_s3_client::MountpointS3Client;
+use crate::mock_mountpoint_s3_client::MockMountpointS3Client;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
 
 #[pyclass(name = "ListObjectStream", module="_s3dataset")]
-#[derive(Debug)]
 pub struct ListObjectStream {
-    client: Arc<S3CrtClient>,
+    list_objects: Box<dyn Fn(&str, Option<&str>, &str, usize, &str) -> PyResult<ListObjectsResult> + Send + Sync>,
     continuation_token: Option<String>,
     complete: bool,
     #[pyo3(get)]
@@ -29,8 +28,13 @@ pub struct ListObjectStream {
 }
 
 impl ListObjectStream {
-    pub(crate) fn new(client: Arc<S3CrtClient>, bucket: String, prefix: String, delimiter: String, max_keys: usize) -> Self {
-        Self { client, bucket, prefix, delimiter, max_keys, continuation_token: None, complete: false }
+    pub(crate) fn new(client: Arc<impl ObjectClient + Send + Sync + 'static>, bucket: String, prefix: String, delimiter: String, max_keys: usize) -> Self {
+        let list_objects = move |bucket: &_, continuation_token: Option<&str>, delimiter: &_, max_keys, prefix: &_| {
+            block_on(
+                client.list_objects(bucket, continuation_token, delimiter, max_keys, prefix)
+            ).map_err(python_exception)
+        };
+        Self { list_objects: Box::new(list_objects), bucket, prefix, delimiter, max_keys, continuation_token: None, complete: false }
     }
 }
 
@@ -58,17 +62,16 @@ impl ListObjectStream {
 }
 
 fn make_request(slf: &PyRefMut<'_, ListObjectStream>) -> PyResult<ListObjectsResult> {
-    let client = &slf.client;
     let bucket = &slf.bucket;
     let continuation_token = slf.continuation_token.as_deref();
     let delimiter = &slf.delimiter;
     let prefix = &slf.prefix;
     let max_keys = slf.max_keys;
 
+    let list_objects = &slf.list_objects;
+
     slf.py().allow_threads(|| {
-        block_on(
-            client.list_objects(bucket, continuation_token, delimiter, max_keys, prefix)
-        ).map_err(python_exception)
+        list_objects(bucket, continuation_token, delimiter, max_keys, prefix)
     })
 }
 
@@ -81,14 +84,19 @@ fn test_list_objects() -> PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| {
-        let crt_client = py.get_type::<MountpointS3Client>();
+        let crt_client = py.get_type::<MockMountpointS3Client>();
         py_run!(py, crt_client, r#"
-client = crt_client("us-east-1")
-stream = client.list_objects("s3dataset-testing")
+expected_keys = {"test"}
+
+client = crt_client("us-east-1", "mock-bucket")
+for key in expected_keys:
+    client.add_object(key, b"")
+
+stream = client.list_objects("mock-bucket")
 
 object_infos = [object_info for page in stream for object_info in page.object_info]
 keys = {object_info.key for object_info in object_infos}
-assert keys == {"hello_world.txt"}
+assert keys == expected_keys
 "#);
     });
 

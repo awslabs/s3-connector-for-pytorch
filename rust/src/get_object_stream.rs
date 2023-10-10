@@ -1,18 +1,14 @@
-use futures::executor::block_on;
-use futures::TryStreamExt;
-use mountpoint_s3_client::S3GetObjectRequest;
 use pyo3::{py_run, pyclass, PyErr, pymethods, PyRef, PyRefMut, PyResult, Python};
 use pyo3::types::PyBytes;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use crate::exception::{python_exception, S3DatasetException};
-use crate::mountpoint_s3_client::MountpointS3Client;
+use crate::exception::S3DatasetException;
+use crate::mock_mountpoint_s3_client::MockMountpointS3Client;
 
 #[pyclass(name = "GetObjectStream", module="_s3dataset")]
-#[derive(Debug)]
 pub struct GetObjectStream {
-    request: S3GetObjectRequest,
+    next_part: Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>,
     offset: u64,
     #[pyo3(get)]
     bucket: String,
@@ -21,9 +17,9 @@ pub struct GetObjectStream {
 }
 
 impl GetObjectStream {
-    pub(crate) fn new(request: S3GetObjectRequest, bucket: String, key: String) -> Self {
+    pub(crate) fn new(next_part: Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>, bucket: String, key: String) -> Self {
         Self {
-            request,
+            next_part,
             offset: 0,
             bucket,
             key,
@@ -39,11 +35,8 @@ impl GetObjectStream {
 
     pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<&PyBytes>> {
         let py = slf.py();
-        let request = &mut slf.request;
 
-        let body_part = py.allow_threads(|| {
-            block_on(request.try_next()).map_err(python_exception)
-        })?;
+        let body_part = (slf.next_part)(py)?;
         match body_part {
             None => Ok(None),
             Some((offset, data)) => {
@@ -67,12 +60,14 @@ fn test_get_object() -> PyResult<()> {
     pyo3::prepare_freethreaded_python();
 
     Python::with_gil(|py| {
-        let crt_client = py.get_type::<MountpointS3Client>();
+        let crt_client = py.get_type::<MockMountpointS3Client>();
         py_run!(py, crt_client, r#"
-client = crt_client("us-east-1")
-stream = client.get_object("s3dataset-testing", "hello_world.txt")
-full_data = b''.join(stream)
-assert full_data == b"Hello, World!\n"
+client = crt_client("us-east-1", "mock-bucket")
+client.add_object("key", b"data")
+stream = client.get_object("mock-bucket", "key")
+
+returned_data = b''.join(stream)
+assert returned_data == b"data"
 "#);
     });
 
