@@ -2,6 +2,8 @@ import logging
 from typing import Set
 
 import pytest
+
+from s3dataset import LOG_TRACE
 from s3dataset._s3dataset import (
     S3DatasetException,
     GetObjectStream,
@@ -12,9 +14,7 @@ from s3dataset._s3dataset import (
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
 )
-logging.getLogger().setLevel(1)
-
-log = logging.getLogger(__name__)
+logging.getLogger().setLevel(LOG_TRACE)
 
 
 REGION = "us-east-1"
