@@ -8,7 +8,7 @@ logging.getLogger().setLevel(1)
 log = logging.getLogger(__name__)
 
 
-def main():
+def test_get_object():
     client = MountpointS3Client("us-east-1")
     stream = client.get_object("s3dataset-testing", "hello_world.txt")
 
@@ -16,5 +16,15 @@ def main():
     assert full_data == b"Hello, World!\n"
 
 
+def test_list_objects():
+    client = MountpointS3Client("us-east-1")
+    stream = client.list_objects("s3dataset-testing")
+
+    object_infos = [object_info for page in stream for object_info in page.object_info]
+    keys = {object_info.key for object_info in object_infos}
+    assert keys == {"hello_world.txt"}
+
+
 if __name__ == "__main__":
-    main()
+    test_get_object()
+    test_list_objects()
