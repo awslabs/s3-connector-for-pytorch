@@ -3,14 +3,14 @@ use std::sync::Arc;
 use mountpoint_s3_client::mock_client::{MockClient, MockClientConfig, MockObject};
 use pyo3::{pyclass, pymethods};
 
-use crate::inner_client::MountpointS3ClientInner;
+use crate::py_object_client::ObjectClientWrapper;
 use crate::MountpointS3Client;
 
 #[derive(Clone)]
 #[pyclass(name = "MockMountpointS3Client", module = "_s3dataset", frozen)]
 pub struct PyMockClient {
     mock_client: Arc<MockClient>,
-    pub(crate) client: Arc<MountpointS3ClientInner<MockClient>>,
+    pub(crate) client: Arc<ObjectClientWrapper<MockClient>>,
     #[pyo3(get)]
     pub(crate) throughput_target_gbps: f64,
     #[pyo3(get)]
@@ -31,7 +31,7 @@ impl PyMockClient {
     ) -> PyMockClient {
         let config = MockClientConfig { bucket, part_size };
         let mock_client = Arc::new(MockClient::new(config));
-        let client = Arc::new(MountpointS3ClientInner::new(mock_client.clone()));
+        let client = Arc::new(ObjectClientWrapper::new(mock_client.clone()));
 
         PyMockClient {
             client,

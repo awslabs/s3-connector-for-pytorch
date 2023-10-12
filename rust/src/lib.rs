@@ -13,10 +13,10 @@ use crate::python_structs::py_restore_status::PyRestoreStatus;
 
 mod exception;
 mod get_object_stream;
-mod inner_client;
 mod list_object_stream;
 mod mock_client;
 mod mountpoint_s3_client;
+mod py_object_client;
 mod python_structs;
 
 #[pymodule]

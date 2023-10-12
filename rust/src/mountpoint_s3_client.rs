@@ -6,12 +6,12 @@ use pyo3::{pyclass, pymethods, PyRef, PyResult};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
-use crate::inner_client::{InnerClient, MountpointS3ClientInner};
 use crate::list_object_stream::ListObjectStream;
+use crate::py_object_client::{ObjectClientWrapper, PyObjectClient};
 
 #[pyclass(name = "MountpointS3Client", module = "_s3dataset", frozen)]
 pub struct MountpointS3Client {
-    client: Arc<dyn InnerClient + Send + Sync + 'static>,
+    client: Arc<dyn PyObjectClient + Send + Sync + 'static>,
     #[pyo3(get)]
     throughput_target_gbps: f64,
     #[pyo3(get)]
@@ -51,7 +51,7 @@ impl MountpointS3Client {
             .endpoint_config(endpoint_config);
         let crt_client = Arc::new(S3CrtClient::new(config).map_err(python_exception)?);
 
-        let client = Arc::new(MountpointS3ClientInner::new(crt_client));
+        let client = Arc::new(ObjectClientWrapper::new(crt_client));
 
         Ok(MountpointS3Client::with_client(
             region,
@@ -94,7 +94,7 @@ impl MountpointS3Client {
         region: String,
         throughput_target_gbps: f64,
         part_size: usize,
-        client: Arc<(dyn InnerClient + Send + Sync + 'static)>,
+        client: Arc<(dyn PyObjectClient + Send + Sync + 'static)>,
     ) -> Self {
         Self {
             throughput_target_gbps,

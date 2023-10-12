@@ -11,7 +11,7 @@ use crate::exception::python_exception;
 pub type MPGetObjectClosure =
     Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>;
 
-pub trait InnerClient {
+pub trait PyObjectClient {
     fn get_object(&self, py: Python, bucket: &str, key: &str) -> PyResult<MPGetObjectClosure>;
     fn list_objects(
         &self,
@@ -23,17 +23,17 @@ pub trait InnerClient {
     ) -> PyResult<ListObjectsResult>;
 }
 
-pub struct MountpointS3ClientInner<T: ObjectClient> {
+pub struct ObjectClientWrapper<T: ObjectClient> {
     client: Arc<T>,
 }
 
-impl<T: ObjectClient> MountpointS3ClientInner<T> {
-    pub fn new(client: Arc<T>) -> MountpointS3ClientInner<T> {
-        MountpointS3ClientInner { client }
+impl<T: ObjectClient> ObjectClientWrapper<T> {
+    pub fn new(client: Arc<T>) -> ObjectClientWrapper<T> {
+        ObjectClientWrapper { client }
     }
 }
 
-impl<T> InnerClient for MountpointS3ClientInner<T>
+impl<T> PyObjectClient for ObjectClientWrapper<T>
 where
     T: ObjectClient,
     <T as ObjectClient>::GetObjectResult: Unpin,
