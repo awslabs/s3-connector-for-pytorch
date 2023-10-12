@@ -59,7 +59,7 @@ class ListObjectResult:
 
 class ListObjectStream:
     bucket: str
-
+    # TODO: ListObject should also accept prefix as input
     def __iter__(self) -> ListObjectStream: ...
     def __next__(self) -> ListObjectResult: ...
 
