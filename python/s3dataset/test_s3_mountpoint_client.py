@@ -1,8 +1,7 @@
 import logging
 
 import pytest
-from s3dataset._s3dataset import S3DatasetException, GetObjectStream, ListObjectStream, MountpointS3Client, \
-    MountpointS3ClientMock
+from s3dataset._s3dataset import S3DatasetException, GetObjectStream, ListObjectStream, MockMountpointS3Client
 
 logging.basicConfig(format='%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s')
 logging.getLogger().setLevel(1)
@@ -22,10 +21,9 @@ MOCK_BUCKET = "mock-bucket"
     ],
 )
 def test_get_object(key: str, data: bytes, part_size: int):
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET, part_size=part_size)
-    client = MountpointS3Client.with_client(mock_client)
-
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, part_size=part_size)
     mock_client.add_object(key, data)
+    client = mock_client.create_mocked_client()
 
     stream = client.get_object(MOCK_BUCKET, key)
     _assert_isinstance(stream, GetObjectStream)
@@ -35,10 +33,9 @@ def test_get_object(key: str, data: bytes, part_size: int):
 
 
 def test_get_object_part_size():
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET, part_size=2)
-    client = MountpointS3Client.with_client(mock_client)
-
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, part_size=2)
     mock_client.add_object("key", b"1234567890")
+    client = mock_client.create_mocked_client()
 
     stream = client.get_object(MOCK_BUCKET, "key")
     _assert_isinstance(stream, GetObjectStream)
@@ -48,8 +45,8 @@ def test_get_object_part_size():
 
 
 def test_get_object_bad_bucket():
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET)
-    client = MountpointS3Client.with_client(mock_client)
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    client = mock_client.create_mocked_client()
 
     try:
         client.get_object("does_not_exist", "foo")
@@ -58,8 +55,8 @@ def test_get_object_bad_bucket():
 
 
 def test_get_object_none_bucket():
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET)
-    client = MountpointS3Client.with_client(mock_client)
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    client = mock_client.create_mocked_client()
 
     try:
         client.get_object(None, "foo")
@@ -70,8 +67,8 @@ def test_get_object_none_bucket():
 
 
 def test_get_object_bad_object():
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET)
-    client = MountpointS3Client.with_client(mock_client)
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    client = mock_client.create_mocked_client()
 
     try:
         client.get_object(MOCK_BUCKET, "does_not_exist")
@@ -80,10 +77,9 @@ def test_get_object_bad_object():
 
 
 def test_get_object_iterates_once():
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET)
-    client = MountpointS3Client.with_client(mock_client)
-
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     mock_client.add_object("key", b"data")
+    client = mock_client.create_mocked_client()
 
     stream = client.get_object(MOCK_BUCKET, "key")
     _assert_isinstance(stream, GetObjectStream)
@@ -96,10 +92,9 @@ def test_get_object_iterates_once():
 
 
 def test_get_object_throws_stop_iteration():
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET)
-    client = MountpointS3Client.with_client(mock_client)
-
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     mock_client.add_object("key", b"data")
+    client = mock_client.create_mocked_client()
 
     stream = client.get_object(MOCK_BUCKET, "key")
     _assert_isinstance(stream, GetObjectStream)
@@ -125,11 +120,10 @@ def test_get_object_throws_stop_iteration():
     ],
 )
 def test_list_objects(expected_keys):
-    mock_client = MountpointS3ClientMock(REGION, MOCK_BUCKET)
-    client = MountpointS3Client.with_client(mock_client)
-
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     for key in expected_keys:
         mock_client.add_object(key, b"")
+    client = mock_client.create_mocked_client()
 
     stream = client.list_objects(MOCK_BUCKET)
     assert isinstance(stream, ListObjectStream)

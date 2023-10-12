@@ -6,14 +6,12 @@ use pyo3::{pyclass, pymethods, PyRef, PyResult};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
+use crate::inner_client::{InnerClient, MountpointS3ClientInner};
 use crate::list_object_stream::ListObjectStream;
-use crate::mountpoint_clients::mountpoint_s3_client_inner::MountpointS3ClientInner;
-use crate::mountpoint_clients::mountpoint_s3_client_mock::MountpointS3ClientMock;
-use crate::mountpoint_clients::mountpoint_s3_client_wrapper::MountpointS3ClientWrapper;
 
 #[pyclass(name = "MountpointS3Client", module = "_s3dataset", frozen)]
 pub struct MountpointS3Client {
-    client: Arc<dyn MountpointS3ClientWrapper + Send + Sync + 'static>,
+    client: Arc<dyn InnerClient + Send + Sync + 'static>,
     #[pyo3(get)]
     throughput_target_gbps: f64,
     #[pyo3(get)]
@@ -51,26 +49,16 @@ impl MountpointS3Client {
             .part_size(part_size)
             .auth_config(auth_config)
             .endpoint_config(endpoint_config);
-        let crt_client = S3CrtClient::new(config).map_err(python_exception)?;
+        let crt_client = Arc::new(S3CrtClient::new(config).map_err(python_exception)?);
 
         let client = Arc::new(MountpointS3ClientInner::new(crt_client));
 
-        Ok(Self {
-            client,
+        Ok(MountpointS3Client::with_client(
+            region,
             throughput_target_gbps,
             part_size,
-            region,
-        })
-    }
-
-    #[staticmethod]
-    pub fn with_client(client: MountpointS3ClientMock) -> PyResult<Self> {
-        Ok(Self {
-            throughput_target_gbps: client.throughput_target_gbps,
-            part_size: client.part_size,
-            region: client.region.clone(),
-            client: Arc::new(client),
-        })
+            client,
+        ))
     }
 
     pub fn get_object(
@@ -98,6 +86,22 @@ impl MountpointS3Client {
             delimiter,
             max_keys,
         ))
+    }
+}
+
+impl MountpointS3Client {
+    pub(crate) fn with_client(
+        region: String,
+        throughput_target_gbps: f64,
+        part_size: usize,
+        client: Arc<(dyn InnerClient + Send + Sync + 'static)>,
+    ) -> Self {
+        Self {
+            throughput_target_gbps,
+            part_size,
+            region,
+            client,
+        }
     }
 }
 

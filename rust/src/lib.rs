@@ -5,7 +5,7 @@ use pyo3_log::Logger;
 use crate::exception::{python_exception, S3DatasetException};
 use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
-use crate::mountpoint_clients::mountpoint_s3_client_mock::MountpointS3ClientMock;
+use crate::mock_client::PyMockClient;
 use crate::mountpoint_s3_client::MountpointS3Client;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
@@ -13,8 +13,9 @@ use crate::python_structs::py_restore_status::PyRestoreStatus;
 
 mod exception;
 mod get_object_stream;
+mod inner_client;
 mod list_object_stream;
-mod mountpoint_clients;
+mod mock_client;
 mod mountpoint_s3_client;
 mod python_structs;
 
@@ -25,7 +26,7 @@ fn make_lib(py: Python, s3dataset: &PyModule) -> PyResult<()> {
     logger.install().map_err(python_exception)?;
 
     s3dataset.add_class::<MountpointS3Client>()?;
-    s3dataset.add_class::<MountpointS3ClientMock>()?;
+    s3dataset.add_class::<PyMockClient>()?;
     s3dataset.add_class::<GetObjectStream>()?;
     s3dataset.add_class::<ListObjectStream>()?;
     s3dataset.add_class::<PyListObjectResult>()?;

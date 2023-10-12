@@ -3,13 +3,13 @@ use std::sync::Arc;
 use mountpoint_s3_client::types::ListObjectsResult;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut, PyResult, Python};
 
-use crate::mountpoint_clients::mountpoint_s3_client_wrapper::MountpointS3ClientWrapper;
+use crate::inner_client::InnerClient;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
 
 #[pyclass(name = "ListObjectStream", module = "_s3dataset")]
 pub struct ListObjectStream {
-    client: Arc<dyn MountpointS3ClientWrapper + Send + Sync + 'static>,
+    client: Arc<dyn InnerClient + Send + Sync + 'static>,
     continuation_token: Option<String>,
     complete: bool,
     #[pyo3(get)]
@@ -24,7 +24,7 @@ pub struct ListObjectStream {
 
 impl ListObjectStream {
     pub(crate) fn new(
-        client: Arc<dyn MountpointS3ClientWrapper + Send + Sync + 'static>,
+        client: Arc<dyn InnerClient + Send + Sync + 'static>,
         bucket: String,
         prefix: String,
         delimiter: String,
@@ -92,7 +92,7 @@ mod tests {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
 
-    use crate::mountpoint_clients::mountpoint_s3_client_mock::MountpointS3ClientMock;
+    use crate::mock_client::PyMockClient;
     use crate::mountpoint_s3_client::MountpointS3Client;
 
     #[test]
@@ -106,10 +106,7 @@ mod tests {
         Python::with_gil(|py| {
             let locals = [
                 ("MountpointS3Client", py.get_type::<MountpointS3Client>()),
-                (
-                    "MountpointS3ClientMock",
-                    py.get_type::<MountpointS3ClientMock>(),
-                ),
+                ("MockMountpointS3Client", py.get_type::<PyMockClient>()),
             ];
 
             py_run!(
@@ -118,8 +115,8 @@ mod tests {
                 r#"
                 expected_keys = {"test"}
                 
-                mock_client = MountpointS3ClientMock("us-east-1", "mock-bucket")
-                client = MountpointS3Client.with_client(mock_client)
+                mock_client = MockMountpointS3Client("us-east-1", "mock-bucket")
+                client = mock_client.create_mocked_client()
                 for key in expected_keys:
                     mock_client.add_object(key, b"")
                 

@@ -2,7 +2,7 @@ use pyo3::types::PyBytes;
 use pyo3::{pyclass, pymethods, PyErr, PyRef, PyRefMut, PyResult};
 
 use crate::exception::S3DatasetException;
-use crate::mountpoint_clients::mountpoint_s3_client_wrapper::MPGetObjectClosure;
+use crate::inner_client::MPGetObjectClosure;
 
 #[pyclass(name = "GetObjectStream", module = "_s3dataset")]
 pub struct GetObjectStream {
@@ -58,7 +58,7 @@ mod tests {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
 
-    use crate::mountpoint_clients::mountpoint_s3_client_mock::MountpointS3ClientMock;
+    use crate::mock_client::PyMockClient;
     use crate::mountpoint_s3_client::MountpointS3Client;
 
     #[test]
@@ -72,17 +72,14 @@ mod tests {
         Python::with_gil(|py| {
             let locals = [
                 ("MountpointS3Client", py.get_type::<MountpointS3Client>()),
-                (
-                    "MountpointS3ClientMock",
-                    py.get_type::<MountpointS3ClientMock>(),
-                ),
+                ("MockMountpointS3Client", py.get_type::<PyMockClient>()),
             ];
             py_run!(
                 py,
                 *locals.into_py_dict(py),
                 r#"
-                mock_client = MountpointS3ClientMock("us-east-1", "mock-bucket")
-                client = MountpointS3Client.with_client(mock_client)
+                mock_client = MockMountpointS3Client("us-east-1", "mock-bucket")
+                client = mock_client.create_mocked_client()
                 
                 mock_client.add_object("key", b"data")
                 stream = client.get_object("mock-bucket", "key")
