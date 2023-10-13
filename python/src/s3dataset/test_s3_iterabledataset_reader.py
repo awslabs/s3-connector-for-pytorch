@@ -3,7 +3,7 @@ import pickle
 
 from s3dataset._s3dataset import MountpointS3Client
 
-from s3dataset._s3_iterabledataset_reader import S3IterableDatasetReader, S3DatasetSource
+from s3dataset._s3_iterabledataset import S3IterableDataset, S3DatasetSource
 from utils.pytorch_iterable_dataset_generator import NumberIterableDataset, StringIterableDataset
 
 logging.basicConfig(format='%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s')
@@ -14,8 +14,8 @@ log = logging.getLogger(__name__)
 def test_number_iterabledataset():
     client = MountpointS3Client('eu-west-2')
     uris = ['s3://dataset-it-bucket/iterable-datasets/num-iterdataset-100.pkl']
-    source = S3DatasetSource().from_object_uris(uris)
-    iterabledataset_reader = S3IterableDatasetReader(client, source)
+    source = S3DatasetSource.from_object_uris(client, uris)
+    iterabledataset_reader = S3IterableDataset(client, source)
 
     for reader in iterabledataset_reader:
         assert reader.bucket == 'dataset-it-bucket'
@@ -29,8 +29,8 @@ def test_number_iterabledataset():
 def test_string_iterabledataset():
     client = MountpointS3Client('eu-west-2')
     uris = ['s3://dataset-it-bucket/iterable-datasets/str-iterdataset-10.pkl']
-    source = S3DatasetSource().from_object_uris(uris)
-    iterabledataset_reader = S3IterableDatasetReader(client, source)
+    source = S3DatasetSource.from_object_uris(client, uris)
+    iterabledataset_reader = S3IterableDataset(client, source)
 
     for reader in iterabledataset_reader:
         assert reader.bucket == 'dataset-it-bucket'
@@ -44,8 +44,8 @@ def test_string_iterabledataset():
 def test_iterabledataset_reader():
     client = MountpointS3Client('eu-west-2')
     uris = ['s3://dataset-it-bucket/iterable-datasets/num-iterdataset-100.pkl', 's3://dataset-it-bucket/iterable-datasets/str-iterdataset-10.pkl']
-    source = S3DatasetSource().from_object_uris(uris)
-    iterabledataset_reader = S3IterableDatasetReader(client, source)
+    source = S3DatasetSource.from_object_uris(client, uris)
+    iterabledataset_reader = S3IterableDataset(client, source)
 
     for reader in iterabledataset_reader:
         assert reader.bucket == 'dataset-it-bucket'
@@ -54,8 +54,8 @@ def test_iterabledataset_reader():
 
 def test_iterabledataset_from_bucket():
     client = MountpointS3Client('eu-west-2')
-    source = S3DatasetSource().from_bucket(client, 'dataset-it-bucket')
-    iterabledataset_reader = S3IterableDatasetReader(client, source)
+    source = S3DatasetSource.from_bucket(client, 'dataset-it-bucket')
+    iterabledataset_reader = S3IterableDataset(client, source)
 
     for reader in iterabledataset_reader:
         assert reader.bucket == 'dataset-it-bucket'
