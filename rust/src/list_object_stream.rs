@@ -3,13 +3,13 @@ use std::sync::Arc;
 use mountpoint_s3_client::types::ListObjectsResult;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut, PyResult, Python};
 
-use crate::py_object_client::PyObjectClient;
+use crate::mountpoint_s3_client_inner::MountpointS3ClientInner;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
 
 #[pyclass(name = "ListObjectStream", module = "_s3dataset")]
 pub struct ListObjectStream {
-    client: Arc<dyn PyObjectClient + Send + Sync + 'static>,
+    client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
     continuation_token: Option<String>,
     complete: bool,
     #[pyo3(get)]
@@ -24,7 +24,7 @@ pub struct ListObjectStream {
 
 impl ListObjectStream {
     pub(crate) fn new(
-        client: Arc<dyn PyObjectClient + Send + Sync + 'static>,
+        client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
         bucket: String,
         prefix: String,
         delimiter: String,

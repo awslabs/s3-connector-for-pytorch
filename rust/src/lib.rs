@@ -16,7 +16,7 @@ mod get_object_stream;
 mod list_object_stream;
 mod mock_client;
 mod mountpoint_s3_client;
-mod py_object_client;
+mod mountpoint_s3_client_inner;
 mod python_structs;
 
 #[pymodule]

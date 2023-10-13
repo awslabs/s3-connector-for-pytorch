@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
-use mountpoint_s3_client::S3CrtClient;
+use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use pyo3::{pyclass, pymethods, PyRef, PyResult};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
-use crate::py_object_client::{ObjectClientWrapper, PyObjectClient};
+use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
 
 #[pyclass(name = "MountpointS3Client", module = "_s3dataset", frozen)]
 pub struct MountpointS3Client {
-    client: Arc<dyn PyObjectClient + Send + Sync + 'static>,
+    client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
     #[pyo3(get)]
     throughput_target_gbps: f64,
     #[pyo3(get)]
@@ -24,7 +24,7 @@ pub struct MountpointS3Client {
 impl MountpointS3Client {
     #[new]
     #[pyo3(signature = (region, throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
-    pub fn new(
+    pub fn new_s3_client(
         region: String,
         throughput_target_gbps: f64,
         part_size: usize,
@@ -51,13 +51,11 @@ impl MountpointS3Client {
             .endpoint_config(endpoint_config);
         let crt_client = Arc::new(S3CrtClient::new(config).map_err(python_exception)?);
 
-        let client = Arc::new(ObjectClientWrapper::new(crt_client));
-
-        Ok(MountpointS3Client::with_client(
+        Ok(MountpointS3Client::new(
             region,
             throughput_target_gbps,
             part_size,
-            client,
+            crt_client,
         ))
     }
 
@@ -66,9 +64,7 @@ impl MountpointS3Client {
         bucket: String,
         key: String,
     ) -> PyResult<GetObjectStream> {
-        let next_part = slf.client.get_object(slf.py(), &bucket, &key)?;
-
-        Ok(GetObjectStream::new(Box::new(next_part), bucket, key))
+        slf.client.get_object(slf.py(), bucket, key)
     }
 
     #[pyo3(signature = (bucket, prefix=String::from(""), delimiter=String::from(""), max_keys=1000))]
@@ -78,29 +74,27 @@ impl MountpointS3Client {
         prefix: String,
         delimiter: String,
         max_keys: usize,
-    ) -> PyResult<ListObjectStream> {
-        Ok(ListObjectStream::new(
-            self.client.clone(),
-            bucket,
-            prefix,
-            delimiter,
-            max_keys,
-        ))
+    ) -> ListObjectStream {
+        ListObjectStream::new(self.client.clone(), bucket, prefix, delimiter, max_keys)
     }
 }
 
 impl MountpointS3Client {
-    pub(crate) fn with_client(
+    pub(crate) fn new<Client: ObjectClient>(
         region: String,
         throughput_target_gbps: f64,
         part_size: usize,
-        client: Arc<(dyn PyObjectClient + Send + Sync + 'static)>,
-    ) -> Self {
+        client: Arc<Client>,
+    ) -> Self
+    where
+        <Client as ObjectClient>::GetObjectResult: Unpin + Sync,
+        Client: Sync + Send + 'static,
+    {
         Self {
             throughput_target_gbps,
             part_size,
             region,
-            client,
+            client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
         }
     }
 }

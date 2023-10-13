@@ -2,7 +2,7 @@ use pyo3::types::PyBytes;
 use pyo3::{pyclass, pymethods, PyErr, PyRef, PyRefMut, PyResult};
 
 use crate::exception::S3DatasetException;
-use crate::py_object_client::MPGetObjectClosure;
+use crate::mountpoint_s3_client_inner::MPGetObjectClosure;
 
 #[pyclass(name = "GetObjectStream", module = "_s3dataset")]
 pub struct GetObjectStream {
