@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::fmt::Write;
-use std::io;
 
 use pyo3::exceptions::PyException;
 use pyo3::PyErr;
@@ -20,12 +19,19 @@ pub fn python_exception(error: impl Error) -> PyErr {
     S3DatasetException::new_err(s)
 }
 
-#[test]
-fn test_python_exception() {
-    pyo3::prepare_freethreaded_python();
+#[cfg(test)]
+mod tests {
+    use std::io;
 
-    let err = io::Error::new(io::ErrorKind::InvalidData,"Test message");
-    let pyerr = python_exception(err);
+    use crate::exception::python_exception;
 
-    assert_eq!(pyerr.to_string(), "S3DatasetException: Test message");
+    #[test]
+    fn test_python_exception() {
+        pyo3::prepare_freethreaded_python();
+
+        let err = io::Error::new(io::ErrorKind::InvalidData, "Test message");
+        let pyerr = python_exception(err);
+
+        assert_eq!(pyerr.to_string(), "S3DatasetException: Test message");
+    }
 }

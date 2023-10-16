@@ -9,7 +9,7 @@ publish = false
 [lib]
 name = "_s3dataset"
 crate-type = ["cdylib"]
-path = "rust/lib.rs"
+path = "rust/src/lib.rs"
 
 [dependencies]
 pyo3 = { version = "0.19.2" }
