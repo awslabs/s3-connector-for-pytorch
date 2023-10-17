@@ -138,6 +138,29 @@ def test_list_objects(expected_keys):
     keys = {object_info.key for object_info in object_infos}
     assert keys == expected_keys
 
+@pytest.mark.parametrize(
+    "prefix, keys, expected_keys",
+    [
+        ("key", {"test", "key1", "key2", "key3"}, {"key1", "key2", "key3"}),
+        ("prefix", {"prefix/obj1", "prefix/obj2", "test"}, {"prefix/obj1", "prefix/obj2"}),
+        ("test", set(), set()),
+    ]
+)
+def test_list_objects_with_prefix(prefix: str, keys: {str}, expected_keys: {str}):
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    for key in keys:
+        mock_client.add_object(key, b"")
+    client = mock_client.create_mocked_client()
+
+    stream = client.list_objects(MOCK_BUCKET, prefix)
+    assert isinstance(stream, ListObjectStream)
+
+    object_infos = [object_info for page in stream for object_info in page.object_info]
+    expected_result = {entry for entry in expected_keys}
+    assert len(object_infos) == len(expected_result)
+    keys = {object_info.key for object_info in object_infos}
+    assert keys == expected_result
+
 
 def _assert_isinstance(obj, expected: type):
     assert isinstance(obj, expected), f"Expected a {expected}, got {type(obj)=}"
