@@ -7,12 +7,13 @@ from s3dataset._s3dataset import MountpointS3Client, ObjectInfo, GetObjectStream
 
 class S3DatasetObject(io.BufferedIOBase):
     def __init__(self, bucket: str, key: str, object_info: ObjectInfo = None, stream: GetObjectStream = None):
+        super().__init__()
         self.bucket = bucket
         self.key = key
         self.object_info = object_info
         self.stream = stream
 
-    # TODO: How to check we need to stop? What other checks do we need to add?
+    # TODO: Support multiple sizes
     def read(self, size=-1):
         return b''.join(self.stream)
         pass
