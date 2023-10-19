@@ -60,10 +60,8 @@ class S3DatasetBase:
     ) -> MountpointS3Client:
         if not region and not client:
             raise ValueError("Either region or client must be valid.")
-
         if region and client:
             raise ValueError("Only one of region / client should be passed.")
-
         if client:
             return client
 
