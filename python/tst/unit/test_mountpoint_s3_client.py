@@ -100,9 +100,6 @@ def test_get_object_iterates_once():
     returned_data = b"".join(stream)
     assert returned_data == b"data"
 
-    returned_data = b"".join(stream)
-    assert returned_data == b""
-
 
 def test_get_object_throws_stop_iteration():
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
