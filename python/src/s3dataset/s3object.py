@@ -20,3 +20,4 @@ class S3Object(io.BufferedIOBase):
     # TODO: Support multiple sizes
     def read(self, size=-1):
         return b"".join(self.stream)
+
