@@ -10,6 +10,8 @@ class S3Object(io.BufferedIOBase):
         object_info: ObjectInfo = None,
         stream: GetObjectStream = None,
     ):
+        if not bucket or not key:
+            raise ValueError("Bucket and key should be specified")
         self.bucket = bucket
         self.key = key
         self.object_info = object_info
