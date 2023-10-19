@@ -64,7 +64,6 @@ class S3DatasetBase:
             raise ValueError("Only one of region / client should be passed.")
         if client:
             return client
-
         return MountpointS3Client(region)
 
 
