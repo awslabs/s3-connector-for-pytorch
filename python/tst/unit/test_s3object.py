@@ -29,12 +29,12 @@ MOCK_STREAM = Mock(GetObjectStream)
     ],
 )
 def test_s3object_creation(object_info, stream):
-    s3object = S3Object(TEST_BUCKET, TEST_KEY)
+    s3object = S3Object(TEST_BUCKET, TEST_KEY, object_info, stream)
     assert s3object
     assert s3object.bucket == TEST_BUCKET
     assert s3object.key == TEST_KEY
-    assert s3object.object_info == None
-    assert s3object.stream == None
+    assert s3object.object_info == object_info
+    assert s3object.stream == stream
 
 
 @pytest.mark.parametrize(
