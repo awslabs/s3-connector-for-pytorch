@@ -64,7 +64,7 @@ class S3DatasetBase:
 
 def _parse_s3_uri(uri: str) -> [str, str]:
     # TODO: We should be able to support more through Mountpoint, not sure if we want to
-    if not uri.startswith("s3://"):
+    if not uri or not uri.startswith("s3://"):
         raise ValueError("Only s3:// URIs are supported")
     uri = uri[len("s3://") :]
     if not uri:
