@@ -25,7 +25,6 @@ TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_PREFIX = "s3://"
 
-
 @pytest.mark.parametrize(
     "region, client",
     [(TEST_REGION, None), (None, MockMountpointS3Client(TEST_REGION, TEST_BUCKET))],
@@ -86,45 +85,44 @@ def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
 
 
 @pytest.mark.parametrize(
-    "keys, expected_count",
-    [([], 0), (["obj1", "obj2", "obj3", "test"], 4)],
+    "keys, expected_index",
+    [([], 0), (["obj1", "obj2", "obj3", "test"], 3)],
 )
-def test_objects_to_s3objects(keys: Iterable[str], expected_count: int):
+def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
+
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     bucket_key_pairs = [(TEST_BUCKET, key) for key in keys]
-    objects = S3DatasetBase._objects_to_s3objects(mock_client, bucket_key_pairs)
-    count = 0
-    for object in objects:
-        assert object != None
-        assert object.bucket == f"{TEST_BUCKET}"
-        assert object.key == keys[count]
+    objects = S3DatasetBase._bucket_keys_to_s3objects(mock_client, bucket_key_pairs)
+    index = 0
+    for index, object in enumerate(objects):
+        assert object is not None
+        assert object.bucket == TEST_BUCKET
+        assert object.key == keys[index]
         assert object.object_info == None
-        assert object.stream != None
-        count = count + 1
-    assert count == expected_count
+        assert object.stream is not None
+    assert index == expected_index
 
 
 @pytest.mark.parametrize(
-    "prefix, keys, expected_count",
+    "prefix, keys, expected_index",
     [
-        (None, ["obj1", "obj2", "obj3", "test", "test2"], 5),
-        ("", ["obj1", "obj2", "obj3", "test", "test2"], 5),
-        ("obj", ["obj1", "obj2", "obj3", "test", "test2"], 3),
+        (None, ["obj1", "obj2", "obj3", "test", "test2"], 4),
+        ("", ["obj1", "obj2", "obj3", "test", "test2"], 4),
+        ("obj", ["obj1", "obj2", "obj3", "test", "test2"], 2),
     ],
 )
-def test_list_objects_for_bucket(prefix: str, keys: Iterable[str], expected_count: int):
+def test_list_objects_for_bucket(prefix: str, keys: Iterable[str], expected_index: int):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     objects = S3DatasetBase._list_objects_for_bucket(mock_client, TEST_BUCKET, prefix)
-    count = 0
-    for object in objects:
-        assert object != None
-        assert object.bucket == f"{TEST_BUCKET}"
-        assert object.key == keys[count]
-        assert object.object_info != None
-        assert object.object_info.key == keys[count]
-        assert object.stream != None
-        count = count + 1
-    assert count == expected_count
+    index = 0
+    for index, object in enumerate(objects):
+        assert object is not None
+        assert object.bucket == TEST_BUCKET
+        assert object.key == keys[index]
+        assert object.object_info is not None
+        assert object.object_info.key == keys[index]
+        assert object.stream is not None
+    assert index == expected_index
 
 
 @pytest.mark.parametrize(
@@ -156,7 +154,7 @@ def test_list_objects_for_bucket_invalid(
             mock_client, "DIFFERENT_BUCKET", prefix
         )
         for object in objects:
-            assert object != None
+            assert object is not None
     assert str(error.value) == error_msg
 
 
@@ -197,7 +195,7 @@ def test_dataset_creation_from_objects_with_client(keys: Union[str, Iterable[str
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, object_uris)
     dataset = S3DatasetBase.from_objects(object_uris, client=client)
-    assert dataset != None
+    assert dataset is not None
 
 
 @pytest.mark.parametrize(
@@ -211,7 +209,7 @@ def test_dataset_creation_from_objects_with_client(keys: Union[str, Iterable[str
 def test_dataset_creation_from_objects_with_region(keys: Union[str, Iterable[str]]):
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3DatasetBase.from_objects(object_uris, region=TEST_REGION)
-    assert dataset != None
+    assert dataset is not None
     assert dataset.region == TEST_REGION
 
 
@@ -227,12 +225,12 @@ def test_dataset_creation_from_bucket_with_client(keys: Union[str, Iterable[str]
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, object_uris)
     dataset = S3DatasetBase.from_bucket(TEST_BUCKET, client=client)
-    assert dataset != None
+    assert dataset is not None
 
 
 def test_dataset_creation_from_bucket_with_region():
     dataset = S3DatasetBase.from_bucket(TEST_BUCKET, region=TEST_REGION)
-    assert dataset != None
+    assert dataset is not None
     assert dataset.region == TEST_REGION
 
 

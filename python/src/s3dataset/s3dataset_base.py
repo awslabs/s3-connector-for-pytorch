@@ -42,11 +42,11 @@ class S3DatasetBase:
             MountpointS3Client instance to be used for S3 interactions.
         """
         cls._validate_arguments(region, client)
-        if type(object_uris) == str:
+        if isinstance(object_uris, str):
             object_uris = [object_uris]
         bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
         client = client or MountpointS3Client(region)
-        return cls(client, cls._objects_to_s3objects(client, bucket_key_pairs))
+        return cls(client, cls._bucket_keys_to_s3objects(client, bucket_key_pairs))
 
     @classmethod
     def from_bucket(
@@ -75,7 +75,7 @@ class S3DatasetBase:
         return cls(client, cls._list_objects_for_bucket(client, bucket, prefix))
 
     @staticmethod
-    def _objects_to_s3objects(
+    def _bucket_keys_to_s3objects(
         client: MountpointS3Client, bucket_key_pairs: Iterable[Tuple[str, str]]
     ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
@@ -86,9 +86,9 @@ class S3DatasetBase:
         client: MountpointS3Client, bucket: str, prefix: str = None
     ) -> Iterable[S3Object]:
         # TODO: Test if it works with more than 1000 objs (perhaps set a lower page size in MockClient)
-        stream = client.list_objects(bucket, prefix or "")
+        list_object_stream = client.list_objects(bucket, prefix or "")
 
-        for page in stream:
+        for page in list_object_stream:
             for object_info in page.object_info:
                 yield S3Object(
                     bucket,
