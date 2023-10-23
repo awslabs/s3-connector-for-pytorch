@@ -25,7 +25,9 @@ MOCK_STREAM = Mock(GetObjectStream)
     [
         (None, None),
         (MOCK_OBJECT_INFO, None),
-        (None, MOCK_STREAM)
+        (None, MOCK_STREAM),
+        (TEST_BUCKET, None),
+        (TEST_BUCKET, ""),
     ],
 )
 def test_s3object_creation(object_info, stream):
@@ -39,16 +41,9 @@ def test_s3object_creation(object_info, stream):
 
 @pytest.mark.parametrize(
     "bucket, key",
-    [
-        (None, None),
-        (None, ""),
-        (None, TEST_KEY),
-        ("", TEST_KEY),
-        (TEST_BUCKET, None),
-        (TEST_BUCKET, "")
-    ],
+    [(None, None), (None, ""), (None, TEST_KEY), ("", TEST_KEY)],
 )
 def test_s3object_invalid_creation(bucket, key):
     with pytest.raises(ValueError) as error:
         S3Object(bucket, key)
-    assert str(error.value) == "Bucket and key should be specified"
+    assert str(error.value) == "Bucket should be specified"

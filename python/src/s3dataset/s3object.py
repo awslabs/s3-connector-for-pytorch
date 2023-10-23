@@ -1,5 +1,5 @@
 import io
-from s3dataset._s3dataset import MountpointS3Client, ObjectInfo, GetObjectStream
+from s3dataset._s3dataset import ObjectInfo, GetObjectStream
 
 
 class S3Object(io.BufferedIOBase):
@@ -10,8 +10,8 @@ class S3Object(io.BufferedIOBase):
         object_info: ObjectInfo = None,
         stream: GetObjectStream = None,
     ):
-        if not bucket or not key:
-            raise ValueError("Bucket and key should be specified")
+        if not bucket:
+            raise ValueError("Bucket should be specified")
         self.bucket = bucket
         self.key = key
         self.object_info = object_info
@@ -20,4 +20,3 @@ class S3Object(io.BufferedIOBase):
     # TODO: Support multiple sizes
     def read(self, size=-1):
         return b"".join(self.stream)
-

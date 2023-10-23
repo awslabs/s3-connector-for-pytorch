@@ -1,6 +1,12 @@
-from typing import Iterable, Union
+from typing import Iterable, Union, Tuple
 from s3dataset.s3object import S3Object
 from s3dataset._s3dataset import MountpointS3Client
+
+
+"""
+s3dataset_base.py
+    Base class for S3 datasets, containing logic for URIs parsing and objects listing. 
+"""
 
 
 class S3DatasetBase:
@@ -10,14 +16,28 @@ class S3DatasetBase:
     @classmethod
     def from_objects(
         cls,
-        object_uri: Union[str, Iterable[str]],
+        object_uris: Union[str, Iterable[str]],
         *,
         region: str = None,
         client: MountpointS3Client = None,
     ):
+        """
+        Creates an S3IterableDataset from the object(s) URI(s) passed as parameters.
+        Args:
+          object_uris (str or Iterable[str]):
+            S3 URI of the object(s) desired.
+          region (str or None):
+            The S3 region where the objects are stored.
+            If this is provided a MountpointS3Client will be instantiated with the region.
+          client:
+            MountpointS3Client instance to be used for S3 interactions.
+        """
         cls._validate_arguments(region, client)
+        if type(object_uris) == str:
+            object_uris = [object_uris]
+        bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
         client = client or MountpointS3Client(region)
-        return cls(cls._objects_to_s3objects(client, object_uri))
+        return cls(cls._objects_to_s3objects(client, bucket_key_pairs))
 
     @classmethod
     def from_bucket(
@@ -28,17 +48,31 @@ class S3DatasetBase:
         region: str = None,
         client: MountpointS3Client = None,
     ):
+        """
+        Creates an S3IterableDataset with the objects found in S3 under bucket/prefix.
+        Args:
+          bucket(str):
+            Name of the S3 bucket where the objects are stored.
+          prefix(str or None):
+            The S3 prefix for the objects in scope.
+          region (str or None):
+            The S3 region where the bucket is.
+            If this is provided a MountpointS3Client will be instantiated with the region.
+          client:
+            MountpointS3Client instance to be used for S3 interactions.
+        """
         cls._validate_arguments(region, client)
-        client = client or MountpointS3Client(region, bucket)
+        client = client or MountpointS3Client(region)
         return cls(cls._list_objects_for_bucket(client, bucket, prefix))
 
+    @staticmethod
     def _objects_to_s3objects(
-        client: MountpointS3Client, object_uris: Iterable[str]
+        client: MountpointS3Client, bucket_key_pairs: Iterable[Tuple[str, str]]
     ) -> Iterable[S3Object]:
-        for uri in object_uris:
-            bucket, key = _parse_s3_uri(uri)
+        for bucket, key in bucket_key_pairs:
             yield S3Object(bucket, key, stream=client.get_object(bucket, key))
 
+    @staticmethod
     def _list_objects_for_bucket(
         client: MountpointS3Client, bucket: str, prefix: str = None
     ) -> Iterable[S3Object]:
@@ -54,15 +88,16 @@ class S3DatasetBase:
                     client.get_object(bucket, object_info.key),
                 )
 
-    def _validate_arguments(
-        region: str = None, client: MountpointS3Client = None
-    ):
+    @staticmethod
+    def _validate_arguments(region: str = None, client: MountpointS3Client = None):
         if not region and not client:
             raise ValueError("Either region or client must be valid.")
         if region and client:
             raise ValueError("Only one of region / client should be passed.")
 
-def _parse_s3_uri(uri: str) -> [str, str]:
+
+# TODO: Check boto3 implementation for this
+def _parse_s3_uri(uri: str) -> Tuple[str, str]:
     # TODO: We should be able to support more through Mountpoint, not sure if we want to
     if not uri or not uri.startswith("s3://"):
         raise ValueError("Only s3:// URIs are supported")
@@ -77,4 +112,4 @@ def _parse_s3_uri(uri: str) -> [str, str]:
         bucket, prefix = split
     if not bucket:
         raise ValueError("Bucket name must be non-empty")
-    return bucket, prefix
+    return (bucket, prefix)
