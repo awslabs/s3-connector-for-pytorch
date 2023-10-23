@@ -82,7 +82,7 @@ impl MountpointS3Client {
 
     #[pyo3(signature = (bucket, key, storage_class=None))]
     pub fn put_object(
-        &self,
+        slf: PyRef<'_, Self>,
         bucket: String,
         key: String,
         storage_class: Option<String>,
@@ -90,7 +90,7 @@ impl MountpointS3Client {
         let mut params = PutObjectParams::default();
         params.storage_class = storage_class;
 
-        self.client.put_object(bucket, key, params)
+        slf.client.put_object(slf.py(), bucket, key, params)
     }
 }
 

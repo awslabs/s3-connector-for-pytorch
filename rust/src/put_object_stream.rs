@@ -14,11 +14,12 @@ pub struct PutObjectStream {
 }
 
 impl PutObjectStream {
-    pub(crate) fn new(
-        request: Box<dyn PutObjectRequestWrapper + Send>,
+    pub(crate) fn new<T: PutObjectRequest + Sync + 'static>(
+        request: T,
         bucket: String,
         key: String,
     ) -> Self {
+        let request = Box::new(PutObjectRequestWrapperImpl::new(request));
         Self {
             request,
             bucket,
