@@ -24,9 +24,9 @@ class S3DatasetBase:
         """
         Creates an S3IterableDataset from the object(s) URI(s) passed as parameters.
         Args:
-          object_uris (str or Iterable[str]):
+          object_uris(str or Iterable[str]):
             S3 URI of the object(s) desired.
-          region (str or None):
+          region(str or None):
             The S3 region where the objects are stored.
             If this is provided a MountpointS3Client will be instantiated with the region.
           client:
@@ -55,7 +55,7 @@ class S3DatasetBase:
             Name of the S3 bucket where the objects are stored.
           prefix(str or None):
             The S3 prefix for the objects in scope.
-          region (str or None):
+          region(str or None):
             The S3 region where the bucket is.
             If this is provided a MountpointS3Client will be instantiated with the region.
           client:

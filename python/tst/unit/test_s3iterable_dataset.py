@@ -2,8 +2,8 @@ import pytest
 
 from typing import Iterable, Callable
 
-from s3iterable_dataset import S3IterableDataset
-from s3object import S3Object
+from s3dataset.s3iterable_dataset import S3IterableDataset
+from s3dataset.s3object import S3Object
 from unit.test_s3dataset_base import (
     TEST_BUCKET,
     _create_mock_client_with_dummy_objects,
