@@ -80,7 +80,9 @@ class S3DatasetBase:
         client: MountpointS3Client, bucket_key_pairs: Iterable[Tuple[str, str]]
     ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
-            yield S3Object(bucket, key, get_stream=lambda: client.get_object(bucket, key))
+            yield S3Object(
+                bucket, key, get_stream=lambda: client.get_object(bucket, key)
+            )
 
     @staticmethod
     def _list_objects_for_bucket(

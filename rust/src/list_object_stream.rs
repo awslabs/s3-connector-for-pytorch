@@ -72,11 +72,7 @@ impl ListObjectStream {
             slf.complete = true;
         }
 
-        let objects = results
-            .objects
-            .into_iter()
-            .map(|obj| PyObjectInfo::new(obj))
-            .collect();
+        let objects = results.objects.into_iter().map(PyObjectInfo::new).collect();
 
         Ok(Some(PyListObjectResult::new(
             objects,

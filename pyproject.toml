@@ -14,7 +14,9 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest"
+    "pytest",
+    "flake8",
+    "black"
 ]
 
 [tool.setuptools.packages]
