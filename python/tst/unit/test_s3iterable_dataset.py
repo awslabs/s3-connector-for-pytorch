@@ -1,6 +1,6 @@
 import pytest
 
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Union
 
 from s3dataset.s3iterable_dataset import S3IterableDataset
 from s3dataset.s3object import S3Object
@@ -8,6 +8,7 @@ from unit.test_s3dataset_base import (
     TEST_BUCKET,
     _create_mock_client_with_dummy_objects,
     S3_PREFIX,
+    TEST_REGION,
 )
 
 
@@ -29,7 +30,7 @@ def test_dataset_creation_from_objects_with_client_single_object():
         (["obj1", "obj2", "obj3", "test"], ["obj1", "obj2", "obj3", "test"], 4),
     ],
 )
-def test_dataset_creation_from_objects_with_client(
+def test_s3iterable_dataset_creation_from_objects_with_client(
     keys: Iterable[str], expected_keys: Iterable[str], expected_count: int
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -48,7 +49,7 @@ def test_dataset_creation_from_objects_with_client(
         (["obj1", "obj2", "obj3", "test"], "obj", ["obj1", "obj2", "obj3"], 3),
     ],
 )
-def test_dataset_creation_from_bucket_with_client(
+def test_s3iterable_dataset_creation_from_bucket_with_client(
     keys: Iterable[str], prefix: str, expected_keys: Iterable[str], expected_count: int
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -56,6 +57,29 @@ def test_dataset_creation_from_bucket_with_client(
     _test_s3iterable_dataset(
         dataset, expected_keys, expected_count, lambda data: data.object_info != None
     )
+
+
+def test_s3iterable_dataset_creation_from_bucket_with_region():
+    dataset = S3IterableDataset.from_bucket(TEST_BUCKET, region=TEST_REGION)
+    assert dataset != None
+    assert dataset.region == TEST_REGION
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        ([]),
+        ("single_object"),
+        (["obj1", "obj2", "test"]),
+    ],
+)
+def test_s3iterable_dataset_creation_from_objects_with_region(
+    keys: Union[str, Iterable[str]]
+):
+    object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
+    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
+    assert dataset != None
+    assert dataset.region == TEST_REGION
 
 
 def _test_s3iterable_dataset(

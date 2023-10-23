@@ -10,8 +10,17 @@ s3dataset_base.py
 
 
 class S3DatasetBase:
-    def __init__(self, dataset_objects: Iterable[S3Object] = ()):
+    def __init__(
+            self,
+            client: MountpointS3Client,
+            dataset_objects: Iterable[S3Object] = (),
+    ):
+        self._client = client
         self.dataset_objects = dataset_objects
+
+    @property
+    def region(self):
+        return self._client.region
 
     @classmethod
     def from_objects(
@@ -37,7 +46,7 @@ class S3DatasetBase:
             object_uris = [object_uris]
         bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
         client = client or MountpointS3Client(region)
-        return cls(cls._objects_to_s3objects(client, bucket_key_pairs))
+        return cls(client, cls._objects_to_s3objects(client, bucket_key_pairs))
 
     @classmethod
     def from_bucket(
@@ -63,7 +72,7 @@ class S3DatasetBase:
         """
         cls._validate_arguments(region, client)
         client = client or MountpointS3Client(region)
-        return cls(cls._list_objects_for_bucket(client, bucket, prefix))
+        return cls(client, cls._list_objects_for_bucket(client, bucket, prefix))
 
     @staticmethod
     def _objects_to_s3objects(

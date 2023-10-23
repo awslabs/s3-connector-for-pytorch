@@ -208,11 +208,32 @@ def test_dataset_creation_from_objects_with_client(keys: Union[str, Iterable[str
         (["obj1", "obj2", "test"]),
     ],
 )
+def test_dataset_creation_from_objects_with_region(keys: Union[str, Iterable[str]]):
+    object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
+    dataset = S3DatasetBase.from_objects(object_uris, region=TEST_REGION)
+    assert dataset != None
+    assert dataset.region == TEST_REGION
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        ([]),
+        ("single_object"),
+        (["obj1", "obj2", "test"]),
+    ],
+)
 def test_dataset_creation_from_bucket_with_client(keys: Union[str, Iterable[str]]):
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, object_uris)
     dataset = S3DatasetBase.from_bucket(TEST_BUCKET, client=client)
     assert dataset != None
+
+
+def test_dataset_creation_from_bucket_with_region():
+    dataset = S3DatasetBase.from_bucket(TEST_BUCKET, region=TEST_REGION)
+    assert dataset != None
+    assert dataset.region == TEST_REGION
 
 
 def _create_mock_client_with_dummy_objects(
