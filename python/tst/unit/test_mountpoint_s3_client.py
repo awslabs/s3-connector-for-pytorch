@@ -191,10 +191,9 @@ def test_put_object_no_multiple_close():
 
     put_stream.write(b"")
     put_stream.close()
-    try:
+    with pytest.raises(S3DatasetException) as e:
         put_stream.close()
-    except S3DatasetException as e:
-        assert str(e) == "Cannot close object more than once"
+    assert str(e.value) == "Cannot close object more than once"
 
 
 def test_put_object_no_write_after_close():
@@ -206,10 +205,9 @@ def test_put_object_no_write_after_close():
 
     put_stream.write(b"")
     put_stream.close()
-    try:
+    with pytest.raises(S3DatasetException) as e:
         put_stream.write(b"")
-    except S3DatasetException as e:
-        assert str(e) == "Cannot write to closed object"
+    assert str(e.value) == "Cannot write to closed object"
 
 
 def test_put_object_with_storage_class():
