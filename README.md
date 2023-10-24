@@ -6,7 +6,8 @@ S3Dataset is a tool which allows Python code to interface with a performant S3 c
 ### TODO: These instructions are probably incomplete.
 
 1. Install clang (needed to build the CRT)
-2. Create a Python virtual environment
+2. Install Rust compiler: `curl https://sh.rustup.rs -sSf | sh`
+3. Create a Python virtual environment
   - This can be done either through your IDE of choice (CLion works better than Pycharm here, as Pycharm does not 
     include support for GDB level debugging)
 

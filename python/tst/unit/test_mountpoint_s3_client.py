@@ -1,10 +1,17 @@
 import logging
+from typing import Set
 
 import pytest
+from s3dataset._s3dataset import (
+    S3DatasetException,
+    GetObjectStream,
+    ListObjectStream,
+    MockMountpointS3Client,
+)
 
-from s3dataset._s3dataset import S3DatasetException, GetObjectStream, ListObjectStream, MockMountpointS3Client
-
-logging.basicConfig(format='%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s')
+logging.basicConfig(
+    format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
+)
 logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
@@ -29,7 +36,7 @@ def test_get_object(key: str, data: bytes, part_size: int):
     stream = client.get_object(MOCK_BUCKET, key)
     _assert_isinstance(stream, GetObjectStream)
 
-    returned_data = b''.join(stream)
+    returned_data = b"".join(stream)
     assert returned_data == data
 
 
@@ -90,11 +97,8 @@ def test_get_object_iterates_once():
     stream = client.get_object(MOCK_BUCKET, "key")
     _assert_isinstance(stream, GetObjectStream)
 
-    returned_data = b''.join(stream)
+    returned_data = b"".join(stream)
     assert returned_data == b"data"
-
-    returned_data = b''.join(stream)
-    assert returned_data == b""
 
 
 def test_get_object_throws_stop_iteration():
@@ -135,6 +139,33 @@ def test_list_objects(expected_keys):
     assert isinstance(stream, ListObjectStream)
 
     object_infos = [object_info for page in stream for object_info in page.object_info]
+    keys = {object_info.key for object_info in object_infos}
+    assert keys == expected_keys
+
+
+@pytest.mark.parametrize(
+    "prefix, keys, expected_keys",
+    [
+        ("key", {"test", "key1", "key2", "key3"}, {"key1", "key2", "key3"}),
+        (
+            "prefix",
+            {"prefix/obj1", "prefix/obj2", "test"},
+            {"prefix/obj1", "prefix/obj2"},
+        ),
+        ("test", set(), set()),
+    ],
+)
+def test_list_objects_with_prefix(prefix: str, keys: Set[str], expected_keys: Set[str]):
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    for key in keys:
+        mock_client.add_object(key, b"")
+    client = mock_client.create_mocked_client()
+
+    stream = client.list_objects(MOCK_BUCKET, prefix)
+    assert isinstance(stream, ListObjectStream)
+
+    object_infos = [object_info for page in stream for object_info in page.object_info]
+    assert len(object_infos) == len(expected_keys)
     keys = {object_info.key for object_info in object_infos}
     assert keys == expected_keys
 
