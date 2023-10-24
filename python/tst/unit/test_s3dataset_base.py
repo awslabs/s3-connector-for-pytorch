@@ -3,7 +3,7 @@ from typing import Iterable, Union
 
 import pytest
 
-from _pytest.outcomes import fail
+from pytest import fail
 
 from s3dataset._s3dataset import (
     S3DatasetException,
