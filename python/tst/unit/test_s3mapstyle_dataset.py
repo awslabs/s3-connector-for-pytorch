@@ -16,9 +16,9 @@ def test_s3mapstyle_dataset_creation_from_objects_with_client_single_object():
 @pytest.mark.parametrize(
     "keys",
     [
-        ([]),
-        ("single_object"),
-        (["obj1", "obj2", "test"]),
+        [],
+        "single_object",
+        ["obj1", "obj2", "test"],
     ],
 )
 def test_s3mapstyle_dataset_creation_from_objects_with_region(
@@ -74,7 +74,7 @@ def _test_s3mapstyle_dataset(
         expected_key: str
 ):
     assert dataset is not None
-    data = dataset.__getitem__(index)
+    data = dataset[index]
 
     assert data is not None
     assert data.bucket == TEST_BUCKET
