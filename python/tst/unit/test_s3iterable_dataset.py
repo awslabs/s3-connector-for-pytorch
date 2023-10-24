@@ -1,6 +1,6 @@
-import pytest
+from typing import Iterable, Callable, Union, Sequence
 
-from typing import Iterable, Callable, Union
+import pytest
 
 from s3dataset.s3iterable_dataset import S3IterableDataset
 from s3dataset.s3object import S3Object
@@ -87,7 +87,7 @@ def test_s3iterable_dataset_creation_from_objects_with_region(
 
 def _test_s3iterable_dataset(
     dataset: S3IterableDataset,
-    expected_keys: Iterable[str],
+    expected_keys: Sequence[str],
     expected_count: int,
     object_info_check: Callable[[S3Object], bool],
 ):
@@ -97,7 +97,10 @@ def _test_s3iterable_dataset(
         assert data.bucket == TEST_BUCKET
         assert data.key == expected_keys[index]
         assert object_info_check(data)
-        for content in data.stream:
+        assert data._stream is None
+        data.prefetch()
+        assert data._stream is not None
+        for content in data._stream:
             expected_content = bytearray(
                 f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode("utf-8")
             )

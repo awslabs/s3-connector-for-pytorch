@@ -1,7 +1,7 @@
 from typing import Iterable, Union, Tuple
-from s3dataset.s3object import S3Object
-from s3dataset._s3dataset import MountpointS3Client
 
+from s3dataset._s3dataset import MountpointS3Client
+from s3dataset.s3object import S3Object
 
 """
 s3dataset_base.py
@@ -80,7 +80,7 @@ class S3DatasetBase:
         client: MountpointS3Client, bucket_key_pairs: Iterable[Tuple[str, str]]
     ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
-            yield S3Object(bucket, key, stream=client.get_object(bucket, key))
+            yield S3Object(bucket, key, get_stream=lambda: client.get_object(bucket, key))
 
     @staticmethod
     def _list_objects_for_bucket(
@@ -95,7 +95,7 @@ class S3DatasetBase:
                     bucket,
                     object_info.key,
                     object_info,
-                    client.get_object(bucket, object_info.key),
+                    lambda: client.get_object(bucket, object_info.key),
                 )
 
     @staticmethod

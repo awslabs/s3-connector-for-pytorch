@@ -1,8 +1,7 @@
 import logging
-from typing import Iterable, Union
+from typing import Iterable, Union, Sequence
 
 import pytest
-
 from pytest import fail
 
 from s3dataset._s3dataset import (
@@ -10,7 +9,6 @@ from s3dataset._s3dataset import (
     MockMountpointS3Client,
     MountpointS3Client,
 )
-
 from s3dataset.s3dataset_base import S3DatasetBase, _parse_s3_uri
 
 logging.basicConfig(
@@ -89,7 +87,7 @@ def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
     "keys, expected_index",
     [([], 0), (["obj1", "obj2", "obj3", "test"], 3)],
 )
-def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
+def test_objects_to_s3objects(keys: Sequence[str], expected_index: int):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     bucket_key_pairs = [(TEST_BUCKET, key) for key in keys]
     objects = S3DatasetBase._bucket_keys_to_s3objects(mock_client, bucket_key_pairs)
@@ -99,7 +97,7 @@ def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
         assert object.bucket == TEST_BUCKET
         assert object.key == keys[index]
         assert object.object_info is None
-        assert object.stream is not None
+        assert object._get_stream is not None
     assert index == expected_index
 
 
@@ -111,7 +109,7 @@ def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
         ("obj", ["obj1", "obj2", "obj3", "test", "test2"], 2),
     ],
 )
-def test_list_objects_for_bucket(prefix: str, keys: Iterable[str], expected_index: int):
+def test_list_objects_for_bucket(prefix: str, keys: Sequence[str], expected_index: int):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     objects = S3DatasetBase._list_objects_for_bucket(mock_client, TEST_BUCKET, prefix)
     for index, object in enumerate(objects):
@@ -120,7 +118,7 @@ def test_list_objects_for_bucket(prefix: str, keys: Iterable[str], expected_inde
         assert object.key == keys[index]
         assert object.object_info is not None
         assert object.object_info.key == keys[index]
-        assert object.stream is not None
+        assert object._get_stream is not None
     assert index == expected_index
 
 
