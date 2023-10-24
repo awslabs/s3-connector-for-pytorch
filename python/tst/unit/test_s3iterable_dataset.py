@@ -4,7 +4,7 @@ from typing import Iterable, Callable, Union
 
 from s3dataset.s3iterable_dataset import S3IterableDataset
 from s3dataset.s3object import S3Object
-from unit.test_s3dataset_base import (
+from test_s3dataset_base import (
     TEST_BUCKET,
     _create_mock_client_with_dummy_objects,
     S3_PREFIX,
@@ -18,7 +18,7 @@ def test_dataset_creation_from_objects_with_client_single_object():
         f"{S3_PREFIX}{TEST_BUCKET}/single_object", client=client
     )
     _test_s3iterable_dataset(
-        dataset, ["single_object"], 1, lambda data: data.object_info == None
+        dataset, ["single_object"], 1, lambda data: data.object_info is None
     )
 
 
@@ -37,7 +37,7 @@ def test_s3iterable_dataset_creation_from_objects_with_client(
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3IterableDataset.from_objects(object_uris, client=client)
     _test_s3iterable_dataset(
-        dataset, expected_keys, expected_count, lambda data: data.object_info == None
+        dataset, expected_keys, expected_count, lambda data: data.object_info is None
     )
 
 
@@ -89,16 +89,14 @@ def _test_s3iterable_dataset(
     object_info_check: Callable[[S3Object], bool],
 ):
     assert dataset is not None
-    count = 0
-    for data in dataset:
+    for index, data in enumerate(dataset):
         assert data is not None
         assert data.bucket == TEST_BUCKET
-        assert data.key == expected_keys[count]
+        assert data.key == expected_keys[index]
         assert object_info_check(data)
         for content in data.stream:
             expected_content = bytearray(
-                f"{TEST_BUCKET}-{expected_keys[count]}-dummyData".encode("utf-8")
+                f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode("utf-8")
             )
             assert content == expected_content
-        count = count + 1
-    assert count == expected_count
+    assert index + 1 == expected_count

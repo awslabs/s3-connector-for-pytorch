@@ -98,7 +98,7 @@ def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
         assert object is not None
         assert object.bucket == TEST_BUCKET
         assert object.key == keys[index]
-        assert object.object_info == None
+        assert object.object_info is None
         assert object.stream is not None
     assert index == expected_index
 
@@ -114,7 +114,6 @@ def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
 def test_list_objects_for_bucket(prefix: str, keys: Iterable[str], expected_index: int):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     objects = S3DatasetBase._list_objects_for_bucket(mock_client, TEST_BUCKET, prefix)
-    index = 0
     for index, object in enumerate(objects):
         assert object is not None
         assert object.bucket == TEST_BUCKET

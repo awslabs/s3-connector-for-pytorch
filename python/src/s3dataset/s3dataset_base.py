@@ -121,4 +121,4 @@ def _parse_s3_uri(uri: str) -> Tuple[str, str]:
         bucket, prefix = split
     if not bucket:
         raise ValueError("Bucket name must be non-empty")
-    return (bucket, prefix)
+    return bucket, prefix
