@@ -149,7 +149,8 @@ def test_list_objects(expected_keys):
     "data_to_write,part_size",
     [
         (b"Hello, world!", 2000),
-        (b"MultiPartUpload", 2)
+        (b"MultiPartUpload", 2),
+        (b"", 2000)
     ],
 )
 def test_put_object(data_to_write: bytes, part_size: int):
@@ -163,7 +164,22 @@ def test_put_object(data_to_write: bytes, part_size: int):
     put_stream.close()
 
     get_stream = client.get_object(MOCK_BUCKET, "key")
-    assert b''.join(get_stream) == data_to_write
+    assert b"".join(get_stream) == data_to_write
+
+
+def test_put_object_overwrite():
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object("key", b"before")
+    client = mock_client.create_mocked_client()
+
+    put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert isinstance(put_stream, PutObjectStream)
+
+    put_stream.write(b"after")
+    put_stream.close()
+
+    get_stream = client.get_object(MOCK_BUCKET, "key")
+    assert b"".join(get_stream) == b"after"
 
 
 def test_put_object_no_multiple_close():
