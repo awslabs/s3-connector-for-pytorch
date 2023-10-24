@@ -8,6 +8,7 @@ from s3dataset._s3dataset import (
     S3DatasetException,
     GetObjectStream,
     ListObjectStream,
+    PutObjectStream,
     MockMountpointS3Client,
 )
 
@@ -168,6 +169,82 @@ def test_list_objects_with_prefix(prefix: str, keys: Set[str], expected_keys: Se
     assert len(object_infos) == len(expected_keys)
     keys = {object_info.key for object_info in object_infos}
     assert keys == expected_keys
+
+
+@pytest.mark.parametrize(
+    "data_to_write,part_size",
+    [
+        (b"Hello, world!", 2000),
+        (b"MultiPartUpload", 2),
+        (b"", 2000)
+    ],
+)
+def test_put_object(data_to_write: bytes, part_size: int):
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, part_size=part_size)
+    client = mock_client.create_mocked_client()
+
+    put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert isinstance(put_stream, PutObjectStream)
+
+    put_stream.write(data_to_write)
+    put_stream.close()
+
+    get_stream = client.get_object(MOCK_BUCKET, "key")
+    assert b"".join(get_stream) == data_to_write
+
+
+def test_put_object_overwrite():
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object("key", b"before")
+    client = mock_client.create_mocked_client()
+
+    put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert isinstance(put_stream, PutObjectStream)
+
+    put_stream.write(b"after")
+    put_stream.close()
+
+    get_stream = client.get_object(MOCK_BUCKET, "key")
+    assert b"".join(get_stream) == b"after"
+
+
+def test_put_object_no_multiple_close():
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    client = mock_client.create_mocked_client()
+
+    put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert isinstance(put_stream, PutObjectStream)
+
+    put_stream.write(b"")
+    put_stream.close()
+    with pytest.raises(S3DatasetException) as e:
+        put_stream.close()
+    assert str(e.value) == "Cannot close object more than once"
+
+
+def test_put_object_no_write_after_close():
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    client = mock_client.create_mocked_client()
+
+    put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert isinstance(put_stream, PutObjectStream)
+
+    put_stream.write(b"")
+    put_stream.close()
+    with pytest.raises(S3DatasetException) as e:
+        put_stream.write(b"")
+    assert str(e.value) == "Cannot write to closed object"
+
+
+def test_put_object_with_storage_class():
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    client = mock_client.create_mocked_client()
+
+    put_stream = client.put_object(MOCK_BUCKET, "key", "STANDARD_IA")
+    assert isinstance(put_stream, PutObjectStream)
+
+    put_stream.write(b"")
+    put_stream.close()
 
 
 def _assert_isinstance(obj, expected: type):

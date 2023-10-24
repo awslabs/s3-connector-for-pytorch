@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
+use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use pyo3::{pyclass, pymethods, PyRef, PyResult};
 
@@ -8,6 +9,7 @@ use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
 use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
+use crate::put_object_stream::PutObjectStream;
 
 #[pyclass(name = "MountpointS3Client", module = "_s3dataset", frozen)]
 pub struct MountpointS3Client {
@@ -77,6 +79,19 @@ impl MountpointS3Client {
     ) -> ListObjectStream {
         ListObjectStream::new(self.client.clone(), bucket, prefix, delimiter, max_keys)
     }
+
+    #[pyo3(signature = (bucket, key, storage_class=None))]
+    pub fn put_object(
+        slf: PyRef<'_, Self>,
+        bucket: String,
+        key: String,
+        storage_class: Option<String>,
+    ) -> PyResult<PutObjectStream> {
+        let mut params = PutObjectParams::default();
+        params.storage_class = storage_class;
+
+        slf.client.put_object(slf.py(), bucket, key, params)
+    }
 }
 
 impl MountpointS3Client {
@@ -87,8 +102,9 @@ impl MountpointS3Client {
         client: Arc<Client>,
     ) -> Self
     where
-        <Client as ObjectClient>::GetObjectResult: Unpin + Sync,
         Client: Sync + Send + 'static,
+        <Client as ObjectClient>::GetObjectResult: Unpin + Sync,
+        <Client as ObjectClient>::PutObjectRequest: Sync,
     {
         Self {
             throughput_target_gbps,
