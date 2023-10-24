@@ -16,7 +16,7 @@ class S3DatasetBase:
         dataset_objects: Iterable[S3Object] = (),
     ):
         self._client = client
-        self.dataset_objects = dataset_objects
+        self._dataset_objects = dataset_objects
 
     @property
     def region(self):
