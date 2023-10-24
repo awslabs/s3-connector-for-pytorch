@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from unittest.mock import Mock
+from mock import Mock
 from s3dataset._s3dataset import ObjectInfo, GetObjectStream
 from s3dataset.s3object import S3Object
 
