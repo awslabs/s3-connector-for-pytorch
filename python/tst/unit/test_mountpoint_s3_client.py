@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+
 from s3dataset._s3dataset import S3DatasetException, GetObjectStream, ListObjectStream, MockMountpointS3Client
 
 logging.basicConfig(format='%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s')
@@ -40,8 +41,13 @@ def test_get_object_part_size():
     stream = client.get_object(MOCK_BUCKET, "key")
     _assert_isinstance(stream, GetObjectStream)
 
-    returned_data = list(stream)
-    assert returned_data == [b"12", b"34", b"56", b"78", b"90"]
+    expected = [b"12", b"34", b"56", b"78", b"90"]
+
+    assert stream.tell() == 0
+    for i, actual in enumerate(stream):
+        assert actual == expected[i]
+        expected_position = (i + 1) * 2
+        assert stream.tell() == expected_position
 
 
 def test_get_object_bad_bucket():

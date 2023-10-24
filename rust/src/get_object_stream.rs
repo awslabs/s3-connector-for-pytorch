@@ -49,6 +49,10 @@ impl GetObjectStream {
             }
         }
     }
+
+    pub fn tell(slf: PyRef<'_, Self>) -> u64 {
+        slf.offset
+    }
 }
 
 #[cfg(test)]
