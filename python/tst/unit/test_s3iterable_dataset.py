@@ -55,7 +55,10 @@ def test_s3iterable_dataset_creation_from_bucket_with_client(
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     dataset = S3IterableDataset.from_bucket(TEST_BUCKET, prefix=prefix, client=client)
     _test_s3iterable_dataset(
-        dataset, expected_keys, expected_count, lambda data: data.object_info is not None
+        dataset,
+        expected_keys,
+        expected_count,
+        lambda data: data.object_info is not None,
     )
 
 

@@ -25,6 +25,7 @@ TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_PREFIX = "s3://"
 
+
 @pytest.mark.parametrize(
     "region, client",
     [(TEST_REGION, None), (None, MockMountpointS3Client(TEST_REGION, TEST_BUCKET))],
@@ -89,7 +90,6 @@ def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
     [([], 0), (["obj1", "obj2", "obj3", "test"], 3)],
 )
 def test_objects_to_s3objects(keys: Iterable[str], expected_index: int):
-
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     bucket_key_pairs = [(TEST_BUCKET, key) for key in keys]
     objects = S3DatasetBase._bucket_keys_to_s3objects(mock_client, bucket_key_pairs)
@@ -152,8 +152,7 @@ def test_list_objects_for_bucket_invalid(
         objects = S3DatasetBase._list_objects_for_bucket(
             mock_client, "DIFFERENT_BUCKET", prefix
         )
-        for object in objects:
-            assert object is not None
+        next(iter(objects))
     assert str(error.value) == error_msg
 
 

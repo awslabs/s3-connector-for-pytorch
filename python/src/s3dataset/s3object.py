@@ -5,6 +5,8 @@ from s3dataset._s3dataset import ObjectInfo, GetObjectStream
 s3_object.py
     File like representation of an S3 object.
 """
+
+
 class S3Object(io.BufferedIOBase):
     def __init__(
         self,

@@ -11,9 +11,9 @@ s3dataset_base.py
 
 class S3DatasetBase:
     def __init__(
-            self,
-            client: MountpointS3Client,
-            dataset_objects: Iterable[S3Object] = (),
+        self,
+        client: MountpointS3Client,
+        dataset_objects: Iterable[S3Object] = (),
     ):
         self._client = client
         self.dataset_objects = dataset_objects
@@ -44,6 +44,7 @@ class S3DatasetBase:
         cls._validate_arguments(region, client)
         if isinstance(object_uris, str):
             object_uris = [object_uris]
+        # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
         bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
         client = client or MountpointS3Client(region)
         return cls(client, cls._bucket_keys_to_s3objects(client, bucket_key_pairs))
