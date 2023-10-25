@@ -82,9 +82,7 @@ class S3DatasetBase:
     ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
             yield S3Object(
-                bucket,
-                key,
-                get_stream=partial(client.get_object, bucket, key)
+                bucket, key, get_stream=partial(client.get_object, bucket, key)
             )
 
     @staticmethod
@@ -100,7 +98,7 @@ class S3DatasetBase:
                     bucket,
                     object_info.key,
                     object_info,
-                    get_stream=partial(client.get_object, bucket, object_info.key)
+                    get_stream=partial(client.get_object, bucket, object_info.key),
                 )
 
     @staticmethod
