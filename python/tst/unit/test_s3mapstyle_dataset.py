@@ -46,9 +46,7 @@ def test_s3mapstyle_dataset_creation_from_objects_with_region(
         ["obj1", "obj2", "obj3", "test"],
     ],
 )
-def test_s3mapstyle_dataset_creation_from_objects_with_client(
-    keys: Sequence[str]
-):
+def test_s3mapstyle_dataset_creation_from_objects_with_client(keys: Sequence[str]):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3MapStyleDataset.from_objects(object_uris, client=client)
@@ -73,11 +71,14 @@ def test_s3mapstyle_dataset_creation_from_bucket_with_region():
     ],
 )
 def test_s3mapstyle_dataset_creation_from_bucket_with_client(
-    keys: Sequence[str], prefix: str,
+    keys: Sequence[str],
+    prefix: str,
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     dataset = S3MapStyleDataset.from_bucket(TEST_BUCKET, prefix=prefix, client=client)
-    expected_keys = [key for key in keys if not prefix or (prefix and key.startswith(prefix))]
+    expected_keys = [
+        key for key in keys if not prefix or (prefix and key.startswith(prefix))
+    ]
     assert isinstance(dataset, S3MapStyleDataset)
     assert len(dataset) == len(expected_keys)
     for index, key in enumerate(expected_keys):

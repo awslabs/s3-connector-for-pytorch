@@ -103,6 +103,8 @@ def _test_s3iterable_dataset(
         data.prefetch()
         assert data._stream is not None
         for content in data._stream:
-            expected_content = f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
+            expected_content = (
+                f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
+            )
             assert content == expected_content
     assert index + 1 == expected_count
