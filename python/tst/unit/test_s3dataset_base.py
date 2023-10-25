@@ -235,6 +235,6 @@ def _create_mock_client_with_dummy_objects(
 ):
     mock_client = MockMountpointS3Client(TEST_REGION, bucket)
     for key in keys:
-        content = f"{bucket}-{key}-dummyData".encode("utf-8")
-        mock_client.add_object(key, bytearray(content))
+        content = f"{bucket}-{key}-dummyData".encode()
+        mock_client.add_object(key, content)
     return mock_client.create_mocked_client()
