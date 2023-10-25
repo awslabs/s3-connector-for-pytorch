@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Iterable, Union, Tuple
 
 from s3dataset._s3dataset import MountpointS3Client
@@ -83,9 +84,7 @@ class S3DatasetBase:
             yield S3Object(
                 bucket,
                 key,
-                get_stream=lambda bucket=bucket, key=key: client.get_object(
-                    bucket, key
-                ),
+                get_stream=partial(client.get_object, bucket, key)
             )
 
     @staticmethod
@@ -101,9 +100,7 @@ class S3DatasetBase:
                     bucket,
                     object_info.key,
                     object_info,
-                    lambda bucket=bucket, object_info=object_info: client.get_object(
-                        bucket, object_info.key
-                    ),
+                    get_stream=partial(client.get_object, bucket, object_info.key)
                 )
 
     @staticmethod

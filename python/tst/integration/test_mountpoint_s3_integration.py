@@ -27,7 +27,6 @@ def test_list_objects():
     assert len(keys) > 1
 
     e2e_img_10_keys = [key for key in keys if key.startswith("e2e-tests/images-10/img")]
-    assert len(e2e_img_10_keys) == 10
     expected_img_10_keys = [f"e2e-tests/images-10/img{i}.jpg" for i in range(10)]
     assert e2e_img_10_keys == expected_img_10_keys
 
