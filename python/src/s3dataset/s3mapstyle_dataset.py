@@ -10,8 +10,13 @@ from s3dataset.s3dataset_base import S3DatasetBase
 from s3dataset.s3object import S3Object
 
 
-class S3MapStyleDataset(S3DatasetBase, torch.utils.data.Dataset):
+"""
+s3mapstyle_dataset.py
+    API for accessing as PyTorch Dataset files stored in S3. 
+"""
 
+
+class S3MapStyleDataset(S3DatasetBase, torch.utils.data.Dataset):
     @property
     def dataset_objects(self) -> List[S3Object]:
         if not isinstance(self._dataset_objects, list):
