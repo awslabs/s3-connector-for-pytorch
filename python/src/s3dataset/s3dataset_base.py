@@ -81,7 +81,11 @@ class S3DatasetBase:
     ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
             yield S3Object(
-                bucket, key, get_stream=lambda: client.get_object(bucket, key)
+                bucket,
+                key,
+                get_stream=lambda bucket=bucket, key=key: client.get_object(
+                    bucket, key
+                ),
             )
 
     @staticmethod
@@ -97,7 +101,9 @@ class S3DatasetBase:
                     bucket,
                     object_info.key,
                     object_info,
-                    lambda: client.get_object(bucket, object_info.key),
+                    lambda bucket=bucket, object_info=object_info: client.get_object(
+                        bucket, object_info.key
+                    ),
                 )
 
     @staticmethod

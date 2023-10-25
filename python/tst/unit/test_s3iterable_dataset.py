@@ -31,7 +31,7 @@ def test_dataset_creation_from_objects_with_client_single_object():
     ],
 )
 def test_s3iterable_dataset_creation_from_objects_with_client(
-    keys: Iterable[str], expected_keys: Iterable[str], expected_count: int
+    keys: Iterable[str], expected_keys: Sequence[str], expected_count: int
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
@@ -50,7 +50,7 @@ def test_s3iterable_dataset_creation_from_objects_with_client(
     ],
 )
 def test_s3iterable_dataset_creation_from_bucket_with_client(
-    keys: Iterable[str], prefix: str, expected_keys: Iterable[str], expected_count: int
+    keys: Iterable[str], prefix: str, expected_keys: Sequence[str], expected_count: int
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     dataset = S3IterableDataset.from_bucket(TEST_BUCKET, prefix=prefix, client=client)
