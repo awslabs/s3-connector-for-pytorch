@@ -16,6 +16,18 @@ S3Dataset is a tool which allows Python code to interface with a performant S3 c
 When you make changes to the Rust code, you need to run `pip install -e .` before changes will be viewable from 
 Python. It's probably worth creating a shell script for this and adding it as part of the pre-build step.
 
+### Making a commit
+
+Our CI uses `clippy` to lint Rust code changes. Use `cargo clippy --all-targets --all-features` to lint Rust before
+pushing new Rust commits.
+
+For Python code changes, run 
+```bash
+black --verbose python/
+flake8 python/ --count --select=E9,F63,F7,F82 --show-source --statistics
+```
+ to lint.
+
 ## Debugging
 
 Either a Python or GDB style debugger will be useful here.

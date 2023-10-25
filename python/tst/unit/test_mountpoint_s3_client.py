@@ -101,6 +101,9 @@ def test_get_object_iterates_once():
     returned_data = b"".join(stream)
     assert returned_data == b"data"
 
+    returned_data = b"".join(stream)
+    assert returned_data == b""
+
 
 def test_get_object_throws_stop_iteration():
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
@@ -176,7 +179,7 @@ def test_list_objects_with_prefix(prefix: str, keys: Set[str], expected_keys: Se
     [
         (b"Hello, world!", 2000),
         (b"MultiPartUpload", 2),
-        (b"", 2000)
+        (b"", 2000),
     ],
 )
 def test_put_object(data_to_write: bytes, part_size: int):

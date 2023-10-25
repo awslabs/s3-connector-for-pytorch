@@ -52,9 +52,9 @@ def test_s3object_invalid_creation(bucket, key):
 @pytest.mark.parametrize(
     "stream",
     [
-        ([b"1", b"2", b"3"],),
-        ([],),
-        ([b"hello!"],)
+        [b"1", b"2", b"3"],
+        [],
+        [b"hello!"],
     ],
 )
 def test_s3object_prefetch(stream):
