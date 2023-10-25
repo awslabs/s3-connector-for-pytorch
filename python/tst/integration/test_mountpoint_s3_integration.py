@@ -28,8 +28,8 @@ def test_list_objects():
 
     e2e_img_10_keys = [key for key in keys if key.startswith("e2e-tests/images-10/img")]
     assert len(e2e_img_10_keys) == 10
-    for i in range(9):
-        assert e2e_img_10_keys[i] == f"e2e-tests/images-10/img{i}.jpg"
+    expected_img_10_keys = [f"e2e-tests/images-10/img{i}.jpg" for i in range(10)]
+    assert e2e_img_10_keys == expected_img_10_keys
 
 
 def test_list_objects_with_prefix():
