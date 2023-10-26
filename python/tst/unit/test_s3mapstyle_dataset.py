@@ -1,7 +1,9 @@
+from typing import Union, Iterable, Sequence, Callable, Any
+
 import pytest
-from typing import Union, Iterable, Sequence
 
 from s3dataset.s3mapstyle_dataset import S3MapStyleDataset
+from s3dataset.s3object import S3Object
 from test_s3dataset_base import (
     TEST_BUCKET,
     TEST_REGION,
@@ -82,6 +84,39 @@ def test_s3mapstyle_dataset_creation_from_bucket_with_client(
     assert len(dataset) == len(expected_keys)
     for index, key in enumerate(expected_keys):
         _test_s3mapstyle_dataset(dataset, index, key)
+
+
+@pytest.mark.parametrize(
+    "key, transform, expected",
+    [
+        (
+            "obj1",
+            lambda s3object: s3object.read(),
+            f"{TEST_BUCKET}-obj1-dummyData".encode(),
+        ),
+        (
+            "obj1",
+            lambda s3object: s3object.read().upper(),
+            f"{TEST_BUCKET}-obj1-dummyData".upper().encode(),
+        ),
+        (
+            "obj1",
+            lambda s3object: 2,
+            2,
+        ),
+    ],
+)
+def test_s3iterable_dataset_creation_from_bucket_with_client(
+    key: str, transform: Callable[[S3Object], Any], expected: Any
+):
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [key])
+    dataset = S3MapStyleDataset.from_bucket(
+        TEST_BUCKET,
+        client=client,
+        transform=transform,
+    )
+    assert isinstance(dataset, S3MapStyleDataset)
+    assert dataset[0] == expected
 
 
 def _test_s3mapstyle_dataset(dataset: S3MapStyleDataset, index: int, expected_key: str):

@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Iterator, Any
 
 import torch
 
@@ -16,5 +16,5 @@ class S3IterableDataset(S3DatasetBase, torch.utils.data.IterableDataset):
     def dataset_objects(self) -> Iterable[S3Object]:
         return self._dataset_objects
 
-    def __iter__(self):
-        return self._dataset_objects
+    def __iter__(self) -> Iterator[Any]:
+        return map(self._transform, self._dataset_objects)

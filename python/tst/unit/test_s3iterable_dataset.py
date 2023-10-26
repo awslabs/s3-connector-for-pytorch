@@ -1,4 +1,4 @@
-from typing import Iterable, Callable, Union, Sequence
+from typing import Iterable, Callable, Union, Sequence, Any
 
 import pytest
 
@@ -63,6 +63,39 @@ def test_s3iterable_dataset_creation_from_bucket_with_client(
         expected_count,
         lambda data: data.object_info is not None,
     )
+
+
+@pytest.mark.parametrize(
+    "key, transform, expected",
+    [
+        (
+            "obj1",
+            lambda s3object: s3object.read(),
+            f"{TEST_BUCKET}-obj1-dummyData".encode(),
+        ),
+        (
+            "obj1",
+            lambda s3object: s3object.read().upper(),
+            f"{TEST_BUCKET}-obj1-dummyData".upper().encode(),
+        ),
+        (
+            "obj1",
+            lambda s3object: 2,
+            2,
+        ),
+    ],
+)
+def test_s3iterable_dataset_creation_from_bucket_with_client(
+    key: str, transform: Callable[[S3Object], Any], expected: Any
+):
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [key])
+    dataset = S3IterableDataset.from_bucket(
+        TEST_BUCKET,
+        client=client,
+        transform=transform,
+    )
+    assert isinstance(dataset, S3IterableDataset)
+    assert list(dataset) == [expected]
 
 
 def test_s3iterable_dataset_creation_from_bucket_with_region():
