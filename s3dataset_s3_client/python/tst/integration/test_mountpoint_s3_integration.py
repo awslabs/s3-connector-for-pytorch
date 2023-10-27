@@ -1,4 +1,5 @@
 import logging
+import pickle
 
 from s3dataset_s3_client._s3dataset import MountpointS3Client
 
@@ -14,6 +15,20 @@ def test_get_object():
     client = MountpointS3Client("eu-west-2")
     stream = client.get_object("dataset-it-bucket", "sample-files/hello_world.txt")
 
+    full_data = b"".join(stream)
+    assert full_data == b"Hello, World!\n"
+
+
+def test_get_object_with_unpickled_client():
+    original_client = MountpointS3Client("eu-west-2")
+    pickled_client = pickle.dumps(original_client)
+    assert isinstance(pickled_client, bytes)
+    unpickled_client = pickle.loads(pickled_client)
+
+    stream = unpickled_client.get_object(
+        "dataset-it-bucket",
+        "sample-files/hello_world.txt",
+    )
     full_data = b"".join(stream)
     assert full_data == b"Hello, World!\n"
 
