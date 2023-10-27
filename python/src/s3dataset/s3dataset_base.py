@@ -16,8 +16,8 @@ s3dataset_base.py
 """
 
 
-def _identity(x: S3Object) -> S3Object:
-    return x
+def _identity(obj: S3Object) -> S3Object:
+    return obj
 
 
 class S3DatasetBase:
