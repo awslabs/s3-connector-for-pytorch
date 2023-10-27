@@ -1,5 +1,11 @@
 from functools import partial
-from typing import Iterable, Union, Tuple
+from typing import (
+    Iterable,
+    Union,
+    Tuple,
+    Callable,
+    Any,
+)
 
 from s3dataset._s3dataset import MountpointS3Client
 from s3dataset.s3object import S3Object
@@ -10,14 +16,20 @@ s3dataset_base.py
 """
 
 
+def _identity(obj: S3Object) -> S3Object:
+    return obj
+
+
 class S3DatasetBase:
     def __init__(
         self,
         client: MountpointS3Client,
         dataset_objects: Iterable[S3Object] = (),
+        transform: Callable[[S3Object], Any] = _identity,
     ):
         self._client = client
         self._dataset_objects = dataset_objects
+        self._transform = transform
 
     @property
     def region(self):
@@ -27,9 +39,9 @@ class S3DatasetBase:
     def from_objects(
         cls,
         object_uris: Union[str, Iterable[str]],
-        *,
         region: str = None,
         client: MountpointS3Client = None,
+        transform: Callable[[S3Object], Any] = _identity,
     ):
         """
         Creates an S3IterableDataset from the object(s) URI(s) passed as parameters.
@@ -41,6 +53,8 @@ class S3DatasetBase:
             If this is provided a MountpointS3Client will be instantiated with the region.
           client:
             MountpointS3Client instance to be used for S3 interactions.
+          transform:
+            Callable which is used to transform an S3Object into the desired type.
         """
         cls._validate_arguments(region, client)
         if isinstance(object_uris, str):
@@ -48,7 +62,11 @@ class S3DatasetBase:
         # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
         bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
         client = client or MountpointS3Client(region)
-        return cls(client, cls._bucket_keys_to_s3objects(client, bucket_key_pairs))
+        return cls(
+            client,
+            cls._bucket_keys_to_s3objects(client, bucket_key_pairs),
+            transform=transform,
+        )
 
     @classmethod
     def from_bucket(
@@ -58,6 +76,7 @@ class S3DatasetBase:
         *,
         region: str = None,
         client: MountpointS3Client = None,
+        transform: Callable[[S3Object], Any] = _identity,
     ):
         """
         Creates an S3IterableDataset with the objects found in S3 under bucket/prefix.
@@ -71,10 +90,16 @@ class S3DatasetBase:
             If this is provided a MountpointS3Client will be instantiated with the region.
           client:
             MountpointS3Client instance to be used for S3 interactions.
+          transform:
+            Callable which is used to transform an S3Object into the desired type.
         """
         cls._validate_arguments(region, client)
         client = client or MountpointS3Client(region)
-        return cls(client, cls._list_objects_for_bucket(client, bucket, prefix))
+        return cls(
+            client,
+            cls._list_objects_for_bucket(client, bucket, prefix),
+            transform=transform,
+        )
 
     @staticmethod
     def _bucket_keys_to_s3objects(

@@ -2,13 +2,12 @@
 s3mapstyle_dataset.py
     API for accessing as PyTorch MapStyleDataset files stored in S3.
 """
-from typing import List
+from typing import List, Any
 
 import torch.utils.data
 
 from s3dataset.s3dataset_base import S3DatasetBase
 from s3dataset.s3object import S3Object
-
 
 """
 s3mapstyle_dataset.py
@@ -23,8 +22,8 @@ class S3MapStyleDataset(S3DatasetBase, torch.utils.data.Dataset):
             self._dataset_objects = list(self._dataset_objects)
         return self._dataset_objects
 
-    def __getitem__(self, i):
-        return self.dataset_objects[i]
+    def __getitem__(self, i: int) -> Any:
+        return self._transform(self.dataset_objects[i])
 
     def __len__(self):
         return len(self.dataset_objects)
