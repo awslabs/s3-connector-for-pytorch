@@ -61,9 +61,9 @@ def test_s3object_prefetch(stream):
     s3object = S3Object(TEST_BUCKET, TEST_KEY, None, lambda: stream)
     assert s3object._stream is None
     s3object.prefetch()
-    assert s3object._stream is stream
+    assert list(s3object._stream) == stream
     s3object.prefetch()
-    assert s3object._stream is stream
+    assert list(s3object._stream) == []
 
 
 @pytest.mark.parametrize(
@@ -75,6 +75,15 @@ def test_s3object_prefetch(stream):
     ],
 )
 def test_s3object_read(stream):
-    s3object = S3Object(TEST_BUCKET, TEST_KEY, None, lambda: stream)
+    data_received_cb = []
+    s3object = S3Object(
+        TEST_BUCKET,
+        TEST_KEY,
+        None,
+        lambda: stream,
+        lambda s3object, data: data_received_cb.append((s3object, data)),
+    )
     assert s3object._stream is None
     assert b"".join(stream) == s3object.read()
+    assert [data for _, data in data_received_cb] == stream
+    assert all(obj is s3object for obj, _ in data_received_cb)
