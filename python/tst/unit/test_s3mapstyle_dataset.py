@@ -12,14 +12,14 @@ from test_s3dataset_base import (
 )
 
 
-def test_s3mapstyle_dataset_creation_from_objects_with_client_single_object():
+def test_dataset_creation_from_objects_with_client_single_object():
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, ["single_object"])
     dataset = S3MapStyleDataset.from_objects(
         f"{S3_PREFIX}{TEST_BUCKET}/single_object", client=client
     )
     assert isinstance(dataset, S3MapStyleDataset)
     assert len(dataset) == 1
-    _test_s3mapstyle_dataset(dataset, 0, "single_object")
+    _verify_dataset(dataset, 0, "single_object")
 
 
 @pytest.mark.parametrize(
@@ -30,9 +30,7 @@ def test_s3mapstyle_dataset_creation_from_objects_with_client_single_object():
         ["obj1", "obj2", "test"],
     ],
 )
-def test_s3mapstyle_dataset_creation_from_objects_with_region(
-    keys: Union[str, Iterable[str]]
-):
+def test_dataset_creation_from_objects_with_region(keys: Union[str, Iterable[str]]):
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3MapStyleDataset.from_objects(object_uris, region=TEST_REGION)
     assert isinstance(dataset, S3MapStyleDataset)
@@ -48,17 +46,17 @@ def test_s3mapstyle_dataset_creation_from_objects_with_region(
         ["obj1", "obj2", "obj3", "test"],
     ],
 )
-def test_s3mapstyle_dataset_creation_from_objects_with_client(keys: Sequence[str]):
+def test_dataset_creation_from_objects_with_client(keys: Sequence[str]):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3MapStyleDataset.from_objects(object_uris, client=client)
     assert isinstance(dataset, S3MapStyleDataset)
     assert len(dataset) == len(keys)
     for index, key in enumerate(keys):
-        _test_s3mapstyle_dataset(dataset, index, key)
+        _verify_dataset(dataset, index, key)
 
 
-def test_s3mapstyle_dataset_creation_from_bucket_with_region():
+def test_dataset_creation_from_bucket_with_region():
     dataset = S3MapStyleDataset.from_bucket(TEST_BUCKET, region=TEST_REGION)
     assert isinstance(dataset, S3MapStyleDataset)
     assert dataset.region == TEST_REGION
@@ -73,7 +71,7 @@ def test_s3mapstyle_dataset_creation_from_bucket_with_region():
         (["another", "test2", "obj1", "obj2", "obj3", "test"], "obj"),
     ],
 )
-def test_s3mapstyle_dataset_creation_from_bucket_with_client(
+def test_dataset_creation_from_bucket_with_client(
     keys: Sequence[str],
     prefix: str,
 ):
@@ -83,7 +81,7 @@ def test_s3mapstyle_dataset_creation_from_bucket_with_client(
     assert isinstance(dataset, S3MapStyleDataset)
     assert len(dataset) == len(expected_keys)
     for index, key in enumerate(expected_keys):
-        _test_s3mapstyle_dataset(dataset, index, key)
+        _verify_dataset(dataset, index, key)
 
 
 @pytest.mark.parametrize(
@@ -106,7 +104,7 @@ def test_s3mapstyle_dataset_creation_from_bucket_with_client(
         ),
     ],
 )
-def test_s3mapstyle_dataset_creation_from_bucket_with_client(
+def test_dataset_creation_from_bucket_with_client(
     key: str, transform: Callable[[S3Object], Any], expected: Any
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [key])
@@ -136,7 +134,7 @@ def test_call_len_twice(keys: Sequence[str], length: int):
     assert len(dataset) == length
 
 
-def _test_s3mapstyle_dataset(dataset: S3MapStyleDataset, index: int, expected_key: str):
+def _verify_dataset(dataset: S3MapStyleDataset, index: int, expected_key: str):
     data = dataset[index]
 
     assert data is not None

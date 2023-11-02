@@ -44,7 +44,7 @@ class S3DatasetBase:
         transform: Callable[[S3Object], Any] = _identity,
     ):
         """
-        Creates an S3IterableDataset from the object(s) URI(s) passed as parameters.
+        Returns an instance of this dataset using the URI(s) provided.
         Args:
           object_uris(str or Iterable[str]):
             S3 URI of the object(s) desired.
@@ -79,7 +79,7 @@ class S3DatasetBase:
         transform: Callable[[S3Object], Any] = _identity,
     ):
         """
-        Creates an S3IterableDataset with the objects found in S3 under bucket/prefix.
+        Returns an instance of this dataset using the objects under bucket/prefix.
         Args:
           bucket(str):
             Name of the S3 bucket where the objects are stored.

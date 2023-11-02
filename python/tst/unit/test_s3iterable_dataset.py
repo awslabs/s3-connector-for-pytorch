@@ -18,7 +18,7 @@ def test_dataset_creation_from_objects_with_client_single_object():
         f"{S3_PREFIX}{TEST_BUCKET}/single_object", client=client
     )
     assert isinstance(dataset, S3IterableDataset)
-    _test_s3iterable_dataset(
+    _verify_dataset(
         dataset, ["single_object"], 1, lambda data: data.object_info is None
     )
 
@@ -31,14 +31,14 @@ def test_dataset_creation_from_objects_with_client_single_object():
         (["obj1", "obj2", "obj3", "test"], ["obj1", "obj2", "obj3", "test"], 4),
     ],
 )
-def test_s3iterable_dataset_creation_from_objects_with_client(
+def test_dataset_creation_from_objects_with_client(
     keys: Iterable[str], expected_keys: Sequence[str], expected_count: int
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3IterableDataset.from_objects(object_uris, client=client)
     assert isinstance(dataset, S3IterableDataset)
-    _test_s3iterable_dataset(
+    _verify_dataset(
         dataset, expected_keys, expected_count, lambda data: data.object_info is None
     )
 
@@ -51,13 +51,13 @@ def test_s3iterable_dataset_creation_from_objects_with_client(
         (["obj1", "obj2", "obj3", "test"], "obj", ["obj1", "obj2", "obj3"], 3),
     ],
 )
-def test_s3iterable_dataset_creation_from_bucket_with_client(
+def test_dataset_creation_from_bucket_with_client(
     keys: Iterable[str], prefix: str, expected_keys: Sequence[str], expected_count: int
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     dataset = S3IterableDataset.from_bucket(TEST_BUCKET, prefix=prefix, client=client)
     assert isinstance(dataset, S3IterableDataset)
-    _test_s3iterable_dataset(
+    _verify_dataset(
         dataset,
         expected_keys,
         expected_count,
@@ -85,7 +85,7 @@ def test_s3iterable_dataset_creation_from_bucket_with_client(
         ),
     ],
 )
-def test_s3iterable_dataset_creation_from_bucket_with_client(
+def test_dataset_creation_from_bucket_with_client(
     key: str, transform: Callable[[S3Object], Any], expected: Any
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [key])
@@ -98,7 +98,7 @@ def test_s3iterable_dataset_creation_from_bucket_with_client(
     assert list(dataset) == [expected]
 
 
-def test_s3iterable_dataset_creation_from_bucket_with_region():
+def test_dataset_creation_from_bucket_with_region():
     dataset = S3IterableDataset.from_bucket(TEST_BUCKET, region=TEST_REGION)
     assert isinstance(dataset, S3IterableDataset)
     assert dataset.region == TEST_REGION
@@ -112,16 +112,14 @@ def test_s3iterable_dataset_creation_from_bucket_with_region():
         (["obj1", "obj2", "test"]),
     ],
 )
-def test_s3iterable_dataset_creation_from_objects_with_region(
-    keys: Union[str, Iterable[str]]
-):
+def test_dataset_creation_from_objects_with_region(keys: Union[str, Iterable[str]]):
     object_uris = [f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys]
     dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
     assert isinstance(dataset, S3IterableDataset)
     assert dataset.region == TEST_REGION
 
 
-def _test_s3iterable_dataset(
+def _verify_dataset(
     dataset: S3IterableDataset,
     expected_keys: Sequence[str],
     expected_count: int,
