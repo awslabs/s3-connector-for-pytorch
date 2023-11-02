@@ -106,7 +106,7 @@ def test_s3mapstyle_dataset_creation_from_bucket_with_client(
         ),
     ],
 )
-def test_s3iterable_dataset_creation_from_bucket_with_client(
+def test_s3mapstyle_dataset_creation_from_bucket_with_client(
     key: str, transform: Callable[[S3Object], Any], expected: Any
 ):
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [key])
@@ -117,6 +117,23 @@ def test_s3iterable_dataset_creation_from_bucket_with_client(
     )
     assert isinstance(dataset, S3MapStyleDataset)
     assert dataset[0] == expected
+
+
+@pytest.mark.parametrize(
+    "keys, length",
+    [
+        (["obj1"], 1),
+        (["obj1", "obj2", "obj3"], 3),
+        (["obj1", "obj2", "obj3", "test"], 4),
+    ],
+)
+def test_call_len_twice(keys: Sequence[str], length: int):
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
+    object_uris = (f"{S3_PREFIX}{TEST_BUCKET}/{key}" for key in keys)
+    dataset = S3MapStyleDataset.from_objects(object_uris, client=client)
+    assert isinstance(dataset, S3MapStyleDataset)
+    assert len(dataset) == length
+    assert len(dataset) == length
 
 
 def _test_s3mapstyle_dataset(dataset: S3MapStyleDataset, index: int, expected_key: str):
