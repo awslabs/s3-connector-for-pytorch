@@ -46,7 +46,7 @@ def test_s3mapstyle_dataset_images_10_with_client():
     )
     assert isinstance(dataset, S3MapStyleDataset)
     assert len(dataset) == 10
-    # Intentional usage to emphasize the accessor dataset[index] works.§
+    # Intentional usage to emphasize the accessor dataset[index] works.
     for index in range(len(dataset)):
         _compare_dataset_img_against_local(
             f"{LOCAL_DATASET_RELATIVE_PATH}img{index}.jpg", dataset[index]
