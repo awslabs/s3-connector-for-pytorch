@@ -19,6 +19,12 @@ test = [
     "black"
 ]
 
+e2e = [
+    "torchdata",
+    "torchvision",
+    "Pillow"
+]
+
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["python/src", "python/tst"] }

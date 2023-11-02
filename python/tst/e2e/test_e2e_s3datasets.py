@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytest
 import torch
-import torchdata
+import torchdata  # FIXME: torchdata is deprecated.
 import torchvision
 from PIL import Image
 from torch import Tensor
@@ -13,10 +13,9 @@ from torch.utils.data.datapipes.utils.common import StreamWrapper
 from torchdata.datapipes.iter import IterableWrapper, IterDataPipe
 
 from s3dataset._s3dataset import MountpointS3Client
-from s3dataset.s3object import S3Object
 from s3dataset.s3iterable_dataset import S3IterableDataset
 from s3dataset.s3mapstyle_dataset import S3MapStyleDataset
-
+from s3dataset.s3object import S3Object
 
 E2E_TEST_BUCKET = "dataset-it-bucket"
 E2E_BUCKET_PREFIX = "e2e-tests/images-10/img"
