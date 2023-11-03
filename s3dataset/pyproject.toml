@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s3dataset"
+version = "0.1"
+description = "S3 dataset integration for PyTorch"
+requires-python = ">=3.8"
+
+dependencies = [
+    "torch >= 2.0.1",
+    "s3dataset_s3_client >= 0.1"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "flake8",
+    "black"
+]
+
+e2e = [
+    "torchdata",
+    "torchvision",
+    "Pillow"
+]
+
+[tool.setuptools.packages]
+# Pure Python packages/modules
+find = { where = ["src"] }
