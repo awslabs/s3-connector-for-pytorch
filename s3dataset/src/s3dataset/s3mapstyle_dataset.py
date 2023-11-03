@@ -7,7 +7,7 @@ from typing import List, Any
 import torch.utils.data
 
 from s3dataset_s3_client import S3Object
-from .s3dataset_base import S3DatasetBase
+from . import S3DatasetBase
 
 """
 s3mapstyle_dataset.py

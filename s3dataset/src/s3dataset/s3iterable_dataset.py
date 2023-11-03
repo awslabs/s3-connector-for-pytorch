@@ -3,7 +3,7 @@ from typing import Iterable, Iterator, Any
 import torch
 
 from s3dataset_s3_client import S3Object
-from .s3dataset_base import S3DatasetBase
+from . import S3DatasetBase
 
 """
 s3iterable_dataset.py
