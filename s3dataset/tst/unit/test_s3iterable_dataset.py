@@ -4,8 +4,8 @@ from typing import Iterable, Callable, Union, Sequence, Any, List
 
 import hypothesis
 import pytest
-from hypothesis import given
-from hypothesis.strategies import lists, text
+from hypothesis import given, assume
+from hypothesis.strategies import lists, text, integers, tuples
 
 from s3dataset import S3IterableDataset
 from s3dataset_s3_client import S3Object
@@ -148,6 +148,28 @@ def test_dataset_iterates_after_pickle(keys: List[str]):
     except StopIteration:
         pass
     assert [i.key for i in expected] == [i.key for i in actual]
+
+
+@given(
+    lists(text(), unique=True),
+    tuples(
+        integers(min_value=0, max_value=40),
+        integers(min_value=1, max_value=40),
+    ),
+)
+def test_dataset_filter_function(keys: List[str], worker_tuple):
+    assume(worker_tuple[0] != worker_tuple[1])
+    keys.sort()
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
+    dataset = S3IterableDataset.from_bucket(
+        TEST_BUCKET,
+        client=client,
+    )
+    assert isinstance(dataset, S3IterableDataset)
+    assert [obj.key for obj in dataset] == keys
+    dataset._num_workers = num_workers = max(worker_tuple)
+    dataset._worker_id = worker_id = min(worker_tuple)
+    assert [obj.key for obj in dataset] == keys[worker_id::num_workers]
 
 
 def _verify_dataset(

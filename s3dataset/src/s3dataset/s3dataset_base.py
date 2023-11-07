@@ -104,6 +104,10 @@ class S3DatasetBase:
         )
 
     @staticmethod
+    def worker_init(worker_id: int):
+        pass
+
+    @staticmethod
     def _bucket_keys_to_s3objects(
         client: MountpointS3Client, bucket_key_pairs: Iterable[Tuple[str, str]]
     ) -> Iterable[S3Object]:
