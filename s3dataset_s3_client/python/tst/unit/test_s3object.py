@@ -199,7 +199,7 @@ def test_not_writable():
     "whence, exception_type",
     [
         (5, ValueError),
-        ("foo", TypeError)
+        ("foo", TypeError),
     ],
 )
 def test_bad_whence(whence, exception_type):
