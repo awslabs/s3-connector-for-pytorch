@@ -57,10 +57,10 @@ class S3Object(io.BufferedIOBase):
             return b""
 
         self.prefetch()
-        cur_pos = self.tell()
+        cur_pos = self._position
         if size is None or size < 0:
             # Special case read() all to use O(n) algorithm
-            self._buffer.seek(self._buffer_size())
+            self._buffer.seek(0, SEEK_END)
             self._buffer.write(b"".join(self._stream))
             # Once we've emptied the buffer, we'll always be at EOF!
             self._size = self._buffer.tell()
@@ -74,7 +74,7 @@ class S3Object(io.BufferedIOBase):
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
         """
-        Returns the new offset
+        Returns the new cursor position
         Args:
             offset: How many bytes to seek relative to whence.
             whence: One of SEEK_SET, SEEK_CUR, and SEEK_END.
@@ -92,11 +92,13 @@ class S3Object(io.BufferedIOBase):
         elif whence == SEEK_CUR:
             if self._position_at_end() and offset >= 0:
                 return self._position
-            offset += self.tell()
+            offset += self._position
         elif whence == SEEK_SET:
             pass
+        elif isinstance(whence, int):
+            raise ValueError("Seek must be passed SEEK_CUR, SEEK_SET, or SEEK_END")
         else:
-            raise TypeError("Seek must be passed SEEK_CUR, SEEK_SET, or SEEK_END")
+            raise TypeError(f"integer argument expected, got {type(whence)!r}")
 
         if offset < 0:
             raise ValueError(f"negative seek value {offset}")
@@ -109,13 +111,12 @@ class S3Object(io.BufferedIOBase):
 
     def _prefetch_to_offset(self, offset: int) -> None:
         self.prefetch()
-        self._buffer.seek(self._buffer_size())
-        while offset > self._buffer_size():
-            try:
-                self._buffer.write(next(self._stream))
-            except StopIteration:
-                self._size = self._buffer.tell()
-                return
+        buf_size = self._buffer.seek(0, SEEK_END)
+        try:
+            while offset > buf_size:
+                buf_size += self._buffer.write(next(self._stream))
+        except StopIteration:
+            self._size = self._buffer.tell()
 
     def _get_size(self) -> int:
         if self._size is None:

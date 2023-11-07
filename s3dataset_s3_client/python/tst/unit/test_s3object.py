@@ -195,11 +195,18 @@ def test_not_writable():
     assert not s3object.writable()
 
 
-def test_bad_whence():
+@pytest.mark.parametrize(
+    "whence, exception_type",
+    [
+        (5, ValueError),
+        ("foo", TypeError)
+    ],
+)
+def test_bad_whence(whence, exception_type):
     s3object = S3Object(TEST_BUCKET, TEST_KEY, None, lambda: iter([]))
 
-    with pytest.raises(TypeError):
-        s3object.seek(0, "foo")
+    with pytest.raises(exception_type):
+        s3object.seek(0, whence)
 
 
 @pytest.mark.parametrize(
