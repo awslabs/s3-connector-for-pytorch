@@ -275,7 +275,11 @@ def test_mountpoint_client_pickles():
 
     assert client.region == loaded.region == expected_region
     assert client.part_size == loaded.part_size == expected_part_size
-    assert client.throughput_target_gbps == loaded.throughput_target_gbps == expected_throughput_target_gbps
+    assert (
+        client.throughput_target_gbps
+        == loaded.throughput_target_gbps
+        == expected_throughput_target_gbps
+    )
     assert client.profile == loaded.profile == expected_profile
     assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
 
