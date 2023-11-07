@@ -47,6 +47,8 @@ impl PyMockClient {
             self.region.clone(),
             self.throughput_target_gbps,
             self.part_size,
+            None,
+            false,
             self.mock_client.clone(),
         )
     }

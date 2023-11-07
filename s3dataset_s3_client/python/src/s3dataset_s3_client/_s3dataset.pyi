@@ -6,6 +6,8 @@ class MountpointS3Client:
     region: str
     throughput_target_gbps: float
     part_size: int
+    profile: str
+    no_sign_request: bool
 
     def __init__(
         self,

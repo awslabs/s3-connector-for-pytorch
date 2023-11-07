@@ -1,13 +1,17 @@
 import logging
+import pickle
 from typing import Set
 
 import pytest
+from hypothesis import given, example
+from hypothesis.strategies import text, integers, floats
 from s3dataset_s3_client._s3dataset import (
     S3DatasetException,
     GetObjectStream,
     ListObjectStream,
     PutObjectStream,
     MockMountpointS3Client,
+    MountpointS3Client,
 )
 
 from s3dataset_s3_client import LOG_TRACE
@@ -248,6 +252,46 @@ def test_put_object_with_storage_class():
 
     put_stream.write(b"")
     put_stream.close()
+
+
+@given(
+    text(),
+    integers(min_value=5 * 2**20, max_value=5 * 2**30),
+    floats(min_value=0),
+)
+@example("", 5 * 2**20, 0)  # 5MiB
+@example("", 5 * 2**30, 0)  # 5GiB
+def test_mountpoint_client_pickles(
+    expected_region: str,
+    expected_part_size: int,
+    expected_throughput_target_gbps: float,
+):
+    expected_profile = None
+    expected_no_sign_request = False
+
+    client = MountpointS3Client(
+        region=expected_region,
+        part_size=expected_part_size,
+        throughput_target_gbps=expected_throughput_target_gbps,
+        profile=expected_profile,
+        no_sign_request=expected_no_sign_request,
+    )
+    dumped = pickle.dumps(client)
+    loaded = pickle.loads(dumped)
+
+    assert isinstance(dumped, bytes)
+    assert isinstance(loaded, MountpointS3Client)
+    assert client is not loaded
+
+    assert client.region == loaded.region == expected_region
+    assert client.part_size == loaded.part_size == expected_part_size
+    assert (
+        client.throughput_target_gbps
+        == loaded.throughput_target_gbps
+        == expected_throughput_target_gbps
+    )
+    assert client.profile == loaded.profile == expected_profile
+    assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
 
 
 def _assert_isinstance(obj, expected: type):

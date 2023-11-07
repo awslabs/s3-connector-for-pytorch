@@ -14,7 +14,8 @@ dependencies = []
 test = [
     "pytest",
     "flake8",
-    "black"
+    "black",
+    "hypothesis"
 ]
 
 [tool.setuptools.packages]

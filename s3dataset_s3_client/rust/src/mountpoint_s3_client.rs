@@ -3,7 +3,8 @@ use std::sync::Arc;
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
-use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use pyo3::types::PyTuple;
+use pyo3::{pyclass, pymethods, PyRef, PyResult, ToPyObject};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
@@ -11,15 +12,20 @@ use crate::list_object_stream::ListObjectStream;
 use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
 use crate::put_object_stream::PutObjectStream;
 
-#[pyclass(name = "MountpointS3Client", module = "_s3dataset", frozen)]
+#[pyclass(name = "MountpointS3Client", module = "s3dataset_s3_client._s3dataset", frozen)]
 pub struct MountpointS3Client {
     client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
+
     #[pyo3(get)]
     throughput_target_gbps: f64,
     #[pyo3(get)]
     region: String,
     #[pyo3(get)]
     part_size: usize,
+    #[pyo3(get)]
+    profile: Option<String>,
+    #[pyo3(get)]
+    no_sign_request: bool,
 }
 
 #[pymethods]
@@ -39,7 +45,7 @@ impl MountpointS3Client {
         */
 
         let endpoint_config = EndpointConfig::new(&region);
-        let auth_config = auth_config(profile, no_sign_request);
+        let auth_config = auth_config(profile.as_deref(), no_sign_request);
 
         let config = S3ClientConfig::new()
             /*
@@ -57,6 +63,8 @@ impl MountpointS3Client {
             region,
             throughput_target_gbps,
             part_size,
+            profile,
+            no_sign_request,
             crt_client,
         ))
     }
@@ -92,6 +100,18 @@ impl MountpointS3Client {
 
         slf.client.put_object(slf.py(), bucket, key, params)
     }
+
+    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {
+        let py = slf.py();
+        let state = [
+            slf.region.to_object(py),
+            slf.throughput_target_gbps.to_object(py),
+            slf.part_size.to_object(py),
+            slf.profile.to_object(py),
+            slf.no_sign_request.to_object(py),
+        ];
+        Ok(PyTuple::new(py, state))
+    }
 }
 
 impl MountpointS3Client {
@@ -99,6 +119,8 @@ impl MountpointS3Client {
         region: String,
         throughput_target_gbps: f64,
         part_size: usize,
+        profile: Option<String>,
+        no_sign_request: bool,
         client: Arc<Client>,
     ) -> Self
     where
@@ -110,16 +132,18 @@ impl MountpointS3Client {
             throughput_target_gbps,
             part_size,
             region,
+            profile,
+            no_sign_request,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
         }
     }
 }
 
-fn auth_config(profile: Option<String>, no_sign_request: bool) -> S3ClientAuthConfig {
+fn auth_config(profile: Option<&str>, no_sign_request: bool) -> S3ClientAuthConfig {
     if no_sign_request {
         S3ClientAuthConfig::NoSigning
     } else if let Some(profile_name) = profile {
-        S3ClientAuthConfig::Profile(profile_name)
+        S3ClientAuthConfig::Profile(profile_name.to_string())
     } else {
         S3ClientAuthConfig::Default
     }
