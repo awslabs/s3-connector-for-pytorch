@@ -3,6 +3,8 @@ import pickle
 from typing import Set
 
 import pytest
+from hypothesis import given, example
+from hypothesis.strategies import text, integers, floats
 from s3dataset_s3_client._s3dataset import (
     S3DatasetException,
     GetObjectStream,
@@ -252,10 +254,18 @@ def test_put_object_with_storage_class():
     put_stream.close()
 
 
-def test_mountpoint_client_pickles():
-    expected_region = "us-east-1"
-    expected_part_size = 5_000_0000
-    expected_throughput_target_gbps = 10.0
+@given(
+    text(),
+    integers(min_value=5 * 2**20, max_value=5 * 2**30),
+    floats(min_value=0),
+)
+@example("", 5 * 2**20, 0)  # 5MiB
+@example("", 5 * 2**30, 0)  # 5GiB
+def test_mountpoint_client_pickles(
+    expected_region: str,
+    expected_part_size: int,
+    expected_throughput_target_gbps: float,
+):
     expected_profile = None
     expected_no_sign_request = False
 
