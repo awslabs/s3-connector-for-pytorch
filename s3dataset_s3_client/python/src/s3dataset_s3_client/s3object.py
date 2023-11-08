@@ -78,6 +78,7 @@ class S3Object(io.BufferedIOBase):
         Args:
             offset: How many bytes to seek relative to whence.
             whence: One of SEEK_SET, SEEK_CUR, and SEEK_END.
+                    Default: SEEK_SET
 
         When seeking beyond the end of the file, always stay at EOF.
         Seeking before the start of the file results in a ValueError.
