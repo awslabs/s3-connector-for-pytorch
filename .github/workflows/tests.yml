@@ -75,8 +75,8 @@ jobs:
           src: "."
       - name: Test with pytest
         run: |
-          pytest s3dataset/tst/unit
-          pytest s3dataset_s3_client/python/tst/unit 
+          pytest s3dataset/tst/unit --hypothesis-profile ci
+          pytest s3dataset_s3_client/python/tst/unit --hypothesis-profile ci
 
   clippy:
     name: Clippy
