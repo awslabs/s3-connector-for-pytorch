@@ -22,7 +22,10 @@ from hypothesis.strategies import (
     dictionaries,
     lists,
     uuids,
-    sets, text, just, one_of,
+    sets,
+    text,
+    just,
+    one_of,
 )
 from s3dataset_s3_client._s3dataset import MockMountpointS3Client
 
@@ -49,11 +52,9 @@ scalars = (
     | uuids()
 )
 
-hashable = deferred(lambda: (
-    scalars
-    | frozensets(hashable, max_size=5)
-    | tuples(hashable)
-))
+hashable = deferred(
+    lambda: (scalars | frozensets(hashable, max_size=5) | tuples(hashable))
+)
 
 python_primitives = deferred(
     lambda: (
@@ -69,7 +70,9 @@ use_modern_pytorch_format = booleans()
 
 
 @given(python_primitives, byteorders, use_modern_pytorch_format)
-def test_general_checkpointing_saves_python_primitives(data, byteorder, use_modern_pytorch_format):
+def test_general_checkpointing_saves_python_primitives(
+    data, byteorder, use_modern_pytorch_format
+):
     _test_save(data, byteorder, use_modern_pytorch_format)
 
 
@@ -82,18 +85,32 @@ def test_general_checkpointing_saves_tensor(byteorder, use_modern_pytorch_format
 @given(byteorders)
 def test_general_checkpointing_saves_untyped_storage(byteorder):
     storage = torch.UntypedStorage([1, 2, 3])
-    _test_save(storage, byteorder, use_modern_pytorch_format=True, equal=lambda a, b: list(a) == list(b))
+    _test_save(
+        storage,
+        byteorder,
+        use_modern_pytorch_format=True,
+        equal=lambda a, b: list(a) == list(b),
+    )
 
 
 @pytest.mark.xfail
 @given(byteorders)
-def test_general_checkpointing_untyped_storage_saves_no_modern_pytorch_format(byteorder):
+def test_general_checkpointing_untyped_storage_saves_no_modern_pytorch_format(
+    byteorder,
+):
     storage = torch.UntypedStorage([1, 2, 3])
-    _test_save(storage, byteorder, use_modern_pytorch_format=False, equal=lambda a, b: list(a) == list(b))
+    _test_save(
+        storage,
+        byteorder,
+        use_modern_pytorch_format=False,
+        equal=lambda a, b: list(a) == list(b),
+    )
 
 
 @given(python_primitives, byteorders, use_modern_pytorch_format)
-def test_general_checkpointing_loads_python_primitives(data, byteorder, use_modern_pytorch_format):
+def test_general_checkpointing_loads_python_primitives(
+    data, byteorder, use_modern_pytorch_format
+):
     _test_load(data, byteorder, use_modern_pytorch_format)
 
 
@@ -106,30 +123,56 @@ def test_general_checkpointing_loads_tensor(byteorder, use_modern_pytorch_format
 @given(byteorders)
 def test_general_checkpointing_loads_untyped_storage(byteorder):
     storage = torch.UntypedStorage([1, 2, 3])
-    _test_load(storage, byteorder, use_modern_pytorch_format=True, equal=lambda a, b: list(a) == list(b))
+    _test_load(
+        storage,
+        byteorder,
+        use_modern_pytorch_format=True,
+        equal=lambda a, b: list(a) == list(b),
+    )
 
 
 @pytest.mark.xfail
 @given(byteorders)
-def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(byteorder):
+def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(
+    byteorder,
+):
     storage = torch.UntypedStorage([1, 2, 3])
-    _test_load(storage, byteorder, use_modern_pytorch_format=True, equal=lambda a, b: list(a) == list(b))
+    _test_load(
+        storage,
+        byteorder,
+        use_modern_pytorch_format=True,
+        equal=lambda a, b: list(a) == list(b),
+    )
 
 
-def _test_save(data, byteorder: str, use_modern_pytorch_format: bool, *, equal: Callable[[Any, Any], bool] = eq):
+def _test_save(
+    data,
+    byteorder: str,
+    use_modern_pytorch_format: bool,
+    *,
+    equal: Callable[[Any, Any], bool] = eq
+):
     mock_client = MockMountpointS3Client(TEST_REGION, TEST_BUCKET)
     client = mock_client.create_mocked_client()
 
     with PutObjectStreamWrapper(
         client.put_object(TEST_BUCKET, TEST_KEY)
     ) as put_object_request:
-        _save_with_byteorder(data, put_object_request, byteorder, use_modern_pytorch_format)
+        _save_with_byteorder(
+            data, put_object_request, byteorder, use_modern_pytorch_format
+        )
 
     serialised = BytesIO(b"".join(client.get_object(TEST_BUCKET, TEST_KEY)))
     assert equal(_load_with_byteorder(serialised, byteorder), data)
 
 
-def _test_load(data, byteorder: str, use_modern_pytorch_format: bool, *, equal: Callable[[Any, Any], bool] = eq):
+def _test_load(
+    data,
+    byteorder: str,
+    use_modern_pytorch_format: bool,
+    *,
+    equal: Callable[[Any, Any], bool] = eq
+):
     mock_client = MockMountpointS3Client(TEST_REGION, TEST_BUCKET)
     serialised = BytesIO()
     _save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format)
