@@ -4,7 +4,11 @@ use std::fmt::Write;
 use pyo3::exceptions::PyException;
 use pyo3::PyErr;
 
-pyo3::create_exception!(_s3dataset, S3DatasetException, PyException);
+pyo3::create_exception!(
+    s3dataset_s3_client._s3dataset,
+    S3DatasetException,
+    PyException
+);
 
 pub fn python_exception(error: impl Error) -> PyErr {
     let mut s = String::new();
