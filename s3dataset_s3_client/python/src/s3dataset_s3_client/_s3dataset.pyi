@@ -24,6 +24,7 @@ class MountpointS3Client:
     def list_objects(
         self, bucket: str, prefix: str = "", delimiter: str = "", max_keys: int = 1000
     ) -> ListObjectStream: ...
+    def head_object(self, bucket: str, key: str) -> ObjectInfo: ...
 
 class MockMountpointS3Client:
     def __init__(

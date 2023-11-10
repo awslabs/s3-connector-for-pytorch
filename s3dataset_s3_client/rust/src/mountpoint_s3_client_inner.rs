@@ -9,6 +9,7 @@ use pyo3::{PyResult, Python};
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
 use crate::put_object_stream::PutObjectStream;
+use crate::python_structs::py_object_info::PyObjectInfo;
 
 pub type MPGetObjectClosure =
     Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>;
@@ -34,6 +35,7 @@ pub(crate) trait MountpointS3ClientInner {
         key: String,
         params: PutObjectParams,
     ) -> PyResult<PutObjectStream>;
+    fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo>;
 }
 
 pub(crate) struct MountpointS3ClientInnerImpl<T: ObjectClient> {
@@ -92,5 +94,13 @@ where
         let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
 
         Ok(PutObjectStream::new(request, bucket, key))
+    }
+
+    fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo> {
+        let request = self.client.head_object(&bucket, &key);
+
+        // TODO - Look at use of `block_on` and see if we can future this.
+        let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        Ok(PyObjectInfo::from_object_info(request.object))
     }
 }
