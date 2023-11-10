@@ -56,19 +56,19 @@ class _PickleableListObjectStream:
         return next(self._list_stream)
 
     def __getstate__(self):
-        return (
-            self._client,
-            self._list_stream.bucket,
-            self._list_stream.prefix,
-            self._list_stream.delimiter,
-            self._list_stream.max_keys,
-            self._list_stream.continuation_token,
-            self._list_stream.complete,
-        )
+        return {
+            "client": self._client,
+            "bucket": self._list_stream.bucket,
+            "prefix": self._list_stream.prefix,
+            "delimiter": self._list_stream.delimiter,
+            "max_keys": self._list_stream.max_keys,
+            "continuation_token": self._list_stream.continuation_token,
+            "complete": self._list_stream.complete,
+        }
 
     def __setstate__(self, state):
-        self._client = state[0]
-        self._list_stream = ListObjectStream._from_state(*state)
+        self._client = state["client"]
+        self._list_stream = ListObjectStream._from_state(**state)
 
 
 def _extract_object_info(list_result: ListObjectResult) -> List[ObjectInfo]:
