@@ -54,9 +54,15 @@ def test_object_info_constructor(
     restore_status: Optional[RestoreStatus],
 ):
     object_info = ObjectInfo(
-        key, etag, size, last_modified, storage_class, restore_status
+        key,
+        etag,
+        size,
+        last_modified,
+        storage_class,
+        restore_status,
     )
     assert object_info.key == key
+    assert object_info.etag == etag
     assert object_info.size == size
     assert object_info.last_modified == last_modified
     assert object_info.storage_class == storage_class
@@ -78,7 +84,12 @@ def test_object_info_pickles(
     restore_status: Optional[RestoreStatus],
 ):
     object_info = ObjectInfo(
-        key, etag, size, last_modified, storage_class, restore_status
+        key,
+        etag,
+        size,
+        last_modified,
+        storage_class,
+        restore_status,
     )
 
     unpickled: ObjectInfo = pickle.loads(pickle.dumps(object_info))
@@ -86,6 +97,7 @@ def test_object_info_pickles(
     assert type(unpickled) is ObjectInfo
 
     assert object_info.key == unpickled.key == key
+    assert object_info.etag == unpickled.etag == etag
     assert object_info.size == unpickled.size == size
     assert object_info.last_modified == unpickled.last_modified == last_modified
     assert object_info.storage_class == unpickled.storage_class == storage_class
