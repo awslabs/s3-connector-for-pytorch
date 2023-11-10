@@ -65,7 +65,10 @@ def test_list_objects_with_prefix():
 
 def test_head_object():
     client = MountpointS3Client("eu-west-2")
-    object_info = client.head_object("dataset-it-bucket", "sample-files/hello_world.txt")
+    object_info = client.head_object(
+        "dataset-it-bucket",
+        "sample-files/hello_world.txt",
+    )
     object_md5 = hashlib.md5(HELLO_WORLD_DATA).hexdigest()
     expected_etag = f'"{object_md5}"'
 
