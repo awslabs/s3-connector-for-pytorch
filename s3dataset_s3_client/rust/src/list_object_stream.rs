@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mountpoint_s3_client::types::ListObjectsResult;
 use pyo3::{pyclass, pymethods, PyRef, PyRefMut, PyResult, Python};
 
+use crate::mountpoint_s3_client::MountpointS3Client;
 use crate::mountpoint_s3_client_inner::MountpointS3ClientInner;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
@@ -10,7 +11,9 @@ use crate::python_structs::py_object_info::PyObjectInfo;
 #[pyclass(name = "ListObjectStream", module = "s3dataset_s3_client._s3dataset")]
 pub struct ListObjectStream {
     client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
+    #[pyo3(get)]
     continuation_token: Option<String>,
+    #[pyo3(get)]
     complete: bool,
     #[pyo3(get)]
     bucket: String,
@@ -57,6 +60,28 @@ impl ListObjectStream {
 
 #[pymethods]
 impl ListObjectStream {
+    #[staticmethod]
+    #[pyo3(signature=(client, bucket, prefix, delimiter, max_keys, continuation_token, complete))]
+    pub fn _from_state(
+        client: &MountpointS3Client,
+        bucket: String,
+        prefix: String,
+        delimiter: String,
+        max_keys: usize,
+        continuation_token: Option<String>,
+        complete: bool,
+    ) -> Self {
+        Self {
+            client: client.client.clone(),
+            bucket,
+            prefix,
+            delimiter,
+            max_keys,
+            continuation_token,
+            complete,
+        }
+    }
+
     pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -72,7 +97,11 @@ impl ListObjectStream {
             slf.complete = true;
         }
 
-        let objects = results.objects.into_iter().map(PyObjectInfo::new).collect();
+        let objects = results
+            .objects
+            .into_iter()
+            .map(PyObjectInfo::from_object_info)
+            .collect();
 
         Ok(Some(PyListObjectResult::new(
             objects,

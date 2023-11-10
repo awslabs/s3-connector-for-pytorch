@@ -55,6 +55,8 @@ class RestoreStatus:
     in_progress: bool
     expiry: Optional[int]
 
+    def __init__(self, in_progress: bool, expiry: Optional[int]): ...
+
 class ObjectInfo:
     key: str
     etag: str
@@ -63,15 +65,40 @@ class ObjectInfo:
     storage_class: Optional[str]
     restore_status: Optional[RestoreStatus]
 
+    def __init__(
+        self,
+        key: str,
+        etag: str,
+        size: int,
+        last_modified: int,
+        storage_class: Optional[str],
+        restore_status: Optional[RestoreStatus],
+    ): ...
+
 class ListObjectResult:
     object_info: List[ObjectInfo]
     common_prefixes: List[str]
 
 class ListObjectStream:
     bucket: str
+    continuation_token: Optional[str]
+    complete: bool
+    prefix: str
+    delimiter: str
+    max_keys: int
 
     def __iter__(self) -> ListObjectStream: ...
     def __next__(self) -> ListObjectResult: ...
+    @staticmethod
+    def _from_state(
+        client: MountpointS3Client,
+        bucket: str,
+        prefix: str,
+        delimiter: str,
+        max_keys: int,
+        continuation_token: Optional[str],
+        complete: bool,
+    ) -> ListObjectStream: ...
 
 class S3DatasetException(Exception):
     pass

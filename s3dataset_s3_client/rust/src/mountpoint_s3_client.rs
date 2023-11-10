@@ -12,9 +12,13 @@ use crate::list_object_stream::ListObjectStream;
 use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
 use crate::put_object_stream::PutObjectStream;
 
-#[pyclass(name = "MountpointS3Client", module = "s3dataset_s3_client._s3dataset", frozen)]
+#[pyclass(
+    name = "MountpointS3Client",
+    module = "s3dataset_s3_client._s3dataset",
+    frozen
+)]
 pub struct MountpointS3Client {
-    client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
+    pub(crate) client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
 
     #[pyo3(get)]
     throughput_target_gbps: f64,
