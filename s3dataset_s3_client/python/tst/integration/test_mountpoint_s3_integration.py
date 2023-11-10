@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import pickle
 
@@ -11,12 +12,15 @@ logging.getLogger().setLevel(1)
 log = logging.getLogger(__name__)
 
 
+HELLO_WORLD_DATA = b"Hello, World!\n"
+
+
 def test_get_object():
     client = MountpointS3Client("eu-west-2")
     stream = client.get_object("dataset-it-bucket", "sample-files/hello_world.txt")
 
     full_data = b"".join(stream)
-    assert full_data == b"Hello, World!\n"
+    assert full_data == HELLO_WORLD_DATA
 
 
 def test_get_object_with_unpickled_client():
@@ -30,7 +34,7 @@ def test_get_object_with_unpickled_client():
         "sample-files/hello_world.txt",
     )
     full_data = b"".join(stream)
-    assert full_data == b"Hello, World!\n"
+    assert full_data == HELLO_WORLD_DATA
 
 
 def test_list_objects():
@@ -57,3 +61,15 @@ def test_list_objects_with_prefix():
         "sample-files/catalog.csv",
         "sample-files/hello_world.txt",
     }
+
+
+def test_head_object():
+    client = MountpointS3Client("eu-west-2")
+    object_info = client.head_object("dataset-it-bucket", "sample-files/hello_world.txt")
+    object_md5 = hashlib.md5(HELLO_WORLD_DATA).hexdigest()
+    expected_etag = f'"{object_md5}"'
+
+    assert object_info.size == len(HELLO_WORLD_DATA)
+    assert object_info.etag == expected_etag
+    assert object_info.restore_status is None
+    assert object_info.storage_class is None
