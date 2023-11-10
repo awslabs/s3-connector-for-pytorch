@@ -1,6 +1,6 @@
 from functools import partial
 from itertools import chain
-from typing import Iterator, List
+from typing import Iterator, List, Any
 
 from s3dataset_s3_client._s3dataset import (
     MountpointS3Client,
@@ -10,6 +10,10 @@ from s3dataset_s3_client._s3dataset import (
 )
 
 from s3dataset_s3_client import S3Object
+
+
+def _identity(obj: Any) -> Any:
+    return obj
 
 
 class S3BucketIterable:
@@ -39,7 +43,7 @@ class S3BucketIterator:
         return S3Object(
             self._bucket,
             object_info.key,
-            object_info,
+            get_object_info=partial(_identity, object_info),
             get_stream=partial(self._client.get_object, self._bucket, object_info.key),
         )
 

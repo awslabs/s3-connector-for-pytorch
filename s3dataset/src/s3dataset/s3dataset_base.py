@@ -9,17 +9,13 @@ from typing import (
 
 from s3dataset_s3_client._s3dataset import MountpointS3Client
 
-from s3dataset._s3_bucket_iterable import S3BucketIterable
+from s3dataset._s3_bucket_iterable import S3BucketIterable, _identity
 from s3dataset_s3_client import S3Object
 
 """
 s3dataset_base.py
     Base class for S3 datasets, containing logic for URIs parsing and objects listing. 
 """
-
-
-def _identity(obj: S3Object) -> S3Object:
-    return obj
 
 
 class S3DatasetBase:
@@ -109,7 +105,10 @@ class S3DatasetBase:
     ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
             yield S3Object(
-                bucket, key, get_stream=partial(client.get_object, bucket, key)
+                bucket,
+                key,
+                get_object_info=partial(client.head_object, bucket, key),
+                get_stream=partial(client.get_object, bucket, key),
             )
 
     @staticmethod

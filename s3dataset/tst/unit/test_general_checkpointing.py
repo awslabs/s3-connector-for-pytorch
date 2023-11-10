@@ -176,7 +176,6 @@ def _test_load(
     mock_client = MockMountpointS3Client(TEST_REGION, TEST_BUCKET)
     serialised = BytesIO()
     _save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format)
-    serialised_size = serialised.tell()
     serialised.seek(0)
     mock_client.add_object(TEST_KEY, serialised.read())
 
@@ -184,10 +183,9 @@ def _test_load(
     s3object = S3Object(
         TEST_BUCKET,
         TEST_KEY,
+        get_object_info=lambda: client.head_object(TEST_BUCKET, TEST_KEY),
         get_stream=lambda: client.get_object(TEST_BUCKET, TEST_KEY),
     )
-    # TODO - mock HeadObject to do the size fetching properly.
-    s3object._size = serialised_size
 
     assert equal(_load_with_byteorder(s3object, byteorder), data)
 

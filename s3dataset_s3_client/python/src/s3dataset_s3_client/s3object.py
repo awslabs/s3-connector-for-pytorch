@@ -15,23 +15,30 @@ class S3Object(io.BufferedIOBase):
         self,
         bucket: str,
         key: str,
-        object_info: ObjectInfo = None,
+        get_object_info: Callable[[], ObjectInfo] = None,
         get_stream: Callable[[], GetObjectStream] = None,
     ):
         if not bucket:
             raise ValueError("Bucket should be specified")
         self.bucket = bucket
         self.key = key
-        self.object_info = object_info
+
+        self._get_object_info = get_object_info
+        self._object_info = None
+
         self._get_stream = get_stream
         self._stream = None
+
         self._buffer = io.BytesIO()
-        if object_info is not None:
-            self._size = object_info.size
-        else:
-            self._size = None
+        self._size = None
         # Invariant: _position == _buffer._tell() unless _position_at_end()
         self._position = 0
+
+    @property
+    def object_info(self):
+        if self._object_info is None:
+            self._object_info = self._get_object_info()
+        return self._object_info
 
     def prefetch(self) -> None:
         """
@@ -121,7 +128,7 @@ class S3Object(io.BufferedIOBase):
 
     def _get_size(self) -> int:
         if self._size is None:
-            raise NotImplementedError("TODO - implement HeadObject")
+            self._size = self.object_info.size
         return self._size
 
     def _position_at_end(self) -> bool:

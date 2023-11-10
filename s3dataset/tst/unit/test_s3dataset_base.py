@@ -7,6 +7,7 @@ from s3dataset_s3_client._s3dataset import (
     S3DatasetException,
     MockMountpointS3Client,
     MountpointS3Client,
+    ObjectInfo,
 )
 
 from s3dataset import S3DatasetBase
@@ -97,7 +98,8 @@ def test_objects_to_s3objects(keys: Sequence[str], expected_index: int):
         assert object is not None
         assert object.bucket == TEST_BUCKET
         assert object.key == keys[index]
-        assert object.object_info is None
+        assert isinstance(object.object_info, ObjectInfo)
+        assert object.object_info.key == keys[index]
         assert object._get_stream is not None
     assert index == expected_index
 

@@ -6,6 +6,7 @@ import hypothesis
 import pytest
 from hypothesis import given
 from hypothesis.strategies import lists, text
+from s3dataset_s3_client._s3dataset import ObjectInfo
 
 from s3dataset import S3IterableDataset
 from s3dataset_s3_client import S3Object
@@ -24,7 +25,10 @@ def test_dataset_creation_from_objects_with_client_single_object():
     )
     assert isinstance(dataset, S3IterableDataset)
     _verify_dataset(
-        dataset, ["single_object"], 1, lambda data: data.object_info is None
+        dataset,
+        ["single_object"],
+        1,
+        lambda data: isinstance(data.object_info, ObjectInfo),
     )
 
 
@@ -44,7 +48,10 @@ def test_dataset_creation_from_objects_with_client(
     dataset = S3IterableDataset.from_objects(object_uris, client=client)
     assert isinstance(dataset, S3IterableDataset)
     _verify_dataset(
-        dataset, expected_keys, expected_count, lambda data: data.object_info is None
+        dataset,
+        expected_keys,
+        expected_count,
+        lambda data: isinstance(data.object_info, ObjectInfo),
     )
 
 
