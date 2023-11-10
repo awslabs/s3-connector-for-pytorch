@@ -1,6 +1,11 @@
-from typing import Iterable, Callable, Union, Sequence, Any
+import pickle
+from datetime import timedelta
+from typing import Iterable, Callable, Union, Sequence, Any, List
 
+import hypothesis
 import pytest
+from hypothesis import given
+from hypothesis.strategies import lists, text
 
 from s3dataset import S3IterableDataset
 from s3dataset_s3_client import S3Object
@@ -95,6 +100,9 @@ def test_dataset_creation_from_bucket_with_client(
         transform=transform,
     )
     assert isinstance(dataset, S3IterableDataset)
+
+    # Test that we can iterate over dataset multiple times.
+    assert list(dataset) == [expected]
     assert list(dataset) == [expected]
 
 
@@ -119,23 +127,49 @@ def test_dataset_creation_from_objects_with_region(keys: Union[str, Iterable[str
     assert dataset.region == TEST_REGION
 
 
+@hypothesis.settings(deadline=timedelta(seconds=5))
+@given(lists(text()))
+def test_dataset_iterates_after_pickle(keys: List[str]):
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
+    dataset = S3IterableDataset.from_bucket(
+        TEST_BUCKET,
+        client=client,
+    )
+    assert isinstance(dataset, S3IterableDataset)
+    expected = list(dataset)
+
+    actual = []
+    iterable = iter(dataset)
+    try:
+        while True:
+            actual.append(next(iterable))
+            # Make sure saving/loading state actually keeps the iterator at the same state!
+            iterable = pickle.loads(pickle.dumps(iterable))
+    except StopIteration:
+        pass
+    assert [i.key for i in expected] == [i.key for i in actual]
+
+
 def _verify_dataset(
     dataset: S3IterableDataset,
     expected_keys: Sequence[str],
     expected_count: int,
     object_info_check: Callable[[S3Object], bool],
+    *,
+    times_to_verify: int = 2,
 ):
-    for index, data in enumerate(dataset):
-        assert data is not None
-        assert data.bucket == TEST_BUCKET
-        assert data.key == expected_keys[index]
-        assert object_info_check(data)
-        assert data._stream is None
-        data.prefetch()
-        assert data._stream is not None
-        for content in data._stream:
-            expected_content = (
-                f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
-            )
-            assert content == expected_content
-    assert index + 1 == expected_count
+    for _ in range(times_to_verify):
+        for index, data in enumerate(dataset):
+            assert data is not None
+            assert data.bucket == TEST_BUCKET
+            assert data.key == expected_keys[index]
+            assert object_info_check(data)
+            assert data._stream is None
+            data.prefetch()
+            assert data._stream is not None
+            for content in data._stream:
+                expected_content = (
+                    f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
+                )
+                assert content == expected_content
+        assert index + 1 == expected_count

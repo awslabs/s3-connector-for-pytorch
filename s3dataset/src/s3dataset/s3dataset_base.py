@@ -9,6 +9,7 @@ from typing import (
 
 from s3dataset_s3_client._s3dataset import MountpointS3Client
 
+from s3dataset._s3_bucket_iterable import S3BucketIterable
 from s3dataset_s3_client import S3Object
 
 """
@@ -114,18 +115,8 @@ class S3DatasetBase:
     @staticmethod
     def _list_objects_for_bucket(
         client: MountpointS3Client, bucket: str, prefix: str = None
-    ) -> Iterable[S3Object]:
-        # TODO: Test if it works with more than 1000 objs (perhaps set a lower page size in MockClient)
-        list_object_stream = client.list_objects(bucket, prefix or "")
-
-        for page in list_object_stream:
-            for object_info in page.object_info:
-                yield S3Object(
-                    bucket,
-                    object_info.key,
-                    object_info,
-                    get_stream=partial(client.get_object, bucket, object_info.key),
-                )
+    ) -> S3BucketIterable:
+        return S3BucketIterable(client, bucket, prefix or "")
 
     @staticmethod
     def _validate_arguments(region: str = None, client: MountpointS3Client = None):
