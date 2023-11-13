@@ -2,7 +2,6 @@ name: Tests
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   merge_group:
@@ -14,6 +13,9 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-Dwarnings"
+  CI_REGION: ${{ vars.S3_REGION }}
+  CI_BUCKET: ${{ vars.S3_BUCKET }}
+  CI_PREFIX: ${{ vars.S3_PREFIX }}
 
 jobs:
   test:
@@ -47,11 +49,6 @@ jobs:
             target/
           key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build Rust tests
-        run: cargo test --no-default-features --no-run --manifest-path s3dataset_s3_client/Cargo.toml
-      - name: Run Rust tests
-        run: cargo test --no-default-features --manifest-path s3dataset_s3_client/Cargo.toml
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -63,20 +60,146 @@ jobs:
           python -m pip install -e "s3dataset_s3_client[test]"
           python -m pip install -e "s3dataset[test]"
 
+      - name: Client unit tests
+        run: pytest s3dataset_s3_client/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
+      - name: Dataset unit tests
+        run: pytest s3dataset/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
+
+
+  integration-test:
+    name: Integration tests
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ vars.ACTIONS_IAM_ROLE }}
+          aws-region: ${{ vars.S3_REGION }}
+
+      - name: Set up stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "s3dataset_s3_client[test,e2e]"
+          python -m pip install -e "s3dataset[test,e2e]"
+
+      - name: Dataset integration tests
+        run: pytest s3dataset/tst/e2e -n auto
+
+
+  lint:
+    name: Python lints
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Set up stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8 black
+
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
           flake8 s3dataset/ --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 s3dataset_s3_client/python --count --select=E9,F63,F7,F82 --show-source --statistics
+
       - name: Lint with Black
         uses: psf/black@stable
         with:
           options: "--check --verbose"
           src: "."
-      - name: Test with pytest
-        run: |
-          pytest s3dataset/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
-          pytest s3dataset_s3_client/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
+
+
+  rust-test:
+    name: Rust tests
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Set up stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build Rust tests
+        run: cargo test --no-default-features --no-run --manifest-path s3dataset_s3_client/Cargo.toml
+
+      - name: Run Rust tests
+        run: cargo test --no-default-features --manifest-path s3dataset_s3_client/Cargo.toml
+
 
   clippy:
     name: Clippy
