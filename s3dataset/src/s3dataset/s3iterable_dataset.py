@@ -45,8 +45,15 @@ class S3IterableDataset(S3DatasetBase, torch.utils.data.IterableDataset):
         worker_info.dataset._worker_id = worker_info.id
 
     def _filter_func(self, enumerate_result):
+        # When there are no workers, self._num_workers is unchanged from __init__ and is 0.
         if self._num_workers == 0:
             return True
+        # By default, PyTorch runs every worker on every item of the dataset.
+        # This function 'groups' items by worker id like so:
+        # [(0, obj0), (1, obj1), ..., (9, obj9)], _num_workers = 3
+        # w0 -> [0, ..., 9] -> i % 3 == 0 -> [0, 3, 6, 9]
+        # w1 -> [0, ..., 9] -> i % 3 == 1 -> [1, 4, 7]
+        # w2 -> [0, ..., 9] -> i % 3 == 2 -> [2, 5, 8]
         return enumerate_result[0] % self._num_workers == self._worker_id
 
 
