@@ -77,6 +77,24 @@ def test_s3iterable_dataset_multiprocess_skips_files():
     assert counter == num_epochs * num_images
 
 
+def test_s3iterable_dataset_multiprocess_reinstantiates_client():
+    client = MountpointS3Client(E2E_TEST_REGION)
+    dataset = S3IterableDataset.from_bucket(
+        E2E_TEST_BUCKET,
+        prefix=E2E_BUCKET_PREFIX,
+        client=client,
+        transform=_get_dataset_pointer,
+    )
+
+    num_workers = 3
+    dataloader = DataLoader(dataset, num_workers=num_workers)
+
+    dataset_pointers = {id(dataset)}
+    for dataset_pointer in dataloader:
+        dataset_pointers.add(dataset_pointer.item())
+    assert len(dataset_pointers) == num_workers + 1
+
+
 def _verify_object(s3_object: S3Object) -> (str, int, int):
     assert s3_object._stream is None
 
@@ -92,6 +110,12 @@ def _get_worker_info() -> (int, int):
     worker_info = get_worker_info()
     assert worker_info is not None
     return worker_info.id, worker_info.num_workers
+
+
+def _get_dataset_pointer(_) -> int:
+    worker_info = get_worker_info()
+    assert worker_info is not None
+    return id(worker_info.dataset)
 
 
 def _get_expected_keys() -> List[str]:
