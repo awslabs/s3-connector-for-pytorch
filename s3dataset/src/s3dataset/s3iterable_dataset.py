@@ -1,7 +1,7 @@
 from typing import Iterable, Iterator, Any, Callable
 
 import torch
-from s3dataset_s3_client._s3dataset import MountpointS3Client
+from s3dataset_s3_client._s3dataset import MountpointS3Client, S3DatasetException
 from torch.utils.data import get_worker_info
 
 from s3dataset_s3_client import S3Object
@@ -32,19 +32,22 @@ class S3IterableDataset(S3DatasetBase, torch.utils.data.IterableDataset):
     def __iter__(self) -> Iterator[Any]:
         return map(
             self._transform,
-            map(
-                _remove_enumerate,
-                filter(self._filter_func, enumerate(self._dataset_objects)),
-            ),
+            _FilterUsingId(self._dataset_objects, self._filter_func),
         )
 
     @staticmethod
     def worker_init(worker_id: int):
         worker_info = get_worker_info()
+        if worker_info is None:
+            raise S3DatasetException("worker_init must only be called from a worker")
+        if not isinstance(worker_info.dataset, S3IterableDataset):
+            raise S3DatasetException(
+                "S3IterableDataset.worker_init can only be used on S3IterableDataset datasets."
+            )
         worker_info.dataset._num_workers = worker_info.num_workers
         worker_info.dataset._worker_id = worker_info.id
 
-    def _filter_func(self, enumerate_result):
+    def _filter_func(self, current_id: int) -> bool:
         # When there are no workers, self._num_workers is unchanged from __init__ and is 0.
         if self._num_workers == 0:
             return True
@@ -54,8 +57,19 @@ class S3IterableDataset(S3DatasetBase, torch.utils.data.IterableDataset):
         # w0 -> [0, ..., 9] -> i % 3 == 0 -> [0, 3, 6, 9]
         # w1 -> [0, ..., 9] -> i % 3 == 1 -> [1, 4, 7]
         # w2 -> [0, ..., 9] -> i % 3 == 2 -> [2, 5, 8]
-        return enumerate_result[0] % self._num_workers == self._worker_id
+        return current_id % self._num_workers == self._worker_id
 
 
-def _remove_enumerate(enumerate_result):
-    return enumerate_result[1]
+class _FilterUsingId:
+    def __init__(self, iterable: Iterable, filter_function: Callable[[int], bool]):
+        self.filter_function = filter_function
+        self.iterator = enumerate(iterable)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        i, data = next(self.iterator)
+        while not self.filter_function(i):
+            i, data = next(self.iterator)
+        return data

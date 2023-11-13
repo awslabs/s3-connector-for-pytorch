@@ -8,7 +8,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import lists, text, integers, tuples
 
 from s3dataset import S3IterableDataset
-from s3dataset_s3_client import S3Object
+from s3dataset_s3_client import S3Object, S3DatasetException
 from test_s3dataset_base import (
     TEST_BUCKET,
     _create_mock_client_with_dummy_objects,
@@ -170,6 +170,11 @@ def test_dataset_filter_function(keys: List[str], worker_tuple):
     dataset._num_workers = num_workers = max(worker_tuple)
     dataset._worker_id = worker_id = min(worker_tuple)
     assert [obj.key for obj in dataset] == keys[worker_id::num_workers]
+
+
+def test_worker_init_raises_s3dataset_exception():
+    with pytest.raises(S3DatasetException):
+        S3IterableDataset.worker_init(0)
 
 
 def _verify_dataset(
