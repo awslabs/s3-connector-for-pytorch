@@ -16,7 +16,7 @@ def test_s3iterable_dataset_images_10_with_client(image_directory):
     dataset = S3IterableDataset.from_bucket(
         image_directory.bucket, prefix=image_directory.prefix, client=client
     )
-    _verify_image_iterable_dataset2(image_directory, dataset)
+    _verify_image_iterable_dataset(image_directory, dataset)
 
 
 def test_s3iterable_dataset_images_10_with_region(image_directory):
@@ -25,7 +25,7 @@ def test_s3iterable_dataset_images_10_with_region(image_directory):
         prefix=image_directory.prefix,
         region=image_directory.region,
     )
-    _verify_image_iterable_dataset2(image_directory, dataset)
+    _verify_image_iterable_dataset(image_directory, dataset)
 
 
 def test_s3mapstyle_dataset_images_10_with_client(image_directory):
@@ -111,26 +111,26 @@ def _compare_dataloaders(
     batch_count = _get_dataloader_len(s3_dataloader)
     assert batch_count == expected_batch_count
 
+    # Iterable datasets aren't required to be ordered, so we check equality of the entire dataset
+    # rather than checking each batch is equal.
     local_objs = set()
     s3_objs = set()
     for local_batch, s3_batch in zip(local_dataloader, s3_dataloader):
-        # Assert batch samples are of equal lengths.
-        # We are not asserting equality with batch_size due to possible
-        # remainder from division for the last batch.
+        # Assert batch samples are of equal lengths. We are not asserting equality with batch_size
+        # due to possible remainder from division for the last batch.
         assert len(local_batch) == len(s3_batch)
         for local_item in local_batch:
             local_objs.add(local_item)
         for s3_item in s3_batch:
             s3_objs.add(s3_item)
+    assert local_objs == s3_objs
 
     # TODO: Calling len before zip causes `TypeError: cannot pickle '_io.BufferedReader' object`
     local_batch_count = _get_dataloader_len(local_dataloader)
     assert local_batch_count == expected_batch_count
 
-    assert local_objs == s3_objs
 
-
-def _verify_image_iterable_dataset2(
+def _verify_image_iterable_dataset(
     image_directory,
     dataset: S3IterableDataset,
 ):
