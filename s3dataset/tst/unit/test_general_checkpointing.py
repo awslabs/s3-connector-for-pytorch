@@ -28,9 +28,9 @@ from hypothesis.strategies import (
     one_of,
 )
 from s3dataset_s3_client._s3dataset import MockMountpointS3Client
+from s3dataset_s3_client.put_object_stream_wrapper import PutObjectStreamWrapper
 
 from s3dataset_s3_client import S3Object
-from s3dataset_s3_client.put_object_stream_wrapper import PutObjectStreamWrapper
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -140,7 +140,7 @@ def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(
     _test_load(
         storage,
         byteorder,
-        use_modern_pytorch_format=True,
+        use_modern_pytorch_format=False,
         equal=lambda a, b: list(a) == list(b),
     )
 
