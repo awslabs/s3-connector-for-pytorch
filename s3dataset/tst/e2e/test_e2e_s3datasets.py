@@ -10,16 +10,16 @@ from s3dataset import S3MapDataset
 
 def test_s3iterable_dataset_images_10_from_prefix(image_directory):
     s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
-    dataset = S3IterableDataset.from_prefix(s3_uri=s3_uri, region=image_directory.region)
+    dataset = S3IterableDataset.from_prefix(
+        s3_uri=s3_uri, region=image_directory.region
+    )
     assert isinstance(dataset, S3IterableDataset)
     _verify_image_iterable_dataset(image_directory, dataset)
 
 
 def test_s3mapdataset_images_10_from_prefix(image_directory):
     s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
-    dataset = S3MapDataset.from_prefix(
-        s3_uri=s3_uri, region=image_directory.region
-    )
+    dataset = S3MapDataset.from_prefix(s3_uri=s3_uri, region=image_directory.region)
     assert isinstance(dataset, S3MapDataset)
     assert len(dataset) == 10
 
