@@ -15,15 +15,16 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest",
-    "flake8",
-    "black"
+    "pytest"
 ]
 
 e2e = [
     "torchdata",
     "torchvision",
-    "Pillow"
+    "Pillow",
+    "boto3",
+    "numpy",
+    "pytest-xdist"
 ]
 
 [tool.setuptools.packages]
