@@ -45,7 +45,7 @@ def from_objects(cls, image_directory: BucketPrefixFixture, **kwargs):
 # Allow us to construct our datasets in tests with either from_prefix or from_objects.
 dataset_builders = (from_prefix, from_objects)
 
-test_args = list(product(start_methods, dataset_builders))
+test_args = list(product(sorted(start_methods), dataset_builders))
 
 
 @pytest.mark.parametrize("start_method, dataset_builder", test_args)
@@ -103,7 +103,7 @@ def test_s3iterable_dataset_multiprocess(
     for epoch in range(num_epochs):
         s3keys = Counter()
         worker_count = Counter()
-        for (s3key,), (contents,), worker_id, _num_workers in dataloader:
+        for ((s3key,), (contents,)), (worker_id, _num_workers) in dataloader:
             s3keys[s3key] += 1
             counter += 1
             worker_count[worker_id.item()] += 1
@@ -116,7 +116,6 @@ def test_s3iterable_dataset_multiprocess(
         assert dict(s3keys) == {key: num_workers for key in image_directory}
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("start_method, dataset_builder", test_args)
 def test_s3mapdataset_multiprocess(
     start_method: str,
@@ -139,14 +138,7 @@ def test_s3mapdataset_multiprocess(
     for epoch in range(num_epochs):
         s3keys = Counter()
         worker_count = Counter()
-        if start_method == "fork":
-            raise NotImplementedError(
-                "This does not work, and hangs rather than failing."
-            )
-        # FIXME - torch dataloader.__iter__ calls S3MapDataset.__len__ internally before child processes spawn.
-        # This triggers the client to be created in the main process, keeping itself around when child processes spawn.
-        # Our client, MountpointS3Client, explodes when it's used in a child process with `fork` spawn type.
-        for (s3key,), (contents,), worker_id, _num_workers in dataloader:
+        for ((s3key,), (contents,)), (worker_id, _num_workers) in dataloader:
             worker_count[worker_id.item()] += 1
             s3keys[s3key] += 1
             assert _num_workers == num_workers
@@ -154,15 +146,16 @@ def test_s3mapdataset_multiprocess(
         # Map dataset does sharding; we'll see each image once.
         assert sum(worker_count.values()) == num_images
         assert dict(s3keys) == {key: 1 for key in image_directory}
-    # TODO - assert len(dataloader) == num_images
+    assert len(dataloader) == num_images
 
 
 def _set_start_method(start_method: str):
     torch.multiprocessing.set_start_method(start_method, force=True)
 
 
-def _extract_object_data(s3_object: S3Object) -> (str, bytes, int, int):
-    return s3_object.key, s3_object.read(), *_get_worker_info()
+def _extract_object_data(s3_object: S3Object) -> ((str, bytes), (int, int)):
+    assert s3_object._stream is None
+    return _read_data(s3_object), _get_worker_info()
 
 
 def _get_worker_info() -> (int, int):
