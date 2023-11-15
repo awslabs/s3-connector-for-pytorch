@@ -30,7 +30,8 @@ class BucketPrefixFixture(object):
         self.prefix = prefix
         self.region = region
         self.contents = {}
-        self.s3 = boto3.client("s3")
+        session = boto3.Session(region_name=region)
+        self.s3 = session.client("s3")
 
     def add(self, key: str, contents: bytes, **kwargs):
         """Upload an S3 object to this prefix of the bucket."""
