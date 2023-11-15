@@ -25,105 +25,95 @@ def _identity(obj: S3Object) -> S3Object:
 class S3DatasetBase:
     def __init__(
         self,
-        client: MountpointS3Client,
-        dataset_objects: Iterable[S3Object] = (),
+        region: str,
+        get_dataset_objects: Callable[[MountpointS3Client], Iterable[S3Object]],
         transform: Callable[[S3Object], Any] = _identity,
     ):
-        self._client = client
-        self._dataset_objects = dataset_objects
+        self._get_dataset_objects = get_dataset_objects
         self._transform = transform
+        self._region = region
+        self._client = None
 
     @property
     def region(self):
-        return self._client.region
+        return self._region
+
+    def _get_client(self):
+        if self._client is None:
+            self._client = MountpointS3Client(self.region)
+        return self._client
 
     @classmethod
     def from_objects(
         cls,
         object_uris: Union[str, Iterable[str]],
-        region: str = None,
-        client: MountpointS3Client = None,
+        *,
+        region: str,
         transform: Callable[[S3Object], Any] = _identity,
     ):
+
         """
-        Returns an instance of this dataset using the URI(s) provided.
+        Returns an instance of S3Dataset dataset using the URI(s) provided.
         Args:
           object_uris(str or Iterable[str]):
             S3 URI of the object(s) desired.
           region(str or None):
             The S3 region where the objects are stored.
-            If this is provided a MountpointS3Client will be instantiated with the region.
-          client:
-            MountpointS3Client instance to be used for S3 interactions.
           transform:
-            Callable which is used to transform an S3Object into the desired type.
+            Optional callable which is used to transform an S3Object into the desired type.
         """
-        cls._validate_arguments(region, client)
+        return cls(region, partial(cls._from_objects, object_uris), transform=transform)
+
+    @classmethod
+    def _from_objects(
+        cls,
+        object_uris: Union[str, Iterable[str]],
+        client: MountpointS3Client
+    ) -> Iterable[S3Object]:
         if isinstance(object_uris, str):
             object_uris = [object_uris]
         # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
         bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
-        client = client or MountpointS3Client(region)
-        return cls(
-            client,
-            cls._bucket_keys_to_s3objects(client, bucket_key_pairs),
-            transform=transform,
-        )
 
-    @classmethod
-    def from_bucket(
-        cls,
-        bucket: str,
-        prefix: str = None,
-        *,
-        region: str = None,
-        client: MountpointS3Client = None,
-        transform: Callable[[S3Object], Any] = _identity,
-    ):
-        """
-        Returns an instance of this dataset using the objects under bucket/prefix.
-        Args:
-          bucket(str):
-            Name of the S3 bucket where the objects are stored.
-          prefix(str or None):
-            The S3 prefix for the objects in scope.
-          region(str or None):
-            The S3 region where the bucket is.
-            If this is provided a MountpointS3Client will be instantiated with the region.
-          client:
-            MountpointS3Client instance to be used for S3 interactions.
-          transform:
-            Callable which is used to transform an S3Object into the desired type.
-        """
-        cls._validate_arguments(region, client)
-        client = client or MountpointS3Client(region)
-        return cls(
-            client,
-            cls._list_objects_for_bucket(client, bucket, prefix),
-            transform=transform,
-        )
-
-    @staticmethod
-    def _bucket_keys_to_s3objects(
-        client: MountpointS3Client, bucket_key_pairs: Iterable[Tuple[str, str]]
-    ) -> Iterable[S3Object]:
         for bucket, key in bucket_key_pairs:
             yield S3Object(
                 bucket, key, get_stream=partial(client.get_object, bucket, key)
             )
 
-    @staticmethod
-    def _list_objects_for_bucket(
-        client: MountpointS3Client, bucket: str, prefix: str = None
-    ) -> S3BucketIterable:
-        return S3BucketIterable(client, bucket, prefix or "")
+    @classmethod
+    def from_prefix(
+        cls,
+        s3_uri: str,
+        *,
+        region: str,
+        transform: Callable[[S3Object], Any] = _identity,
+    ):
+        """
+        Returns an instance of this dataset using the objects under bucket/prefix.
+        Args:
+          s3_uri(str ):
+            The S3 prefix (in the form of an s3_uri) for the objects in scope.
+          region(str):
+            The S3 region where the bucket is.
+          transform:
+            Optional callable which is used to transform an S3Object into the desired type.
+        """
+        return cls(region, partial(cls._from_prefix, s3_uri), transform=transform)
+
+    @classmethod
+    def _from_prefix(
+        cls,
+        s3_uri: str,
+        client: MountpointS3Client
+    ):
+        bucket, prefix = _parse_s3_uri(s3_uri)
+        return cls._list_objects_for_bucket(client, bucket, prefix)
 
     @staticmethod
-    def _validate_arguments(region: str = None, client: MountpointS3Client = None):
-        if not region and not client:
-            raise ValueError("Either region or client must be valid.")
-        if region and client:
-            raise ValueError("Only one of region / client should be passed.")
+    def _list_objects_for_bucket(
+        client: MountpointS3Client, bucket: str, prefix: str
+    ) -> S3BucketIterable:
+        return S3BucketIterable(client, bucket, prefix)
 
 
 # TODO: Check boto3 implementation for this
@@ -131,7 +121,7 @@ def _parse_s3_uri(uri: str) -> Tuple[str, str]:
     # TODO: We should be able to support more through Mountpoint, not sure if we want to
     if not uri or not uri.startswith("s3://"):
         raise ValueError("Only s3:// URIs are supported")
-    uri = uri[len("s3://") :]
+    uri = uri[len("s3://"):]
     if not uri:
         raise ValueError("Bucket name must be non-empty")
     split = uri.split("/", maxsplit=1)

@@ -3,38 +3,39 @@ import os
 import pytest
 import torch
 from s3dataset_s3_client._s3dataset import MountpointS3Client
+import torchdata  # FIXME: torchdata is deprecated.
+import torchvision
+from PIL import Image
+from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.datapipes.datapipe import MapDataPipe
 from torchdata.datapipes.iter import IterableWrapper, IterDataPipe
 
 from s3dataset import S3IterableDataset
-from s3dataset import S3MapStyleDataset
+from s3dataset import S3MapDataset
+from s3dataset_s3_client import S3Object
+
+E2E_TEST_BUCKET = "dataset-it-bucket"
+E2E_OBJECT_PREFIX = "e2e-tests/images-10/img"
+E2E_PREFIX = f"s3://{E2E_TEST_BUCKET}/{E2E_OBJECT_PREFIX}"
+E2E_TEST_REGION = "eu-west-2"
+LOCAL_DATASET_RELATIVE_PATH = "../resources/images-10/"
+ABSOLUTE_PATH = os.path.dirname(__file__)
 
 
-def test_s3iterable_dataset_images_10_with_client(image_directory):
-    client = MountpointS3Client(image_directory.region)
-    dataset = S3IterableDataset.from_bucket(
-        image_directory.bucket, prefix=image_directory.prefix, client=client
-    )
+def test_s3iterable_dataset_images_10_from_prefix(image_directory):
+    dataset = S3IterableDataset.from_prefix(s3_uri=E2E_PREFIX, region=E2E_TEST_REGION)
+    assert isinstance(dataset, S3IterableDataset)
     _verify_image_iterable_dataset(image_directory, dataset)
 
 
-def test_s3iterable_dataset_images_10_with_region(image_directory):
-    dataset = S3IterableDataset.from_bucket(
-        image_directory.bucket,
-        prefix=image_directory.prefix,
-        region=image_directory.region,
+def test_s3mapdataset_images_10_from_prefix(image_directory):
+    dataset = S3MapDataset.from_prefix(
+        s3_uri=E2E_PREFIX, region=E2E_TEST_REGION
     )
-    _verify_image_iterable_dataset(image_directory, dataset)
-
-
-def test_s3mapstyle_dataset_images_10_with_client(image_directory):
-    client = MountpointS3Client(image_directory.region)
-    dataset = S3MapStyleDataset.from_bucket(
-        image_directory.bucket, prefix=image_directory.prefix, client=client
-    )
-    assert isinstance(dataset, S3MapStyleDataset)
+    assert isinstance(dataset, S3MapDataset)
     assert len(dataset) == 10
+
     # Intentional usage to emphasize the accessor dataset[index] works.
     for index in range(len(dataset)):
         key = f"{image_directory.prefix}img{index:03d}.jpg"
@@ -67,12 +68,12 @@ def test_dataloader_10_images_s3iterable_dataset(
     local_dataloader = _create_local_dataloader(image_directory, batch_size)
     assert isinstance(local_dataloader.dataset, IterDataPipe)
 
-    s3_dataset = S3IterableDataset.from_bucket(
-        image_directory.bucket,
-        prefix=image_directory.prefix,
-        region=image_directory.region,
+    s3_dataset = S3IterableDataset.from_prefix(
+        s3_uri=E2E_PREFIX,
+        region=E2E_TEST_REGION,
         transform=lambda obj: obj.read(),
     )
+
     s3_dataloader = _pytorch_dataloader(s3_dataset, batch_size)
     assert s3_dataloader is not None
     assert isinstance(s3_dataloader.dataset, S3IterableDataset)
@@ -90,15 +91,14 @@ def test_dataloader_10_images_s3mapstyle_dataset(
     local_dataloader = _create_local_dataloader(image_directory, batch_size, True)
     assert isinstance(local_dataloader.dataset, MapDataPipe)
 
-    s3_dataset = S3MapStyleDataset.from_bucket(
-        image_directory.bucket,
-        prefix=image_directory.prefix,
-        region=image_directory.region,
+    s3_dataset = S3MapDataset.from_prefix(
+        s3_uri=E2E_PREFIX,
+        region=E2E_TEST_REGION,
         transform=lambda obj: obj.read(),
     )
     s3_dataloader = _pytorch_dataloader(s3_dataset, batch_size)
     assert s3_dataloader is not None
-    assert isinstance(s3_dataloader.dataset, S3MapStyleDataset)
+    assert isinstance(s3_dataloader.dataset, S3MapDataset)
 
     _compare_dataloaders(local_dataloader, s3_dataloader, expected_batch_count)
 
@@ -161,7 +161,7 @@ def _create_local_dataloader(
 
 def _get_dataloader_len(dataloader: DataLoader):
     if isinstance(dataloader.dataset, MapDataPipe) or isinstance(
-        dataloader.dataset, S3MapStyleDataset
+        dataloader.dataset, S3MapDataset
     ):
         return len(dataloader)
     else:
