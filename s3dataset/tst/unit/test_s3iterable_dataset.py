@@ -34,7 +34,8 @@ def test_dataset_creation_from_objects_with_region():
     ],
 )
 def test_dataset_creation_from_objects(
-    keys: Iterable[str], expected_keys: Sequence[str],
+    keys: Iterable[str],
+    expected_keys: Sequence[str],
 ):
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
     dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
@@ -44,9 +45,8 @@ def test_dataset_creation_from_objects(
     dataset._client = client
 
     assert isinstance(dataset, S3IterableDataset)
-    _verify_dataset(
-        dataset, expected_keys, lambda data: data.object_info is None
-    )
+    _verify_dataset(dataset, expected_keys, lambda data: data.object_info is None)
+
 
 @pytest.mark.parametrize(
     "keys, prefix, expected_keys",
@@ -55,13 +55,15 @@ def test_dataset_creation_from_objects(
         (["obj1"], S3_PREFIX, ["obj1"]),
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj1", "obj2", "obj3"]),
         (["obj1", "obj2", "obj3"], f"{S3_PREFIX}/", ["obj1", "obj2", "obj3"]),
-        (["obj1", "obj2", "obj3", "test"], f"{S3_PREFIX}/obj", ["obj1", "obj2", "obj3"]),
+        (
+            ["obj1", "obj2", "obj3", "test"],
+            f"{S3_PREFIX}/obj",
+            ["obj1", "obj2", "obj3"],
+        ),
     ],
 )
 def test_dataset_creation_from_prefix(
-    keys: Iterable[str],
-    prefix: str,
-    expected_keys: Sequence[str]
+    keys: Iterable[str], prefix: str, expected_keys: Sequence[str]
 ):
     dataset = S3IterableDataset.from_prefix(s3_uri=prefix, region=TEST_REGION)
 
@@ -135,7 +137,8 @@ def test_transform_from_prefix(
     ],
 )
 def test_transform_from_objects(
-    key: str, transform: Callable[[S3Object], Any], expected: Any):
+    key: str, transform: Callable[[S3Object], Any], expected: Any
+):
     object_uris = f"{S3_PREFIX}/{key}"
 
     dataset = S3IterableDataset.from_objects(
@@ -156,16 +159,19 @@ def test_transform_from_objects(
     "keys, prefix, expected_keys",
     [
         ([], S3_PREFIX, []),
-        (["obj1"],S3_PREFIX, ["obj1"]),
+        (["obj1"], S3_PREFIX, ["obj1"]),
         (["obj1", "obj2", "obj3"], f"{S3_PREFIX}/", ["obj1", "obj2", "obj3"]),
-        (["obj1", "obj2", "obj3", "test"], f"{S3_PREFIX}/obj", ["obj1", "obj2", "obj3"]),
+        (
+            ["obj1", "obj2", "obj3", "test"],
+            f"{S3_PREFIX}/obj",
+            ["obj1", "obj2", "obj3"],
+        ),
     ],
 )
-def test_iteration_multiple_times(keys: Iterable[str], prefix: str, expected_keys: Sequence[str]):
-    dataset = S3IterableDataset.from_prefix(
-        prefix,
-        region=TEST_REGION
-    )
+def test_iteration_multiple_times(
+    keys: Iterable[str], prefix: str, expected_keys: Sequence[str]
+):
+    dataset = S3IterableDataset.from_prefix(prefix, region=TEST_REGION)
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)

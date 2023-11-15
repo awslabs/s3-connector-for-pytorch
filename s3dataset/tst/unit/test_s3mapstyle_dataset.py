@@ -33,7 +33,6 @@ def test_dataset_creation_from_objects_with_region():
     ],
 )
 def test_dataset_creation_from_objects(keys: Sequence[str]):
-
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
     dataset = S3MapDataset.from_objects(object_uris, region=TEST_REGION)
 
@@ -54,11 +53,17 @@ def test_dataset_creation_from_objects(keys: Sequence[str]):
         (["obj1"], S3_PREFIX, ["obj1"]),
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj1", "obj2", "obj3"]),
         (["obj1", "obj2", "obj3"], f"{S3_PREFIX}/", ["obj1", "obj2", "obj3"]),
-        (["obj1", "obj2", "obj3", "test"], f"{S3_PREFIX}/obj", ["obj1", "obj2", "obj3"]),
+        (
+            ["obj1", "obj2", "obj3", "test"],
+            f"{S3_PREFIX}/obj",
+            ["obj1", "obj2", "obj3"],
+        ),
     ],
 )
 def test_dataset_creation_from_prefix(
-    keys: Sequence[str], prefix: str, expected_keys: Sequence[str],
+    keys: Sequence[str],
+    prefix: str,
+    expected_keys: Sequence[str],
 ):
     dataset = S3MapDataset.from_prefix(s3_uri=prefix, region=TEST_REGION)
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -144,6 +149,7 @@ def test_transform_from_objects(
 
     assert isinstance(dataset, S3MapDataset)
     assert list(dataset) == [expected]
+
 
 @pytest.mark.parametrize(
     "keys, length",

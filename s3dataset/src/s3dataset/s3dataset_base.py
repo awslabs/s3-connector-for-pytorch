@@ -51,7 +51,6 @@ class S3DatasetBase:
         region: str,
         transform: Callable[[S3Object], Any] = _identity,
     ):
-
         """
         Returns an instance of S3Dataset dataset using the URI(s) provided.
         Args:
@@ -62,23 +61,9 @@ class S3DatasetBase:
           transform:
             Optional callable which is used to transform an S3Object into the desired type.
         """
-        return cls(region, partial(cls._from_objects, object_uris), transform=transform)
-
-    @classmethod
-    def _from_objects(
-        cls,
-        object_uris: Union[str, Iterable[str]],
-        client: MountpointS3Client
-    ) -> Iterable[S3Object]:
-        if isinstance(object_uris, str):
-            object_uris = [object_uris]
-        # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
-        bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
-
-        for bucket, key in bucket_key_pairs:
-            yield S3Object(
-                bucket, key, get_stream=partial(client.get_object, bucket, key)
-            )
+        return cls(
+            region, partial(_get_objects_from_uris, object_uris), transform=transform
+        )
 
     @classmethod
     def from_prefix(
@@ -98,22 +83,9 @@ class S3DatasetBase:
           transform:
             Optional callable which is used to transform an S3Object into the desired type.
         """
-        return cls(region, partial(cls._from_prefix, s3_uri), transform=transform)
-
-    @classmethod
-    def _from_prefix(
-        cls,
-        s3_uri: str,
-        client: MountpointS3Client
-    ):
-        bucket, prefix = _parse_s3_uri(s3_uri)
-        return cls._list_objects_for_bucket(client, bucket, prefix)
-
-    @staticmethod
-    def _list_objects_for_bucket(
-        client: MountpointS3Client, bucket: str, prefix: str
-    ) -> S3BucketIterable:
-        return S3BucketIterable(client, bucket, prefix)
+        return cls(
+            region, partial(_list_objects_from_prefix, s3_uri), transform=transform
+        )
 
 
 # TODO: Check boto3 implementation for this
@@ -121,7 +93,7 @@ def _parse_s3_uri(uri: str) -> Tuple[str, str]:
     # TODO: We should be able to support more through Mountpoint, not sure if we want to
     if not uri or not uri.startswith("s3://"):
         raise ValueError("Only s3:// URIs are supported")
-    uri = uri[len("s3://"):]
+    uri = uri[len("s3://") :]
     if not uri:
         raise ValueError("Bucket name must be non-empty")
     split = uri.split("/", maxsplit=1)
@@ -133,3 +105,22 @@ def _parse_s3_uri(uri: str) -> Tuple[str, str]:
     if not bucket:
         raise ValueError("Bucket name must be non-empty")
     return bucket, prefix
+
+
+def _get_objects_from_uris(
+    object_uris: Union[str, Iterable[str]], client: MountpointS3Client
+) -> Iterable[S3Object]:
+    if isinstance(object_uris, str):
+        object_uris = [object_uris]
+    # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
+    bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
+
+    for bucket, key in bucket_key_pairs:
+        yield S3Object(bucket, key, get_stream=partial(client.get_object, bucket, key))
+
+
+def _list_objects_from_prefix(
+    s3_uri: str, client: MountpointS3Client
+) -> S3BucketIterable:
+    bucket, prefix = _parse_s3_uri(s3_uri)
+    return S3BucketIterable(client, bucket, prefix)

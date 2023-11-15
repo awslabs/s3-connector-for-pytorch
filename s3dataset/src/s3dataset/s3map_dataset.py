@@ -19,12 +19,11 @@ s3map_dataset.py
 
 
 class S3MapDataset(S3DatasetBase, torch.utils.data.Dataset):
-
     def __init__(
-            self,
-            region: str,
-            get_dataset_objects: Callable[[MountpointS3Client], Iterable[S3Object]],
-            transform: Callable[[S3Object], Any] = _identity,
+        self,
+        region: str,
+        get_dataset_objects: Callable[[MountpointS3Client], Iterable[S3Object]],
+        transform: Callable[[S3Object], Any] = _identity,
     ):
         super().__init__(region, get_dataset_objects, transform)
         self._dataset_object_store = None
@@ -32,7 +31,9 @@ class S3MapDataset(S3DatasetBase, torch.utils.data.Dataset):
     @property
     def _dataset_objects(self) -> List[S3Object]:
         if self._dataset_object_store is None:
-            self._dataset_object_store = list(self._get_dataset_objects(self._get_client()))
+            self._dataset_object_store = list(
+                self._get_dataset_objects(self._get_client())
+            )
         return self._dataset_object_store
 
     def __getitem__(self, i: int) -> Any:
@@ -40,4 +41,3 @@ class S3MapDataset(S3DatasetBase, torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self._dataset_objects)
-

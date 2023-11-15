@@ -3,13 +3,9 @@ from typing import Iterable, Union, Sequence
 
 import pytest
 
-from s3dataset_s3_client._s3dataset import (
-    S3DatasetException,
-    MockMountpointS3Client
-)
+from s3dataset_s3_client._s3dataset import S3DatasetException, MockMountpointS3Client
 
-from s3dataset import S3DatasetBase
-from s3dataset.s3dataset_base import _parse_s3_uri
+from s3dataset.s3dataset_base import _parse_s3_uri, _list_objects_from_prefix
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -61,9 +57,11 @@ def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
         ("obj", ["obj1", "obj2", "obj3", "test", "test2"], 3),
     ],
 )
-def test_list_objects_for_bucket(prefix: str, keys: Sequence[str], expected_count: int):
+def test_list_objects_from_prefix(
+    prefix: str, keys: Sequence[str], expected_count: int
+):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
-    objects = S3DatasetBase._list_objects_for_bucket(mock_client, TEST_BUCKET, prefix)
+    objects = _list_objects_from_prefix(f"s3://{TEST_BUCKET}/{prefix}", mock_client)
     count = 0
     for index, object in enumerate(objects):
         count += 1
@@ -79,8 +77,9 @@ def test_list_objects_for_bucket(prefix: str, keys: Sequence[str], expected_coun
 def test_list_objects_for_bucket_invalid():
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
     with pytest.raises(S3DatasetException) as error:
-        objects = S3DatasetBase._list_objects_for_bucket(
-            mock_client, "DIFFERENT_BUCKET", TEST_KEY
+        objects = _list_objects_from_prefix(
+            "s3://DIFFERENT_BUCKET",
+            mock_client,
         )
         next(iter(objects))
     assert str(error.value) == "Service error: The bucket does not exist"
