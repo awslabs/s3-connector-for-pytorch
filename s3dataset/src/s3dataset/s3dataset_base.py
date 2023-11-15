@@ -5,6 +5,7 @@ from typing import (
     Tuple,
     Callable,
     Any,
+    List,
 )
 
 from s3dataset_s3_client._s3dataset import MountpointS3Client
@@ -52,7 +53,7 @@ class S3DatasetBase:
         transform: Callable[[S3Object], Any] = _identity,
     ):
         """
-        Returns an instance of S3Dataset dataset using the URI(s) provided.
+        Returns an instance of this dataset using the URI(s) provided.
         Args:
           object_uris(str or Iterable[str]):
             S3 URI of the object(s) desired.
@@ -76,7 +77,7 @@ class S3DatasetBase:
         """
         Returns an instance of this dataset using the objects under bucket/prefix.
         Args:
-          s3_uri(str ):
+          s3_uri(str):
             The S3 prefix (in the form of an s3_uri) for the objects in scope.
           region(str):
             The S3 region where the bucket is.
@@ -115,6 +116,12 @@ def _get_objects_from_uris(
     # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
     bucket_key_pairs = [_parse_s3_uri(uri) for uri in object_uris]
 
+    return _bucket_key_pairs_to_objects(bucket_key_pairs, client)
+
+
+def _bucket_key_pairs_to_objects(
+    bucket_key_pairs: List[Tuple[str, str]], client: MountpointS3Client
+):
     for bucket, key in bucket_key_pairs:
         yield S3Object(bucket, key, get_stream=partial(client.get_object, bucket, key))
 

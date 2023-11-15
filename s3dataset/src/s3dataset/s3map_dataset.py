@@ -1,7 +1,3 @@
-"""
-s3map_dataset.py
-    A Map-Style Dataset for objects stored in S3.
-"""
 from typing import List, Any, Callable, Iterable
 
 import torch.utils.data

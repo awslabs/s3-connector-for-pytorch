@@ -5,7 +5,11 @@ import pytest
 
 from s3dataset_s3_client._s3dataset import S3DatasetException, MockMountpointS3Client
 
-from s3dataset.s3dataset_base import _parse_s3_uri, _list_objects_from_prefix
+from s3dataset.s3dataset_base import (
+    _parse_s3_uri,
+    _list_objects_from_prefix,
+    _get_objects_from_uris,
+)
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -61,7 +65,7 @@ def test_list_objects_from_prefix(
     prefix: str, keys: Sequence[str], expected_count: int
 ):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
-    objects = _list_objects_from_prefix(f"s3://{TEST_BUCKET}/{prefix}", mock_client)
+    objects = _list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
     count = 0
     for index, object in enumerate(objects):
         count += 1
@@ -83,6 +87,42 @@ def test_list_objects_for_bucket_invalid():
         )
         next(iter(objects))
     assert str(error.value) == "Service error: The bucket does not exist"
+
+
+@pytest.mark.parametrize(
+    "object_uris, expected_keys",
+    [([], []), ([f"{S3_PREFIX}/obj1", f"{S3_PREFIX}/obj2"], ["obj1", "obj2"])],
+)
+def test_get_objects_from_uris_success(
+    object_uris: Sequence[str], expected_keys: Sequence[str]
+):
+    mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, expected_keys)
+    objects = _get_objects_from_uris(object_uris, mock_client)
+    count = 0
+    for index, object in enumerate(objects):
+        count += 1
+        assert object is not None
+        assert object.bucket == TEST_BUCKET
+        assert object.key == expected_keys[index]
+        assert object.object_info is None
+        assert object._get_stream is not None
+    assert count == len(expected_keys)
+
+
+@pytest.mark.parametrize(
+    "uri, error_msg",
+    [
+        ("", "Only s3:// URIs are supported"),
+        ("s3a://bucket/key", "Only s3:// URIs are supported"),
+        ("s3://", "Bucket name must be non-empty"),
+        ("s3:///key", "Bucket name must be non-empty"),
+    ],
+)
+def test_get_objects_from_uris_fail(uri, error_msg):
+    mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
+    with pytest.raises(ValueError) as error:
+        objects = _get_objects_from_uris(uri, mock_client)
+    assert str(error.value) == error_msg
 
 
 def _create_mock_client_with_dummy_objects(
