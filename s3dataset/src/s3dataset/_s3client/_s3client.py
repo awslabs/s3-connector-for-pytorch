@@ -1,3 +1,4 @@
+import os
 from functools import partial
 from typing import Optional
 
@@ -5,6 +6,7 @@ from s3dataset_s3_client._s3dataset import (
     MountpointS3Client,
     ObjectInfo,
     ListObjectStream,
+    GetObjectStream,
 )
 
 from s3dataset_s3_client import S3Object
@@ -13,17 +15,31 @@ from s3dataset_s3_client.put_object_stream_wrapper import PutObjectStreamWrapper
 
 class S3Client:
     def __init__(self, region: str):
-        self._client = MountpointS3Client(region)
+        self._region = region
+        self._real_client = None
+        self._client_pid = None
 
     @property
-    def region(self):
-        return self._client.region
+    def _client(self) -> MountpointS3Client:
+        if self._client_pid is None or self._client_pid != os.getpid():
+            self._client_pid = os.getpid()
+            # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
+            self._real_client = self._client_builder()
+        return self._real_client
+
+    def _client_builder(self) -> MountpointS3Client:
+        return MountpointS3Client(region=self._region)
+
+    @property
+    def region(self) -> str:
+        return self._region
 
     # TODO: S3Object to become S3Reader
     def get_object(self, bucket: str, key: str) -> S3Object:
-        return S3Object(
-            bucket, key, get_stream=partial(self._client.get_object, bucket, key)
-        )
+        return S3Object(bucket, key, get_stream=partial(self._get_object, bucket, key))
+
+    def _get_object(self, bucket: str, key: str) -> GetObjectStream:
+        return self._client.get_object(bucket, key)
 
     # TODO: PutObjectStreamWrapper -> S3Writer
     def put_object(

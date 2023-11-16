@@ -3,9 +3,8 @@ from typing import List, Any, Callable, Iterable
 import torch.utils.data
 
 from s3dataset_s3_client import S3Object
-from s3dataset_s3_client._s3dataset import MountpointS3Client
-
 from . import S3DatasetBase
+from ._s3client import S3Client
 from .s3dataset_base import _identity
 
 """
@@ -18,7 +17,7 @@ class S3MapDataset(S3DatasetBase, torch.utils.data.Dataset):
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[MountpointS3Client], Iterable[S3Object]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3Object]],
         transform: Callable[[S3Object], Any] = _identity,
     ):
         super().__init__(region, get_dataset_objects, transform)
