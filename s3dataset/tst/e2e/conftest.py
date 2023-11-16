@@ -1,8 +1,6 @@
-from dataclasses import dataclass
 import io
 import os
 import random
-from typing import Dict
 
 import boto3
 import numpy as np
@@ -32,6 +30,10 @@ class BucketPrefixFixture(object):
         self.contents = {}
         session = boto3.Session(region_name=region)
         self.s3 = session.client("s3")
+
+    @property
+    def s3_uri(self):
+        return f"s3://{self.bucket}/{self.prefix}"
 
     def add(self, key: str, contents: bytes, **kwargs):
         """Upload an S3 object to this prefix of the bucket."""
@@ -78,3 +80,8 @@ def image_directory(request) -> BucketPrefixFixture:
         fixture.add(key, image_bytes)
 
     return fixture
+
+
+@pytest.fixture
+def checkpoint_directory(request) -> BucketPrefixFixture:
+    return get_test_bucket_prefix(f"{request.node.name}/checkpoint_directory")

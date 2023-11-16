@@ -28,7 +28,8 @@ from hypothesis.strategies import (
     one_of,
 )
 
-from s3dataset._s3client import MockS3Client, S3Reader
+from s3dataset._s3client import MockS3Client
+from s3dataset.s3checkpoint import S3Checkpoint
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -150,12 +151,14 @@ def _test_save(
     *,
     equal: Callable[[Any, Any], bool] = eq,
 ):
-    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    checkpoint = S3Checkpoint(TEST_REGION)
 
-    with client.put_object(TEST_BUCKET, TEST_KEY) as put_object_request:
-        _save_with_byteorder(
-            data, put_object_request, byteorder, use_modern_pytorch_format
-        )
+    # Use MockClient instead of actual client.
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    checkpoint._client = client
+
+    with checkpoint.writer(f"s3://{TEST_BUCKET}/{TEST_KEY}") as s3_writer:
+        _save_with_byteorder(data, s3_writer, byteorder, use_modern_pytorch_format)
 
     serialised = BytesIO(b"".join(client.get_object(TEST_BUCKET, TEST_KEY)))
     assert equal(_load_with_byteorder(serialised, byteorder), data)
@@ -168,20 +171,18 @@ def _test_load(
     *,
     equal: Callable[[Any, Any], bool] = eq,
 ):
-    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    checkpoint = S3Checkpoint(TEST_REGION)
+
+    # Put some data to mock bucket and use mock client for Checkpoint
     serialised = BytesIO()
     _save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format)
-    serialised_size = serialised.tell()
     serialised.seek(0)
-    client.add_object(TEST_KEY, serialised.read())
 
-    s3reader = S3Reader(
-        TEST_BUCKET,
-        TEST_KEY,
-        get_stream=lambda: client.get_object(TEST_BUCKET, TEST_KEY),
-    )
-    # TODO - mock HeadObject to do the size fetching properly.
-    s3reader._size = serialised_size
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    client.add_object(TEST_KEY, serialised.read())
+    checkpoint._client = client
+
+    s3reader = checkpoint.reader(f"s3://{TEST_BUCKET}/{TEST_KEY}")
 
     assert equal(_load_with_byteorder(s3reader, byteorder), data)
 

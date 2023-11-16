@@ -121,7 +121,7 @@ def _bucket_key_pairs_to_objects(
     bucket_key_pairs: List[Tuple[str, str]], client: S3Client
 ):
     for bucket, key in bucket_key_pairs:
-        yield S3Reader(bucket, key, get_stream=partial(client.get_object, bucket, key))
+        yield client.get_object(bucket, key)
 
 
 def _list_objects_from_prefix(s3_uri: str, client: S3Client) -> S3BucketIterable:

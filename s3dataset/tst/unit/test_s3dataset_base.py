@@ -105,7 +105,7 @@ def test_get_objects_from_uris_success(
         assert object is not None
         assert object.bucket == TEST_BUCKET
         assert object.key == expected_keys[index]
-        assert object.object_info is None
+        assert object._get_object_info is not None
         assert object._get_stream is not None
     assert count == len(expected_keys)
 
