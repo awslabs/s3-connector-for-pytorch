@@ -2,15 +2,15 @@ import os
 from functools import partial
 from typing import Optional
 
+from .s3object import S3Object
+from .put_object_stream_wrapper import PutObjectStreamWrapper
+
 from s3dataset_s3_client._s3dataset import (
     MountpointS3Client,
     ObjectInfo,
     ListObjectStream,
     GetObjectStream,
 )
-
-from s3dataset_s3_client import S3Object
-from s3dataset_s3_client.put_object_stream_wrapper import PutObjectStreamWrapper
 
 
 class S3Client:

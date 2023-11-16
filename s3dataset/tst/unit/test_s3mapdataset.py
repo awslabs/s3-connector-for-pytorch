@@ -3,7 +3,8 @@ from typing import Sequence, Callable, Any
 import pytest
 
 from s3dataset import S3MapDataset
-from s3dataset_s3_client import S3Object
+from s3dataset._s3client import S3Object
+
 from test_s3dataset_base import (
     TEST_BUCKET,
     TEST_REGION,

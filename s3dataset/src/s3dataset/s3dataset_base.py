@@ -9,8 +9,7 @@ from typing import (
 )
 
 from s3dataset._s3_bucket_iterable import S3BucketIterable
-from s3dataset._s3client import S3Client
-from s3dataset_s3_client import S3Object
+from s3dataset._s3client import S3Client, S3Object
 
 """
 s3dataset_base.py

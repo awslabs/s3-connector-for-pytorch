@@ -9,7 +9,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
 from s3dataset_s3_client._s3dataset import ObjectInfo, GetObjectStream
 
-from s3dataset_s3_client import S3Object
+from s3dataset._s3client import S3Object
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
