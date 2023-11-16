@@ -3,7 +3,8 @@ from typing import Iterable, Union, Sequence
 
 import pytest
 
-from s3dataset_s3_client._s3dataset import S3DatasetException, MockMountpointS3Client
+from s3dataset_s3_client._s3dataset import S3DatasetException
+from s3dataset._s3client import MockS3Client
 
 from s3dataset.s3dataset_base import (
     _parse_s3_uri,
@@ -128,8 +129,8 @@ def test_get_objects_from_uris_fail(uri, error_msg):
 def _create_mock_client_with_dummy_objects(
     bucket: str, keys: Union[str, Iterable[str]]
 ):
-    mock_client = MockMountpointS3Client(TEST_REGION, bucket)
+    mock_client = MockS3Client(TEST_REGION, bucket)
     for key in keys:
         content = f"{bucket}-{key}-dummyData".encode()
         mock_client.add_object(key, content)
-    return mock_client.create_mocked_client()
+    return mock_client

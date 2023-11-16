@@ -8,9 +8,8 @@ from typing import (
     List,
 )
 
-from s3dataset_s3_client._s3dataset import MountpointS3Client
-
 from s3dataset._s3_bucket_iterable import S3BucketIterable
+from s3dataset._s3client import S3Client
 from s3dataset_s3_client import S3Object
 
 """
@@ -27,7 +26,7 @@ class S3DatasetBase:
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[MountpointS3Client], Iterable[S3Object]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3Object]],
         transform: Callable[[S3Object], Any] = _identity,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -41,7 +40,7 @@ class S3DatasetBase:
 
     def _get_client(self):
         if self._client is None:
-            self._client = MountpointS3Client(self.region)
+            self._client = S3Client(self.region)
         return self._client
 
     @classmethod
@@ -109,7 +108,7 @@ def _parse_s3_uri(uri: str) -> Tuple[str, str]:
 
 
 def _get_objects_from_uris(
-    object_uris: Union[str, Iterable[str]], client: MountpointS3Client
+    object_uris: Union[str, Iterable[str]], client: S3Client
 ) -> Iterable[S3Object]:
     if isinstance(object_uris, str):
         object_uris = [object_uris]
@@ -120,14 +119,12 @@ def _get_objects_from_uris(
 
 
 def _bucket_key_pairs_to_objects(
-    bucket_key_pairs: List[Tuple[str, str]], client: MountpointS3Client
+    bucket_key_pairs: List[Tuple[str, str]], client: S3Client
 ):
     for bucket, key in bucket_key_pairs:
         yield S3Object(bucket, key, get_stream=partial(client.get_object, bucket, key))
 
 
-def _list_objects_from_prefix(
-    s3_uri: str, client: MountpointS3Client
-) -> S3BucketIterable:
+def _list_objects_from_prefix(s3_uri: str, client: S3Client) -> S3BucketIterable:
     bucket, prefix = _parse_s3_uri(s3_uri)
     return S3BucketIterable(client, bucket, prefix)

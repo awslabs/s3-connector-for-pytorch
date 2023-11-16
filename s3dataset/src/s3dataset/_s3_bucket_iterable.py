@@ -3,17 +3,17 @@ from itertools import chain
 from typing import Iterator, List
 
 from s3dataset_s3_client._s3dataset import (
-    MountpointS3Client,
     ObjectInfo,
     ListObjectResult,
     ListObjectStream,
 )
 
+from s3dataset._s3client import S3Client
 from s3dataset_s3_client import S3Object
 
 
 class S3BucketIterable:
-    def __init__(self, client: MountpointS3Client, bucket: str, prefix: str):
+    def __init__(self, client: S3Client, bucket: str, prefix: str):
         self._client = client
         self._bucket = bucket
         self._prefix = prefix
@@ -24,7 +24,7 @@ class S3BucketIterable:
 
 
 class S3BucketIterator:
-    def __init__(self, client: MountpointS3Client, bucket: str, prefix: str):
+    def __init__(self, client: S3Client, bucket: str, prefix: str):
         self._client = client
         self._bucket = bucket
         self._list_stream = _PickleableListObjectStream(client, bucket, prefix)
@@ -45,7 +45,7 @@ class S3BucketIterator:
 
 
 class _PickleableListObjectStream:
-    def __init__(self, client: MountpointS3Client, bucket: str, prefix: str):
+    def __init__(self, client: S3Client, bucket: str, prefix: str):
         self._client = client
         self._list_stream = iter(client.list_objects(bucket, prefix))
 

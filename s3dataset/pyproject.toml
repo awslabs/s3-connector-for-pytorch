@@ -15,7 +15,10 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest"
+    "pytest",
+    "hypothesis",
+    "flake8",
+    "black"
 ]
 
 e2e = [
