@@ -2,6 +2,11 @@ from s3dataset_s3_client._s3dataset import MockMountpointS3Client, MountpointS3C
 
 from . import S3Client
 
+"""
+_mock_s3client.py
+    Internal client wrapper mock class for unit testing.
+"""
+
 
 class MockS3Client(S3Client):
     def __init__(self, region: str, bucket: str, part_size: int = 8 * 1024 * 1024):

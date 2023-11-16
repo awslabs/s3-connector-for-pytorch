@@ -1,9 +1,15 @@
+import io
 from typing import Union
 
 from s3dataset_s3_client._s3dataset import PutObjectStream
 
+"""
+s3writer.py
+    File like representation of a writeable S3 object.
+"""
 
-class PutObjectStreamWrapper:
+
+class S3Writer(io.BufferedIOBase):
     def __init__(self, stream: PutObjectStream):
         self.stream = stream
 
@@ -24,3 +30,9 @@ class PutObjectStreamWrapper:
 
     def flush(self):
         pass
+
+    def readable(self) -> bool:
+        return False
+
+    def writable(self) -> bool:
+        return True
