@@ -1,11 +1,12 @@
+import pickle
+
 import pytest
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.datapipes.datapipe import MapDataPipe
 from torchdata.datapipes.iter import IterableWrapper, IterDataPipe
 
-from s3dataset import S3IterableDataset
-from s3dataset import S3MapDataset
+from s3dataset import S3IterableDataset, S3MapDataset
 
 
 def test_s3iterable_dataset_images_10_from_prefix(image_directory):
@@ -76,6 +77,21 @@ def test_dataloader_10_images_s3mapdataset(
     assert isinstance(s3_dataloader.dataset, S3MapDataset)
 
     _compare_dataloaders(local_dataloader, s3_dataloader, expected_batch_count)
+
+
+def test_dataset_unpickled_iterates(image_directory):
+    s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
+    dataset = S3IterableDataset.from_prefix(
+        s3_uri=s3_uri,
+        region=image_directory.region,
+    )
+    assert isinstance(dataset, S3IterableDataset)
+    unpickled = pickle.loads(pickle.dumps(dataset))
+
+    expected = [i.key for i in dataset]
+    actual = [i.key for i in unpickled]
+
+    assert expected == actual
 
 
 def _compare_dataloaders(
