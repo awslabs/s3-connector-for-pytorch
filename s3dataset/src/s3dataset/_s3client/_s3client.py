@@ -21,11 +21,14 @@ class S3Client:
 
     @property
     def _client(self) -> MountpointS3Client:
-        if self._client_pid != os.getpid():
+        if self._client_pid is None or self._client_pid != os.getpid():
             self._client_pid = os.getpid()
             # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
-            self._real_client = MountpointS3Client(region=self._region)
+            self._real_client = self._client_builder()
         return self._real_client
+
+    def _client_builder(self) -> MountpointS3Client:
+        return MountpointS3Client(region=self._region)
 
     @property
     def region(self) -> str:
