@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, get_worker_info
 from torchdata.datapipes.iter import IterableWrapper
 
 from s3dataset import S3IterableDataset, S3MapDataset
-from s3dataset._s3client import S3Object
+from s3dataset._s3client import S3Reader
 
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture
@@ -153,7 +153,7 @@ def _set_start_method(start_method: str):
     torch.multiprocessing.set_start_method(start_method, force=True)
 
 
-def _extract_object_data(s3_object: S3Object) -> ((str, bytes), (int, int)):
+def _extract_object_data(s3_object: S3Reader) -> ((str, bytes), (int, int)):
     assert s3_object._stream is None
     return _read_data(s3_object), _get_worker_info()
 
@@ -164,5 +164,5 @@ def _get_worker_info() -> (int, int):
     return worker_info.id, worker_info.num_workers
 
 
-def _read_data(s3_object: S3Object) -> Tuple[str, bytes]:
+def _read_data(s3_object: S3Reader) -> Tuple[str, bytes]:
     return s3_object.key, s3_object.read()

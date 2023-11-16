@@ -10,7 +10,7 @@ s3_object.py
 """
 
 
-class S3Object(io.BufferedIOBase):
+class S3Reader(io.BufferedIOBase):
     def __init__(
         self,
         bucket: str,

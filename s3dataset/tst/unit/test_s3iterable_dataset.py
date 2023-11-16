@@ -3,7 +3,7 @@ from typing import Iterable, Callable, Sequence, Any
 import pytest
 
 from s3dataset import S3IterableDataset
-from s3dataset._s3client import S3Object
+from s3dataset._s3client import S3Reader
 
 from test_s3dataset_base import (
     TEST_BUCKET,
@@ -85,23 +85,23 @@ def test_dataset_creation_from_prefix(
     [
         (
             "obj1",
-            lambda s3object: s3object.read(),
+            lambda s3reader: s3reader.read(),
             f"{TEST_BUCKET}-obj1-dummyData".encode(),
         ),
         (
             "obj1",
-            lambda s3object: s3object.read().upper(),
+            lambda s3reader: s3reader.read().upper(),
             f"{TEST_BUCKET}-obj1-dummyData".upper().encode(),
         ),
         (
             "obj1",
-            lambda s3object: 2,
+            lambda s3reader: 2,
             2,
         ),
     ],
 )
 def test_transform_from_prefix(
-    key: str, transform: Callable[[S3Object], Any], expected: Any
+    key: str, transform: Callable[[S3Reader], Any], expected: Any
 ):
     dataset = S3IterableDataset.from_prefix(
         S3_PREFIX,
@@ -122,23 +122,23 @@ def test_transform_from_prefix(
     [
         (
             "obj1",
-            lambda s3object: s3object.read(),
+            lambda s3reader: s3reader.read(),
             f"{TEST_BUCKET}-obj1-dummyData".encode(),
         ),
         (
             "obj1",
-            lambda s3object: s3object.read().upper(),
+            lambda s3reader: s3reader.read().upper(),
             f"{TEST_BUCKET}-obj1-dummyData".upper().encode(),
         ),
         (
             "obj1",
-            lambda s3object: 2,
+            lambda s3reader: 2,
             2,
         ),
     ],
 )
 def test_transform_from_objects(
-    key: str, transform: Callable[[S3Object], Any], expected: Any
+    key: str, transform: Callable[[S3Reader], Any], expected: Any
 ):
     object_uris = f"{S3_PREFIX}/{key}"
 
@@ -186,7 +186,7 @@ def test_iteration_multiple_times(
 def _verify_dataset(
     dataset: S3IterableDataset,
     expected_keys: Sequence[str],
-    object_info_check: Callable[[S3Object], bool],
+    object_info_check: Callable[[S3Reader], bool],
     *,
     times_to_verify: int = 2,
 ):

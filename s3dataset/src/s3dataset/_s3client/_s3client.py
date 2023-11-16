@@ -2,7 +2,7 @@ import os
 from functools import partial
 from typing import Optional
 
-from .s3object import S3Object
+from .s3reader import S3Reader
 from .put_object_stream_wrapper import PutObjectStreamWrapper
 
 from s3dataset_s3_client._s3dataset import (
@@ -34,9 +34,8 @@ class S3Client:
     def region(self) -> str:
         return self._region
 
-    # TODO: S3Object to become S3Reader
-    def get_object(self, bucket: str, key: str) -> S3Object:
-        return S3Object(bucket, key, get_stream=partial(self._get_object, bucket, key))
+    def get_object(self, bucket: str, key: str) -> S3Reader:
+        return S3Reader(bucket, key, get_stream=partial(self._get_object, bucket, key))
 
     def _get_object(self, bucket: str, key: str) -> GetObjectStream:
         return self._client.get_object(bucket, key)
