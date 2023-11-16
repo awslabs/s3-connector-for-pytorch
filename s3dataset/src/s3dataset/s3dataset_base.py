@@ -9,7 +9,7 @@ from typing import (
 )
 
 from s3dataset._s3_bucket_iterable import S3BucketIterable
-from s3dataset._s3client import S3Client, S3Object
+from s3dataset._s3client import S3Client, S3Reader
 
 """
 s3dataset_base.py
@@ -17,7 +17,7 @@ s3dataset_base.py
 """
 
 
-def _identity(obj: S3Object) -> S3Object:
+def _identity(obj: S3Reader) -> S3Reader:
     return obj
 
 
@@ -25,8 +25,8 @@ class S3DatasetBase:
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[S3Client], Iterable[S3Object]],
-        transform: Callable[[S3Object], Any] = _identity,
+        get_dataset_objects: Callable[[S3Client], Iterable[S3Reader]],
+        transform: Callable[[S3Reader], Any] = _identity,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -48,7 +48,7 @@ class S3DatasetBase:
         object_uris: Union[str, Iterable[str]],
         *,
         region: str,
-        transform: Callable[[S3Object], Any] = _identity,
+        transform: Callable[[S3Reader], Any] = _identity,
     ):
         """
         Returns an instance of this dataset using the URI(s) provided.
@@ -58,7 +58,7 @@ class S3DatasetBase:
           region(str or None):
             The S3 region where the objects are stored.
           transform:
-            Optional callable which is used to transform an S3Object into the desired type.
+            Optional callable which is used to transform an S3Reader into the desired type.
         """
         return cls(
             region, partial(_get_objects_from_uris, object_uris), transform=transform
@@ -70,7 +70,7 @@ class S3DatasetBase:
         s3_uri: str,
         *,
         region: str,
-        transform: Callable[[S3Object], Any] = _identity,
+        transform: Callable[[S3Reader], Any] = _identity,
     ):
         """
         Returns an instance of this dataset using the objects under bucket/prefix.
@@ -80,7 +80,7 @@ class S3DatasetBase:
           region(str):
             The S3 region where the bucket is.
           transform:
-            Optional callable which is used to transform an S3Object into the desired type.
+            Optional callable which is used to transform an S3Reader into the desired type.
         """
         return cls(
             region, partial(_list_objects_from_prefix, s3_uri), transform=transform
@@ -108,7 +108,7 @@ def _parse_s3_uri(uri: str) -> Tuple[str, str]:
 
 def _get_objects_from_uris(
     object_uris: Union[str, Iterable[str]], client: S3Client
-) -> Iterable[S3Object]:
+) -> Iterable[S3Reader]:
     if isinstance(object_uris, str):
         object_uris = [object_uris]
     # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
@@ -121,7 +121,7 @@ def _bucket_key_pairs_to_objects(
     bucket_key_pairs: List[Tuple[str, str]], client: S3Client
 ):
     for bucket, key in bucket_key_pairs:
-        yield S3Object(bucket, key, get_stream=partial(client.get_object, bucket, key))
+        yield S3Reader(bucket, key, get_stream=partial(client.get_object, bucket, key))
 
 
 def _list_objects_from_prefix(s3_uri: str, client: S3Client) -> S3BucketIterable:

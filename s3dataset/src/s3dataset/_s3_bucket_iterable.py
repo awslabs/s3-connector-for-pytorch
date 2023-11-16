@@ -8,7 +8,7 @@ from s3dataset_s3_client._s3dataset import (
     ListObjectStream,
 )
 
-from s3dataset._s3client import S3Client, S3Object
+from s3dataset._s3client import S3Client, S3Reader
 
 
 class S3BucketIterable:
@@ -28,14 +28,14 @@ class S3BucketIterator:
         self._bucket = bucket
         self._list_stream = _PickleableListObjectStream(client, bucket, prefix)
 
-    def __iter__(self) -> Iterator[S3Object]:
+    def __iter__(self) -> Iterator[S3Reader]:
         return map(
             self._create_s3_object,
             chain.from_iterable(map(_extract_object_info, self._list_stream)),
         )
 
     def _create_s3_object(self, object_info: ObjectInfo):
-        return S3Object(
+        return S3Reader(
             self._bucket,
             object_info.key,
             object_info,

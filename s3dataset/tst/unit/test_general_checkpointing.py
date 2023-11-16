@@ -28,7 +28,7 @@ from hypothesis.strategies import (
     one_of,
 )
 
-from s3dataset._s3client import MockS3Client, S3Object
+from s3dataset._s3client import MockS3Client, S3Reader
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -175,15 +175,15 @@ def _test_load(
     serialised.seek(0)
     client.add_object(TEST_KEY, serialised.read())
 
-    s3object = S3Object(
+    s3reader = S3Reader(
         TEST_BUCKET,
         TEST_KEY,
         get_stream=lambda: client.get_object(TEST_BUCKET, TEST_KEY),
     )
     # TODO - mock HeadObject to do the size fetching properly.
-    s3object._size = serialised_size
+    s3reader._size = serialised_size
 
-    assert equal(_load_with_byteorder(s3object, byteorder), data)
+    assert equal(_load_with_byteorder(s3reader, byteorder), data)
 
 
 def _save_with_byteorder(data, fobj, byteorder: str, use_modern_pytorch_format: bool):
