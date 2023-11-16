@@ -3,7 +3,8 @@ from typing import Iterable, Callable, Sequence, Any
 import pytest
 
 from s3dataset import S3IterableDataset
-from s3dataset_s3_client import S3Object
+from s3dataset._s3client import S3Object
+
 from test_s3dataset_base import (
     TEST_BUCKET,
     _create_mock_client_with_dummy_objects,

@@ -28,8 +28,7 @@ from hypothesis.strategies import (
     one_of,
 )
 
-from s3dataset._s3client import MockS3Client
-from s3dataset_s3_client import S3Object
+from s3dataset._s3client import MockS3Client, S3Object
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"

@@ -8,8 +8,7 @@ from s3dataset_s3_client._s3dataset import (
     ListObjectStream,
 )
 
-from s3dataset._s3client import S3Client
-from s3dataset_s3_client import S3Object
+from s3dataset._s3client import S3Client, S3Object
 
 
 class S3BucketIterable:

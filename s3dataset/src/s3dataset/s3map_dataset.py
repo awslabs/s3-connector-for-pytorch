@@ -2,9 +2,8 @@ from typing import List, Any, Callable, Iterable
 
 import torch.utils.data
 
-from s3dataset_s3_client import S3Object
 from . import S3DatasetBase
-from ._s3client import S3Client
+from ._s3client import S3Client, S3Object
 from .s3dataset_base import _identity
 
 """
