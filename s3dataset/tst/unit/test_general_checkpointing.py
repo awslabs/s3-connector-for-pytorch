@@ -27,10 +27,9 @@ from hypothesis.strategies import (
     just,
     one_of,
 )
-from s3dataset_s3_client._s3dataset import MockMountpointS3Client
 
+from s3dataset._s3client import MockS3Client
 from s3dataset_s3_client import S3Object
-from s3dataset_s3_client.put_object_stream_wrapper import PutObjectStreamWrapper
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -150,14 +149,11 @@ def _test_save(
     byteorder: str,
     use_modern_pytorch_format: bool,
     *,
-    equal: Callable[[Any, Any], bool] = eq
+    equal: Callable[[Any, Any], bool] = eq,
 ):
-    mock_client = MockMountpointS3Client(TEST_REGION, TEST_BUCKET)
-    client = mock_client.create_mocked_client()
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
 
-    with PutObjectStreamWrapper(
-        client.put_object(TEST_BUCKET, TEST_KEY)
-    ) as put_object_request:
+    with client.put_object(TEST_BUCKET, TEST_KEY) as put_object_request:
         _save_with_byteorder(
             data, put_object_request, byteorder, use_modern_pytorch_format
         )
@@ -171,16 +167,15 @@ def _test_load(
     byteorder: str,
     use_modern_pytorch_format: bool,
     *,
-    equal: Callable[[Any, Any], bool] = eq
+    equal: Callable[[Any, Any], bool] = eq,
 ):
-    mock_client = MockMountpointS3Client(TEST_REGION, TEST_BUCKET)
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
     serialised = BytesIO()
     _save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format)
     serialised_size = serialised.tell()
     serialised.seek(0)
-    mock_client.add_object(TEST_KEY, serialised.read())
+    client.add_object(TEST_KEY, serialised.read())
 
-    client = mock_client.create_mocked_client()
     s3object = S3Object(
         TEST_BUCKET,
         TEST_KEY,
