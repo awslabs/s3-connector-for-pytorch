@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/multiload-failures-ci-test" ]
   pull_request:
     branches: [ "main" ]
   merge_group:
@@ -75,7 +75,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        os: [ ubuntu-22.04, ubuntu-latest ]
+        architecture: [ x64, x86, arm64 ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
     permissions:
       id-token: write
       contents: read
