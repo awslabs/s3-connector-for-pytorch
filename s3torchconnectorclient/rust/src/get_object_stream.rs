@@ -6,7 +6,7 @@
 use pyo3::types::PyBytes;
 use pyo3::{pyclass, pymethods, PyErr, PyRef, PyRefMut, PyResult};
 
-use crate::exception::S3DatasetException;
+use crate::exception::S3Exception;
 use crate::mountpoint_s3_client_inner::MPGetObjectClosure;
 
 #[pyclass(name = "GetObjectStream", module = "s3torchconnectorclient._mountpoint_s3_client")]
@@ -44,7 +44,7 @@ impl GetObjectStream {
             None => Ok(None),
             Some((offset, data)) => {
                 if offset != slf.offset {
-                    return Err(S3DatasetException::new_err(
+                    return Err(S3Exception::new_err(
                         "Data from S3 was returned out of order!",
                     ));
                 }

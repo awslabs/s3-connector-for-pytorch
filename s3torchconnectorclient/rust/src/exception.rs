@@ -11,7 +11,7 @@ use pyo3::PyErr;
 
 pyo3::create_exception!(
     s3torchconnectorclient._mountpoint_s3_client,
-    S3DatasetException,
+    S3Exception,
     PyException
 );
 
@@ -25,7 +25,7 @@ pub fn python_exception(error: impl Error) -> PyErr {
         write!(&mut s, ": {}", error).unwrap();
     }
 
-    S3DatasetException::new_err(s)
+    S3Exception::new_err(s)
 }
 
 #[cfg(test)]
@@ -41,6 +41,6 @@ mod tests {
         let err = io::Error::new(io::ErrorKind::InvalidData, "Test message");
         let pyerr = python_exception(err);
 
-        assert_eq!(pyerr.to_string(), "S3DatasetException: Test message");
+        assert_eq!(pyerr.to_string(), "S3Exception: Test message");
     }
 }

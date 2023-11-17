@@ -7,7 +7,7 @@ use log::LevelFilter;
 use pyo3::prelude::*;
 use pyo3_log::Logger;
 
-use crate::exception::{python_exception, S3DatasetException};
+use crate::exception::{python_exception, S3Exception};
 use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
 use crate::mock_client::PyMockClient;
@@ -40,6 +40,6 @@ fn make_lib(py: Python, mountpoint_s3_client: &PyModule) -> PyResult<()> {
     mountpoint_s3_client.add_class::<PyListObjectResult>()?;
     mountpoint_s3_client.add_class::<PyObjectInfo>()?;
     mountpoint_s3_client.add_class::<PyRestoreStatus>()?;
-    mountpoint_s3_client.add("S3DatasetException", py.get_type::<S3DatasetException>())?;
+    mountpoint_s3_client.add("S3Exception", py.get_type::<S3Exception>())?;
     Ok(())
 }

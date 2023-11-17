@@ -7,7 +7,7 @@ use futures::executor::block_on;
 use mountpoint_s3_client::PutObjectRequest;
 use pyo3::{pyclass, pymethods, PyRefMut, PyResult, Python};
 
-use crate::exception::{python_exception, S3DatasetException};
+use crate::exception::{python_exception, S3Exception};
 
 #[pyclass(name = "PutObjectStream", module = "s3torchconnectorclient._mountpoint_s3_client")]
 pub struct PutObjectStream {
@@ -68,7 +68,7 @@ impl<T: PutObjectRequest + Sync> PutObjectRequestWrapper for PutObjectRequestWra
         if let Some(request) = self.request.as_mut() {
             py.allow_threads(|| block_on(request.write(data)).map_err(python_exception))
         } else {
-            Err(S3DatasetException::new_err("Cannot write to closed object"))
+            Err(S3Exception::new_err("Cannot write to closed object"))
         }
     }
 
@@ -77,7 +77,7 @@ impl<T: PutObjectRequest + Sync> PutObjectRequestWrapper for PutObjectRequestWra
             py.allow_threads(|| block_on(request.complete()).map_err(python_exception))?;
             Ok(())
         } else {
-            Err(S3DatasetException::new_err(
+            Err(S3Exception::new_err(
                 "Cannot close object more than once",
             ))
         }

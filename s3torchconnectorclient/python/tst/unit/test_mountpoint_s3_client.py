@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, example
 from hypothesis.strategies import text, integers, floats
 from s3torchconnectorclient._mountpoint_s3_client import (
-    S3DatasetException,
+    S3Exception,
     GetObjectStream,
     ListObjectStream,
     PutObjectStream,
@@ -73,7 +73,7 @@ def test_get_object_bad_bucket():
 
     try:
         client.get_object("does_not_exist", "foo")
-    except S3DatasetException as e:
+    except S3Exception as e:
         assert str(e) == "Service error: The bucket does not exist"
 
 
@@ -95,7 +95,7 @@ def test_get_object_bad_object():
 
     try:
         client.get_object(MOCK_BUCKET, "does_not_exist")
-    except S3DatasetException as e:
+    except S3Exception as e:
         assert str(e) == "Service error: The key does not exist"
 
 
@@ -229,7 +229,7 @@ def test_put_object_no_multiple_close():
 
     put_stream.write(b"")
     put_stream.close()
-    with pytest.raises(S3DatasetException) as e:
+    with pytest.raises(S3Exception) as e:
         put_stream.close()
     assert str(e.value) == "Cannot close object more than once"
 
@@ -243,7 +243,7 @@ def test_put_object_no_write_after_close():
 
     put_stream.write(b"")
     put_stream.close()
-    with pytest.raises(S3DatasetException) as e:
+    with pytest.raises(S3Exception) as e:
         put_stream.write(b"")
     assert str(e.value) == "Cannot write to closed object"
 
