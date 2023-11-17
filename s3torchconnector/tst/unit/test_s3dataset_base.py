@@ -6,7 +6,7 @@ from typing import Iterable, Union, Sequence
 
 import pytest
 
-from s3torchconnectorclient._mountpoint_s3_client import S3DatasetException
+from s3torchconnector import S3Exception
 from s3torchconnector._s3client import MockS3Client
 
 from s3torchconnector.s3dataset_base import (
@@ -84,7 +84,7 @@ def test_list_objects_from_prefix(
 
 def test_list_objects_for_bucket_invalid():
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
-    with pytest.raises(S3DatasetException) as error:
+    with pytest.raises(S3Exception) as error:
         objects = _list_objects_from_prefix(
             "s3://DIFFERENT_BUCKET",
             mock_client,

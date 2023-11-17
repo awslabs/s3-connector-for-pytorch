@@ -5,18 +5,18 @@ import copyreg
 
 from ._logger_patch import TRACE as LOG_TRACE
 from ._logger_patch import _install_trace_logging
-from ._mountpoint_s3_client import S3DatasetException
+from ._mountpoint_s3_client import S3Exception
 
 _install_trace_logging()
 
 
-def _s3dataset_exception_reduce(exc: S3DatasetException):
-    return S3DatasetException, exc.args
+def _s3exception_reduce(exc: S3Exception):
+    return S3Exception, exc.args
 
 
-copyreg.pickle(S3DatasetException, _s3dataset_exception_reduce)
+copyreg.pickle(S3Exception, _s3exception_reduce)
 
 __all__ = [
     "LOG_TRACE",
-    "S3DatasetException",
+    "S3Exception",
 ]

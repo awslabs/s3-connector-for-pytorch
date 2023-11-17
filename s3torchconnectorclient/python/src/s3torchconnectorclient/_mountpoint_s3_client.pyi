@@ -104,5 +104,5 @@ class ListObjectStream:
         complete: bool,
     ) -> ListObjectStream: ...
 
-class S3DatasetException(Exception):
+class S3Exception(Exception):
     pass
