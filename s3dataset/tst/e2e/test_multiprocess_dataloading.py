@@ -116,7 +116,6 @@ def test_s3iterable_dataset_multiprocess(
         assert dict(s3keys) == {key: num_workers for key in image_directory}
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("start_method, dataset_builder", test_args)
 def test_s3mapdataset_multiprocess(
     start_method: str,
