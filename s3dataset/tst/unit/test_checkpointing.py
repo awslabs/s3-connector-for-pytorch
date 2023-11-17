@@ -142,7 +142,7 @@ def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(
     _test_load(
         storage,
         byteorder,
-        use_modern_pytorch_format=True,
+        use_modern_pytorch_format=False,
         equal=lambda a, b: list(a) == list(b),
     )
 
