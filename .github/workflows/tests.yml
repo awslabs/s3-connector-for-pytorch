@@ -60,13 +60,13 @@ jobs:
           python -m pip install --upgrade pip
           # Manually install CPU-only version of torch so we're not carrying around giant GPU drivers/kernels
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e "s3dataset_s3_client[test]"
-          python -m pip install -e "s3dataset[test]"
+          python -m pip install -e "s3torchconnectorclient[test]"
+          python -m pip install -e "s3torchconnector[test]"
 
       - name: Client unit tests
-        run: pytest s3dataset_s3_client/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
+        run: pytest s3torchconnectorclient/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
       - name: Dataset unit tests
-        run: pytest s3dataset/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
+        run: pytest s3torchconnector/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
 
 
   integration-test:
@@ -120,11 +120,11 @@ jobs:
           python -m pip install --upgrade pip
           # Manually install CPU-only version of torch so we're not carrying around giant GPU drivers/kernels
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e "s3dataset_s3_client[test,e2e]"
-          python -m pip install -e "s3dataset[test,e2e]"
+          python -m pip install -e "s3torchconnectorclient[test,e2e]"
+          python -m pip install -e "s3torchconnector[test,e2e]"
 
       - name: Dataset integration tests
-        run: pytest s3dataset/tst/e2e -n auto
+        run: pytest s3torchconnector/tst/e2e -n auto
 
 
   lint:
@@ -162,8 +162,8 @@ jobs:
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
-          flake8 s3dataset/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 s3dataset_s3_client/python --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 s3torchconnector/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 s3torchconnectorclient/python --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Lint with Black
         uses: psf/black@stable
@@ -200,10 +200,10 @@ jobs:
           key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build Rust tests
-        run: cargo test --no-default-features --no-run --manifest-path s3dataset_s3_client/Cargo.toml
+        run: cargo test --no-default-features --no-run --manifest-path s3torchconnectorclient/Cargo.toml
 
       - name: Run Rust tests
-        run: cargo test --no-default-features --manifest-path s3dataset_s3_client/Cargo.toml
+        run: cargo test --no-default-features --manifest-path s3torchconnectorclient/Cargo.toml
 
 
   clippy:
@@ -235,4 +235,4 @@ jobs:
           key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Lint with clippy
-        run: cargo clippy --all-targets --all-features --manifest-path s3dataset_s3_client/Cargo.toml
+        run: cargo clippy --all-targets --all-features --manifest-path s3torchconnectorclient/Cargo.toml

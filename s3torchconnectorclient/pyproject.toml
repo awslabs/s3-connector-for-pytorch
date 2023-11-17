@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools", "setuptools-rust", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s3torchconnectorclient"
+version = "0.1"
+description = "Internal S3 client implementation for s3torchconnector"
+requires-python = ">=3.8"
+
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "flake8",
+    "black",
+    "hypothesis"
+]
+
+[tool.setuptools.packages]
+# Pure Python packages/modules
+find = { where = ["python/src"] }
+
+[[tool.setuptools-rust.ext-modules]]
+target = "s3torchconnectorclient._mountpoint_s3_client"
