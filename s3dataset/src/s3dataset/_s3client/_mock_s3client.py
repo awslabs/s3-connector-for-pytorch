@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 from s3dataset_s3_client._s3dataset import MockMountpointS3Client, MountpointS3Client
 
 from . import S3Client

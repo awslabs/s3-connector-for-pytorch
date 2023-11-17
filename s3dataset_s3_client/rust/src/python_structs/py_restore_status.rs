@@ -1,3 +1,8 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: BSD
+ */
+
 use mountpoint_s3_client::types::RestoreStatus;
 use pyo3::types::PyTuple;
 use pyo3::PyResult;

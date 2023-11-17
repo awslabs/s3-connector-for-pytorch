@@ -1,3 +1,8 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: BSD
+ */
+
 use log::LevelFilter;
 use pyo3::prelude::*;
 use pyo3_log::Logger;

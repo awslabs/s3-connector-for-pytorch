@@ -1,3 +1,7 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
+from dataclasses import dataclass
 import io
 import os
 import random

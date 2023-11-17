@@ -1,3 +1,8 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: BSD
+ */
+
 use pyo3::types::PyBytes;
 use pyo3::{pyclass, pymethods, PyErr, PyRef, PyRefMut, PyResult};
 

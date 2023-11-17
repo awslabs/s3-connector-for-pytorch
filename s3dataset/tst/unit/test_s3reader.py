@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 import logging
 import sys
 from io import BytesIO, SEEK_END, SEEK_CUR

@@ -1,3 +1,8 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: BSD
+ */
+
 use pyo3::{pyclass, pymethods};
 
 use crate::python_structs::py_object_info::PyObjectInfo;

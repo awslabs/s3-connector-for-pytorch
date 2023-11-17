@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 from .s3checkpoint import S3Checkpoint
 from ._s3client import S3Reader, S3Writer
 from .s3dataset_base import S3DatasetBase
