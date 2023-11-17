@@ -18,6 +18,7 @@ sudo apt install python3-pip
 ```
 #### Create  a Python virtual environment
 ```shell
+  sudo apt install python3.10-venv
   cd /path/to/your/project
   python3 -m venv your-env
   source your-env/bin/activate
@@ -33,6 +34,7 @@ sudo apt install python3-pip
 #### Install Rust compiler (needed to build the client)
 ```shell
   curl https://sh.rustup.rs -sSf | sh
+  source "$HOME/.cargo/env"
 ```
 #### Install project modules
 ```shell
