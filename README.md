@@ -47,6 +47,17 @@ sudo apt install python3-pip
 When you make changes to the Rust code, you need to run `pip install -e .` before changes will be viewable from 
 Python. It's probably worth creating a shell script for this and adding it as part of the pre-build step.
 
+When developing, ensure to create license headers at the top of each file. This can be automated with Pycharm/Clion 
+with the following configuration:
+
+Go to the settings, and find the 'Copyright profiles' section. Create a new one with the following text:
+
+> Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+> 
+> // SPDX-License-Identifier: BSD
+
+Then under the 'Copyright' section, create a new scope covering 'all', and assign your new copyright profile.
+
 ### Making a commit
 
 Our CI uses `clippy` to lint Rust code changes. Use `cargo clippy --all-targets --all-features` to lint Rust before
