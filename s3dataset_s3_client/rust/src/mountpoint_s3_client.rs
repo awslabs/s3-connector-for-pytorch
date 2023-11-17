@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
+use nix::unistd::Pid;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pymethods, PyRef, PyResult, ToPyObject};
 
@@ -31,6 +32,8 @@ pub struct MountpointS3Client {
     profile: Option<String>,
     #[pyo3(get)]
     no_sign_request: bool,
+
+    owner_pid: Pid,
 }
 
 #[pymethods]
@@ -148,6 +151,7 @@ impl MountpointS3Client {
             profile,
             no_sign_request,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
+            owner_pid: nix::unistd::getpid(),
         }
     }
 }
@@ -159,5 +163,18 @@ fn auth_config(profile: Option<&str>, no_sign_request: bool) -> S3ClientAuthConf
         S3ClientAuthConfig::Profile(profile_name.to_string())
     } else {
         S3ClientAuthConfig::Default
+    }
+}
+
+impl Drop for MountpointS3Client {
+    fn drop(&mut self) {
+        if nix::unistd::getpid() != self.owner_pid {
+            // We don't want to try to deallocate a client on a different process after a fork, as
+            // the threads the destructor is expecting to exist actually don't (they didn't survive
+            // the fork). So we intentionally leak the inner client by bumping its reference count
+            // and then forgetting it, so the reference count can never reach zero. It's a memory
+            // leak, but not a big one in practice given how long we expect clients to live.
+            std::mem::forget(Arc::clone(&self.client));
+        }
     }
 }
