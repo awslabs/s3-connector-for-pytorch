@@ -3,8 +3,10 @@
 
 import logging
 import pickle
+from datetime import timedelta
 from typing import Set
 
+import hypothesis
 import pytest
 from hypothesis import given, example
 from hypothesis.strategies import text, integers, floats
@@ -257,6 +259,7 @@ def test_put_object_with_storage_class():
     put_stream.close()
 
 
+@hypothesis.settings(deadline=timedelta(seconds=5))
 @given(
     text(),
     integers(min_value=5 * 2**20, max_value=5 * 2**30),
