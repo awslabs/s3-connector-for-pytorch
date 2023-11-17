@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 from typing import Sequence, Callable, Any
 
 import pytest

@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 from io import BytesIO
 from operator import eq
 from typing import Any, Callable

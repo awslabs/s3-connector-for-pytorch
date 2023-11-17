@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 import logging
 from typing import Iterable, Union, Sequence
 

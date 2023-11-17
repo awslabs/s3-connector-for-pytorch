@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 from typing import List, Optional
 
 # This interface is unstable!

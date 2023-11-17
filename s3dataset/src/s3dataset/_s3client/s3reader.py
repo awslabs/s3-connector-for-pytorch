@@ -1,3 +1,6 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 import io
 from io import SEEK_CUR, SEEK_END, SEEK_SET
 from typing import Callable, Optional

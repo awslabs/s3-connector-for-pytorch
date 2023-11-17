@@ -1,3 +1,8 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: BSD
+ */
+
 use futures::executor::block_on;
 use mountpoint_s3_client::PutObjectRequest;
 use pyo3::{pyclass, pymethods, PyRefMut, PyResult, Python};

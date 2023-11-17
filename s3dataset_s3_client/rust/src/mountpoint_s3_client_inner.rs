@@ -1,3 +1,8 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: BSD
+ */
+
 use std::sync::Arc;
 
 use futures::executor::block_on;
