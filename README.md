@@ -1,6 +1,6 @@
-# S3Dataset
+# S3TorchConnector
 
-S3Dataset is a tool which allows Python code to interface with a performant S3 client.
+S3TorchConnector is a tool which allows Python code to interface with a performant S3 client.
 
 ## Getting started
 ### TODO: These instructions are probably incomplete
@@ -38,8 +38,8 @@ sudo apt install python3-pip
 ```
 #### Install project modules
 ```shell
-  pip install -e s3dataset_s3_client
-  pip install -e s3dataset
+  pip install -e s3torchconnectorclient
+  pip install -e s3torchconnector
 ```
 
 ## Development workflow
