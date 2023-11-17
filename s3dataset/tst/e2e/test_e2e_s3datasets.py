@@ -59,7 +59,7 @@ def test_dataloader_10_images_s3iterable_dataset(
     "batch_size, expected_batch_count",
     [(1, 10), (2, 5), (4, 3), (10, 1)],
 )
-def test_dataloader_10_images_s3mapstyle_dataset(
+def test_dataloader_10_images_s3mapdataset(
     batch_size: int, expected_batch_count: int, image_directory
 ):
     local_dataloader = _create_local_dataloader(image_directory, batch_size, True)

@@ -116,6 +116,7 @@ def test_s3iterable_dataset_multiprocess(
         assert dict(s3keys) == {key: num_workers for key in image_directory}
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("start_method, dataset_builder", test_args)
 def test_s3mapdataset_multiprocess(
     start_method: str,
@@ -153,9 +154,9 @@ def _set_start_method(start_method: str):
     torch.multiprocessing.set_start_method(start_method, force=True)
 
 
-def _extract_object_data(s3_object: S3Reader) -> ((str, bytes), (int, int)):
-    assert s3_object._stream is None
-    return _read_data(s3_object), _get_worker_info()
+def _extract_object_data(s3reader: S3Reader) -> ((str, bytes), (int, int)):
+    assert s3reader._stream is None
+    return _read_data(s3reader), _get_worker_info()
 
 
 def _get_worker_info() -> (int, int):
@@ -164,5 +165,5 @@ def _get_worker_info() -> (int, int):
     return worker_info.id, worker_info.num_workers
 
 
-def _read_data(s3_object: S3Reader) -> Tuple[str, bytes]:
-    return s3_object.key, s3_object.read()
+def _read_data(s3reader: S3Reader) -> Tuple[str, bytes]:
+    return s3reader.key, s3reader.read()

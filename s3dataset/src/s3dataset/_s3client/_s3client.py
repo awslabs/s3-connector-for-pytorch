@@ -3,7 +3,7 @@ from functools import partial
 from typing import Optional
 
 from .s3reader import S3Reader
-from .put_object_stream_wrapper import PutObjectStreamWrapper
+from .s3writer import S3Writer
 
 from s3dataset_s3_client._s3dataset import (
     MountpointS3Client,
@@ -11,6 +11,13 @@ from s3dataset_s3_client._s3dataset import (
     ListObjectStream,
     GetObjectStream,
 )
+
+
+"""
+_s3client.py
+    Internal client wrapper class on top of S3 client implementation 
+    with multi-process support.
+"""
 
 
 class S3Client:
@@ -27,26 +34,25 @@ class S3Client:
             self._real_client = self._client_builder()
         return self._real_client
 
-    def _client_builder(self) -> MountpointS3Client:
-        return MountpointS3Client(region=self._region)
-
     @property
     def region(self) -> str:
         return self._region
 
-    def get_object(self, bucket: str, key: str) -> S3Reader:
-        return S3Reader(bucket, key, get_stream=partial(self._get_object, bucket, key))
+    def _client_builder(self) -> MountpointS3Client:
+        return MountpointS3Client(region=self._region)
 
-    def _get_object(self, bucket: str, key: str) -> GetObjectStream:
+    def get_object(self, bucket: str, key: str) -> S3Reader:
+        return S3Reader(
+            bucket, key, get_stream=partial(self._get_object_stream, bucket, key)
+        )
+
+    def _get_object_stream(self, bucket: str, key: str) -> GetObjectStream:
         return self._client.get_object(bucket, key)
 
-    # TODO: PutObjectStreamWrapper -> S3Writer
     def put_object(
         self, bucket: str, key: str, storage_class: Optional[str] = None
-    ) -> PutObjectStreamWrapper:
-        return PutObjectStreamWrapper(
-            self._client.put_object(bucket, key, storage_class)
-        )
+    ) -> S3Writer:
+        return S3Writer(self._client.put_object(bucket, key, storage_class))
 
     # TODO: Probably need a ListObjectResult on dataset side
     def list_objects(

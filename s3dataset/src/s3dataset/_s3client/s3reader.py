@@ -5,8 +5,8 @@ from typing import Callable, Optional
 from s3dataset_s3_client._s3dataset import ObjectInfo, GetObjectStream
 
 """
-s3_object.py
-    File like representation of an S3 object.
+s3reader.py
+    File like representation of a readable S3 object.
 """
 
 
@@ -142,5 +142,8 @@ class S3Reader(io.BufferedIOBase):
     def tell(self) -> int:
         return self._position
 
-    def writable(self):
+    def readable(self) -> bool:
+        return True
+
+    def writable(self) -> bool:
         return False

@@ -1,6 +1,6 @@
 from ._s3client import S3Client
 from ._mock_s3client import MockS3Client
 from .s3reader import S3Reader
-from .put_object_stream_wrapper import PutObjectStreamWrapper
+from .s3writer import S3Writer
 
 __all__ = ["S3Client", "MockS3Client"]
