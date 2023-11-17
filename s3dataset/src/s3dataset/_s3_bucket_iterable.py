@@ -30,16 +30,8 @@ class S3BucketIterator:
 
     def __iter__(self) -> Iterator[S3Reader]:
         return map(
-            self._create_s3reader,
+            partial(self._client.from_bucket_and_object_info, self._bucket),
             chain.from_iterable(map(_extract_object_info, self._list_stream)),
-        )
-
-    def _create_s3reader(self, object_info: ObjectInfo):
-        return S3Reader(
-            self._bucket,
-            object_info.key,
-            object_info,
-            get_stream=partial(self._client.get_object, self._bucket, object_info.key),
         )
 
 

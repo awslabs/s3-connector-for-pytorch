@@ -46,7 +46,9 @@ def test_dataset_creation_from_objects(
     dataset._client = client
 
     assert isinstance(dataset, S3IterableDataset)
-    _verify_dataset(dataset, expected_keys, lambda data: data.object_info is None)
+    _verify_dataset(
+        dataset, expected_keys, lambda data: data._get_object_info is not None
+    )
 
 
 @pytest.mark.parametrize(

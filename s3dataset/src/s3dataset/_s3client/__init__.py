@@ -3,4 +3,4 @@ from ._mock_s3client import MockS3Client
 from .s3reader import S3Reader
 from .s3writer import S3Writer
 
-__all__ = ["S3Client", "MockS3Client"]
+__all__ = ["S3Client", "MockS3Client", "S3Reader", "S3Writer"]

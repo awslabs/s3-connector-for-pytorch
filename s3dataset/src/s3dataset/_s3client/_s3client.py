@@ -1,6 +1,6 @@
 import os
 from functools import partial
-from typing import Optional
+from typing import Optional, Any
 
 from .s3reader import S3Reader
 from .s3writer import S3Writer
@@ -18,6 +18,10 @@ _s3client.py
     Internal client wrapper class on top of S3 client implementation 
     with multi-process support.
 """
+
+
+def _identity(obj: Any) -> Any:
+    return obj
 
 
 class S3Client:
@@ -43,7 +47,10 @@ class S3Client:
 
     def get_object(self, bucket: str, key: str) -> S3Reader:
         return S3Reader(
-            bucket, key, get_stream=partial(self._get_object_stream, bucket, key)
+            bucket,
+            key,
+            get_object_info=partial(self.head_object, bucket, key),
+            get_stream=partial(self._get_object_stream, bucket, key),
         )
 
     def _get_object_stream(self, bucket: str, key: str) -> GetObjectStream:
@@ -63,3 +70,13 @@ class S3Client:
     # TODO: We need ObjectInfo on dataset side
     def head_object(self, bucket: str, key: str) -> ObjectInfo:
         return self._client.head_object(bucket, key)
+
+    def from_bucket_and_object_info(
+        self, bucket: str, object_info: ObjectInfo
+    ) -> S3Reader:
+        return S3Reader(
+            bucket,
+            object_info.key,
+            get_object_info=partial(_identity, object_info),
+            get_stream=partial(self._get_object_stream, bucket, object_info.key),
+        )
