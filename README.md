@@ -2,14 +2,45 @@
 
 S3Dataset is a tool which allows Python code to interface with a performant S3 client.
 
-## Building from source
-### TODO: These instructions are probably incomplete.
-
-1. Install clang (needed to build the CRT)
-2. Install Rust compiler: `curl https://sh.rustup.rs -sSf | sh`
-3. Create a Python virtual environment
-  - This can be done either through your IDE of choice (CLion works better than Pycharm here, as Pycharm does not 
-    include support for GDB level debugging)
+## Getting started
+### TODO: These instructions are probably incomplete
+### Build from source
+Note: CLI commands for Ubuntu/Debian 
+#### Install Python 3.x and pip
+```shell
+sudo apt update
+sudo apt install python3
+sudo apt install python3-pip
+```
+#### Clone project
+```shell
+  git clone git@github.com:awslabs/s3-connector-for-pytorch.git
+```
+#### Create  a Python virtual environment
+```shell
+  sudo apt install python3.10-venv
+  cd /path/to/your/project
+  python3 -m venv your-env
+  source your-env/bin/activate
+```
+#### Install clang (needed to build the client)
+```shell
+  sudo apt install clang
+```
+#### Install cmake (needed to build the client)
+```shell
+  sudo apt install cmake
+```
+#### Install Rust compiler (needed to build the client)
+```shell
+  curl https://sh.rustup.rs -sSf | sh
+  source "$HOME/.cargo/env"
+```
+#### Install project modules
+```shell
+  pip install -e s3dataset_s3_client
+  pip install -e s3dataset
+```
 
 ## Development workflow
 
