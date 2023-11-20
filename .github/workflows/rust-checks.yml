@@ -1,0 +1,88 @@
+name: Rust Checks
+
+on:
+  workflow_call:
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  deny:
+    runs-on: ubuntu-22.04
+    name: Licenses
+    strategy:
+      matrix:
+        checks:
+        # The advisories check is used to detect issues for crates by looking in an advisory database.
+          - advisories
+        # The bans check is used to deny (or allow) specific crates, as well as detect and handle multiple
+        # versions of the same crate.
+        # The licenses check is used to verify that every crate you use has license terms you find acceptable.
+        # The sources check ensures crates only come from sources you trust.
+          - bans licenses sources
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          submodules: true
+
+      - name: Run cargo deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          command: --manifest-path s3torchconnectorclient/Cargo.toml check ${{ matrix.checks }}
+
+  clippy:
+    runs-on: ubuntu-22.04
+    name: Clippy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          override: true
+
+      - name: Cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Lint with clippy
+        run: cargo clippy --all-targets --all-features --manifest-path s3torchconnectorclient/Cargo.toml
+
+  tests:
+    runs-on: ubuntu-22.04
+    name: Rust tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          submodules: true
+
+      - name: Build Rust tests
+        run: cargo test --no-default-features --no-run --manifest-path s3torchconnectorclient/Cargo.toml
+
+      - name: Run Rust tests
+        run: cargo test --no-default-features --manifest-path s3torchconnectorclient/Cargo.toml

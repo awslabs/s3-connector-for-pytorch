@@ -1,0 +1,19 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  merge_group:
+    types: [ "checks_requested" ]
+
+jobs:
+  rust-checks:
+    name: Rust Checks
+    uses: ./.github/workflows/rust-checks.yml
+
+  python-checks:
+    name: Python Checks
+    uses: ./.github/workflows/python-checks.yml
+
