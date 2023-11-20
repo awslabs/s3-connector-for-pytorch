@@ -1,0 +1,23 @@
+---
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: "/s3torchconnectorclient"
+    schedule:
+      interval: weekly
+    groups:
+      python-packages:
+        patterns:
+          - "*"
+  - package-ecosystem: pip
+    directory: "/s3torchconnector"
+    schedule:
+      interval: weekly
+    groups:
+      python-packages:
+        patterns:
+          - "*"
