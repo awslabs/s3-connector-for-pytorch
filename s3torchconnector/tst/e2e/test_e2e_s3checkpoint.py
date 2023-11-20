@@ -1,8 +1,10 @@
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from s3torchconnector import S3Checkpoint
+from s3torchconnectorclient import S3Exception
 
 
 def test_general_checkpointing(checkpoint_directory):
@@ -16,6 +18,67 @@ def test_general_checkpointing(checkpoint_directory):
     loaded = torch.load(checkpoint.reader(s3_uri))
 
     assert torch.equal(tensor, loaded)
+
+
+def test_general_checkpointing_read_bucket_does_not_exist(checkpoint_directory):
+    checkpoint = S3Checkpoint(region=checkpoint_directory.region)
+    reader = checkpoint.reader("s3://sthree-reserved-name/foo")
+    with pytest.raises(S3Exception) as e:
+        reader.read()
+    assert e.value.args == ("Service error: The bucket does not exist",)
+
+
+def test_general_checkpointing_read_key_does_not_exist(checkpoint_directory):
+    checkpoint = S3Checkpoint(region=checkpoint_directory.region)
+    reader = checkpoint.reader(f"s3://{checkpoint_directory.bucket}/does-not-exist")
+    with pytest.raises(S3Exception) as e:
+        reader.read()
+    assert e.value.args == ("Service error: The key does not exist",)
+
+
+def test_general_checkpointing_read_wrong_region(checkpoint_directory):
+    assert checkpoint_directory.region != "us-east-1"
+    checkpoint = S3Checkpoint(region="us-east-1")
+    reader = checkpoint.reader(checkpoint_directory.s3_uri)
+    with pytest.raises(S3Exception) as e:
+        reader.read()
+    assert e.value.args == (f"Client error: Wrong region (expecting {checkpoint_directory.region})",)
+
+
+def test_general_checkpointing_read_permission_denied(checkpoint_directory):
+    checkpoint = S3Checkpoint(region=checkpoint_directory.region)
+    reader = checkpoint.reader("s3://s3torchconnector-permission-denied-test/hello-world.txt")
+    with pytest.raises(S3Exception) as e:
+        reader.read()
+    assert e.value.args == ("Client error: Forbidden: Access Denied",)
+
+
+def test_general_checkpointing_write_bucket_does_not_exist(checkpoint_directory):
+    checkpoint = S3Checkpoint(region=checkpoint_directory.region)
+    with pytest.raises(S3Exception) as e:
+        with checkpoint.writer("s3://sthree-reserved-name/foo") as _:
+            pass
+    # TODO - The error message we get here is not customer friendly.
+
+
+def test_general_checkpointing_write_wrong_region(checkpoint_directory):
+    assert checkpoint_directory.region != "us-east-1"
+    checkpoint = S3Checkpoint(region="us-east-1")
+    with pytest.raises(S3Exception) as e:
+        with checkpoint.writer(checkpoint_directory.s3_uri) as _:
+            pass
+    # TODO - The error message we get here is not customer friendly.
+
+
+def test_general_checkpointing_write_permission_denied(checkpoint_directory):
+    checkpoint = S3Checkpoint(region=checkpoint_directory.region)
+    with pytest.raises(S3Exception) as e:
+        with checkpoint.writer("s3://s3torchconnector-permission-denied-test/hello-world.txt") as _:
+            pass
+    # TODO - The error message we get here is not customer friendly.
+
+
+# TODO - More write tests that try writing a checkpoint, and then assert the object does not exist
 
 
 def test_nn_checkpointing(checkpoint_directory):
