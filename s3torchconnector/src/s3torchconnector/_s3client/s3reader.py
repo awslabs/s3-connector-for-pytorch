@@ -2,6 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 
 import io
+from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
 from typing import Callable, Optional
 
@@ -23,10 +24,9 @@ class S3Reader(io.BufferedIOBase):
     ):
         if not bucket:
             raise ValueError("Bucket should be specified")
-        self.bucket = bucket
-        self.key = key
+        self._bucket = bucket
+        self._key = key
         self._get_object_info = get_object_info
-        self._object_info = None
         self._get_stream = get_stream
         self._stream = None
         self._buffer = io.BytesIO()
@@ -35,10 +35,16 @@ class S3Reader(io.BufferedIOBase):
         self._position = 0
 
     @property
-    def object_info(self):
-        if self._object_info is None:
-            self._object_info = self._get_object_info()
-        return self._object_info
+    def bucket(self):
+        return self._bucket
+
+    @property
+    def key(self):
+        return self._key
+
+    @cached_property
+    def _object_info(self):
+        return self._get_object_info()
 
     def prefetch(self) -> None:
         """
@@ -128,7 +134,7 @@ class S3Reader(io.BufferedIOBase):
 
     def _get_size(self) -> int:
         if self._size is None:
-            self._size = self.object_info.size
+            self._size = self._object_info.size
         return self._size
 
     def _position_at_end(self) -> bool:

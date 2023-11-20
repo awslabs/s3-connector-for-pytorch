@@ -81,7 +81,7 @@ def test_dataset_creation_from_prefix(
     _verify_dataset(
         dataset,
         expected_keys,
-        lambda data: data.object_info is not None,
+        lambda data: data._object_info is not None,
     )
 
 
@@ -184,8 +184,8 @@ def test_iteration_multiple_times(
     dataset._client = client
 
     # Test that we can iterate over dataset multiple times by verifying it multiple times.
-    _verify_dataset(dataset, expected_keys, lambda data: data.object_info is not None)
-    _verify_dataset(dataset, expected_keys, lambda data: data.object_info is not None)
+    _verify_dataset(dataset, expected_keys, lambda data: data._object_info is not None)
+    _verify_dataset(dataset, expected_keys, lambda data: data._object_info is not None)
 
 
 def _verify_dataset(

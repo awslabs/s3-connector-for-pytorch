@@ -76,8 +76,8 @@ def test_list_objects_from_prefix(
         assert object is not None
         assert object.bucket == TEST_BUCKET
         assert object.key == keys[index]
-        assert object.object_info is not None
-        assert object.object_info.key == keys[index]
+        assert object._object_info is not None
+        assert object._object_info.key == keys[index]
         assert object._get_stream is not None
     assert count == expected_count
 
