@@ -64,7 +64,7 @@ def test_s3reader_creation(object_info, get_stream):
     assert s3reader
     assert s3reader.bucket == TEST_BUCKET
     assert s3reader.key == TEST_KEY
-    assert s3reader.object_info == object_info
+    assert s3reader._object_info == object_info
     assert s3reader._get_stream is get_stream
 
 
