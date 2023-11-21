@@ -9,10 +9,10 @@ import pytest
 from s3torchconnector import S3Exception
 from s3torchconnector._s3client import MockS3Client
 
-from s3torchconnector.s3dataset_base import (
-    _parse_s3_uri,
-    _list_objects_from_prefix,
-    _get_objects_from_uris,
+from s3torchconnector._s3dataset_common import (
+    parse_s3_uri,
+    list_objects_from_prefix,
+    get_objects_from_uris,
 )
 
 logging.basicConfig(
@@ -37,7 +37,7 @@ S3_PREFIX = f"s3://{TEST_BUCKET}"
     ],
 )
 def test_s3dataset_base_parse_s3_uri_success(uri, expected_bucket, expected_key):
-    bucket, key = _parse_s3_uri(uri)
+    bucket, key = parse_s3_uri(uri)
     assert bucket == expected_bucket
     assert key == expected_key
 
@@ -54,7 +54,7 @@ def test_s3dataset_base_parse_s3_uri_success(uri, expected_bucket, expected_key)
 )
 def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
     with pytest.raises(ValueError) as error:
-        _parse_s3_uri(uri)
+        parse_s3_uri(uri)
     assert str(error.value) == error_msg
 
 
@@ -69,7 +69,7 @@ def test_list_objects_from_prefix(
     prefix: str, keys: Sequence[str], expected_count: int
 ):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
-    objects = _list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
+    objects = list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
     count = 0
     for index, object in enumerate(objects):
         count += 1
@@ -85,7 +85,7 @@ def test_list_objects_from_prefix(
 def test_list_objects_for_bucket_invalid():
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
     with pytest.raises(S3Exception) as error:
-        objects = _list_objects_from_prefix(
+        objects = list_objects_from_prefix(
             "s3://DIFFERENT_BUCKET",
             mock_client,
         )
@@ -101,7 +101,7 @@ def test_get_objects_from_uris_success(
     object_uris: Sequence[str], expected_keys: Sequence[str]
 ):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, expected_keys)
-    objects = _get_objects_from_uris(object_uris, mock_client)
+    objects = get_objects_from_uris(object_uris, mock_client)
     count = 0
     for index, object in enumerate(objects):
         count += 1
@@ -125,7 +125,7 @@ def test_get_objects_from_uris_success(
 def test_get_objects_from_uris_fail(uri, error_msg):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
     with pytest.raises(ValueError) as error:
-        objects = _get_objects_from_uris(uri, mock_client)
+        objects = get_objects_from_uris(uri, mock_client)
     assert str(error.value) == error_msg
 
 
