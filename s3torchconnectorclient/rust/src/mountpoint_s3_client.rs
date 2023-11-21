@@ -6,7 +6,6 @@
 use std::sync::Arc;
 
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
-use mountpoint_s3_client::instance_info::InstanceInfo;
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
@@ -56,7 +55,6 @@ impl MountpointS3Client {
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
-        let instance_info = InstanceInfo::new();
 
         let endpoint_config = EndpointConfig::new(&region);
         let auth_config = auth_config(profile.as_deref(), no_sign_request);
@@ -64,10 +62,7 @@ impl MountpointS3Client {
         let config = S3ClientConfig::new()
             // TODO - Add version number here
             // https://github.com/awslabs/mountpoint-s3/blob/73328cc64a2dbca78e879730d4d264aedd881c60/mountpoint-s3/src/main.rs#L427
-            .user_agent(UserAgent::new_with_instance_info(
-                Some("s3torchconnector/0.0.0".to_owned()),
-                &instance_info,
-            ))
+            .user_agent(UserAgent::new(Some("s3torchconnector/0.0.0".to_owned())))
             .throughput_target_gbps(throughput_target_gbps)
             .part_size(part_size)
             .auth_config(auth_config)
