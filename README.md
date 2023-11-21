@@ -1,92 +1,56 @@
-# S3TorchConnector
+# Amazon S3 Connector for PyTorch
+The Amazon S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in Amazon S3. Using the S3 Connector for PyTorch 
+automatically optimizes performance when downloading training data from and writing checkpoints to Amazon S3, eliminating the need to write your own code to list S3 buckets and manage concurrent requests.
 
-S3TorchConnector is a tool which allows Python code to interface with a performant S3 client.
 
-## Getting started
-### TODO: These instructions are probably incomplete
-### Build from source
-Note: CLI commands for Ubuntu/Debian 
-#### Install Python 3.x and pip
+ The S3 Connector for PyTorch provides implementations of PyTorch's [dataset primitives](https://pytorch.org/tutorials/beginner/basics/data_tutorial.html) that you can use to load training data from Amazon S3.
+ It supports both [map-style datasets](https://pytorch.org/docs/stable/data.html#map-style-datasets) for random data access patterns and 
+ [iterable-style datasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets) for streaming sequential data access patterns. 
+ The S3 Connector for PyTorch also includes a checkpointing interface to save and load checkpoints directly to Amazon S3, without first saving to local storage.
+   
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.8 to 3.11 is installed. 
+- PyTorch >= 2.0 (TODO: Check with PyTorch 1.x)
+
+### Installation
+
 ```shell
-sudo apt update
-sudo apt install python3
-sudo apt install python3-pip
-```
-#### Clone project
-```shell
-  git clone git@github.com:awslabs/s3-connector-for-pytorch.git
-```
-#### Create  a Python virtual environment
-```shell
-  sudo apt install python3.10-venv
-  cd /path/to/your/project
-  python3 -m venv your-env
-  source your-env/bin/activate
-```
-#### Install clang (needed to build the client)
-```shell
-  sudo apt install clang
-```
-#### Install cmake (needed to build the client)
-```shell
-  sudo apt install cmake
-```
-#### Install Rust compiler (needed to build the client)
-```shell
-  curl https://sh.rustup.rs -sSf | sh
-  source "$HOME/.cargo/env"
-```
-#### Install project modules
-```shell
-  pip install -e s3torchconnectorclient
-  pip install -e s3torchconnector
+pip install s3torchconnector
 ```
 
-## Development workflow
+### Configuration
 
-When you make changes to the Rust code, you need to run `pip install -e .` before changes will be viewable from 
-Python. It's probably worth creating a shell script for this and adding it as part of the pre-build step.
+To read objects in a bucket that is not publicly accessible, or save checkpoints to such a bucket, AWS credentials must be provided through one of the following methods:
 
-When developing, ensure to create license headers at the top of each file. This can be automated with Pycharm/Clion 
-with the following configuration:
+- Install and configure `awscli` by `aws configure`.
+- Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` on Unix or macOS.
+- Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
+- If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to that role.
 
-Go to the settings, and find the 'Copyright profiles' section. Create a new one with the following text:
+### Examples
 
-> Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-> 
-> // SPDX-License-Identifier: BSD
+End to end example of how to use `s3torchconnector` can be found under the [examples](examples/) directory.
 
-Then under the 'Copyright' section, create a new scope covering 'all', and assign your new copyright profile.
+## Contributing
+We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](doc/CONTRIBUTING.md) For more information on how to report bugs or submit pull requests.
 
-### Making a commit
-
-Our CI uses `clippy` to lint Rust code changes. Use `cargo clippy --all-targets --all-features` to lint Rust before
-pushing new Rust commits.
-
-For Python code changes, run 
-```bash
-black --verbose python/
-flake8 python/ --count --select=E9,F63,F7,F82 --show-source --statistics
-```
- to lint.
-
-## Debugging
-
-Either a Python or GDB style debugger will be useful here.
-
-To use a GDB debugger from Rust, just run the Rust test in question with the debugger enabled.
-
-To use a GDB debugger from Python, you need to create a 'Custom Build Application'. 
-Fill in the path of the Python executable in your virtual environment (`venv/bin/python`) and fill in the script name 
-as the program arguments.
-Then put a breakpoint in the Rust/C code and try running it.
+### Development
+See [DEVELOPMENT](doc/DEVELOPMENT.md) for information about code style,
+development process, and guidelines.
 
 
-## Security
+### Security issue notifications
+If you discover a potential security issue in this project we ask that you notify AWS Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/).
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+### Code of conduct
+
+This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct). See [CODE_OF_CONDUCT.md](doc/CODE_OF_CONDUCT.md) for more details.
 
 ## License
 
-This library is licensed under the LICENSE NAME HERE License.
+Amazon S3 Connector for PyTorch has a BSD-style license, as found in the [LICENSE](LICENSE) file.
 
