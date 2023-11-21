@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/pip-licenses" ]
   pull_request:
     branches: [ "main" ]
   merge_group:
