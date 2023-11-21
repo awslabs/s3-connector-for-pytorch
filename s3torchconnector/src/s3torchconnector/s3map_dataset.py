@@ -26,6 +26,8 @@ class S3MapDataset(torch.utils.data.Dataset):
         get_dataset_objects: Callable[[S3Client], Iterable[S3Reader]],
         transform: Callable[[S3Reader], Any] = identity,
     ):
+        if region is not str:
+            raise TypeError("Region must be a string")
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
         self._region = region

@@ -29,6 +29,23 @@ def test_dataset_creation_from_objects_with_region():
 
 
 @pytest.mark.parametrize(
+    "datasetLambda",
+    [
+        lambda: S3IterableDataset.from_objects([], region=None),
+        lambda: S3IterableDataset.from_objects([], region=123),
+        lambda: S3IterableDataset.from_prefix("s3://bucket/prefix", region=None),
+        lambda: S3IterableDataset.from_prefix("s3://bucket/prefix", region=123),
+    ],
+)
+def test_dataset_creation_fails_without_region(
+    datasetLambda: Callable[[], S3IterableDataset]
+):
+    with pytest.raises(TypeError) as e:
+        datasetLambda()
+    assert e.value.args == ("Region must be a string",)
+
+
+@pytest.mark.parametrize(
     "keys, expected_keys",
     [
         ([], []),
