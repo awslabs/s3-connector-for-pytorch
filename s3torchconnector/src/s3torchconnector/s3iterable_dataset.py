@@ -13,13 +13,14 @@ from ._s3dataset_common import (
     list_objects_from_prefix,
 )
 
-"""
-s3iterable_dataset.py
-    API for accessing as PyTorch IterableDataset files stored in S3. 
-"""
-
 
 class S3IterableDataset(torch.utils.data.IterableDataset):
+    """An IterableStyle dataset created from S3 objects.
+
+    To create an instance of S3IterableDataset, you need to use
+    `from_prefix` or `from_objects` methods.
+    """
+
     def __init__(
         self,
         region: str,
@@ -43,15 +44,18 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         region: str,
         transform: Callable[[S3Reader], Any] = identity,
     ):
-        """
-        Returns an instance of S3IterableDataset dataset using the URI(s) provided.
+        """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
+
         Args:
-          object_uris(str or Iterable[str]):
-            S3 URI of the object(s) desired.
-          region(str):
-            The S3 region where the objects are stored.
-          transform:
-            Optional callable which is used to transform an S3Reader into the desired type.
+          object_uris(str | Iterable[str]): S3 URI of the object(s) desired.
+          region(str): AWS region of the S3 bucket where the objects are stored.
+          transform: Optional callable which is used to transform an S3Reader into the desired type.
+
+        Returns:
+            S3IterableDataset: An IterableStyle dataset created from S3 objects.
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
         """
         return cls(
             region, partial(get_objects_from_uris, object_uris), transform=transform
@@ -65,15 +69,18 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         region: str,
         transform: Callable[[S3Reader], Any] = identity,
     ):
-        """
-        Returns an instance of S3IterableDataset dataset using the objects under bucket/prefix.
+        """Returns an instance of S3IterableDataset using the S3 URI provided.
+
         Args:
-          s3_uri(str):
-            The S3 prefix (in the form of an s3_uri) for the objects in scope.
-          region(str):
-            The S3 region where the bucket is.
-          transform:
-            Optional callable which is used to transform an S3Reader into the desired type.
+          s3_uri(str): An S3 URI (prefix) of the object(s) desired. Objects matching the prefix will be included in the returned dataset.
+          region(str): AWS region of the S3 bucket where the objects are stored.
+          transform: Optional callable which is used to transform an S3Reader into the desired type.
+
+        Returns:
+            S3IterableDataset: An IterableStyle dataset created from S3 objects.
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
         """
         return cls(
             region, partial(list_objects_from_prefix, s3_uri), transform=transform

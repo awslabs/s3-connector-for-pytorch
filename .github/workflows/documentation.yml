@@ -1,0 +1,31 @@
+name: documentation
+
+on:
+  push:
+    branches: [ "main"]
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-22.04
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v3
+
+        - name: Setup Python
+          uses: actions/setup-python@v3
+
+        - name: Install dependencies
+          run: |
+            pip install sphinx sphinx_rtd_theme sphinx-autoapi ghp-import
+
+        - name: Sphinx build
+          run: |
+            cd s3torchconnector/docs
+            sphinx-build -b html . _build/html
+
+        - name: Import docs
+          run: |
+            ghp-import -n -p -f s3torchconnector/docs/_build/html

@@ -8,13 +8,10 @@ from typing import Callable, Optional
 
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-"""
-s3reader.py
-    File like representation of a readable S3 object.
-"""
-
 
 class S3Reader(io.BufferedIOBase):
+    """A read-only, file like representation of a single object stored in S3."""
+
     def __init__(
         self,
         bucket: str,
@@ -47,19 +44,29 @@ class S3Reader(io.BufferedIOBase):
         return self._get_object_info()
 
     def prefetch(self) -> None:
+        """Start fetching data from S3.
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
         """
-        Start fetching data from S3.
-        """
+
         if self._stream is None:
             self._stream = self._get_stream()
 
     def read(self, size: Optional[int] = None) -> bytes:
-        """
-        Returns the bytes read.
-        Args:
-            size: how many bytes to read.
+        """Read up to size bytes from the object and return them.
+
         If size is zero or positive, read that many bytes from S3, or until the end of the object.
         If size is None or negative, read the entire file.
+
+        Args:
+            size (int | None): how many bytes to read.
+
+        Returns:
+            bytes: Bytes read from S3 Object
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
         """
 
         if size is not None and not isinstance(size, int):
@@ -86,15 +93,21 @@ class S3Reader(io.BufferedIOBase):
         return data
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
-        """
-        Returns the new cursor position
-        Args:
-            offset: How many bytes to seek relative to whence.
-            whence: One of SEEK_SET, SEEK_CUR, and SEEK_END.
-                    Default: SEEK_SET
+        """Change the stream position to the given byte offset, interpreted relative to whence.
 
         When seeking beyond the end of the file, always stay at EOF.
         Seeking before the start of the file results in a ValueError.
+
+        Args:
+            offset (int): How many bytes to seek relative to whence.
+            whence (int): One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET
+
+        Returns:
+            int: Current position of the stream
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
+
         """
         if not isinstance(offset, int):
             raise TypeError(f"integer argument expected, got {type(offset)!r}")
@@ -153,10 +166,22 @@ class S3Reader(io.BufferedIOBase):
         return buffer_size
 
     def tell(self) -> int:
+        """
+        Returns:
+              int: Current stream position.
+        """
         return self._position
 
     def readable(self) -> bool:
+        """
+        Returns:
+            bool: Return whether object was opened for reading.
+        """
         return True
 
     def writable(self) -> bool:
+        """
+        Returns:
+            bool: Return whether object was opened for writing.
+        """
         return False
