@@ -8,6 +8,8 @@ from typing import Optional, Any
 from .s3reader import S3Reader
 from .s3writer import S3Writer
 
+from s3torchconnector._version import user_agent_prefix
+
 from s3torchconnectorclient._mountpoint_s3_client import (
     MountpointS3Client,
     ObjectInfo,
@@ -46,7 +48,9 @@ class S3Client:
         return self._region
 
     def _client_builder(self) -> MountpointS3Client:
-        return MountpointS3Client(region=self._region)
+        return MountpointS3Client(
+            region=self._region, user_agent_prefix=user_agent_prefix
+        )
 
     def get_object(self, bucket: str, key: str) -> S3Reader:
         return S3Reader(

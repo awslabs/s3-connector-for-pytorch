@@ -4,12 +4,16 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 license = "BSD-3-Clause"
+build = "rust/build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "_mountpoint_s3_client"
 crate-type = ["cdylib"]
 path = "rust/src/lib.rs"
+
+[build-dependencies]
+built = "0.7"
 
 [dependencies]
 pyo3 = { version = "0.19.2" }
