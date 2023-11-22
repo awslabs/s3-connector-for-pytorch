@@ -178,6 +178,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install pipreqs safety pip-licenses liccheck
+          python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Generate requirements
         run: |
