@@ -48,7 +48,7 @@ When you make changes to the Rust code, you need to run `pip install -e s3torchc
 Python.
 
 
-### Licencing
+### Licensing
 When developing, ensure to create license headers at the top of each file. This can be automated with Pycharm/Clion 
 with the following configuration:
 
@@ -81,6 +81,6 @@ To use a GDB debugger from Rust, just run the Rust test in question with the deb
 
 To use a GDB debugger from Python, you need to create a 'Custom Build Application'. 
 Fill in the path of the Python executable in your virtual environment (`venv/bin/python`) and fill in the script name 
-as the program arguments.
+as the program argument.
 Then put a breakpoint in the Rust/C code and try running it.
 
