@@ -617,9 +617,9 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "mountpoint-s3-client"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25d6fa66e4f457e83e10ad06533ed582f441a2445e95f5383d13d3de1c455685"
+checksum = "65342ed0354e582e732494c298d9c8f82b6d6d319d6665bc75f28b43adb0dd8f"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -633,8 +633,10 @@ dependencies = [
  "md-5",
  "metrics",
  "mountpoint-s3-crt",
+ "once_cell",
  "percent-encoding",
  "pin-project",
+ "platform-info",
  "regex",
  "serde_json",
  "static_assertions",
@@ -646,9 +648,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "666246deb219f7617536e92f78b3c6896055393d28476a7a00540bb24bee47d8"
+checksum = "39a4207bd15ceacc27168cc70929fa3645b8a740f292006c09a07b8aeeeb71d0"
 dependencies = [
  "async-channel",
  "futures",
@@ -662,9 +664,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt-sys"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f22f0f19a0511dcbb3d1ba3981400362afe63b05eb25e32520f84d293f8df09b"
+checksum = "331c6dd95369e37e4e922a348abdd9a372e332402f1d3f8b1c7219cefb6bb585"
 dependencies = [
  "bindgen",
  "cc",
@@ -801,6 +803,16 @@ name = "pkg-config"
 version = "0.3.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
+
+[[package]]
+name = "platform-info"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6259c4860e53bf665016f1b2f46a8859cadfa717581dc9d597ae4069de6300f"
+dependencies = [
+ "libc",
+ "winapi",
+]
 
 [[package]]
 name = "portable-atomic"

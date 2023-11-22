@@ -29,7 +29,13 @@ mod python_structs;
 #[pymodule]
 #[pyo3(name = "_mountpoint_s3_client")]
 fn make_lib(py: Python, mountpoint_s3_client: &PyModule) -> PyResult<()> {
-    let logger = Logger::default().filter(LevelFilter::Trace);
+    // Filter out events for request spans, which are at warn level
+    let logger = Logger::default()
+        .filter_target(
+            "mountpoint_s3_client::s3_crt_client::request".to_owned(),
+            LevelFilter::Off,
+        )
+        .filter(LevelFilter::Trace);
     logger.install().map_err(python_exception)?;
 
     mountpoint_s3_client.add_class::<MountpointS3Client>()?;
