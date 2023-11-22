@@ -1,6 +1,6 @@
 ## Unreleased
 
-## v1.0.0 (November 22, 2023)
+## v1.0 (November 22, 2023)
 * The Amazon S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access and store data in Amazon S3.
 
 ### New features
