@@ -33,5 +33,3 @@ e2e = [
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
-
-strategy_ini_file="../licenses.ini"
