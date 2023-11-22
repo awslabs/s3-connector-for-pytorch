@@ -177,21 +177,12 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          # Manually install CPU-only version of torch so we're not carrying around giant GPU drivers/kernels
-          python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-          python -m pip install pipreqs safety pip-licenses liccheck
-          python -m pip install -e "s3torchconnectorclient"
-          python -m pip install -e "s3torchconnector"
+          python -m pip install pipreqs safety
 
       - name: Generate requirements
         run: |
           pipreqs s3torchconnectorclient
-          cat s3torchconnectorclient/requirements.txt
           pipreqs s3torchconnector
-          cat s3torchconnector/requirements.txt
-
-      - name: Licenses check s3torchconnectorclient
-        run: liccheck -s licenses.ini -r s3torchconnectorclient/requirements.txt
 
       - name: Security vulnerabilities check s3torchconnectorclient
         run: safety check -r s3torchconnectorclient/requirements.txt
@@ -201,49 +192,39 @@ jobs:
         with:
           inputs: "s3torchconnectorclient"
 
-      - name: Licenses check s3torchconnector
-        run: liccheck -s licenses.ini -r s3torchconnector/requirements.txt
-
       - name: Security vulnerabilities check s3torchconnector
         run: safety check -r s3torchconnector/requirements.txt
 
-      # TODO: Re-enable after publishing
-      #      - name: Audit s3torchconnector dependencies
-      #        uses: pypa/gh-action-pip-audit@v1.0.8
-      #        with:
-      #          inputs: "s3torchconnector"
+      - name: Audit s3torchconnector dependencies
+        uses: pypa/gh-action-pip-audit@v1.0.8
+        with:
+          inputs: "s3torchconnector"
 
-#  licenses:
-#    name: Python licenses checks
-#    runs-on: ubuntu-22.04
-#
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#        with:
-#          submodules: true
-#
-#      - name: Install Python dependencies
-#        run: |
-#          python -m pip install --upgrade pip
-#          python -m pip install pipreqs safety pip-licenses liccheck
-#          python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-#
-#      - name: Generate requirements
-#        run: |
-#          pipreqs s3torchconnectorclient
-#          pipreqs s3torchconnector
-#
-##      - name: Install s3torchconnectorclient
-##        run: |
-##          pip install -e s3torchconnectorclient -r s3torchconnectorclient/requirements.txt
-##
-#      - name: Licenses check s3torchconnectorclient
-#        run: liccheck -s licenses.ini -r s3torchconnectorclient/requirements.txt
-##
-##      - name: Install s3torchconnector
-##        run: |
-##          pip install -e s3torchconnector -r s3torchconnector/requirements.txt
-##
-#      - name: Licenses check s3torchconnector
-#        run: liccheck -s licenses.ini -r s3torchconnector/requirements.txt
+  licenses:
+    name: Python licenses checks
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipreqs liccheck
+          python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e "s3torchconnectorclient"
+          python -m pip install -e "s3torchconnector"
+
+      - name: Generate requirements
+        run: |
+          pipreqs s3torchconnectorclient
+          pipreqs s3torchconnector
+
+      - name: Licenses check s3torchconnectorclient
+        run: liccheck -s licenses.ini -r s3torchconnectorclient/requirements.txt
+
+      - name: Licenses check s3torchconnector
+        run: liccheck -s licenses.ini -r s3torchconnector/requirements.txt
