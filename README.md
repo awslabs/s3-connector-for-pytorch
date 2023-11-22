@@ -109,5 +109,5 @@ This project has adopted the [Amazon Open Source Code of Conduct](https://aws.gi
 
 ## License
 
-Amazon S3 Connector for PyTorch has a BSD 3-clause license, as found in the [LICENSE](LICENSE) file.
+Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](LICENSE) file.
 
