@@ -186,6 +186,11 @@ jobs:
           pipreqs s3torchconnectorclient
           pipreqs s3torchconnector
 
+      - name: Install required packages
+        run: |
+          pip install -e s3torchconnectorclient -r s3torchconnectorclient/requirements.txt
+          pip install -e s3torchconnector -r s3torchconnector/requirements.txt
+
       - name: Security vulnerabilities check s3torchconnectorclient
         run: safety check -r s3torchconnectorclient/requirements.txt
 
