@@ -45,8 +45,7 @@ class S3Writer(io.BufferedIOBase):
         self.stream.close()
 
     def flush(self):
-        """No-op
-        """
+        """No-op"""
         pass
 
     def readable(self) -> bool:
