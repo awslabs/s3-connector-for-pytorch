@@ -177,7 +177,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pipreqs safety pip-licenses
+          python -m pip install pipreqs safety pip-licenses liccheck
 
       - name: Generate requirements
         run: |
@@ -185,9 +185,10 @@ jobs:
           pipreqs s3torchconnector
 
       - name: Security vulnerabilities check s3torchconnectorclient
-        run: |
-          safety check -r s3torchconnectorclient/requirements.txt
-          cat s3torchconnectorclient/requirements.txt
+        run: safety check -r s3torchconnectorclient/requirements.txt
+
+      - name: Licenses check s3torchconnectorclient
+        run: liccheck -s licenses.ini -r s3torchconnectorclient/requirements.txt
 
       - name: Audit s3torchconnectorclient dependencies
         uses: pypa/gh-action-pip-audit@v1.0.8
@@ -201,6 +202,4 @@ jobs:
 #          inputs: "s3torchconnector"
 
       - name: Security vulnerabilities check s3torchconnector
-        run: |
-          safety check -r s3torchconnector/requirements.txt
-          cat s3torchconnector/requirements.txt
+        run: safety check -r s3torchconnector/requirements.txt
