@@ -1,0 +1,75 @@
+name: Bug report
+description: File a bug report
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to submit a bug report!
+  - type: markdown
+    attributes:
+      value: |
+        **Note: Security issues should not be reported here.**
+        Please follow the [security policy for this repository](https://github.com/awslabs/s3-connector-for-pytorch/security/policy).
+  - type: input
+    id: s3torchconnector-version
+    attributes:
+      label: s3torchconnector version
+      description: |
+        Which version of s3torchconnector are you using?
+        If you are building from source or a fork, please state that.
+      placeholder: s3torchconnector-x.y
+    validations:
+      required: true
+  - type: input
+    id: s3torchconnectorclient-version
+    attributes:
+      label: s3torchconnectorclient version
+      description: |
+        Which version of s3torchconnectorclient are you using?
+        If you are building from source or a fork, please state that.
+      placeholder: s3torchconnectorclient-x.y
+    validations:
+      required: true
+  - type: input
+    id: region
+    attributes:
+      label: AWS Region
+      description: Which AWS region did you experience the bug in?
+      placeholder: us-east-1
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Describe the running environment
+      description: |
+        What else can you share about the environment you are running the project?
+        For example, was this using Amazon EC2? Which type/OS version/architecture?
+      placeholder: Running in EC2 <instance type> on Amazon Linux 2.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Please also tell us what you expected to happen.
+      placeholder: The connector failed to load my checkpoint from S3.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
