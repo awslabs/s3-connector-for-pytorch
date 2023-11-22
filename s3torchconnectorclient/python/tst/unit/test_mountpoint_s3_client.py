@@ -277,6 +277,7 @@ def test_mountpoint_client_pickles(
 
     client = MountpointS3Client(
         region=expected_region,
+        user_agent_prefix="unit-tests",
         part_size=expected_part_size,
         throughput_target_gbps=expected_throughput_target_gbps,
         profile=expected_profile,
