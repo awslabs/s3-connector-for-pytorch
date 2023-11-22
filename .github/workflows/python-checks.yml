@@ -177,7 +177,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pipreqs safety pip-licenses liccheck
+          python -m pip install pipreqs safety pip-licenses
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Generate requirements
@@ -223,16 +223,25 @@ jobs:
           pipreqs s3torchconnectorclient
           pipreqs s3torchconnector
 
-      - name: Install s3torchconnectorclient
-        run: |
-          pip install -e s3torchconnectorclient -r s3torchconnectorclient/requirements.txt
+      - name: Python s3torchconnectorclient license check
+        env:
+          DEP_PATH: s3torchconnectorclient/requirements.txt
+        uses: aufdenpunkt/python-license-check-action@main
 
-      - name: Licenses check s3torchconnectorclient
-        run: liccheck -s licenses.ini -r s3torchconnectorclient/requirements.txt
-
-      - name: Install s3torchconnector
-        run: |
-          pip install -e s3torchconnector -r s3torchconnector/requirements.txt
-
-      - name: Licenses check s3torchconnector
-        run: liccheck -s licenses.ini -r s3torchconnector/requirements.txt
+      - name: Python s3torchconnector license check
+        env:
+          DEP_PATH: s3torchconnector/requirements.txt
+        uses: aufdenpunkt/python-license-check-action@main
+#      - name: Install s3torchconnectorclient
+#        run: |
+#          pip install -e s3torchconnectorclient -r s3torchconnectorclient/requirements.txt
+#
+#      - name: Licenses check s3torchconnectorclient
+#        run: liccheck -s licenses.ini -r s3torchconnectorclient/requirements.txt
+#
+#      - name: Install s3torchconnector
+#        run: |
+#          pip install -e s3torchconnector -r s3torchconnector/requirements.txt
+#
+#      - name: Licenses check s3torchconnector
+#        run: liccheck -s licenses.ini -r s3torchconnector/requirements.txt
