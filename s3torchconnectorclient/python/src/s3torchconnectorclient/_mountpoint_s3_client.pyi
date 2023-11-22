@@ -7,6 +7,7 @@ from typing import List, Optional
 
 class MountpointS3Client:
     region: str
+    user_agent_prefix: str
     throughput_target_gbps: float
     part_size: int
     profile: str
@@ -15,6 +16,7 @@ class MountpointS3Client:
     def __init__(
         self,
         region: str,
+        user_agent_prefix: str = "",
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,
         profile: str = None,

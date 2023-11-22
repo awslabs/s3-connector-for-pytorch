@@ -50,6 +50,7 @@ impl PyMockClient {
     fn create_mocked_client(&self) -> MountpointS3Client {
         MountpointS3Client::new(
             self.region.clone(),
+            "mock-client".to_string(),
             self.throughput_target_gbps,
             self.part_size,
             None,

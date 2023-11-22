@@ -126,6 +126,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "built"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38d17f4d6e4dc36d1a02fbedc2753a096848e7c1b0772f7654eab8e2c927dd53"
+
+[[package]]
 name = "cargo-lock"
 version = "9.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -624,7 +630,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "base64ct",
- "built",
+ "built 0.6.1",
  "const_format",
  "futures",
  "lazy_static",
@@ -1021,6 +1027,7 @@ checksum = "1ad4cc8da4ef723ed60bced201181d83791ad433213d8c24efffda1eec85d741"
 name = "s3torchconnectorclient"
 version = "0.1.0"
 dependencies = [
+ "built 0.7.1",
  "futures",
  "log",
  "mountpoint-s3-client",

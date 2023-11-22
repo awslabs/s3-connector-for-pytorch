@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
-use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
+use mountpoint_s3_client::user_agent::UserAgent;
 use nix::unistd::Pid;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pymethods, PyRef, PyResult, ToPyObject};
@@ -19,6 +19,8 @@ use crate::list_object_stream::ListObjectStream;
 use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
 use crate::put_object_stream::PutObjectStream;
 use crate::python_structs::py_object_info::PyObjectInfo;
+
+use crate::build_info;
 
 #[pyclass(
     name = "MountpointS3Client",
@@ -38,6 +40,8 @@ pub struct MountpointS3Client {
     profile: Option<String>,
     #[pyo3(get)]
     no_sign_request: bool,
+    #[pyo3(get)]
+    user_agent_prefix: String,
 
     owner_pid: Pid,
 }
@@ -45,9 +49,10 @@ pub struct MountpointS3Client {
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
     pub fn new_s3_client(
         region: String,
+        user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
         profile: Option<String>,
@@ -59,10 +64,15 @@ impl MountpointS3Client {
         let endpoint_config = EndpointConfig::new(&region);
         let auth_config = auth_config(profile.as_deref(), no_sign_request);
 
+        let user_agent_suffix = &format!("{}/{}", build_info::PACKAGE_NAME, build_info::FULL_VERSION);
+        let mut user_agent_string = &format!("{} {}", &user_agent_prefix, &user_agent_suffix);
+        if user_agent_prefix.ends_with(user_agent_suffix) {
+            // If we unpickle a client, we should not append the suffix again
+            user_agent_string = &user_agent_prefix;
+        }
+
         let config = S3ClientConfig::new()
-            // TODO - Add version number here
-            // https://github.com/awslabs/mountpoint-s3/blob/73328cc64a2dbca78e879730d4d264aedd881c60/mountpoint-s3/src/main.rs#L427
-            .user_agent(UserAgent::new(Some("s3torchconnector/0.0.0".to_owned())))
+            .user_agent(UserAgent::new(Some(user_agent_string.to_owned())))
             .throughput_target_gbps(throughput_target_gbps)
             .part_size(part_size)
             .auth_config(auth_config)
@@ -71,6 +81,7 @@ impl MountpointS3Client {
 
         Ok(MountpointS3Client::new(
             region,
+            user_agent_prefix.to_string(),
             throughput_target_gbps,
             part_size,
             profile,
@@ -123,6 +134,7 @@ impl MountpointS3Client {
         let py = slf.py();
         let state = [
             slf.region.to_object(py),
+            slf.user_agent_prefix.to_object(py),
             slf.throughput_target_gbps.to_object(py),
             slf.part_size.to_object(py),
             slf.profile.to_object(py),
@@ -135,6 +147,7 @@ impl MountpointS3Client {
 impl MountpointS3Client {
     pub(crate) fn new<Client: ObjectClient>(
         region: String,
+        user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
         profile: Option<String>,
@@ -153,6 +166,7 @@ impl MountpointS3Client {
             profile,
             no_sign_request,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
+            user_agent_prefix,
             owner_pid: nix::unistd::getpid(),
         }
     }

@@ -25,6 +25,7 @@ mod mountpoint_s3_client;
 mod mountpoint_s3_client_inner;
 mod put_object_stream;
 mod python_structs;
+mod build_info;
 
 #[pymodule]
 #[pyo3(name = "_mountpoint_s3_client")]
