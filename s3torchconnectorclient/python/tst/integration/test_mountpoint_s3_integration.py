@@ -19,7 +19,7 @@ HELLO_WORLD_DATA = b"Hello, World!\n"
 
 
 def test_get_object():
-    client = MountpointS3Client("eu-west-2")
+    client = MountpointS3Client("eu-west-2", "unit-tests")
     stream = client.get_object("dataset-it-bucket", "sample-files/hello_world.txt")
 
     full_data = b"".join(stream)
@@ -27,11 +27,12 @@ def test_get_object():
 
 
 def test_get_object_with_unpickled_client():
-    original_client = MountpointS3Client("eu-west-2")
+    original_client = MountpointS3Client("eu-west-2", "unit-tests")
+    assert original_client.user_agent_prefix == "unit-tests"
     pickled_client = pickle.dumps(original_client)
     assert isinstance(pickled_client, bytes)
     unpickled_client = pickle.loads(pickled_client)
-
+    assert unpickled_client.user_agent_prefix == "unit-tests"
     stream = unpickled_client.get_object(
         "dataset-it-bucket",
         "sample-files/hello_world.txt",
@@ -41,7 +42,7 @@ def test_get_object_with_unpickled_client():
 
 
 def test_list_objects():
-    client = MountpointS3Client("eu-west-2")
+    client = MountpointS3Client("eu-west-2", "unit-tests")
     stream = client.list_objects("dataset-it-bucket")
 
     object_infos = [object_info for page in stream for object_info in page.object_info]
@@ -54,7 +55,7 @@ def test_list_objects():
 
 
 def test_list_objects_with_prefix():
-    client = MountpointS3Client("eu-west-2")
+    client = MountpointS3Client("eu-west-2", "unit-tests")
     stream = client.list_objects("dataset-it-bucket", "sample-files/")
 
     object_infos = [object_info for page in stream for object_info in page.object_info]
@@ -67,7 +68,7 @@ def test_list_objects_with_prefix():
 
 
 def test_head_object():
-    client = MountpointS3Client("eu-west-2")
+    client = MountpointS3Client("eu-west-2", "unit-tests")
     object_info = client.head_object(
         "dataset-it-bucket",
         "sample-files/hello_world.txt",
