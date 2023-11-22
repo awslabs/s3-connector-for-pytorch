@@ -217,14 +217,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pipreqs liccheck
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e "s3torchconnectorclient"
-          python -m pip install -e "s3torchconnector"
+#          python -m pip install -e "s3torchconnectorclient"
+#          python -m pip install -e "s3torchconnector"
 
       - name: Generate requirements
         run: |
-          pipreqs s3torchconnectorclient
+          pipreqs s3torchconnector --ignore tst/
           cat s3torchconnectorclient/requirements.txt
-          pipreqs s3torchconnector
+          pipreqs s3torchconnectorclient --ignore python/tst
           cat s3torchconnector/requirements.txt
 
       - name: Licenses check s3torchconnectorclient
