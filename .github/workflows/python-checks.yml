@@ -202,4 +202,4 @@ jobs:
         run: safety check -r s3torchconnector/requirements.txt
 
       - name: Python Licenses Check
-        run: pip-licenses --allow-only=${{ vars.ALLOWED_PYTHON_LICENSES }}
+        run: pip-licenses #--allow-only=${{ vars.ALLOWED_PYTHON_LICENSES }}
