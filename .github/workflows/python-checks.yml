@@ -195,7 +195,9 @@ jobs:
           exclude: '(?i)^(pylint|aio[-_]*).*'
       - name: Print report
         if: ${{ always() }}
-        run: echo "${{ steps.license_check_report.outputs.report }}"
+        run: | 
+          echo "${{ steps.license_check_report.outputs.report }}" | cut -d' ' -f2-
+
 
       - name: Audit s3torchconnectorclient dependencies
         uses: pypa/gh-action-pip-audit@v1.0.8
