@@ -33,3 +33,19 @@ e2e = [
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
+
+[Licenses]
+authorized_licenses = [
+    "apache",
+    "apache 2.0",
+    "apache software license",
+    "new bsd",
+    "bsd-2-clause",
+    "bsd-3-cluse",
+    "isc license",
+    "isc license (iscl)",
+    "mit",
+    "mit license",
+    "python software foundation license",
+    "zpl 2.1"
+]
