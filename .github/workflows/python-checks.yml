@@ -187,6 +187,17 @@ jobs:
       - name: Security vulnerabilities check s3torchconnectorclient
         run: safety check -r s3torchconnectorclient/requirements.txt
 
+      - name: Check python
+        id: license_check_report
+        uses: pilosus/action-pip-license-checker@v2
+        with:
+          requirements: "s3torchconnectorclient/requirements.txt"
+          fail: 'Copyleft'
+          exclude: '(?i)^(pylint|aio[-_]*).*'
+      - name: Print report
+        if: ${{ always() }}
+        run: echo "${{ steps.license_check_report.outputs.report }}"
+
       - name: Audit s3torchconnectorclient dependencies
         uses: pypa/gh-action-pip-audit@v1.0.8
         with:
@@ -200,14 +211,3 @@ jobs:
 
       - name: Security vulnerabilities check s3torchconnector
         run: safety check -r s3torchconnector/requirements.txt
-
-      - name: Python Licenses Check
-        run: |
-          pwd
-          pip-licenses #--allow-only=${{ vars.ALLOWED_PYTHON_LICENSES }}
-          cd /s3torchconnector 
-          pwd
-          pip-licenses
-          cd ../s3torchconnectorclient
-          pwd
-          pip-licenses
