@@ -1,4 +1,4 @@
-name: Integration tests
+name: Integration tests (PR)
 
 on:
   pull_request_target:
