@@ -57,9 +57,9 @@ jobs:
           python -m pip install -e "s3torchconnectorclient[test]"
           python -m pip install -e "s3torchconnector[test]"
 
-      - name: Client unit tests
+      - name: s3torchconnectorclient unit tests
         run: pytest s3torchconnectorclient/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
-      - name: Dataset unit tests
+      - name: s3torchconnector unit tests
         run: pytest s3torchconnector/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
 
   lint:
