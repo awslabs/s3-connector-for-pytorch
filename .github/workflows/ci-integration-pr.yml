@@ -1,0 +1,18 @@
+name: Integration tests
+
+on:
+  pull_request_target:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+
+jobs:
+  integration:
+    name: Integration
+    uses: ./.github/workflows/python-integration.yml
+    with:
+      environment: "integration-tests"
+      ref: ${{ github.event.pull_request.head.sha }}
