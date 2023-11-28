@@ -77,7 +77,7 @@ jobs:
           python -m pip install -e "s3torchconnectorclient[test,e2e]"
           python -m pip install -e "s3torchconnector[test,e2e]"
 
-      - name: Dataset integration tests
+      - name: s3torchconnector integration tests
         run: pytest s3torchconnector/tst/e2e -n auto
 
       - name: Save Cargo cache
