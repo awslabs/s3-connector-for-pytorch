@@ -45,7 +45,7 @@ license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
 test-requires = ["./s3torchconnector[e2e]"]
 test-extras = "test"
 test-command = [
-    "pytest {package}/python/tst/unit",
+    "pytest {package}/python/tst/",
     "pytest {package}/../s3torchconnector/tst",
 ]
 environment-pass = [
