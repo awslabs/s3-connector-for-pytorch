@@ -7,6 +7,7 @@ name = "s3torchconnectorclient"
 version = "1.1.1"
 description = "Internal S3 client implementation for s3torchconnector"
 requires-python = ">=3.8,<3.12"
+readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
@@ -36,3 +37,48 @@ find = { where = ["python/src"] }
 
 [[tool.setuptools-rust.ext-modules]]
 target = "s3torchconnectorclient._mountpoint_s3_client"
+
+[tool.setuptools]
+license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
+
+[tool.cibuildwheel]
+test-requires = ["./s3torchconnector[e2e]"]
+test-extras = "test"
+test-command = [
+    "pytest {package}/python/tst/unit",
+    "pytest {package}/../s3torchconnector/tst",
+]
+environment-pass = [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "CI_REGION",
+    "CI_BUCKET",
+    "CI_PREFIX",
+    "CI_EXPRESS_BUCKET",
+    "CI_EXPRESS_REGION"
+]
+before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
+build = ["cp38*", "cp39*", "cp310*", "cp311*"]
+skip = "*musllinux* *i686"
+
+[tool.cibuildwheel.linux]
+before-all = [
+  "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
+  "yum install -y epel-release centos-release-scl",
+  "yum install -y fuse",
+  "yum install -y fuse-devel",
+  "yum install -y make",
+  "yum install -y cmake3",
+  "yum install -y git",
+  "yum install -y pkgconfig",
+  "yum install -y dpkg",
+  "yum install -y fakeroot",
+  "yum install -y rpmdevtools",
+  "yum install -y tar",
+  "yum install -y wget",
+  "yum install -y devtoolset-10-gcc",
+  "yum install -y devtoolset-10-gcc-c++",
+  "yum install -y llvm-toolset-7.0-clang"
+]
+environment = { PATH="/opt/rh/llvm-toolset-7.0/root/usr/bin:/opt/rh/devtoolset-10/root/usr/bin:$HOME/.cargo/bin:$PATH", LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7.0/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib", CC="/opt/rh/devtoolset-10/root/usr/bin/gcc", CXX="/opt/rh/devtoolset-10/root/usr/bin/g++" }

@@ -7,6 +7,7 @@ name = "s3torchconnector"
 version = "1.1.1"
 description = "S3 connector integration for PyTorch"
 requires-python = ">=3.8,<3.12"
+readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
@@ -45,3 +46,6 @@ e2e = [
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
+
+[tool.setuptools]
+license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]

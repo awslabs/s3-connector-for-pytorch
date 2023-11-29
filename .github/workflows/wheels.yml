@@ -1,0 +1,95 @@
+name: Build Wheels
+
+on:
+  workflow_call:
+
+env:
+  CI_REGION: ${{ vars.S3_REGION }}
+  CI_BUCKET: ${{ vars.S3_BUCKET }}
+  CI_PREFIX: ${{ vars.S3_PREFIX }}
+
+
+jobs:
+  generate_third_party_licenses:
+    name: Generate THIRD-PARTY-LICENSES
+    uses: ./.github/workflows/generate_third_party_licenses_workflow.yml
+
+  build_wheels:
+    name: Build wheels for ${{ matrix.build_target }}
+    runs-on: ubuntu-20.04
+    needs: generate_third_party_licenses
+    strategy:
+      matrix:
+        build_target:
+          - cp38-manylinux_x86_64
+          - cp39-manylinux_x86_64
+          - cp310-manylinux_x86_64
+          - cp311-manylinux_x86_64
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        id: creds
+        with:
+          role-to-assume: ${{ vars.ACTIONS_IAM_ROLE }}
+          aws-region: ${{ vars.S3_REGION }}
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: "ort-results-s3connectorforpytorch--"
+
+      - name: Rename third party license
+        run: |
+          mv NOTICE_DEFAULT THIRD-PARTY-LICENSES
+
+      - name: Build wheels for s3torchconnectorclient
+        uses: pypa/cibuildwheel@v2.16.2
+        env:
+          CIBW_BUILD: ${{ matrix.build_target }}
+        with:
+          package-dir: s3torchconnectorclient
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: "./wheelhouse/*.whl"
+          name: wheels
+
+  build_source_wheels:
+    name: Build source wheels for ${{ matrix.build_target }}
+    runs-on: ubuntu-20.04
+    needs: generate_third_party_licenses
+    strategy:
+      matrix:
+        build_target:
+          - s3torchconnector
+          - s3torchconnectorclient
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: "ort-results-s3connectorforpytorch--"
+
+      - name: Copy license files
+        run: |
+          cp README.md ${{ matrix.build_target }}/
+          cp LICENSE ${{ matrix.build_target }}/
+          cp NOTICE_DEFAULT ${{ matrix.build_target }}/THIRD-PARTY-LICENSES
+          cp NOTICE ${{ matrix.build_target }}/
+
+      - name: Build wheel
+        run: |
+          cd ${{ matrix.build_target }}
+          python -m pip install build
+          python -m build --sdist
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: "./${{ matrix.build_target }}/dist/*"
+          name: wheels

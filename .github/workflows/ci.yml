@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "tmp/distribution" ]
   pull_request:
     branches: [ "main" ]
   merge_group:
@@ -16,4 +16,13 @@ jobs:
   python-checks:
     name: Python Checks
     uses: ./.github/workflows/python-checks.yml
+    permissions:
+      id-token: write
+      contents: read
 
+  wheels:
+    name: Wheels
+    uses: ./.github/workflows/wheels.yml
+    permissions:
+      id-token: write
+      contents: read

@@ -1,0 +1,10 @@
+name: Generate THIRD-PARTY-LICENSES
+
+on:
+  push:
+    branches: [ "tmp/distribution" ]
+
+jobs:
+  generate_third_party_licenses:
+    name: Generate THIRD-PARTY-LICENSES
+    uses: ./.github/workflows/generate_third_party_licenses_workflow.yml
