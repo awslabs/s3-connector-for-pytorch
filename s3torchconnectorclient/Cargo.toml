@@ -19,8 +19,8 @@ built = "0.7"
 pyo3 = { version = "0.19.2" }
 pyo3-log = "0.8.3"
 futures = "0.3.28"
-mountpoint-s3-client = "0.5.0"
-mountpoint-s3-crt = "0.4.0"
+mountpoint-s3-client = "0.6.0"
+mountpoint-s3-crt = "0.5.0"
 log = "0.4.20"
 tracing = { version = "0.1.37", features = ["log"] }
 tracing-subscriber = "0.3.17"

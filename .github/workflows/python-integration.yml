@@ -17,6 +17,8 @@ env:
   CI_REGION: ${{ vars.S3_REGION }}
   CI_BUCKET: ${{ vars.S3_BUCKET }}
   CI_PREFIX: ${{ vars.S3_PREFIX }}
+  CI_EXPRESS_BUCKET: ${{ vars.S3_EXPRESS_BUCKET }}
+  CI_EXPRESS_REGION: ${{ vars.S3_EXPRESS_REGION }}
 
 jobs:
   integration-test:
@@ -79,6 +81,9 @@ jobs:
 
       - name: s3torchconnector integration tests
         run: pytest s3torchconnector/tst/e2e -n auto
+
+      - name: s3torchconnectorclient integration tests
+        run: pytest s3torchconnectorclient/python/tst/integration -n auto
 
       - name: Save Cargo cache
         uses: actions/cache/save@v3
