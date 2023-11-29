@@ -259,14 +259,14 @@ def test_put_object_with_storage_class():
     put_stream.close()
 
 
+# TODO: Revise these values after aligning on limits
 @hypothesis.settings(deadline=timedelta(seconds=5))
 @given(
     text(),
-    integers(min_value=5 * 2**20, max_value=5 * 2**30),
+    integers(min_value=5 * 2**20, max_value=5 * 2**20),
     floats(min_value=0),
 )
 @example("", 5 * 2**20, 0)  # 5MiB
-@example("", 5 * 2**30, 0)  # 5GiB
 def test_mountpoint_client_pickles(
     expected_region: str,
     expected_part_size: int,

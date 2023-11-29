@@ -133,11 +133,10 @@ jobs:
         with:
           inputs: "s3torchconnectorclient"
 
-# TODO: Re-enable after publishing
-#      - name: Audit s3torchconnector dependencies
-#        uses: pypa/gh-action-pip-audit@v1.0.8
-#        with:
-#          inputs: "s3torchconnector"
+      - name: Audit s3torchconnector dependencies
+        uses: pypa/gh-action-pip-audit@v1.0.8
+        with:
+          inputs: "s3torchconnector"
 
       - name: Security vulnerabilities check s3torchconnector
         run: safety check -r s3torchconnector/requirements.txt

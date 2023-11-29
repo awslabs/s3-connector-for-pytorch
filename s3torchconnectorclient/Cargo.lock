@@ -623,9 +623,9 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "mountpoint-s3-client"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65342ed0354e582e732494c298d9c8f82b6d6d319d6665bc75f28b43adb0dd8f"
+checksum = "2a07535682fff358fc5c646f6a3da60ca9ab1e98bdea32e7cda6473ad5354193"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -643,6 +643,8 @@ dependencies = [
  "percent-encoding",
  "pin-project",
  "platform-info",
+ "rand",
+ "rand_chacha",
  "regex",
  "serde_json",
  "static_assertions",
@@ -654,9 +656,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39a4207bd15ceacc27168cc70929fa3645b8a740f292006c09a07b8aeeeb71d0"
+checksum = "934b191d2d5ecd9f5e98d3034e9386d0bac4e3721a84ccc292b5565aa068589e"
 dependencies = [
  "async-channel",
  "futures",
@@ -670,9 +672,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt-sys"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "331c6dd95369e37e4e922a348abdd9a372e332402f1d3f8b1c7219cefb6bb585"
+checksum = "1476cf954e6b58741a403bd7d43ae8d45bf605752626fda94a59d00838ffc834"
 dependencies = [
  "bindgen",
  "cc",
@@ -842,6 +844,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
+name = "ppv-lite86"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -952,6 +960,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "rand"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+dependencies = [
+ "libc",
+ "rand_chacha",
+ "rand_core",
+]
+
+[[package]]
+name = "rand_chacha"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
+dependencies = [
+ "ppv-lite86",
+ "rand_core",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+dependencies = [
+ "getrandom",
 ]
 
 [[package]]

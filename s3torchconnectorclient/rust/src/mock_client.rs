@@ -36,7 +36,8 @@ impl PyMockClient {
         throughput_target_gbps: f64,
         part_size: usize,
     ) -> PyMockClient {
-        let config = MockClientConfig { bucket, part_size };
+        let unordered_list_seed: Option<u64> = None;
+        let config = MockClientConfig { bucket, part_size, unordered_list_seed };
         let mock_client = Arc::new(MockClient::new(config));
 
         PyMockClient {
