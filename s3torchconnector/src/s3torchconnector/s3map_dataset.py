@@ -5,7 +5,8 @@ from typing import List, Any, Callable, Iterable, Union
 
 import torch.utils.data
 
-from ._s3client import S3Client, S3Reader
+from ._s3client import S3Client
+from ._s3client.s3reader import S3Reader
 
 from ._s3dataset_common import (
     get_objects_from_uris,

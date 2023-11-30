@@ -8,8 +8,9 @@ from typing import (
     List,
 )
 
-from s3torchconnector._s3_bucket_iterable import S3BucketIterable
-from s3torchconnector._s3client import S3Client, S3Reader
+from ._s3_bucket_iterable import S3BucketIterable
+from ._s3client import S3Client
+from ._s3client.s3reader import S3Reader
 
 """
 _s3dataset_common.py

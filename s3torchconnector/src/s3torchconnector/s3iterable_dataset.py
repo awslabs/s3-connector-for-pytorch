@@ -5,7 +5,7 @@ from typing import Iterator, Any, Union, Iterable, Callable
 
 import torch.utils.data
 
-from . import S3Reader
+from ._s3client.s3reader import S3Reader
 from ._s3client import S3Client
 from ._s3dataset_common import (
     identity,

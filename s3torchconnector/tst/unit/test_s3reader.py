@@ -12,7 +12,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-from s3torchconnector._s3client import S3Reader
+from s3torchconnector import S3Reader
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
