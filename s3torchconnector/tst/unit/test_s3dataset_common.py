@@ -69,16 +69,13 @@ def test_list_objects_from_prefix(
     prefix: str, keys: Sequence[str], expected_count: int
 ):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
-    objects = list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
+    bucket_key_pairs = list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
     count = 0
-    for index, object in enumerate(objects):
+    for index, bucket_key_pair in enumerate(bucket_key_pairs):
         count += 1
-        assert object is not None
-        assert object.bucket == TEST_BUCKET
-        assert object.key == keys[index]
-        assert object._object_info is not None
-        assert object._object_info.key == keys[index]
-        assert object._get_stream is not None
+        assert bucket_key_pair is not None
+        assert bucket_key_pair.bucket == TEST_BUCKET
+        assert bucket_key_pair.key == keys[index]
     assert count == expected_count
 
 
@@ -101,15 +98,13 @@ def test_get_objects_from_uris_success(
     object_uris: Sequence[str], expected_keys: Sequence[str]
 ):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, expected_keys)
-    objects = get_objects_from_uris(object_uris, mock_client)
+    bucket_key_pairs = get_objects_from_uris(object_uris, mock_client)
     count = 0
-    for index, object in enumerate(objects):
+    for index, bucket_key_pair in enumerate(bucket_key_pairs):
         count += 1
-        assert object is not None
-        assert object.bucket == TEST_BUCKET
-        assert object.key == expected_keys[index]
-        assert object._get_object_info is not None
-        assert object._get_stream is not None
+        assert bucket_key_pair is not None
+        assert bucket_key_pair.bucket == TEST_BUCKET
+        assert bucket_key_pair.key == expected_keys[index]
     assert count == len(expected_keys)
 
 
