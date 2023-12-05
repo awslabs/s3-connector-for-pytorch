@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-timeout",
     "hypothesis",
     "flake8",
     "black"
