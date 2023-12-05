@@ -11,7 +11,8 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     ListObjectStream,
 )
 
-from s3torchconnector._s3client import S3Client, S3Reader
+from ._s3client import S3Client
+from . import S3Reader
 
 
 class S3BucketIterable:

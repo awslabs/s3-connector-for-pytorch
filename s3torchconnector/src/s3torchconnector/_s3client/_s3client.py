@@ -5,9 +5,7 @@ import os
 from functools import partial
 from typing import Optional, Any
 
-from .s3reader import S3Reader
-from .s3writer import S3Writer
-
+from s3torchconnector import S3Reader, S3Writer
 from s3torchconnector._version import user_agent_prefix
 
 from s3torchconnectorclient._mountpoint_s3_client import (

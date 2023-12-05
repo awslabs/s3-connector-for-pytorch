@@ -5,8 +5,7 @@ from typing import Iterable, Callable, Sequence, Any
 
 import pytest
 
-from s3torchconnector import S3IterableDataset
-from s3torchconnector._s3client import S3Reader
+from s3torchconnector import S3IterableDataset, S3Reader
 
 from test_s3dataset_common import (
     TEST_BUCKET,

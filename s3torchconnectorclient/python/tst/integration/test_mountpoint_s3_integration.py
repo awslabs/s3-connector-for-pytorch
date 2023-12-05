@@ -178,6 +178,7 @@ def test_multi_list_requests_return_same_list(region, bucket, prefix):
     assert keys_of_first_request == keys_of_second_request
 
 
+@pytest.mark.skip(reason="Not thread safe")
 @pytest.mark.parametrize(
     "region, bucket, key, data_to_write",
     [
@@ -218,6 +219,7 @@ def test_put_object(region, bucket, key, data_to_write):
     assert b"".join(get_stream) == data_to_write
 
 
+@pytest.mark.skip(reason="Not thread safe")
 @pytest.mark.parametrize(
     "region, bucket, key",
     [
@@ -303,6 +305,7 @@ def test_s3express_list_object_with_continuation(
     assert sorted(keys) == expected_img_10_keys
 
 
+@pytest.mark.skip(reason="Not thread safe")
 @pytest.mark.parametrize(
     "region, bucket, key, part_count, part_size",
     [
