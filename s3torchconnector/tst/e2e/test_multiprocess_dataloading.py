@@ -13,8 +13,7 @@ import torch
 from torch.utils.data import DataLoader, get_worker_info
 from torchdata.datapipes.iter import IterableWrapper
 
-from s3torchconnector import S3IterableDataset, S3MapDataset
-from s3torchconnector._s3client import S3Reader
+from s3torchconnector import S3IterableDataset, S3MapDataset, S3Reader
 
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture

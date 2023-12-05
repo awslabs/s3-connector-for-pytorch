@@ -1,8 +1,9 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-from s3torchconnector._s3dataset_common import parse_s3_uri
-from s3torchconnector._s3client import S3Client, S3Reader, S3Writer
+from ._s3dataset_common import parse_s3_uri
+from ._s3client import S3Client
+from . import S3Reader, S3Writer
 
 
 class S3Checkpoint:

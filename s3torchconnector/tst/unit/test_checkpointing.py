@@ -32,7 +32,7 @@ from hypothesis.strategies import (
 )
 
 from s3torchconnector._s3client import MockS3Client
-from s3torchconnector.s3checkpoint import S3Checkpoint
+from s3torchconnector import S3Checkpoint
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
