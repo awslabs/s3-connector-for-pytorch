@@ -42,9 +42,7 @@ class S3MapDataset(torch.utils.data.Dataset):
     @property
     def _dataset_bucket_key_pairs(self) -> List[S3BucketKey]:
         if self._bucket_key_pairs is None:
-            self._bucket_key_pairs = list(
-                self._get_dataset_objects(self._get_client())
-            )
+            self._bucket_key_pairs = list(self._get_dataset_objects(self._get_client()))
         return self._bucket_key_pairs
 
     @classmethod
