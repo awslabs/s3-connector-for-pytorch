@@ -41,8 +41,7 @@ def get_objects_from_uris(
 ) -> Iterable[S3BucketKey]:
     if isinstance(object_uris, str):
         object_uris = [object_uris]
-    # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
-    bucket_key_pairs = [S3BucketKey(*parse_s3_uri(uri)) for uri in object_uris]
+    bucket_key_pairs = (S3BucketKey(*parse_s3_uri(uri)) for uri in object_uris)
 
     return bucket_key_pairs
 
