@@ -26,7 +26,7 @@ class S3MapDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[S3Client], Iterable[S3Reader]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
         transform: Callable[[S3Reader], Any] = identity,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -101,7 +101,7 @@ class S3MapDataset(torch.utils.data.Dataset):
             self._client = S3Client(self.region)
         return self._client
 
-    def _get_object(self, i) -> S3Reader:
+    def _get_object(self, i: int) -> S3Reader:
         bucket_key = self._dataset_bucket_key_pairs[i]
         return self._get_client().get_object(bucket_key.bucket, bucket_key.key)
 

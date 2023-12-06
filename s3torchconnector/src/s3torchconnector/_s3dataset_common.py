@@ -49,7 +49,7 @@ def get_objects_from_uris(
 
 def list_objects_from_prefix(s3_uri: str, client: S3Client) -> Iterable[S3BucketKey]:
     bucket, prefix = parse_s3_uri(s3_uri)
-    s3objects = list(S3BucketIterable(client, bucket, prefix))
-    bucket_key_pairs = [S3BucketKey(obj.bucket, obj.key) for obj in s3objects]
+    s3objects = S3BucketIterable(client, bucket, prefix)
+    bucket_key_pairs = (S3BucketKey(obj.bucket, obj.key) for obj in s3objects)
 
     return bucket_key_pairs
