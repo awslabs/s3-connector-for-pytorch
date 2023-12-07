@@ -11,7 +11,7 @@ from s3torchconnector._s3client import MockS3Client
 
 from s3torchconnector._s3dataset_common import (
     parse_s3_uri,
-    list_objects_from_prefix,
+    get_objects_from_prefix,
     get_objects_from_uris,
 )
 
@@ -65,11 +65,9 @@ def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
         ("obj", ["obj1", "obj2", "obj3", "test", "test2"], 3),
     ],
 )
-def test_list_objects_from_prefix(
-    prefix: str, keys: Sequence[str], expected_count: int
-):
+def test_get_objects_from_prefix(prefix: str, keys: Sequence[str], expected_count: int):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
-    bucket_key_pairs = list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
+    bucket_key_pairs = get_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
     count = 0
     for index, bucket_key_pair in enumerate(bucket_key_pairs):
         count += 1
@@ -82,7 +80,7 @@ def test_list_objects_from_prefix(
 def test_list_objects_for_bucket_invalid():
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
     with pytest.raises(S3Exception) as error:
-        objects = list_objects_from_prefix(
+        objects = get_objects_from_prefix(
             "s3://DIFFERENT_BUCKET",
             mock_client,
         )

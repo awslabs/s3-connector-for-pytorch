@@ -1,7 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-from typing import Iterable, Union, Tuple, List
+from typing import Iterable, Union, Tuple
 
 from ._s3_bucket_iterable import S3BucketIterable
 from ._s3client import S3Client
@@ -44,15 +44,10 @@ def get_objects_from_uris(
     # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
     bucket_key_pairs = [parse_s3_uri(uri) for uri in object_uris]
 
-    return bucket_key_pairs_to_objects(bucket_key_pairs)
+    return (S3BucketKey(bucket, key) for bucket, key in bucket_key_pairs)
 
 
-def bucket_key_pairs_to_objects(bucket_key_pairs: List[Tuple[str, str]]):
-    for bucket, key in bucket_key_pairs:
-        yield S3BucketKey(bucket, key)
-
-
-def list_objects_from_prefix(s3_uri: str, client: S3Client) -> Iterable[S3BucketKey]:
+def get_objects_from_prefix(s3_uri: str, client: S3Client) -> Iterable[S3BucketKey]:
     bucket, prefix = parse_s3_uri(s3_uri)
     s3objects = S3BucketIterable(client, bucket, prefix)
     bucket_key_pairs = (S3BucketKey(obj.bucket, obj.key) for obj in s3objects)

@@ -11,7 +11,7 @@ from . import S3Reader
 
 from ._s3dataset_common import (
     get_objects_from_uris,
-    list_objects_from_prefix,
+    get_objects_from_prefix,
     identity,
 )
 
@@ -93,7 +93,7 @@ class S3MapDataset(torch.utils.data.Dataset):
             S3Exception: An error occurred accessing S3.
         """
         return cls(
-            region, partial(list_objects_from_prefix, s3_uri), transform=transform
+            region, partial(get_objects_from_prefix, s3_uri), transform=transform
         )
 
     def _get_client(self):
