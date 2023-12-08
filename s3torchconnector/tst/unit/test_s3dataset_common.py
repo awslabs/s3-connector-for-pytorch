@@ -11,7 +11,7 @@ from s3torchconnector._s3client import MockS3Client
 
 from s3torchconnector._s3dataset_common import (
     parse_s3_uri,
-    list_objects_from_prefix,
+    get_objects_from_prefix,
     get_objects_from_uris,
 )
 
@@ -65,27 +65,22 @@ def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
         ("obj", ["obj1", "obj2", "obj3", "test", "test2"], 3),
     ],
 )
-def test_list_objects_from_prefix(
-    prefix: str, keys: Sequence[str], expected_count: int
-):
+def test_get_objects_from_prefix(prefix: str, keys: Sequence[str], expected_count: int):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
-    objects = list_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
+    bucket_key_pairs = get_objects_from_prefix(f"{S3_PREFIX}/{prefix}", mock_client)
     count = 0
-    for index, object in enumerate(objects):
+    for index, bucket_key_pair in enumerate(bucket_key_pairs):
         count += 1
-        assert object is not None
-        assert object.bucket == TEST_BUCKET
-        assert object.key == keys[index]
-        assert object._object_info is not None
-        assert object._object_info.key == keys[index]
-        assert object._get_stream is not None
+        assert bucket_key_pair is not None
+        assert bucket_key_pair.bucket == TEST_BUCKET
+        assert bucket_key_pair.key == keys[index]
     assert count == expected_count
 
 
 def test_list_objects_for_bucket_invalid():
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
     with pytest.raises(S3Exception) as error:
-        objects = list_objects_from_prefix(
+        objects = get_objects_from_prefix(
             "s3://DIFFERENT_BUCKET",
             mock_client,
         )
@@ -101,15 +96,13 @@ def test_get_objects_from_uris_success(
     object_uris: Sequence[str], expected_keys: Sequence[str]
 ):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, expected_keys)
-    objects = get_objects_from_uris(object_uris, mock_client)
+    bucket_key_pairs = get_objects_from_uris(object_uris, mock_client)
     count = 0
-    for index, object in enumerate(objects):
+    for index, bucket_key_pair in enumerate(bucket_key_pairs):
         count += 1
-        assert object is not None
-        assert object.bucket == TEST_BUCKET
-        assert object.key == expected_keys[index]
-        assert object._get_object_info is not None
-        assert object._get_stream is not None
+        assert bucket_key_pair is not None
+        assert bucket_key_pair.bucket == TEST_BUCKET
+        assert bucket_key_pair.key == expected_keys[index]
     assert count == len(expected_keys)
 
 

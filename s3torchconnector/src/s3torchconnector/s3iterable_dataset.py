@@ -6,11 +6,12 @@ from typing import Iterator, Any, Union, Iterable, Callable
 import torch.utils.data
 
 from . import S3Reader
+from ._s3bucket_key import S3BucketKey
 from ._s3client import S3Client
 from ._s3dataset_common import (
     identity,
     get_objects_from_uris,
-    list_objects_from_prefix,
+    get_objects_from_prefix,
 )
 
 
@@ -24,7 +25,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[S3Client], Iterable[S3Reader]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
         transform: Callable[[S3Reader], Any] = identity,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -83,7 +84,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             S3Exception: An error occurred accessing S3.
         """
         return cls(
-            region, partial(list_objects_from_prefix, s3_uri), transform=transform
+            region, partial(get_objects_from_prefix, s3_uri), transform=transform
         )
 
     def _get_client(self):
@@ -91,5 +92,12 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             self._client = S3Client(self.region)
         return self._client
 
+    def _get_transformed_object(self, bucket_key: S3BucketKey) -> Any:
+        return self._transform(
+            self._get_client().get_object(bucket_key.bucket, bucket_key.key)
+        )
+
     def __iter__(self) -> Iterator[Any]:
-        return map(self._transform, self._get_dataset_objects(self._get_client()))
+        return map(
+            self._get_transformed_object, self._get_dataset_objects(self._get_client())
+        )

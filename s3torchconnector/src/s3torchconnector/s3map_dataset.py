@@ -4,13 +4,14 @@ from functools import partial
 from typing import List, Any, Callable, Iterable, Union
 
 import torch.utils.data
+from s3torchconnector._s3bucket_key import S3BucketKey
 
 from ._s3client import S3Client
 from . import S3Reader
 
 from ._s3dataset_common import (
     get_objects_from_uris,
-    list_objects_from_prefix,
+    get_objects_from_prefix,
     identity,
 )
 
@@ -25,26 +26,24 @@ class S3MapDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[S3Client], Iterable[S3Reader]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
         transform: Callable[[S3Reader], Any] = identity,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
         self._region = region
         self._client = None
-        self._dataset_object_store = None
+        self._bucket_key_pairs = None
 
     @property
     def region(self):
         return self._region
 
     @property
-    def _dataset_objects(self) -> List[S3Reader]:
-        if self._dataset_object_store is None:
-            self._dataset_object_store = list(
-                self._get_dataset_objects(self._get_client())
-            )
-        return self._dataset_object_store
+    def _dataset_bucket_key_pairs(self) -> List[S3BucketKey]:
+        if self._bucket_key_pairs is None:
+            self._bucket_key_pairs = list(self._get_dataset_objects(self._get_client()))
+        return self._bucket_key_pairs
 
     @classmethod
     def from_objects(
@@ -94,7 +93,7 @@ class S3MapDataset(torch.utils.data.Dataset):
             S3Exception: An error occurred accessing S3.
         """
         return cls(
-            region, partial(list_objects_from_prefix, s3_uri), transform=transform
+            region, partial(get_objects_from_prefix, s3_uri), transform=transform
         )
 
     def _get_client(self):
@@ -102,8 +101,12 @@ class S3MapDataset(torch.utils.data.Dataset):
             self._client = S3Client(self.region)
         return self._client
 
+    def _get_object(self, i: int) -> S3Reader:
+        bucket_key = self._dataset_bucket_key_pairs[i]
+        return self._get_client().get_object(bucket_key.bucket, bucket_key.key)
+
     def __getitem__(self, i: int) -> Any:
-        return self._transform(self._dataset_objects[i])
+        return self._transform(self._get_object(i))
 
     def __len__(self):
-        return len(self._dataset_objects)
+        return len(self._dataset_bucket_key_pairs)
