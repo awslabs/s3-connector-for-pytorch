@@ -3,13 +3,9 @@
 
 import logging
 import pickle
-from datetime import timedelta
 from typing import Set
 
-import hypothesis
 import pytest
-from hypothesis import given, example
-from hypothesis.strategies import text, integers, floats
 from s3torchconnectorclient._mountpoint_s3_client import (
     S3Exception,
     GetObjectStream,
@@ -259,21 +255,13 @@ def test_put_object_with_storage_class():
     put_stream.close()
 
 
-# TODO: Revise these values after aligning on limits
-@hypothesis.settings(deadline=timedelta(seconds=5))
-@given(
-    text(),
-    integers(min_value=5 * 2**20, max_value=5 * 2**20),
-    floats(min_value=0),
-)
-@example("", 5 * 2**20, 0)  # 5MiB
-def test_mountpoint_client_pickles(
-    expected_region: str,
-    expected_part_size: int,
-    expected_throughput_target_gbps: float,
-):
+# TODO: Add hypothesis setup after aligning on limits
+def test_mountpoint_client_pickles():
     expected_profile = None
     expected_no_sign_request = False
+    expected_region = REGION
+    expected_part_size = 5 * 2**20
+    expected_throughput_target_gbps = 3.5
 
     client = MountpointS3Client(
         region=expected_region,

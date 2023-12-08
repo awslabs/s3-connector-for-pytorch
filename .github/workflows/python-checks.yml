@@ -8,9 +8,6 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-Dwarnings"
-  CI_REGION: ${{ vars.S3_REGION }}
-  CI_BUCKET: ${{ vars.S3_BUCKET }}
-  CI_PREFIX: ${{ vars.S3_PREFIX }}
 
 jobs:
   test:

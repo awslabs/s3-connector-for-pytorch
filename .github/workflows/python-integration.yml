@@ -14,11 +14,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: "-Dwarnings"
-  CI_REGION: ${{ vars.S3_REGION }}
-  CI_BUCKET: ${{ vars.S3_BUCKET }}
   CI_PREFIX: ${{ vars.S3_PREFIX }}
-  CI_EXPRESS_BUCKET: ${{ vars.S3_EXPRESS_BUCKET }}
-  CI_EXPRESS_REGION: ${{ vars.S3_EXPRESS_REGION }}
 
 jobs:
   integration-test:
@@ -29,10 +25,18 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
+        test-run:
+          - name: "S3"
+            bucket: ${{ vars.S3_BUCKET }}
+            region: ${{ vars.S3_REGION }}
+            storage-class: ""
+          - name: "S3 Express"
+            bucket: ${{ vars.S3_EXPRESS_BUCKET }}
+            region: ${{ vars.S3_EXPRESS_REGION }}
+            storage-class: "EXPRESS_ONEZONE"
     permissions:
       id-token: write
       contents: read
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -79,11 +83,19 @@ jobs:
           python -m pip install -e "s3torchconnectorclient[test,e2e]"
           python -m pip install -e "s3torchconnector[test,e2e]"
 
-      - name: s3torchconnector integration tests
-        run: pytest s3torchconnector/tst/e2e -n auto
+      - name: s3torchconnector ${{ matrix.test-run.name }} integration tests
+        run: |
+          CI_REGION=${{ matrix.test-run.region }} \
+          CI_BUCKET=${{ matrix.test-run.bucket }} \
+          CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          pytest s3torchconnector/tst/e2e -n auto
 
-      - name: s3torchconnectorclient integration tests
-        run: pytest s3torchconnectorclient/python/tst/integration -n auto
+      - name: s3torchconnectorclient ${{ matrix.test-run.name }} integration tests
+        run: |
+          CI_REGION=${{ matrix.test-run.region }} \
+          CI_BUCKET=${{ matrix.test-run.bucket }} \
+          CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          pytest s3torchconnectorclient/python/tst/integration -n auto
 
       - name: Save Cargo cache
         uses: actions/cache/save@v3
