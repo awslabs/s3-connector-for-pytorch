@@ -29,7 +29,10 @@ def test_s3mapdataset_images_10_from_prefix(image_directory):
 
     # Intentional usage to emphasize the accessor dataset[index] works.
     for index in range(len(dataset)):
-        key = f"{image_directory.prefix}img{index:03d}.jpg"
+        key = dataset[index].key
+        if _expect_sorted_list_results(image_directory.storage_class):
+            # S3 Express does not guarantee a sorted order for listed keys.
+            assert key == f"{image_directory.prefix}img{index:03d}.jpg"
         assert dataset[index].read() == image_directory[key]
 
 
@@ -131,8 +134,10 @@ def _verify_image_iterable_dataset(
     assert dataset is not None
     for index, fileobj in enumerate(dataset):
         assert fileobj is not None
-        full_key = f"{image_directory.prefix}img{index:03d}.jpg"
-        assert image_directory[full_key] == fileobj.read()
+        if _expect_sorted_list_results(image_directory.storage_class):
+            # S3 Express does not guarantee a sorted order for listed keys.
+            assert fileobj.key == f"{image_directory.prefix}img{index:03d}.jpg"
+        assert image_directory[fileobj.key] == fileobj.read()
 
 
 def _pytorch_dataloader(
@@ -160,3 +165,7 @@ def _get_dataloader_len(dataloader: DataLoader):
         return len(dataloader)
     else:
         return len(list(dataloader))
+
+
+def _expect_sorted_list_results(storage_class: str) -> bool:
+    return storage_class != "EXPRESS_ONEZONE"

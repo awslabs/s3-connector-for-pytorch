@@ -1,7 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-from dataclasses import dataclass
 import io
 import os
 import random
@@ -12,10 +11,10 @@ from PIL import Image
 import pytest
 
 
-def getenv(var: str) -> str:
+def getenv(var: str, optional: bool = False) -> str:
     v = os.getenv(var)
-    if v is None:
-        raise Exception(f"required environment variable {var} is not set")
+    if v is None and not optional:
+        raise Exception(f"Required environment variable {var} is not set")
     return v
 
 
@@ -26,11 +25,15 @@ class BucketPrefixFixture(object):
     region: str
     bucket: str
     prefix: str
+    storage_class: str = None
 
-    def __init__(self, region: str, bucket: str, prefix: str):
+    def __init__(
+        self, region: str, bucket: str, prefix: str, storage_class: str = None
+    ):
         self.bucket = bucket
         self.prefix = prefix
         self.region = region
+        self.storage_class = storage_class
         self.contents = {}
         session = boto3.Session(region_name=region)
         self.s3 = session.client("s3")
@@ -57,12 +60,13 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
     bucket = getenv("CI_BUCKET")
     prefix = getenv("CI_PREFIX")
     region = getenv("CI_REGION")
+    storage_class = getenv("CI_STORAGE_CLASS", optional=True)
     assert prefix == "" or prefix.endswith("/")
 
     nonce = random.randrange(2**64)
     prefix = f"{prefix}{name}/{nonce}/"
 
-    return BucketPrefixFixture(region, bucket, prefix)
+    return BucketPrefixFixture(region, bucket, prefix, storage_class)
 
 
 @pytest.fixture
