@@ -1,5 +1,16 @@
 ## Unreleased
 
+## v1.1.1 (December 11, 2023)
+
+### New features
+* Update crates and Mountpoint dependencies
+* Avoid excessive memory consumption when utilizing s3map_dataset. Issue [#89](https://github.com/awslabs/s3-connector-for-pytorch/issues/89)
+* Run all tests against S3 and S3 Express
+
+### Breaking changes
+* No breaking changes.
+
+
 ## v1.1.0 (November 29, 2023)
 
 ### New features
