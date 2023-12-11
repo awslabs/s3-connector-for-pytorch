@@ -92,6 +92,12 @@ with checkpoint.reader(CHECKPOINT_URI + "epoch0.ckpt") as reader:
 model.load_state_dict(state_dict)
 ```
 
+Using datasets or checkpoints with [Amazon S3 Express One Zone](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-one-zone.html) 
+directory buckets requires only to update the URI, following `base-name--azid--x-s3` bucket name format.
+For example, assuming the following directory bucket name `my-test-bucket--usw2-az1--x-s3` with the Availability Zone ID
+usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the prefix
+for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
+
 ## Contributing
 We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CONTRIBUTING.md) For more information on how to report bugs or submit pull requests.
 
