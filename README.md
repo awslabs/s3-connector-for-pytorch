@@ -75,7 +75,7 @@ from s3torchconnector import S3Checkpoint
 import torchvision
 import torch
 
-CHECKPOINT_URI="s3://<BUCKET>/<KEY>"
+CHECKPOINT_URI="s3://<BUCKET>/<KEY>/"
 REGION = "us-east-1"
 checkpoint = S3Checkpoint(region=REGION)
 
