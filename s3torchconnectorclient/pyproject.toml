@@ -47,6 +47,8 @@ test-extras = "test"
 test-command = [
     "pytest {package}/python/tst/",
     "pytest {package}/../s3torchconnector/tst",
+    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${CI_EXPRESS_REGION} CI_BUCKET=${CI_EXPRESS_BUCKET}  pytest {package}/python/tst/integration",
+    "pytest {package}/../s3torchconnector/tst/e2e",
 ]
 environment-pass = [
     "AWS_ACCESS_KEY_ID",
