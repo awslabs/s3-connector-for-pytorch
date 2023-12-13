@@ -12,12 +12,17 @@ EXPRESS_REGION_NAME=$5
 EXPRESS_BUCKET_NAME=$6
 
 FILE_NAME="tmp_cred.json"
-TOKEN=`curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"` && curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/${ROLE_NAME} >> ${FILE_NAME}
+# Set metadata token TTL to 6 hours
+TOKEN=`curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
+# Retrieve temporary credentials and save to file
+curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/${ROLE_NAME} >> ${FILE_NAME}
+# Expose temporary credentials to use from cibuildwheel container
 export AWS_ACCESS_KEY_ID=`cat ${FILE_NAME} | jq -r '.AccessKeyId'`
 export AWS_SECRET_ACCESS_KEY=`cat ${FILE_NAME} | jq -r '.SecretAccessKey'`
 export AWS_SESSION_TOKEN=`cat ${FILE_NAME} | jq -r '.Token'`
 rm ${FILE_NAME}
 
+# Expose settings for integration tests to use from cibuildwheel container
 export CI_REGION=${REGION_NAME}
 export CI_BUCKET=${BUCKET_NAME}
 export CI_PREFIX=${PREFIX}
