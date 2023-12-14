@@ -16,6 +16,3 @@ jobs:
   python-checks:
     name: Python Checks
     uses: ./.github/workflows/python-checks.yml
-    permissions:
-      id-token: write
-      contents: read
