@@ -14,7 +14,7 @@ env:
 jobs:
   generate_third_party_licenses:
     name: Generate THIRD-PARTY-LICENSES
-    uses: ./.github/workflows/generate_third_party_licenses_workflow.yml
+    uses: ./.github/workflows/generate_third_party_licenses.yml
 
   build_wheels:
     name: Build wheels for ${{ matrix.build_target }}
