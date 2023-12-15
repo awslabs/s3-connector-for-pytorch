@@ -48,9 +48,9 @@ test-command = [
     "pytest {package}/python/tst/unit",
     "pytest {package}/../s3torchconnector/tst/unit",
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} pytest {package}/python/tst/integration",
-    "pytest {package}/../s3torchconnector/tst/e2e",
-    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${CI_EXPRESS_REGION} CI_BUCKET=${CI_EXPRESS_BUCKET}  pytest {package}/python/tst/integration",
-    "pytest {package}/../s3torchconnector/tst/e2e",
+    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} pytest {package}/../s3torchconnector/tst/e2e",
+    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} pytest {package}/python/tst/integration",
+    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} pytest {package}/../s3torchconnector/tst/e2e",
 ]
 environment-pass = [
     "AWS_ACCESS_KEY_ID",
@@ -59,8 +59,8 @@ environment-pass = [
     "S3_REGION",
     "S3_BUCKET",
     "S3_PREFIX",
-    "EXPRESS_BUCKET",
-    "EXPRESS_REGION"
+    "S3_EXPRESS_BUCKET",
+    "S3_EXPRESS_REGION"
 ]
 before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
 build = ["cp38*", "cp39*", "cp310*", "cp311*"]
