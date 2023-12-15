@@ -28,3 +28,6 @@ venv/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Prevent publishing file with third party licenses
+THIRD-PARTY-LICENSES
