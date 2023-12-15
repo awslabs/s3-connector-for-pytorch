@@ -23,10 +23,10 @@ export AWS_SESSION_TOKEN=`cat ${FILE_NAME} | jq -r '.Token'`
 rm ${FILE_NAME}
 
 # Expose settings for integration tests to use from cibuildwheel container
-export CI_REGION=${REGION_NAME}
-export CI_BUCKET=${BUCKET_NAME}
-export CI_PREFIX=${PREFIX}
-export CI_EXPRESS_REGION=${EXPRESS_REGION_NAME}
-export CI_EXPRESS_BUCKET=${EXPRESS_BUCKET_NAME}
+export S3_REGION=${REGION_NAME}
+export S3_BUCKET=${BUCKET_NAME}
+export S3_PREFIX=${PREFIX}
+export S3_EXPRESS_REGION=${EXPRESS_REGION_NAME}
+export S3_EXPRESS_BUCKET=${EXPRESS_BUCKET_NAME}
 
 cibuildwheel --output-dir wheelhouse --platform linux s3torchconnectorclient

@@ -16,3 +16,4 @@ jobs:
   python-checks:
     name: Python Checks
     uses: ./.github/workflows/python-checks.yml
+
