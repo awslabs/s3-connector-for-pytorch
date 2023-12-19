@@ -1,0 +1,30 @@
+:orphan:
+
+:py:mod:`s3torchconnector._s3_bucket_iterable`
+==============================================
+
+.. py:module:: s3torchconnector._s3_bucket_iterable
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3_bucket_iterable.S3BucketIterable
+   s3torchconnector._s3_bucket_iterable.S3BucketIterator
+
+
+
+
+.. py:class:: S3BucketIterable(client: s3torchconnector._s3client.S3Client, bucket: str, prefix: str)
+
+
+
+.. py:class:: S3BucketIterator(client: s3torchconnector._s3client.S3Client, bucket: str, prefix: str)
+
+
+

@@ -1,0 +1,36 @@
+:orphan:
+
+:py:mod:`s3torchconnector._s3dataset_common`
+============================================
+
+.. py:module:: s3torchconnector._s3dataset_common
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3dataset_common.identity
+   s3torchconnector._s3dataset_common.parse_s3_uri
+   s3torchconnector._s3dataset_common.get_objects_from_uris
+   s3torchconnector._s3dataset_common.get_objects_from_prefix
+
+
+
+.. py:function:: identity(obj: s3torchconnector.S3Reader) -> s3torchconnector.S3Reader
+
+
+.. py:function:: parse_s3_uri(uri: str) -> Tuple[str, str]
+
+
+.. py:function:: get_objects_from_uris(object_uris: Union[str, Iterable[str]], client: s3torchconnector._s3client.S3Client) -> Iterable[s3torchconnector._s3bucket_key.S3BucketKey]
+
+
+.. py:function:: get_objects_from_prefix(s3_uri: str, client: s3torchconnector._s3client.S3Client) -> Iterable[s3torchconnector._s3bucket_key.S3BucketKey]
+
+

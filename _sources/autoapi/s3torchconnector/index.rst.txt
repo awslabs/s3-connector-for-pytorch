@@ -1,0 +1,249 @@
+:py:mod:`s3torchconnector`
+==========================
+
+.. py:module:: s3torchconnector
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   s3checkpoint/index.rst
+   s3iterable_dataset/index.rst
+   s3map_dataset/index.rst
+   s3reader/index.rst
+   s3writer/index.rst
+
+
+Package Contents
+----------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector.S3Reader
+   s3torchconnector.S3Writer
+   s3torchconnector.S3IterableDataset
+   s3torchconnector.S3MapDataset
+
+
+
+
+.. py:class:: S3Reader(bucket: str, key: str, get_object_info: Callable[[], s3torchconnectorclient._mountpoint_s3_client.ObjectInfo] = None, get_stream: Callable[[], s3torchconnectorclient._mountpoint_s3_client.GetObjectStream] = None)
+
+
+   Bases: :py:obj:`io.BufferedIOBase`
+
+   A read-only, file like representation of a single object stored in S3.
+
+   .. py:property:: bucket
+
+
+   .. py:property:: key
+
+
+   .. py:method:: prefetch() -> None
+
+      Start fetching data from S3.
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+
+      Read up to size bytes from the object and return them.
+
+      If size is zero or positive, read that many bytes from S3, or until the end of the object.
+      If size is None or negative, read the entire file.
+
+      :param size: how many bytes to read.
+      :type size: int | None
+
+      :returns: Bytes read from S3 Object
+      :rtype: bytes
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+
+      Change the stream position to the given byte offset, interpreted relative to whence.
+
+      When seeking beyond the end of the file, always stay at EOF.
+      Seeking before the start of the file results in a ValueError.
+
+      :param offset: How many bytes to seek relative to whence.
+      :type offset: int
+      :param whence: One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET
+      :type whence: int
+
+      :returns: Current position of the stream
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: tell() -> int
+
+      :returns: Current stream position.
+      :rtype: int
+
+
+   .. py:method:: readable() -> bool
+
+      :returns: Return whether object was opened for reading.
+      :rtype: bool
+
+
+   .. py:method:: writable() -> bool
+
+      :returns: Return whether object was opened for writing.
+      :rtype: bool
+
+
+
+.. py:class:: S3Writer(stream: s3torchconnectorclient._mountpoint_s3_client.PutObjectStream)
+
+
+   Bases: :py:obj:`io.BufferedIOBase`
+
+   A write-only, file like representation of a single object stored in S3.
+
+   .. py:method:: write(data: Union[bytes, memoryview]) -> int
+
+      Write bytes to S3 Object specified by bucket and key
+
+      :param data: bytes to write
+      :type data: bytes | memoryview
+
+      :returns: Number of bytes written
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: close()
+
+      Close write-stream to S3. Ensures all bytes are written successfully.
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: flush()
+
+      No-op
+
+
+   .. py:method:: readable() -> bool
+
+      :returns: Return whether object was opened for reading.
+      :rtype: bool
+
+
+   .. py:method:: writable() -> bool
+
+      :returns: Return whether object was opened for writing.
+      :rtype: bool
+
+
+
+.. py:class:: S3IterableDataset(region: str, get_dataset_objects: Callable[[s3torchconnector._s3client.S3Client], Iterable[s3torchconnector._s3bucket_key.S3BucketKey]], transform: Callable[[s3torchconnector.S3Reader], Any] = identity)
+
+
+   Bases: :py:obj:`torch.utils.data.IterableDataset`
+
+   An IterableStyle dataset created from S3 objects.
+
+   To create an instance of S3IterableDataset, you need to use
+   `from_prefix` or `from_objects` methods.
+
+   .. py:property:: region
+
+
+   .. py:method:: from_objects(object_uris: Union[str, Iterable[str]], *, region: str, transform: Callable[[s3torchconnector.S3Reader], Any] = identity)
+      :classmethod:
+
+      Returns an instance of S3IterableDataset using the S3 URI(s) provided.
+
+      :param object_uris: S3 URI of the object(s) desired.
+      :type object_uris: str | Iterable[str]
+      :param region: AWS region of the S3 bucket where the objects are stored.
+      :type region: str
+      :param transform: Optional callable which is used to transform an S3Reader into the desired type.
+
+      :returns: An IterableStyle dataset created from S3 objects.
+      :rtype: S3IterableDataset
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: from_prefix(s3_uri: str, *, region: str, transform: Callable[[s3torchconnector.S3Reader], Any] = identity)
+      :classmethod:
+
+      Returns an instance of S3IterableDataset using the S3 URI provided.
+
+      :param s3_uri: An S3 URI (prefix) of the object(s) desired. Objects matching the prefix will be included in the returned dataset.
+      :type s3_uri: str
+      :param region: AWS region of the S3 bucket where the objects are stored.
+      :type region: str
+      :param transform: Optional callable which is used to transform an S3Reader into the desired type.
+
+      :returns: An IterableStyle dataset created from S3 objects.
+      :rtype: S3IterableDataset
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+.. py:class:: S3MapDataset(region: str, get_dataset_objects: Callable[[s3torchconnector._s3client.S3Client], Iterable[s3torchconnector._s3bucket_key.S3BucketKey]], transform: Callable[[s3torchconnector.S3Reader], Any] = identity)
+
+
+   Bases: :py:obj:`torch.utils.data.Dataset`
+
+   A Map-Style dataset created from S3 objects.
+
+   To create an instance of S3MapDataset, you need to use
+   `from_prefix` or `from_objects` methods.
+
+   .. py:property:: region
+
+
+   .. py:method:: from_objects(object_uris: Union[str, Iterable[str]], *, region: str, transform: Callable[[s3torchconnector.S3Reader], Any] = identity)
+      :classmethod:
+
+      Returns an instance of S3MapDataset using the S3 URI(s) provided.
+
+      :param object_uris: S3 URI of the object(s) desired.
+      :type object_uris: str | Iterable[str]
+      :param region: AWS region of the S3 bucket where the objects are stored.
+      :type region: str
+      :param transform: Optional callable which is used to transform an S3Reader into the desired type.
+
+      :returns: A Map-Style dataset created from S3 objects.
+      :rtype: S3MapDataset
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: from_prefix(s3_uri: str, *, region: str, transform: Callable[[s3torchconnector.S3Reader], Any] = identity)
+      :classmethod:
+
+      Returns an instance of S3MapDataset using the S3 URI provided.
+
+      :param s3_uri: An S3 URI (prefix) of the object(s) desired. Objects matching the prefix will be included in the returned dataset.
+      :type s3_uri: str
+      :param region: AWS region of the S3 bucket where the objects are stored.
+      :type region: str
+      :param transform: Optional callable which is used to transform an S3Reader into the desired type.
+
+      :returns: A Map-Style dataset created from S3 objects.
+      :rtype: S3MapDataset
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+

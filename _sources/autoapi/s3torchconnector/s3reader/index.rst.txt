@@ -1,0 +1,92 @@
+:py:mod:`s3torchconnector.s3reader`
+===================================
+
+.. py:module:: s3torchconnector.s3reader
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector.s3reader.S3Reader
+
+
+
+
+.. py:class:: S3Reader(bucket: str, key: str, get_object_info: Callable[[], s3torchconnectorclient._mountpoint_s3_client.ObjectInfo] = None, get_stream: Callable[[], s3torchconnectorclient._mountpoint_s3_client.GetObjectStream] = None)
+
+
+   Bases: :py:obj:`io.BufferedIOBase`
+
+   A read-only, file like representation of a single object stored in S3.
+
+   .. py:property:: bucket
+
+
+   .. py:property:: key
+
+
+   .. py:method:: prefetch() -> None
+
+      Start fetching data from S3.
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+
+      Read up to size bytes from the object and return them.
+
+      If size is zero or positive, read that many bytes from S3, or until the end of the object.
+      If size is None or negative, read the entire file.
+
+      :param size: how many bytes to read.
+      :type size: int | None
+
+      :returns: Bytes read from S3 Object
+      :rtype: bytes
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+
+      Change the stream position to the given byte offset, interpreted relative to whence.
+
+      When seeking beyond the end of the file, always stay at EOF.
+      Seeking before the start of the file results in a ValueError.
+
+      :param offset: How many bytes to seek relative to whence.
+      :type offset: int
+      :param whence: One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET
+      :type whence: int
+
+      :returns: Current position of the stream
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: tell() -> int
+
+      :returns: Current stream position.
+      :rtype: int
+
+
+   .. py:method:: readable() -> bool
+
+      :returns: Return whether object was opened for reading.
+      :rtype: bool
+
+
+   .. py:method:: writable() -> bool
+
+      :returns: Return whether object was opened for writing.
+      :rtype: bool
+
+
+

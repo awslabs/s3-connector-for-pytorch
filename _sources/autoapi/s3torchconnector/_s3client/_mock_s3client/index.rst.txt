@@ -1,0 +1,33 @@
+:orphan:
+
+:py:mod:`s3torchconnector._s3client._mock_s3client`
+===================================================
+
+.. py:module:: s3torchconnector._s3client._mock_s3client
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3client._mock_s3client.MockS3Client
+
+
+
+
+.. py:class:: MockS3Client(region: str, bucket: str, part_size: int = 8 * 1024 * 1024)
+
+
+   Bases: :py:obj:`s3torchconnector._s3client.S3Client`
+
+   .. py:method:: add_object(key: str, data: bytes) -> None
+
+
+   .. py:method:: remove_object(key: str) -> None
+
+
+

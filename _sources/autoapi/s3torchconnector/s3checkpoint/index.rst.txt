@@ -1,0 +1,57 @@
+:py:mod:`s3torchconnector.s3checkpoint`
+=======================================
+
+.. py:module:: s3torchconnector.s3checkpoint
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector.s3checkpoint.S3Checkpoint
+
+
+
+
+.. py:class:: S3Checkpoint(region: str)
+
+
+   A checkpoint manager for S3.
+
+   To read a checkpoint from S3, users need to create an S3Reader
+   by providing s3_uri of the checkpoint stored in S3. Similarly, to save a
+   checkpoint to S3, users need to create an S3Writer by providing s3_uri.
+   S3Reader and S3Writer implements io.BufferedIOBase therefore, they can be passed to
+   torch.load, and torch.save.
+
+   .. py:method:: reader(s3_uri: str) -> s3torchconnector.S3Reader
+
+      Creates an S3Reader from a given s3_uri.
+
+      :param s3_uri: A valid s3_uri. (i.e. s3://<BUCKET>/<KEY>)
+      :type s3_uri: str
+
+      :returns: a read-only binary stream of the S3 object's contents, specified by the s3_uri.
+      :rtype: S3Reader
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: writer(s3_uri: str) -> s3torchconnector.S3Writer
+
+      Creates an S3Writer from a given s3_uri.
+
+      :param s3_uri: A valid s3_uri. (i.e. s3://<BUCKET>/<KEY>)
+      :type s3_uri: str
+
+      :returns: a write-only binary stream. The content is saved to S3 using the specified s3_uri.
+      :rtype: S3Writer
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+

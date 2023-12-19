@@ -1,0 +1,15 @@
+:orphan:
+
+:py:mod:`s3torchconnector._version`
+===================================
+
+.. py:module:: s3torchconnector._version
+
+
+Module Contents
+---------------
+
+.. py:data:: user_agent_prefix
+
+   
+
