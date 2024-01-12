@@ -11,6 +11,7 @@
 #
 import os
 import sys
+from s3torchconnector import __version__
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -21,7 +22,7 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "Amazon S3 Connector for PyTorch"
 copyright = "2023, Amazon S3"
 author = "Amazon S3"
-release = "1.1.1"
+release = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

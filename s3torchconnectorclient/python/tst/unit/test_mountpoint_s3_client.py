@@ -3,9 +3,10 @@
 
 import logging
 import pickle
+import pytest
 from typing import Set
 
-import pytest
+from s3torchconnectorclient import LOG_TRACE, __version__
 from s3torchconnectorclient._mountpoint_s3_client import (
     S3Exception,
     GetObjectStream,
@@ -14,8 +15,6 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     MockMountpointS3Client,
     MountpointS3Client,
 )
-
-from s3torchconnectorclient import LOG_TRACE
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -291,3 +290,8 @@ def test_mountpoint_client_pickles():
 
 def _assert_isinstance(obj, expected: type):
     assert isinstance(obj, expected), f"Expected a {expected}, got {type(obj)=}"
+
+
+def test_client_version():
+    assert isinstance(__version__, str)
+    assert __version__ > "1.0.0"
