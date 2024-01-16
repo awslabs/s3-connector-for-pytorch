@@ -1,8 +1,8 @@
-name: Issue Comment Slack Notifier
+name: Comment Slack Notifier
 
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 jobs:
   notify:
@@ -13,7 +13,9 @@ jobs:
         with:
           payload: |
             {
-              "comment_url": "${{ github.event.comment.html_url }}"
+              "action": "${{ github.event.action }}",
+              "comment_url": "${{ github.event.comment.html_url }}",
+              "content": ${{ toJSON(github.event.comment.body) }}
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ISSUE_COMMENT }}

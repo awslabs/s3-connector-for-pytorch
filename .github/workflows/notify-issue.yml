@@ -2,7 +2,7 @@ name: Issue Slack Notifier
 
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened, edited]
 
 jobs:
   notify:
@@ -13,6 +13,7 @@ jobs:
         with:
           payload: |
             {
+              "action": "${{ github.event.action }}",
               "issue_url": "${{ github.event.issue.html_url }}"
             }
         env:
