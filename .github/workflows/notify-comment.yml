@@ -1,0 +1,22 @@
+name: Comment Slack Notifier
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification to Slack
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "action": "${{ github.event.action }}",
+              "comment_url": "${{ github.event.comment.html_url }}",
+              "content": ${{ toJSON(github.event.comment.body) }}
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ISSUE_COMMENT }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
