@@ -1,6 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-from s3torchconnectorclient import S3Exception
+from s3torchconnectorclient import S3Exception, enable_debug_logging
 
 # The order of these imports is the same in which they will be rendered
 # in the API docs generated with Sphinx.
@@ -20,4 +20,5 @@ __all__ = [
     "S3Writer",
     "S3Exception",
     "__version__",
+    "enable_debug_logging"
 ]

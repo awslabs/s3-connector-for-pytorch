@@ -4,6 +4,7 @@
  */
 
 use log::LevelFilter;
+use mountpoint_s3_crt::common::rust_log_adapter::RustLogAdapter;
 use pyo3::prelude::*;
 use pyo3_log::Logger;
 
@@ -27,6 +28,12 @@ mod put_object_stream;
 mod python_structs;
 mod build_info;
 
+#[pyfunction]
+#[pyo3(name = "enable_debug_logging")]
+fn enable_debug_logging() {
+    let _ = RustLogAdapter::try_init().map_err(python_exception);
+}
+
 #[pymodule]
 #[pyo3(name = "_mountpoint_s3_client")]
 fn make_lib(py: Python, mountpoint_s3_client: &PyModule) -> PyResult<()> {
@@ -49,5 +56,6 @@ fn make_lib(py: Python, mountpoint_s3_client: &PyModule) -> PyResult<()> {
     mountpoint_s3_client.add_class::<PyRestoreStatus>()?;
     mountpoint_s3_client.add("S3Exception", py.get_type::<S3Exception>())?;
     mountpoint_s3_client.add("__version__", build_info::FULL_VERSION)?;
+    mountpoint_s3_client.add_function(wrap_pyfunction!(enable_debug_logging, mountpoint_s3_client)?)?;
     Ok(())
 }
