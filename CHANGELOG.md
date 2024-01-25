@@ -1,5 +1,15 @@
 ## Unreleased
 
+## v1.1.3 (January 25, 2024)
+
+### New features
+* Update crates and Mountpoint dependencies.
+
+### Breaking changes
+* No breaking changes.
+
+
+
 ## v1.1.2 (January 19, 2024)
 
 ### New features
