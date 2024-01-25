@@ -653,9 +653,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7484064e1101e725d6df23b448ba5d1130ef18d3138c1e33eb603c3e19e0b4f9"
+checksum = "c9bf9ef7a549496401d3009181504896c513b842ef285d51e0a1583dab1fcd35"
 dependencies = [
  "async-channel",
  "futures",
@@ -669,9 +669,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt-sys"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0afa50f7598c5c24180233bea8f286e152128ab14fad76aaa4838903410d1898"
+checksum = "282f6f10de9d91ff31b45bc45aa37b101721eeddb1c7a80f011755a93d3055f3"
 dependencies = [
  "bindgen",
  "cc",
@@ -872,9 +872,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.76"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95fc56cda0b5c3325f5fbbd7ff9fda9e02bb00bb3dac51252d2f1bfa1cb8cc8c"
+checksum = "e2422ad645d89c99f8f3e6b88a9fdeca7fabeac836b1002371c4367c8f984aae"
 dependencies = [
  "unicode-ident",
 ]
@@ -1000,9 +1000,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.2"
+version = "1.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "380b951a9c5e80ddfd6136919eef32310721aa4aacd4889a8d39124b026ab343"
+checksum = "b62dbe01f0b06f9d8dc7d49e05a0785f153b00b2c227856282f671e0318c9b15"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1012,9 +1012,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f804c7828047e88b2d32e2d7fe5a105da8ee3264f01902f796c8e067dc2483f"
+checksum = "3b7fa1134405e2ec9353fd416b17f8dacd46c473d7d3fd1cf202706a14eb792a"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1164,9 +1164,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.13.0"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b187f0231d56fe41bfb12034819dd2bf336422a5866de41bc3fec4b2e3883e8"
+checksum = "e6ecd384b10a64542d77071bd64bd7b231f4ed5940fba55e98c3de13824cf3d7"
 
 [[package]]
 name = "static_assertions"
