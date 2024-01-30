@@ -55,7 +55,7 @@ jobs:
           mv NOTICE_DEFAULT THIRD-PARTY-LICENSES
 
       - name: Build wheels for s3torchconnectorclient
-        uses: pypa/cibuildwheel@v2.16.2
+        uses: pypa/cibuildwheel@v2.16.4
         env:
           CIBW_BUILD: ${{ matrix.build_target }}
         with:
