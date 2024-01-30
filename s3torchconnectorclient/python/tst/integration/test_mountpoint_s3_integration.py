@@ -258,6 +258,40 @@ def test_head_object(sample_directory):
         assert object_info.etag == expected_etag
 
 
+@pytest.mark.parametrize("delete_calls", [1, 2])
+def test_delete_object(delete_calls: int, sample_directory):
+    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
+    for i in range(delete_calls):
+        client.delete_object(
+            sample_directory.bucket, f"{sample_directory.prefix}hello_world.txt"
+        )
+
+    with pytest.raises(S3Exception) as e:
+        next(
+            client.get_object(
+                sample_directory.bucket, f"{sample_directory.prefix}hello_world.txt"
+            )
+        )
+
+    assert str(e.value) == "Service error: The key does not exist"
+
+
+def test_delete_object_does_not_exist(empty_directory):
+    client = MountpointS3Client(empty_directory.region, TEST_USER_AGENT_PREFIX)
+    client.delete_object(
+        empty_directory.bucket, f"{empty_directory.prefix}hello_world.txt"
+    )
+
+
+def test_delete_object_invalid_bucket(empty_directory):
+    client = MountpointS3Client(empty_directory.region, TEST_USER_AGENT_PREFIX)
+    with pytest.raises(S3Exception) as error:
+        client.delete_object(
+            f"{empty_directory.bucket}-{uuid.uuid4()}", empty_directory.prefix
+        )
+    assert str(error.value) == "Service error: The bucket does not exist"
+
+
 def _parse_list_result(stream: ListObjectStream, max_keys: int):
     object_infos = []
     i = 0
