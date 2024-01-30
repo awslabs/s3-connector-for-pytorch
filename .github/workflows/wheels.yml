@@ -3,6 +3,7 @@ name: Build Wheels
 on:
   push:
     tags: [ "v[0-9]+.[0-9]+.[0-9]+" ]
+    branches: [ "dependabot/*", "main", "workflow/*" ]
 
 env:
   S3_REGION: ${{ vars.S3_REGION }}
