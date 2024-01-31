@@ -25,7 +25,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
     def __init__(
         self,
         region: str,
-        endpoint: str,
+        endpoint: str = "",
         get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
         transform: Callable[[S3Reader], Any] = identity,
     ):
