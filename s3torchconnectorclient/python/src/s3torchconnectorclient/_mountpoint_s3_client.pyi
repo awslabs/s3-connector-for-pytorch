@@ -16,6 +16,7 @@ class MountpointS3Client:
     def __init__(
         self,
         region: str,
+        endpoint: str,
         user_agent_prefix: str = "",
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,
@@ -35,6 +36,7 @@ class MockMountpointS3Client:
     def __init__(
         self,
         region: str,
+        endpoint: str,
         bucket: str,
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,

@@ -28,8 +28,9 @@ def _identity(obj: Any) -> Any:
 
 
 class S3Client:
-    def __init__(self, region: str):
+    def __init__(self, region: str, endpoint: str = ""):
         self._region = region
+        self._endpoint = endpoint
         self._real_client = None
         self._client_pid = None
 
@@ -47,7 +48,9 @@ class S3Client:
 
     def _client_builder(self) -> MountpointS3Client:
         return MountpointS3Client(
-            region=self._region, user_agent_prefix=user_agent_prefix
+            region=self._region,
+            endpoint=self._endpoint,
+            user_agent_prefix=user_agent_prefix,
         )
 
     def get_object(self, bucket: str, key: str) -> S3Reader:

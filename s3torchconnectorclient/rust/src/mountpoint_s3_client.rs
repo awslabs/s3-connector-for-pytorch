@@ -5,6 +5,8 @@
 
 use std::sync::Arc;
 
+use mountpoint_s3_crt::common::uri::Uri;
+use mountpoint_s3_crt::common::allocator::Allocator;
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
@@ -35,6 +37,8 @@ pub struct MountpointS3Client {
     #[pyo3(get)]
     region: String,
     #[pyo3(get)]
+    endpoint: String,
+    #[pyo3(get)]
     part_size: usize,
     #[pyo3(get)]
     profile: Option<String>,
@@ -49,9 +53,10 @@ pub struct MountpointS3Client {
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
+    #[pyo3(signature = (region, endpoint="".to_string(), user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
     pub fn new_s3_client(
         region: String,
+        endpoint: String,
         user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
@@ -61,7 +66,11 @@ impl MountpointS3Client {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
 
-        let endpoint_config = EndpointConfig::new(&region);
+        let endpoint_config = if endpoint.is_empty() {
+            EndpointConfig::new(&region)
+        } else {
+            EndpointConfig::new(&region).endpoint(Uri::new_from_str(&Allocator::default(), endpoint.clone()).unwrap())
+        };
         let auth_config = auth_config(profile.as_deref(), no_sign_request);
 
         let user_agent_suffix = &format!("{}/{}", build_info::PACKAGE_NAME, build_info::FULL_VERSION);
@@ -81,6 +90,7 @@ impl MountpointS3Client {
 
         Ok(MountpointS3Client::new(
             region,
+            endpoint,
             user_agent_prefix.to_string(),
             throughput_target_gbps,
             part_size,
@@ -134,6 +144,7 @@ impl MountpointS3Client {
         let py = slf.py();
         let state = [
             slf.region.to_object(py),
+            slf.endpoint.to_object(py),
             slf.user_agent_prefix.to_object(py),
             slf.throughput_target_gbps.to_object(py),
             slf.part_size.to_object(py),
@@ -147,6 +158,7 @@ impl MountpointS3Client {
 impl MountpointS3Client {
     pub(crate) fn new<Client: ObjectClient>(
         region: String,
+        endpoint: String,
         user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
@@ -163,6 +175,7 @@ impl MountpointS3Client {
             throughput_target_gbps,
             part_size,
             region,
+            endpoint,
             profile,
             no_sign_request,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
