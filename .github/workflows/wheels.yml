@@ -48,7 +48,7 @@ jobs:
       # https://github.com/actions/upload-artifact/issues/478
       - uses: actions/download-artifact@v3
         with:
-          name: "ort-results-s3connectorforpytorch--"
+          name: "ort-results-${{ github.event.repository.name }}--"
 
       - name: Rename third party license
         run: |
@@ -81,7 +81,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: "ort-results-s3connectorforpytorch--"
+          name: "ort-results-${{ github.event.repository.name }}--"
 
       - name: Copy license files
         run: |
