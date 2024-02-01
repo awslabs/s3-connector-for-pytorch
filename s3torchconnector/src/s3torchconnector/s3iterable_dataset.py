@@ -39,6 +39,10 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
     def region(self):
         return self._region
 
+    @property
+    def endpoint(self):
+        return self._endpoint
+
     @classmethod
     def from_objects(
         cls,
