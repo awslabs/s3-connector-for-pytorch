@@ -71,7 +71,7 @@ jobs:
         with:
           package-dir: s3torchconnectorclient
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: "./wheelhouse/*.whl"
           name: wheels
@@ -106,7 +106,7 @@ jobs:
           python -m pip install build
           python -m build --sdist
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: "./${{ matrix.build_target }}/dist/*"
           name: wheels
