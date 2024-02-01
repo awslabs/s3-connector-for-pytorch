@@ -37,8 +37,6 @@ pub struct MountpointS3Client {
     #[pyo3(get)]
     region: String,
     #[pyo3(get)]
-    endpoint: String,
-    #[pyo3(get)]
     part_size: usize,
     #[pyo3(get)]
     profile: Option<String>,
@@ -46,6 +44,8 @@ pub struct MountpointS3Client {
     no_sign_request: bool,
     #[pyo3(get)]
     user_agent_prefix: String,
+    #[pyo3(get)]
+    endpoint: String,
 
     owner_pid: Pid,
 }
@@ -144,12 +144,12 @@ impl MountpointS3Client {
         let py = slf.py();
         let state = [
             slf.region.to_object(py),
-            slf.endpoint.to_object(py),
             slf.user_agent_prefix.to_object(py),
             slf.throughput_target_gbps.to_object(py),
             slf.part_size.to_object(py),
             slf.profile.to_object(py),
             slf.no_sign_request.to_object(py),
+            slf.endpoint.to_object(py),
         ];
         Ok(PyTuple::new(py, state))
     }
@@ -175,11 +175,11 @@ impl MountpointS3Client {
             throughput_target_gbps,
             part_size,
             region,
-            endpoint,
             profile,
             no_sign_request,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
             user_agent_prefix,
+            endpoint,
             owner_pid: nix::unistd::getpid(),
         }
     }
