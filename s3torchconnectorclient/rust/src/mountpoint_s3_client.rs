@@ -53,15 +53,15 @@ pub struct MountpointS3Client {
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, endpoint="".to_string(), user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false, endpoint="".to_string()))]
     pub fn new_s3_client(
         region: String,
-        endpoint: String,
         user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
         profile: Option<String>,
         no_sign_request: bool,
+        endpoint: String,
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
@@ -90,13 +90,13 @@ impl MountpointS3Client {
 
         Ok(MountpointS3Client::new(
             region,
-            endpoint,
             user_agent_prefix.to_string(),
             throughput_target_gbps,
             part_size,
             profile,
             no_sign_request,
             crt_client,
+            endpoint,
         ))
     }
 
@@ -158,13 +158,13 @@ impl MountpointS3Client {
 impl MountpointS3Client {
     pub(crate) fn new<Client: ObjectClient>(
         region: String,
-        endpoint: String,
         user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
         profile: Option<String>,
         no_sign_request: bool,
         client: Arc<Client>,
+        endpoint: String,
     ) -> Self
     where
         Client: Sync + Send + 'static,
