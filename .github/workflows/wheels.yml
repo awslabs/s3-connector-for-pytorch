@@ -56,7 +56,7 @@ jobs:
       # https://github.com/actions/download-artifact
       # These actions should remain @v3 for now, ignore dependabot proposed upgrade.
       # https://github.com/actions/upload-artifact/issues/478
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ ARTIFACT_NAME }}
 
@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ ARTIFACT_NAME }}
 
