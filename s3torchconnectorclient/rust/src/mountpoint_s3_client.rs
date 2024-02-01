@@ -155,6 +155,7 @@ impl MountpointS3Client {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 impl MountpointS3Client {
     pub(crate) fn new<Client: ObjectClient>(
         region: String,
