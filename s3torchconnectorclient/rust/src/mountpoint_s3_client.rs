@@ -45,7 +45,7 @@ pub struct MountpointS3Client {
     #[pyo3(get)]
     user_agent_prefix: String,
     #[pyo3(get)]
-    endpoint: String,
+    endpoint: Option<String>,
 
     owner_pid: Pid,
 }
@@ -53,7 +53,7 @@ pub struct MountpointS3Client {
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false, endpoint="".to_string()))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false, endpoint=None))]
     pub fn new_s3_client(
         region: String,
         user_agent_prefix: String,
@@ -61,15 +61,16 @@ impl MountpointS3Client {
         part_size: usize,
         profile: Option<String>,
         no_sign_request: bool,
-        endpoint: String,
+        endpoint: Option<String>,
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
 
-        let endpoint_config = if endpoint.is_empty() {
+        let endpoint_str = endpoint.as_deref().unwrap_or("");
+        let endpoint_config = if endpoint_str.is_empty() {
             EndpointConfig::new(&region)
         } else {
-            EndpointConfig::new(&region).endpoint(Uri::new_from_str(&Allocator::default(), endpoint.clone()).unwrap())
+            EndpointConfig::new(&region).endpoint(Uri::new_from_str(&Allocator::default(), endpoint_str).unwrap())
         };
         let auth_config = auth_config(profile.as_deref(), no_sign_request);
 
@@ -165,7 +166,7 @@ impl MountpointS3Client {
         profile: Option<String>,
         no_sign_request: bool,
         client: Arc<Client>,
-        endpoint: String,
+        endpoint: Option<String>,
     ) -> Self
     where
         Client: Sync + Send + 'static,

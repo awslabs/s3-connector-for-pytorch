@@ -28,7 +28,7 @@ def _identity(obj: Any) -> Any:
 
 
 class S3Client:
-    def __init__(self, region: str, endpoint: str = ""):
+    def __init__(self, region: str, endpoint: str = None):
         self._region = region
         self._endpoint = endpoint
         self._real_client = None

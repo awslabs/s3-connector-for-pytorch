@@ -16,7 +16,7 @@ class S3Checkpoint:
     torch.load, and torch.save.
     """
 
-    def __init__(self, region: str, endpoint: str = ""):
+    def __init__(self, region: str, endpoint: str = None):
         self.region = region
         self.endpoint = endpoint
         self._client = S3Client(region, endpoint)

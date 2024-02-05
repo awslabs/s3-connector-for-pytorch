@@ -57,7 +57,7 @@ impl PyMockClient {
             None,
             false,
             self.mock_client.clone(),
-            "".to_string(),
+            None,
         )
     }
 

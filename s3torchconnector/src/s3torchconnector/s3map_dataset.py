@@ -27,7 +27,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         self,
         region: str,
         get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
-        endpoint: str = "",
+        endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -57,7 +57,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         object_uris: Union[str, Iterable[str]],
         *,
         region: str,
-        endpoint: str = "",
+        endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         """Returns an instance of S3MapDataset using the S3 URI(s) provided.
@@ -88,7 +88,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         s3_uri: str,
         *,
         region: str,
-        endpoint: str = "",
+        endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         """Returns an instance of S3MapDataset using the S3 URI provided.

@@ -26,7 +26,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         self,
         region: str,
         get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
-        endpoint: str = "",
+        endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -49,7 +49,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         object_uris: Union[str, Iterable[str]],
         *,
         region: str,
-        endpoint: str = "",
+        endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
@@ -79,7 +79,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         s3_uri: str,
         *,
         region: str,
-        endpoint: str = "",
+        endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI provided.
