@@ -37,7 +37,7 @@ from s3torchconnector import S3Checkpoint
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
-
+TEST_ENDPOINT = "https://s3.us-east-1.amazonaws.com"
 
 scalars = (
     none()
@@ -146,6 +146,10 @@ def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(
         equal=lambda a, b: list(a) == list(b),
     )
 
+def test_checkpoint_creation_with_region_and_endpoint():
+    checkpoint = S3Checkpoint(TEST_REGION, endpoint=TEST_ENDPOINT)
+    assert isinstance(checkpoint, S3Checkpoint)
+    assert checkpoint.endpoint == TEST_ENDPOINT
 
 def _test_save(
     data,
