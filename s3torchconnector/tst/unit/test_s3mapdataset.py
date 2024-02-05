@@ -174,10 +174,14 @@ def test_call_len_twice(keys: Sequence[str], length: int):
     assert len(dataset) == length
     assert len(dataset) == length
 
+
 def test_dataset_creation_from_prefix_with_region_and_endpoint():
-    dataset = S3MapDataset.from_prefix(S3_PREFIX, region=TEST_REGION, endpoint=TEST_ENDPOINT)
+    dataset = S3MapDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, endpoint=TEST_ENDPOINT
+    )
     assert isinstance(dataset, S3MapDataset)
     assert dataset.endpoint == TEST_ENDPOINT
+
 
 def verify_item(dataset: S3MapDataset, index: int, expected_key: str):
     data = dataset[index]

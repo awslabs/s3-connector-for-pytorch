@@ -288,10 +288,12 @@ def test_mountpoint_client_pickles():
     assert client.profile == loaded.profile == expected_profile
     assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
 
+
 def test_mountpoint_client_creation_with_region_and_endpoint():
     client = MountpointS3Client(region=REGION, endpoint=ENDPOINT)
     assert isinstance(client, MountpointS3Client)
     assert client.endpoint == ENDPOINT
+
 
 def _assert_isinstance(obj, expected: type):
     assert isinstance(obj, expected), f"Expected a {expected}, got {type(obj)=}"

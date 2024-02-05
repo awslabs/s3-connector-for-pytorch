@@ -146,10 +146,12 @@ def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(
         equal=lambda a, b: list(a) == list(b),
     )
 
+
 def test_checkpoint_creation_with_region_and_endpoint():
     checkpoint = S3Checkpoint(TEST_REGION, endpoint=TEST_ENDPOINT)
     assert isinstance(checkpoint, S3Checkpoint)
     assert checkpoint.endpoint == TEST_ENDPOINT
+
 
 def _test_save(
     data,

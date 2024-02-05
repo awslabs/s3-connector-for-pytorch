@@ -187,10 +187,14 @@ def test_iteration_multiple_times(
     _verify_dataset(dataset, expected_keys, lambda data: data._object_info is not None)
     _verify_dataset(dataset, expected_keys, lambda data: data._object_info is not None)
 
+
 def test_dataset_creation_from_prefix_with_region_and_endpoint():
-    dataset = S3IterableDataset.from_prefix(S3_PREFIX, region=TEST_REGION, endpoint=TEST_ENDPOINT)
+    dataset = S3IterableDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, endpoint=TEST_ENDPOINT
+    )
     assert isinstance(dataset, S3IterableDataset)
     assert dataset.endpoint == TEST_ENDPOINT
+
 
 def _verify_dataset(
     dataset: S3IterableDataset,
