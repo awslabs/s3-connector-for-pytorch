@@ -38,7 +38,8 @@ class S3LightningCheckpoint(CheckpointIO):
 
     def remove_checkpoint(self, s3_uri: _PATH) -> None:
         """Remove checkpoint file from the path."""
-        pass
+        bucket, key = parse_s3_uri(s3_uri)
+        self._client.delete_object(bucket, key)
 
     def teardown(self) -> None:
         """This method is called to teardown the process."""

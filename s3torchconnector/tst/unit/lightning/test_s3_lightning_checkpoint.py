@@ -1,19 +1,24 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 from io import BytesIO
 from operator import eq
 from typing import Callable, Any
 
+import pytest
 import torch
 from hypothesis import given
 
 from s3torchconnector._s3client import MockS3Client
 from s3torchconnector.lightning import S3LightningCheckpoint
-from _checkpoint_utils import (
+from .._checkpoint_utils import (
     python_primitives,
     byteorders,
     save_with_byteorder,
     load_with_byteorder,
     _patch_byteorder,
 )
+from s3torchconnectorclient import S3Exception
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -60,6 +65,19 @@ def test_lightning_checkpointing_loads_untyped_storage(byteorder):
         byteorder,
         equal=lambda a, b: list(a) == list(b),
     )
+
+
+def test_removes_checkpoint():
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    client.add_object(TEST_KEY, b"data")
+
+    s3_lightning_checkpoint = S3LightningCheckpoint(TEST_REGION)
+    s3_lightning_checkpoint._client = client
+    s3_lightning_checkpoint.remove_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
+
+    with pytest.raises(S3Exception) as error:
+        client.get_object(TEST_BUCKET, TEST_KEY).read()
+    assert str(error.value) == "Service error: The key does not exist"
 
 
 def _test_save(
