@@ -1,82 +1,72 @@
 from io import BytesIO
+from operator import eq
 from typing import Callable, Any
 
+import torch
 from hypothesis import given
-from hypothesis.strategies import (
-    integers,
-    binary,
-    none,
-    characters,
-    complex_numbers,
-    floats,
-    booleans,
-    decimals,
-    fractions,
-    deferred,
-    frozensets,
-    tuples,
-    dictionaries,
-    lists,
-    uuids,
-    sets,
-    text,
-    just,
-    one_of,
-)
-from torch import eq
 
 from s3torchconnector._s3client import MockS3Client
-from s3torchconnector import S3Checkpoint, S3LightningCheckpoint
-from s3torchconnector.tst.unit.test_checkpointing import _load_with_byteorder
+from s3torchconnector.lightning import S3LightningCheckpoint
+from _checkpoint_utils import (
+    python_primitives,
+    byteorders,
+    save_with_byteorder,
+    load_with_byteorder,
+    _patch_byteorder,
+)
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 
-scalars = (
-        none()
-        | booleans()
-        | integers()
-        # Disallow nan as it doesn't have self-equality
-        | floats(allow_nan=False)
-        | complex_numbers(allow_nan=False)
-        | decimals(allow_nan=False)
-        | fractions()
-        | characters()
-        | binary(max_size=10)
-        | text(max_size=10)
-        | uuids()
-)
 
-hashable = deferred(
-    lambda: (scalars | frozensets(hashable, max_size=5) | tuples(hashable))
-)
-
-python_primitives = deferred(
-    lambda: (
-            hashable
-            | sets(hashable, max_size=5)
-            | lists(python_primitives, max_size=5)
-            | dictionaries(keys=hashable, values=python_primitives, max_size=3)
-    )
-)
-
-byteorders = one_of(just("little"), just("big"))
-use_modern_pytorch_format = booleans()
-
-
-@given(python_primitives, byteorders, use_modern_pytorch_format)
-def test_general_checkpointing_saves_python_primitives(
-        data, byteorder
-):
+@given(python_primitives, byteorders)
+def test_lightning_checkpointing_saves_python_primitives(data, byteorder):
     _test_save(data, byteorder)
 
 
+@given(byteorders)
+def test_lightning_checkpointing_saves_tensor(byteorder):
+    tensor = torch.tensor([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
+    _test_save(tensor, byteorder, equal=torch.equal)
+
+
+@given(byteorders)
+def test_lightning_checkpointing_saves_untyped_storage(byteorder):
+    storage = torch.UntypedStorage([1, 2, 3])
+    _test_save(
+        storage,
+        byteorder,
+        equal=lambda a, b: list(a) == list(b),
+    )
+
+
+@given(python_primitives, byteorders)
+def test_lightning_checkpointing_loads_python_primitives(data, byteorder):
+    _test_load(data, byteorder)
+
+
+@given(byteorders)
+def test_lightning_checkpointing_loads_tensor(byteorder):
+    tensor = torch.tensor([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
+    _test_load(tensor, byteorder, equal=torch.equal)
+
+
+@given(byteorders)
+def test_lightning_checkpointing_loads_untyped_storage(byteorder):
+    storage = torch.UntypedStorage([1, 2, 3])
+    _test_load(
+        storage,
+        byteorder,
+        equal=lambda a, b: list(a) == list(b),
+    )
+
+
 def _test_save(
-        data,
-        byteorder: str,
-        *,
-        equal: Callable[[Any, Any], bool] = eq,
+    data,
+    byteorder: str,
+    *,
+    equal: Callable[[Any, Any], bool] = eq,
 ):
     s3_lightning_checkpoint = S3LightningCheckpoint(TEST_REGION)
 
@@ -84,7 +74,33 @@ def _test_save(
     client = MockS3Client(TEST_REGION, TEST_BUCKET)
     s3_lightning_checkpoint._client = client
 
-    s3_lightning_checkpoint.save_checkpoint(data, f"s3://{TEST_BUCKET}/{TEST_KEY}")
+    with _patch_byteorder(byteorder):
+        s3_lightning_checkpoint.save_checkpoint(data, f"s3://{TEST_BUCKET}/{TEST_KEY}")
 
     serialised = BytesIO(b"".join(client.get_object(TEST_BUCKET, TEST_KEY)))
-    assert equal(_load_with_byteorder(serialised, byteorder), data)
+    assert equal(load_with_byteorder(serialised, byteorder), data)
+
+
+def _test_load(
+    data,
+    byteorder: str,
+    *,
+    equal: Callable[[Any, Any], bool] = eq,
+):
+    s3_lightning_checkpoint = S3LightningCheckpoint(TEST_REGION)
+
+    # Put some data to mock bucket and use mock client
+    serialised = BytesIO()
+    save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format=True)
+    serialised.seek(0)
+
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    client.add_object(TEST_KEY, serialised.read())
+    s3_lightning_checkpoint._client = client
+
+    with _patch_byteorder(byteorder):
+        returned_data = s3_lightning_checkpoint.load_checkpoint(
+            f"s3://{TEST_BUCKET}/{TEST_KEY}"
+        )
+
+    assert equal(returned_data, data)
