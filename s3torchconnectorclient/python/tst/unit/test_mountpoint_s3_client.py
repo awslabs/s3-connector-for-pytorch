@@ -25,6 +25,9 @@ logging.getLogger().setLevel(LOG_TRACE)
 REGION = "us-east-1"
 MOCK_BUCKET = "mock-bucket"
 ENDPOINT = "https://s3.us-east-1.amazonaws.com"
+EMPTY_ENDPOINT = ""
+NONE_ENDPOINT = None
+INVALID_ENDPOINT = "https://us-east-1.amazonaws.com"
 
 
 @pytest.mark.parametrize(
@@ -293,6 +296,24 @@ def test_mountpoint_client_creation_with_region_and_endpoint():
     client = MountpointS3Client(region=REGION, endpoint=ENDPOINT)
     assert isinstance(client, MountpointS3Client)
     assert client.endpoint == ENDPOINT
+
+
+def test_mountpoint_client_creation_with_region_and_empty_endpoint():
+    client = MountpointS3Client(region=REGION, endpoint=EMPTY_ENDPOINT)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == EMPTY_ENDPOINT
+
+
+def test_mountpoint_client_creation_with_region_and_none_endpoint():
+    client = MountpointS3Client(region=REGION, endpoint=NONE_ENDPOINT)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == NONE_ENDPOINT
+
+
+def test_mountpoint_client_creation_with_region_and_invalid_endpoint():
+    client = MountpointS3Client(region=REGION, endpoint=INVALID_ENDPOINT)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == INVALID_ENDPOINT
 
 
 def _assert_isinstance(obj, expected: type):
