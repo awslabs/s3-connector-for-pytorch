@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import logging
 import os
 from functools import partial
 from typing import Optional, Any
@@ -21,6 +22,9 @@ _s3client.py
     Internal client wrapper class on top of S3 client implementation 
     with multi-process support.
 """
+
+
+log = logging.getLogger(__name__)
 
 
 def _identity(obj: Any) -> Any:
@@ -74,6 +78,7 @@ class S3Client:
 
     # TODO: We need ObjectInfo on dataset side
     def head_object(self, bucket: str, key: str) -> ObjectInfo:
+        log.debug(f"HeadObject s3://{bucket}/{key}")
         return self._client.head_object(bucket, key)
 
     def from_bucket_and_object_info(
