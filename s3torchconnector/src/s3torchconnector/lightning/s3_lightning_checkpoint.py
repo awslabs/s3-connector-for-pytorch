@@ -5,14 +5,15 @@ from typing import Optional, Dict, Any
 
 import torch
 
-from lightning.fabric.utilities.types import _PATH
 from lightning.pytorch.plugins.io import CheckpointIO
 
-from s3torchconnector._s3client import S3Client
-from s3torchconnector._s3dataset_common import parse_s3_uri
+from .._s3client import S3Client
+from .._s3dataset_common import parse_s3_uri
 
 
 class S3LightningCheckpoint(CheckpointIO):
+    """A checkpoint manager for S3 using the :class:`CheckpointIO` interface."""
+
     def __init__(self, region: str):
         self.region = region
         self._client = S3Client(region)
@@ -20,27 +21,62 @@ class S3LightningCheckpoint(CheckpointIO):
     def save_checkpoint(
         self,
         checkpoint: Dict[str, Any],
-        s3_uri: _PATH,
+        path: str,
         storage_options: Optional[Any] = None,
     ) -> None:
-        """Save model/training states as a checkpoint file through state-dump and file-write."""
-        bucket, key = parse_s3_uri(s3_uri)
+        """Save model/training states as a checkpoint file through state-dump and upload to S3.
+
+        Args:
+            checkpoint: dict containing model and trainer state
+            path: write-target path
+            storage_options: Optional parameters when saving the model/training states.
+
+        """
+        self._validate_path(path)
+        bucket, key = parse_s3_uri(path)
         with self._client.put_object(bucket, key) as s3writer:
             torch.save(checkpoint, s3writer)
 
     def load_checkpoint(
-        self, s3_uri: _PATH, map_location: Optional[Any] = None
+        self,
+        path: str,
+        map_location: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Load checkpoint from a path when resuming or loading ckpt for test/validate/predict stages."""
-        bucket, key = parse_s3_uri(s3_uri)
+        """Load checkpoint from a path when resuming or loading ckpt for test/validate/predict stages.
+
+        Args:
+            path (str): A valid S3 uri. (i.e. s3://<BUCKET>/<KEY>)
+            map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
+
+        Returns:
+            Dict[str, Any]: The loaded checkpoint
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
+        """
+        self._validate_path(path)
+        bucket, key = parse_s3_uri(path)
         s3reader = self._client.get_object(bucket, key)
         return torch.load(s3reader, map_location)
 
-    def remove_checkpoint(self, s3_uri: _PATH) -> None:
-        """Remove checkpoint file from the path."""
-        bucket, key = parse_s3_uri(s3_uri)
+    def remove_checkpoint(self, path: str) -> None:
+        """Remove checkpoint file from the path.
+
+        Args:
+            path: Path to checkpoint
+
+        Raises:
+            S3Exception: An error occurred accessing S3.
+        """
+        self._validate_path(path)
+        bucket, key = parse_s3_uri(path)
         self._client.delete_object(bucket, key)
 
     def teardown(self) -> None:
         """This method is called to teardown the process."""
         pass
+
+    @staticmethod
+    def _validate_path(path: str) -> None:
+        if not isinstance(path, str):
+            raise TypeError(f"argument must be a string, not {type(path).__name__!r}")
