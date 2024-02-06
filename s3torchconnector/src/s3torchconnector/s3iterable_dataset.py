@@ -2,6 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 from functools import partial
 from typing import Iterator, Any, Union, Iterable, Callable
+import logging
 
 import torch.utils.data
 
@@ -13,6 +14,8 @@ from ._s3dataset_common import (
     get_objects_from_uris,
     get_objects_from_prefix,
 )
+
+log = logging.getLogger(__name__)
 
 
 class S3IterableDataset(torch.utils.data.IterableDataset):
@@ -58,6 +61,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         Raises:
             S3Exception: An error occurred accessing S3.
         """
+        log.info(f"Building {cls.__name__} from_objects")
         return cls(
             region, partial(get_objects_from_uris, object_uris), transform=transform
         )
@@ -83,6 +87,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         Raises:
             S3Exception: An error occurred accessing S3.
         """
+        log.info(f"Building {cls.__name__} from_prefix")
         return cls(
             region, partial(get_objects_from_prefix, s3_uri), transform=transform
         )
