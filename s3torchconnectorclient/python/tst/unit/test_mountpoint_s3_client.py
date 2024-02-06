@@ -288,22 +288,16 @@ def test_mountpoint_client_pickles():
     assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
 
 
-@pytest.mark.parametrize(
-    "key",
-    [
-        "hello_world.txt",
-    ],
-)
-def test_delete_object(key: str):
+def test_delete_object():
+    key = "hello_world.txt"
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     mock_client.add_object(key, b"data")
     client = mock_client.create_mocked_client()
 
     client.delete_object(MOCK_BUCKET, key)
 
-    with pytest.raises(S3Exception) as e:
+    with pytest.raises(S3Exception, match="Service error: The key does not exist"):
         client.get_object(MOCK_BUCKET, key)
-    assert str(e.value) == "Service error: The key does not exist"
 
 
 def test_delete_object_already_deleted():
@@ -313,13 +307,12 @@ def test_delete_object_already_deleted():
     client.delete_object(MOCK_BUCKET, "hello_world.txt")
 
 
-def test_delete_object_non_existant_bucket():
+def test_delete_object_non_existent_bucket():
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     client = mock_client.create_mocked_client()
 
-    with pytest.raises(S3Exception) as e:
+    with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.delete_object("bucket2", "hello_world.txt")
-    assert str(e.value) == "Service error: The bucket does not exist"
 
 
 def _assert_isinstance(obj, expected: type):
