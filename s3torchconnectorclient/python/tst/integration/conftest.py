@@ -107,3 +107,8 @@ def put_object_tests_directory(request) -> BucketPrefixFixture:
 @pytest.fixture
 def checkpoint_directory(request) -> BucketPrefixFixture:
     return get_test_bucket_prefix(f"{request.node.name}/checkpoint_directory")
+
+
+@pytest.fixture
+def empty_directory(request) -> BucketPrefixFixture:
+    return get_test_bucket_prefix(f"{request.node.name}/empty_directory")
