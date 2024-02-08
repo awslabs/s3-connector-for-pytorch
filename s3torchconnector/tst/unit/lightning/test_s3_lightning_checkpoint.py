@@ -3,6 +3,7 @@
 
 from io import BytesIO
 from operator import eq
+from pathlib import Path
 from typing import Callable, Any
 
 import pytest
@@ -78,6 +79,27 @@ def test_removes_checkpoint():
     with pytest.raises(S3Exception) as error:
         client.get_object(TEST_BUCKET, TEST_KEY).read()
     assert str(error.value) == "Service error: The key does not exist"
+
+
+@pytest.mark.parametrize(
+    "checkpoint_method_name, kwargs",
+    [
+        ("save_checkpoint", {"path": Path(), "checkpoint": None}),
+        ("load_checkpoint", {"path": Path()}),
+        ("remove_checkpoint", {"path": Path()}),
+    ],
+)
+def test_invalid_path(checkpoint_method_name, kwargs):
+    s3_lightning_checkpoint = S3LightningCheckpoint(TEST_REGION)
+    checkpoint_method = getattr(s3_lightning_checkpoint, checkpoint_method_name)
+    with pytest.raises(TypeError, match="argument must be a string, not"):
+        checkpoint_method(**kwargs)
+
+
+def test_teardown():
+    s3_lightning_checkpoint = S3LightningCheckpoint(TEST_REGION)
+    s3_lightning_checkpoint.teardown()
+    # Assert no exception is thrown - implicit
 
 
 def _test_save(
