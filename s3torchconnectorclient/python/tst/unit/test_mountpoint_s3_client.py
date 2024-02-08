@@ -4,7 +4,7 @@
 import logging
 import pickle
 import pytest
-from typing import Set, Sequence
+from typing import Set
 
 from s3torchconnectorclient import LOG_TRACE, __version__
 from s3torchconnectorclient._mountpoint_s3_client import (
