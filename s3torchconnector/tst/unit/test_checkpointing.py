@@ -161,7 +161,7 @@ def test_checkpoint_seek_logging(caplog):
     with checkpoint.reader(s3_uri) as reader:
         with caplog.at_level(logging.DEBUG):
             reader.seek(0, SEEK_END)
-    assert f"HeadObject {s3_uri}" in caplog.text
+    assert f"HeadObject {s3_uri}" in caplog.messages
 
 
 def _test_save(
