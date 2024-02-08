@@ -28,7 +28,7 @@ class S3LightningCheckpoint(CheckpointIO):
 
         Args:
             checkpoint: dict containing model and trainer state
-            path: write-target path
+            path (str): write-target S3 uri
             storage_options: Optional parameters when saving the model/training states.
 
         """
@@ -42,7 +42,7 @@ class S3LightningCheckpoint(CheckpointIO):
         path: str,
         map_location: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Load checkpoint from a path when resuming or loading ckpt for test/validate/predict stages.
+        """Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.
 
         Args:
             path (str): A valid S3 uri. (i.e. s3://<BUCKET>/<KEY>)
@@ -60,10 +60,10 @@ class S3LightningCheckpoint(CheckpointIO):
         return torch.load(s3reader, map_location)
 
     def remove_checkpoint(self, path: str) -> None:
-        """Remove checkpoint file from the path.
+        """Remove checkpoint file from the S3 uri.
 
         Args:
-            path: Path to checkpoint
+            path (str): S3 uri to checkpoint
 
         Raises:
             S3Exception: An error occurred accessing S3.
