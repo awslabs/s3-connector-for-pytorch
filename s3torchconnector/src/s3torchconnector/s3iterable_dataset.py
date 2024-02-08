@@ -87,7 +87,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         Raises:
             S3Exception: An error occurred accessing S3.
         """
-        log.info(f"Building {cls.__name__} from_prefix")
+        log.info(f"Building {cls.__name__} from_prefix {s3_uri=}")
         return cls(
             region, partial(get_objects_from_prefix, s3_uri), transform=transform
         )

@@ -28,7 +28,10 @@ def test_get_object_log(s3_client: S3Client, caplog):
 
 def test_get_object_info_log(s3_client: S3Client, caplog):
     with caplog.at_level(logging.DEBUG):
-        s3_client.from_bucket_and_object_info(TEST_BUCKET, ObjectInfo(TEST_KEY, "", 0, 0, None, None))
+        s3_client.from_bucket_and_object_info(
+            TEST_BUCKET,
+            ObjectInfo(TEST_KEY, "", 0, 0, None, None),
+        )
     assert f"GetObjectWithInfo {S3_URI}" in caplog.messages
 
 
