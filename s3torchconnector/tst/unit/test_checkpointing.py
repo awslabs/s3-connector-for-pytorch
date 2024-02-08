@@ -13,12 +13,12 @@ from hypothesis.strategies import booleans
 from s3torchconnector._s3client import MockS3Client
 from s3torchconnector import S3Checkpoint
 
-from ._checkpoint_utils import (
-    python_primitives,
+from ._checkpoint_byteorder_patch import (
     byteorders,
     save_with_byteorder,
     load_with_byteorder,
 )
+from ._hypothesis_python_primitives import python_primitives
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
