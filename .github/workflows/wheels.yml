@@ -58,7 +58,7 @@ jobs:
       # https://github.com/actions/upload-artifact/issues/478
       - uses: actions/download-artifact@v3
         with:
-          name: ${{ ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}
 
       - name: Rename third party license
         run: |
@@ -91,7 +91,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: ${{ ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}
 
       - name: Copy license files
         run: |
