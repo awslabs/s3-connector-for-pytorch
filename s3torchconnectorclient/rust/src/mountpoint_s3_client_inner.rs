@@ -41,6 +41,7 @@ pub(crate) trait MountpointS3ClientInner {
         params: PutObjectParams,
     ) -> PyResult<PutObjectStream>;
     fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo>;
+    fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()>;
 }
 
 pub(crate) struct MountpointS3ClientInnerImpl<T: ObjectClient> {
@@ -107,5 +108,13 @@ where
         // TODO - Look at use of `block_on` and see if we can future this.
         let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
         Ok(PyObjectInfo::from_object_info(request.object))
+    }
+
+    fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()> {
+        let request = self.client.delete_object(&bucket, &key);
+
+        // TODO - Look at use of `block_on` and see if we can future this.
+        py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        Ok(())
     }
 }
