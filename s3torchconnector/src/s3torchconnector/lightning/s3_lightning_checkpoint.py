@@ -27,10 +27,9 @@ class S3LightningCheckpoint(CheckpointIO):
         """Save model/training states as a checkpoint file through state-dump and upload to S3.
 
         Args:
-            checkpoint: dict containing model and trainer state
-            path (str): write-target S3 uri
+            checkpoint (Dict[str, Any]): Containing model and trainer state
+            path (str): Write-target S3 uri
             storage_options: Optional parameters when saving the model/training states.
-
         """
         self._validate_path(path)
         bucket, key = parse_s3_uri(path)
@@ -45,7 +44,7 @@ class S3LightningCheckpoint(CheckpointIO):
         """Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.
 
         Args:
-            path (str): A valid S3 uri. (i.e. s3://<BUCKET>/<KEY>)
+            path (str): S3 uri to checkpoint
             map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
 
         Returns:
