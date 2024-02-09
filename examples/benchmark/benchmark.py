@@ -2,13 +2,13 @@
 #  // SPDX-License-Identifier: BSD
 import hydra
 import torchdata
-from benchmark_utils import ResourceMonitor
-
+from omegaconf import DictConfig
 from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
 from torch.utils.data import DataLoader, default_collate
 from torchdata.datapipes.utils import StreamWrapper
+
+from benchmark_utils import ResourceMonitor
 from models import Entitlement, ViT
-from omegaconf import DictConfig
 
 
 @hydra.main(version_base=None, config_path="configuration")
