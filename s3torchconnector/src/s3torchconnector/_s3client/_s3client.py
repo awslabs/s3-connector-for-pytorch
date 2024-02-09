@@ -87,6 +87,9 @@ class S3Client:
         log.debug(f"HeadObject s3://{bucket}/{key}")
         return self._client.head_object(bucket, key)
 
+    def delete_object(self, bucket: str, key: str) -> None:
+        self._client.delete_object(bucket, key)
+
     def from_bucket_and_object_info(
         self, bucket: str, object_info: ObjectInfo
     ) -> S3Reader:

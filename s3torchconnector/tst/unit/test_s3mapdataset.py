@@ -7,7 +7,7 @@ import pytest
 
 from s3torchconnector import S3MapDataset, S3Reader
 
-from test_s3dataset_common import (
+from .test_s3dataset_common import (
     TEST_BUCKET,
     TEST_REGION,
     _create_mock_client_with_dummy_objects,
