@@ -42,13 +42,15 @@ def lightning_checkpoint(client) -> S3LightningCheckpoint:
 
 
 @pytest.fixture()
-def async_lightning_checkpoint(lightning_checkpoint) -> AsyncCheckpointIO:
-    return AsyncCheckpointIO(lightning_checkpoint)
+def async_lightning_checkpoint(lightning_checkpoint) -> Callable[[], AsyncCheckpointIO]:
+    return lambda: AsyncCheckpointIO(lightning_checkpoint)
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(python_primitives, byteorders)
-def test_lightning_checkpointing_saves_python_primitives(client, lightning_checkpoint, data, byteorder):
+def test_lightning_checkpointing_saves_python_primitives(
+    client, lightning_checkpoint, data, byteorder
+):
     _test_save(client, lightning_checkpoint, data, byteorder)
 
 
@@ -61,14 +63,20 @@ def test_lightning_checkpointing_saves_tensor(client, lightning_checkpoint, byte
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(byteorders)
-def test_async_lightning_checkpointing_saves_tensor(client, lightning_checkpoint, byteorder):
+def test_async_lightning_checkpointing_saves_tensor(
+    client, async_lightning_checkpoint, byteorder
+):
     tensor = torch.rand(2, 4)
-    _test_save(client, lightning_checkpoint, tensor, byteorder, equal=torch.equal)
+    _test_save(
+        client, async_lightning_checkpoint(), tensor, byteorder, equal=torch.equal
+    )
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(byteorders)
-def test_lightning_checkpointing_saves_untyped_storage(client, lightning_checkpoint, byteorder):
+def test_lightning_checkpointing_saves_untyped_storage(
+    client, lightning_checkpoint, byteorder
+):
     storage = torch.UntypedStorage([1, 2, 3])
     _test_save(
         client,
@@ -81,7 +89,9 @@ def test_lightning_checkpointing_saves_untyped_storage(client, lightning_checkpo
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(python_primitives, byteorders)
-def test_lightning_checkpointing_loads_python_primitives(client, lightning_checkpoint, data, byteorder):
+def test_lightning_checkpointing_loads_python_primitives(
+    client, lightning_checkpoint, data, byteorder
+):
     _test_load(client, lightning_checkpoint, data, byteorder)
 
 
@@ -94,17 +104,13 @@ def test_lightning_checkpointing_loads_tensor(client, lightning_checkpoint, byte
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(byteorders)
-def test_lightning_checkpointing_async_loads_tensor(client, async_lightning_checkpoint, byteorder):
-    tensor = torch.rand(2, 4)
-    _test_load(client, async_lightning_checkpoint, tensor, byteorder, equal=torch.equal)
-
-
-@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(byteorders)
-def test_lightning_checkpointing_loads_untyped_storage(client, lightning_checkpoint, byteorder):
+def test_lightning_checkpointing_loads_untyped_storage(
+    client, lightning_checkpoint, byteorder
+):
     storage = torch.UntypedStorage([1, 2, 3])
     _test_load(
-        client, lightning_checkpoint,
+        client,
+        lightning_checkpoint,
         storage,
         byteorder,
         equal=lambda a, b: list(a) == list(b),
@@ -154,7 +160,8 @@ def _test_save(
 ):
     with _patch_byteorder(byteorder):
         checkpoint.save_checkpoint(data, f"s3://{TEST_BUCKET}/{TEST_KEY}")
-    checkpoint.teardown()
+        # For async checkpointing, ensure that we finish writing the checkpoint before we un-patch the byteorder
+        checkpoint.teardown()
 
     serialised = BytesIO(b"".join(client.get_object(TEST_BUCKET, TEST_KEY)))
     assert equal(load_with_byteorder(serialised, byteorder), data)
@@ -175,8 +182,6 @@ def _test_load(
     client.add_object(TEST_KEY, serialised.read())
 
     with _patch_byteorder(byteorder):
-        returned_data = checkpoint.load_checkpoint(
-            f"s3://{TEST_BUCKET}/{TEST_KEY}"
-        )
+        returned_data = checkpoint.load_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
 
     assert equal(returned_data, data)
