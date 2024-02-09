@@ -1,9 +1,10 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import time
 from dataclasses import dataclass
+
 import numpy as np
 import psutil
-import time
 import torch.cuda
 from pynvml import *
 

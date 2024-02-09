@@ -74,6 +74,7 @@ and can be used in subsequent benchmarks, as long as the dataset on the S3 bucke
 
 If you already have a dataset, you only need upload it to an S3 bucket and setup a YAML file under
 `./configuration/dataset/` in the following format:
+
 ```yaml
 # custom_dataset.yaml
 
@@ -81,9 +82,12 @@ prefix_uri: s3://<S3_BUCKET>/<S3_PREFIX>/
 region: <AWS_REGION>
 sharding: True|False # if the samples have been packed into TAR archives.
 ```
-The benchmarking scenario will need to reference this dataset. See `./configuration/dataloading.yaml` or `./configuration/sharding.yaml` for reference.
 
-_Note: Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your measurements._
+The benchmarking scenario will need to reference this dataset. See `./configuration/dataloading.yaml`
+or `./configuration/sharding.yaml` for reference.
+
+_Note: Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your
+measurements._
 
 Alternatively, you can use `datagen.py` to procedurally generate an image dataset and upload it to Amazon S3. The script
 also creates a Hydra configuration file at the appropriate path.
@@ -147,7 +151,8 @@ Next, once updating the configuration of dataset accordingly, or other configura
 
     python benchmark.py -m -cn YOUR-TEST-CONFIGURATION # dataloading OR checkpointing
 
-_Note: For overriding any other benchmark parameters, see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/)._
+_Note: For overriding any other benchmark parameters,
+see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/)._
 
 Experiments will report total training time, number of training samples as well as host-level metrics like CPU
 Utilisation, GPU Utilisation (if available) etc.

@@ -1,18 +1,19 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import abc
+import os
+import random
+import time
+
 import torch
 import torch.nn as nn
 import torchvision
-import time
-import random
-import hydra
-import os
 from PIL import Image
 from omegaconf import DictConfig
-from transformers import ViTForImageClassification
-from torchvision.transforms import v2
 from s3torchconnector import S3Reader, S3Checkpoint
+from torchvision.transforms import v2
+from transformers import ViTForImageClassification
+
 from benchmark_utils import ExperimentResult
 
 
