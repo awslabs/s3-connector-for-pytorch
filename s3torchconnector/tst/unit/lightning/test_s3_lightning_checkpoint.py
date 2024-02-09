@@ -117,13 +117,8 @@ def test_lightning_checkpointing_loads_untyped_storage(
     )
 
 
-def test_removes_checkpoint():
-    client = MockS3Client(TEST_REGION, TEST_BUCKET)
-    client.add_object(TEST_KEY, b"data")
-
-    s3_lightning_checkpoint = S3LightningCheckpoint(TEST_REGION)
-    s3_lightning_checkpoint._client = client
-    s3_lightning_checkpoint.remove_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
+def test_removes_checkpoint(client, lightning_checkpoint):
+    lightning_checkpoint.remove_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
 
     with pytest.raises(S3Exception) as error:
         client.get_object(TEST_BUCKET, TEST_KEY).read()
