@@ -136,7 +136,10 @@ def test_removes_checkpoint(client, lightning_checkpoint):
 )
 def test_invalid_path(lightning_checkpoint, checkpoint_method_name, kwargs):
     checkpoint_method = getattr(lightning_checkpoint, checkpoint_method_name)
-    with pytest.raises(TypeError, match="argument must be a string, not"):
+    with pytest.raises(
+        TypeError,
+        match="is not a supported type for 'path'. Must be a string formatted as an S3 uri",
+    ):
         checkpoint_method(**kwargs)
 
 

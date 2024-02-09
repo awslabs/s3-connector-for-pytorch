@@ -79,4 +79,6 @@ class S3LightningCheckpoint(CheckpointIO):
     @staticmethod
     def _validate_path(path: str) -> None:
         if not isinstance(path, str):
-            raise TypeError(f"argument must be a string, not {type(path).__name__!r}")
+            raise TypeError(
+                f"{type(path).__name__!r} is not a supported type for 'path'. Must be a string formatted as an S3 uri."
+            )
