@@ -1,0 +1,3 @@
+kind: fsspec
+batch_size: 128
+num_workers: 8

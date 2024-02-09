@@ -1,0 +1,14 @@
+defaults:
+  - dataloader: s3iterabledataset
+  - dataset: unsharded_dataset
+  - training: vit
+  - checkpoint: ???
+  - _self_
+
+
+hydra:
+  mode: MULTIRUN
+
+  sweeper:
+    params:
+      checkpoint: disk, s3
