@@ -44,6 +44,10 @@ e2e = [
     "pytest-xdist"
 ]
 
+lightning = [
+    "lightning >= 2.0"
+]
+
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
