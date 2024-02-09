@@ -1,0 +1,3 @@
+kind: s3iterabledataset
+batch_size: 128
+num_workers: 8
