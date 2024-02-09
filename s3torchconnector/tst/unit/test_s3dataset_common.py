@@ -116,7 +116,7 @@ def test_get_objects_from_uris_success(
 def test_get_objects_from_uris_fail(uri, error_msg):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
     with pytest.raises(ValueError, match=f"^{error_msg}$"):
-         get_objects_from_uris(uri, mock_client)
+        get_objects_from_uris(uri, mock_client)
 
 
 def _create_mock_client_with_dummy_objects(
