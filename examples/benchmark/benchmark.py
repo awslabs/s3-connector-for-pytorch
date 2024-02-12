@@ -1,45 +1,41 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+from enum import Enum
+
 import hydra
 import torchdata
 from omegaconf import DictConfig
 from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
-from torch.utils.data import DataLoader, default_collate
+from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper
 
 from benchmark_utils import ResourceMonitor
-from models import Entitlement, ViT
+from models import Entitlement, ViT, ModelInterface
 
 
 @hydra.main(version_base=None, config_path="configuration")
 def run_experiment(config: DictConfig):
-    if config.training.model == "entitlement":
-        model = Entitlement()
-    elif config.training.model == "vit":
-        model = ViT(1000, config.checkpoint)
-    else:
-        raise Exception(f"unknown model {config.training.model}")
-
+    model = make_model(config)
     dataset = make_dataset(
-        config.dataloader.kind,
-        config.dataset.sharding,
-        config.dataset.prefix_uri,
-        config.dataset.region,
-        model.load_sample,
+        kind=config.dataloader.kind,
+        # TODO: accept sharding as an enumerated parameter rather than a boolean once more sharding types are supported
+        sharding=(DatasetSharding.TAR if config.dataset.sharding else None),
+        prefix_uri=config.dataset.prefix_uri,
+        region=config.dataset.region,
+        load_sample=model.load_sample,
         num_workers=config.dataloader.num_workers,
     )
     dataloader = make_dataloader(
-        dataset, config.dataloader.num_workers, config.dataloader.batch_size
+        dataset=dataset,
+        num_workers=config.dataloader.num_workers,
+        batch_size=config.dataloader.batch_size,
     )
 
-    monitor = ResourceMonitor()
-    monitor.start()
-    result = model.train(dataloader, config.training.max_epochs)
+    with ResourceMonitor() as monitor:
+        result = model.train(dataloader, config.training.max_epochs)
     result.resource_data = monitor.get_full_data()
-
     # TODO: Decide if we need to do averaging in Monitor vs in ExperimentResult
     result.avg_resource_data = monitor.get_avg_data()
-    monitor.stop()
 
     # TODO: We are currently only printing the result of the experiment here. We should either write it to a file
     # for further processing, or use CALLBACKS to actually graph/analyse the result. Ideally we should do both.
@@ -54,9 +50,23 @@ def run_experiment(config: DictConfig):
     )
 
 
+def make_model(config: DictConfig) -> ModelInterface:
+    if config.training.model == "entitlement":
+        return Entitlement()
+    elif config.training.model == "vit":
+        num_labels = int(config.training.num_labels or 1000)
+        return ViT(num_labels, config.checkpoint)
+    else:
+        raise Exception(f"unknown model {config.training.model}")
+
+
+class DatasetSharding(Enum):
+    TAR = 1
+
+
 def make_dataset(
     kind: str,
-    sharded: bool,
+    sharding: DatasetSharding | None,
     prefix_uri: str,
     region: str,
     load_sample,
@@ -67,33 +77,33 @@ def make_dataset(
         dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
         if num_workers > 0:
             dataset = dataset.sharding_filter()
-        if sharded:
+        if sharding == DatasetSharding.TAR:
             dataset = dataset.map(tar_to_tuple)
             dataset = dataset.load_from_tar()
         return dataset.map(load_sample)
-    if kind == "s3mapdataset":
-        if sharded:
-            raise Exception(f"Sharding is not supported for {kind}")
+    elif kind == "s3mapdataset":
+        if sharding:
+            raise ValueError(f"Sharding is not supported for {kind}")
         else:
             dataset = S3MapDataset.from_prefix(
                 prefix_uri, region=region, transform=load_sample
             )
             return dataset
-    if kind == "fsspec":
+    elif kind == "fsspec":
         lister = torchdata.datapipes.iter.FSSpecFileLister(prefix_uri)
         dataset = torchdata.datapipes.iter.FSSpecFileOpener(lister, mode="rb")
         if num_workers > 0:
             dataset = dataset.sharding_filter()
-        if sharded:
+        if sharding == DatasetSharding.TAR:
             dataset = dataset.load_from_tar()
         return dataset.map(load_sample)
     else:
         raise Exception(f"unknown dataset kind {kind}")
 
 
-def make_dataloader(dataset, num_workers: int, batch_size: int):
+def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int):
     return DataLoader(
-        dataset,
+        dataset=dataset,
         batch_size=batch_size,
         shuffle=False,
         drop_last=True,

@@ -87,7 +87,9 @@ class Utils:
         s3_client.upload_file(file, bucket, s3_key)
 
     @staticmethod
-    def parse_hr_bytes(ctx: click.Context, param: str, value: str) -> float | None:
+    def parse_human_readable_bytes(
+        ctx: click.Context, param: str, value: str
+    ) -> float | None:
         if value is not None:
             return prefixed.Float(value.rstrip("b").rstrip("B"))
 
@@ -98,7 +100,8 @@ class Utils:
     "--num-samples",
     type=pr.Float,
     default="1k",
-    help="Number of samples to generate.",
+    help="Number of samples to generate.  Can be supplied as an IEC or SI prefix. Eg: 1k, 2M."
+    " Note: these are case-sensitive notations.",
 )
 @click.option(
     "--resolution",
@@ -108,10 +111,10 @@ class Utils:
 )
 @click.option(
     "--shard-size",
-    callback=Utils.parse_hr_bytes,
+    callback=Utils.parse_human_readable_bytes,
     help="If supplied, the images are grouped into tar files of the given size."
     " Size can be supplied as an IEC or SI prefix. Eg: 16Mib, 4Kb, 1Gib."
-    "Note: these are case-sensitive notations.",
+    " Note: these are case-sensitive notations.",
 )
 @click.option(
     "--s3-bucket",
