@@ -1,42 +1,39 @@
-# Benchmarking S3 Connector for PyTorch
+# Benchmarking the S3 Connector for PyTorch
 
-This directory contains a modular component for experimental evaluation of performance of Amazon S3 Connector for
+This directory contains a modular component for the experimental evaluation of the performance of the Amazon S3 Connector for
 PyTorch.
-The goal of this component is to create an easy to re-produce and extend performance benchmarking. This way, user can
-experiment with different settings and decide to best parameters for their workloads, before committing to a setup.
+The goal of this component is to be able to run performance benchmarks for PyTorch connectors in an easy-to-reproduce and
+extensible fashion. This way, users can experiment with different settings and arrive at the optimal configuration for their workloads,
+before committing to a setup.
 
-By managing complex configuration space with [Hydra](https://hydra.cc/) this module splits configuration of multiple
-components of a training pipeline into smaller pieces to create custom
-training pipelines. This way, one can mix and match these configurations and observe the impact of different components
-to
-the end to end training performance. To achieve this, we split configuration to 4 pieces,
-namely; `dataset`, `dataloader`, `checkpoint`, `training`.
+By managing complex configuration space with [Hydra](https://hydra.cc/) we are able to define modular configuration pieces mapped to various
+stages of the training pipeline. This approach allows one to mix and match configurations and measure the performance 
+impact to the end-to-end training process. To achieve this, we split configuration to 4 pieces. Namely:
 
-The `dataset` configuration keeps information about where data resides. While we support sharded objects, only loading
-from TAR objects supported currently. See [a](#benchmarking-s3-connector-for-pytorch)
-The `dataloader` configuration contains dataloading specific setup. `kind` specify which PyTorch dataset to
-use (`s3iterabledataset`, `s3mapdataset`, `fsspec`) while
-`batch_size`, `num_workers` specify
-relevant [PyTorch DataLoader](https://pytorch.org/tutorials/beginner/basics/data_tutorial.html) parameters. `training`
-configuration specify what model to learn and how many epochs to execute the training for. Currently, we support two
-models `Entitlement` and [ViT](https://huggingface.co/docs/transformers/model_doc/vit).
-To make it easier to add new models, and abstract the learning-sample processing logic from configuration, this module
-defines a Model interface where each model expected to implement
-`load_sample`, `train`, and `save` methods. Lastly, `checkpoint` configuration, defines where and how frequently to save
-the checkpoints.
+**dataset**: The `dataset` configuration keeps information about where the data resides. While we support sharded objects, only loading
+from TAR objects is supported currently.
 
-Once the sub-configurations are defined, one can easily create experimental configuration, that will use Hydra Sweeper
-to launch multiple experiments, sequentially, and monitor performance.
-For example, dataloading experiment configuration, is stored at configuration/dataloading.yaml, has the following
+**dataloader**: Used to configure the [PyTorch DataLoader](https://pytorch.org/tutorials/beginner/basics/data_tutorial.html). Parameters like
+`batch_size` and `num_workers` are self-explanatory. `kind` is used to specify which PyTorch dataset to use(`s3iterabledataset`, `s3mapdataset`, `fsspec`).
+
+**training**: Specify what model to learn and how many epochs to execute the training for. Currently, we implemented two
+models `Entitlement` and [ViT](https://huggingface.co/docs/transformers/model_doc/vit). To make it easier to add new models, and abstract the learning-sample processing logic from configuration, this module
+defines a Model interface where each model expected to implement `load_sample`, `train`, and `save` methods.
+
+**checkpoint**: Defines where(`disk`, `s3`) and how frequently checkpoints are to be saved.
+
+Once the sub-configurations are defined, one can easily create an experimental configuration that will use the Hydra Sweeper
+to launch multiple experiments sequentially.
+
+For example, the `dataloading` experiment stored at `./configuration/dataloading.yaml` has the following
 content:
 
 ```
 defaults:
   - dataloader: ???
-  - dataset: 20k_imagenet
+  - dataset: unsharded_dataset
   - training: entitlement
   - checkpoint: none
-  - _self_
 
 
 hydra:
@@ -48,10 +45,10 @@ hydra:
       dataloader.num_workers: 2,4,8,16
 ```
 
-This configuration, puts a pin to dataset and training model while changing dataloader parameters to change `kind`
-and `number_workers`. Once executed with this configuration, benchmark with sequentially execute 8 experiments,
-with the different combinations of swept parameters. As `Entitlement` is not really performing any training, this
-experiments is helpful to see upper-limit of dataloader throughput without having the backpressure from GPU.
+This configuration pins the `dataset` and `training` model while overriding the `dataloader` to change `kind`
+and `num_workers`. Running this benchmark will result in sequentially running 8 different scenarios,
+each with the different combinations of swept parameters. As `Entitlement` is not really performing any training, this
+experiment is helpful to see upper-limit of dataloader throughput without being susceptible to GPU backpressure.
 
 ## Getting Started
 
@@ -61,7 +58,10 @@ choosing
 the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/)
 as your AMI.
 
-You will need an S3 Bucket with training data and update the `dataset` configuration with correct prefix and region.
+**(Optional) Configure a python virtualenv**
+
+    python -m venv <ENV-NAME>
+    python <PATH-TO-VENV>/bin/activate
 
 Then from this directory, install the dependencies for the example code:
 
@@ -83,8 +83,9 @@ region: <AWS_REGION>
 sharding: True|False # if the samples have been packed into TAR archives.
 ```
 
-The benchmarking scenario will need to reference this dataset. See `./configuration/dataloading.yaml`
-or `./configuration/sharding.yaml` for reference.
+This dataset can then be referenced in an experiment with an entry like `dataset: custom_dataset` (note that we're 
+omitting the *.yaml extension). This will result in running the benchmarks against this dataset. Some experiments have 
+already been defined for your reference - see `./configuration/dataloading.yaml` or `./configuration/sharding.yaml`.
 
 _Note: Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your
 measurements._
@@ -100,12 +101,14 @@ Usage: datagen.py [OPTIONS]
   an S3 bucket.
 
 Options:
-  -n, --num-samples FLOAT  Number of samples to generate.  [default: 1k]
+  -n, --num-samples FLOAT  Number of samples to generate.  Can be supplied as
+                           an IEC or SI prefix. Eg: 1k, 2M. Note: these are
+                           case-sensitive notations. [default: 1k]
   --resolution TEXT        Resolution written in 'widthxheight' format
                            [default: 496x387]
   --shard-size TEXT        If supplied, the images are grouped into tar files
                            of the given size. Size can be supplied as an IEC
-                           or SI prefix. Eg: 16Mib, 4Kb, 1Gib.Note: these are
+                           or SI prefix. Eg: 16Mib, 4Kb, 1Gib. Note: these are
                            case-sensitive notations.
   --s3-bucket TEXT         S3 Bucket name. Note: Ensure the credentials are
                            made available either through environment variables
@@ -147,9 +150,15 @@ Alternatively, you can run specify it on the cmd-line when running the benchmark
 
 ---
 
-Next, once updating the configuration of dataset accordingly, or other configurations as needed you need to run:
+Finally, once the dataset and other configuration modules have been defined, you can kick off the benchmark by running: 
 
-    python benchmark.py -m -cn YOUR-TEST-CONFIGURATION # dataloading OR checkpointing
+    $ python benchmark.py -m -cn YOUR-TEST-CONFIGURATION 
+    
+    # Example-1:
+    $ python benchmark.py -m -cn dataloading 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
+
+    # Example-2:
+    $ python benchmark.py -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
 
 _Note: For overriding any other benchmark parameters,
 see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/)._
@@ -159,5 +168,6 @@ Utilisation, GPU Utilisation (if available) etc.
 
 ## Next Steps
 
+- Generate and upload samples directly to S3 bypassing the filesystem.
 - Use [Hydra Callbacks](https://hydra.cc/docs/experimental/callbacks/) to aggregate and plot benchmark results.
 - Add more models (LLMs?) to monitor training performance.

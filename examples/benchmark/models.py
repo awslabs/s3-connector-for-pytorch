@@ -7,8 +7,9 @@ import time
 
 import torch
 import torch.nn as nn
-import torchvision
 from PIL import Image
+from io import IOBase
+from torch.utils.data.dataloader import DataLoader
 from omegaconf import DictConfig
 from s3torchconnector import S3Reader, S3Checkpoint
 from torchvision.transforms import v2
@@ -18,33 +19,36 @@ from benchmark_utils import ExperimentResult
 
 
 class ModelInterface(metaclass=abc.ABCMeta):
+    def __init__(self, name: str):
+        self.name = name
+
     @abc.abstractmethod
-    def load_sample(self, sample):
-        """Transform given sample (a File-Like-Object) to a model-input"""
+    def load_sample(self, sample: S3Reader | tuple[str, IOBase]):
+        """Transform given sample (a file-like Object) to a model's input"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def train(
-        self, dataloader: torch.utils.data.dataloader, epochs: int
-    ) -> ExperimentResult:
+    def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def save(self):
+    def save(self, **kwargs):
         """Save checkpoint"""
         raise NotImplementedError
 
 
-# This is not really a training model as it does not train anything
-# Instead, this model loads data from S3, converts it to an image and
-# do nothing with it.
 class Entitlement(ModelInterface):
+    """
+    This is not really a training model as it does not train anything. Instead, this model simply reads the binary
+    object data from S3, so that we may identify the max achievable throughput for a given dataset.
+    """
+
     def __init__(self, num_labels: int = None):
-        self.name = "Entitlement"
+        super(Entitlement, self).__init__("Entitlement")
         self.num_labels = num_labels
 
-    def load_sample(self, sample):
+    def load_sample(self, sample: S3Reader | tuple[str, IOBase]):
         if isinstance(sample, S3Reader):
             key, data = sample.key, sample
         else:
@@ -52,9 +56,7 @@ class Entitlement(ModelInterface):
         buffer = data.read()
         return len(buffer), key
 
-    def train(
-        self, dataloader: torch.utils.data.dataloader, epochs: int
-    ) -> ExperimentResult:
+    def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         num_samples = 0
         start_time = time.perf_counter()
         for epoch in range(0, epochs):
@@ -68,11 +70,14 @@ class Entitlement(ModelInterface):
         raise NotImplementedError
 
 
-# Learning Vision Transformer from a pre-trained model
-# https://huggingface.co/docs/transformers/model_doc/vit
 class ViT(ModelInterface):
+    """
+    Learning Vision Transformer from a pre-trained model.
+    See: https://huggingface.co/docs/transformers/model_doc/vit
+    """
+
     def __init__(self, num_labels: int, checkpoint: DictConfig):
-        self.name = "ViT"
+        super(ViT, self).__init__("ViT")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_labels = num_labels
         self._model = None
@@ -110,7 +115,7 @@ class ViT(ModelInterface):
             self._optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         return self._optimizer
 
-    def load_sample(self, sample):
+    def load_sample(self, sample: S3Reader | tuple[str, IOBase]):
         if isinstance(sample, S3Reader):
             key, data = sample.key, sample
         else:
@@ -120,7 +125,7 @@ class ViT(ModelInterface):
         if self.transform:
             img = self.transform(img)
             return img, target
-        return torchvision.transforms.functional.pil_to_tensor(img), target
+        return v2.functional.pil_to_tensor(img), target
 
     # This logic is not specific to Model but actually how we store img-target pairs in S3.
     # As we are not evaluating the model accuracy but actual training time for a
@@ -129,9 +134,7 @@ class ViT(ModelInterface):
     def _get_random_label(self):
         return random.randint(0, self.num_labels - 1)
 
-    def train(
-        self, dataloader: torch.utils.data.dataloader, epochs: int
-    ) -> ExperimentResult:
+    def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         num_samples = 0
         start_time = time.perf_counter()
         checkpoint_results = []
@@ -149,7 +152,7 @@ class ViT(ModelInterface):
                     self.checkpoint.save_one_in > 0
                     and (batch_idx + 1) % self.checkpoint.save_one_in == 0
                 ):
-                    result = self.save(batch_idx + 1)
+                    result = self.save(batch_idx=batch_idx + 1)
                     checkpoint_results.append(result)
         end_time = time.perf_counter()
         training_time = end_time - start_time
@@ -160,7 +163,7 @@ class ViT(ModelInterface):
             checkpoint_results=checkpoint_results,
         )
 
-    def save(self, batch_idx):
+    def save(self, batch_idx: int):
         destination = self.checkpoint.destination
         if destination == "s3":
             return save_checkpoint_to_s3(
@@ -170,7 +173,7 @@ class ViT(ModelInterface):
             return save_checkpoint_to_disk(self.model, self.checkpoint.uri, batch_idx)
 
 
-def save_checkpoint_to_s3(model, region, uri, batch_idx):
+def save_checkpoint_to_s3(model: nn.Module, region: str, uri: str, batch_idx: int):
     checkpoint = S3Checkpoint(region=region)
     # Save checkpoint to S3
     start_time = time.perf_counter()
@@ -182,7 +185,7 @@ def save_checkpoint_to_s3(model, region, uri, batch_idx):
     return save_time
 
 
-def save_checkpoint_to_disk(model, uri, batch_idx):
+def save_checkpoint_to_disk(model: nn.Module, uri: str, batch_idx: int):
     if not os.path.exists(uri):
         os.makedirs(uri)
     path = os.path.join(uri, f"batch{batch_idx}.ckpt")

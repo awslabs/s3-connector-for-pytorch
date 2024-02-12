@@ -3,7 +3,6 @@ defaults:
   - dataset: sharded_dataset
   - training: entitlement
   - checkpoint: none
-  - _self_
 
 
 hydra:

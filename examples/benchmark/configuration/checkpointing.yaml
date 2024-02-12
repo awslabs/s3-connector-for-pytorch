@@ -3,7 +3,6 @@ defaults:
   - dataset: unsharded_dataset
   - training: vit
   - checkpoint: ???
-  - _self_
 
 
 hydra:
