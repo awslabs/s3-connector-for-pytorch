@@ -11,5 +11,4 @@ pynvml
 boto3
 prefixed
 click
-joblib
 omegaconf
