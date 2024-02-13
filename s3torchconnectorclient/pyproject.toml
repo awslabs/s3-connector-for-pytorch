@@ -68,7 +68,7 @@ skip = "*musllinux* *i686"
 
 [tool.cibuildwheel.linux]
 before-all = [
-  "curl https://sh.rustup.rs -sSf | sh -s -- -y",
+  "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
   "yum install -y epel-release centos-release-scl",
   "yum install -y fuse",
   "yum install -y fuse-devel",
