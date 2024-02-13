@@ -1,26 +1,26 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import abc
+import io
 import os
 import tarfile
-import tempfile
-from pathlib import Path
-from typing import Generator
+import time
+from io import BytesIO
+from multiprocessing import Queue
+from threading import Thread, Lock, Barrier
+from typing import Callable, Iterator, TypeVar, NewType
 
 import boto3
 import click
 import numpy as np
-import prefixed
 import prefixed as pr
 import yaml
 from PIL import Image
-from joblib import parallel_config, Parallel, delayed, cpu_count
-from tqdm import tqdm
 
 
 class DataGenerator(abc.ABC):
     @abc.abstractmethod
-    def generate(self, index: int, destdir: Path) -> bytes:
+    def create(self, idx_gen: Iterator[int]) -> Iterator[tuple[str, io.BytesIO]]:
         pass
 
 
@@ -30,43 +30,73 @@ class ImageGenerator(DataGenerator):
         self.height = height
         self.img_format = img_format
 
-    def generate(self, index: int, destdir: Path):
-        img = Image.fromarray(
-            np.random.randint(
-                0, high=256, size=(self.height, self.width, 3), dtype=np.uint8
+    def create(self, idx_iter: Iterator[int]) -> Iterator[tuple[str, io.BytesIO]]:
+        for index in idx_iter:
+            img = Image.fromarray(
+                np.random.randint(
+                    0, high=256, size=(self.height, self.width, 3), dtype=np.uint8
+                )
             )
-        )
-        img_file: Path = destdir / f"image_{index}.{self.img_format}"
-        img.save(img_file)
+            byte_buf = io.BytesIO()
+            img.save(byte_buf, format=self.img_format)
+            byte_buf.seek(0)
+
+            yield f"image_{index}.{self.img_format}", byte_buf
+
+
+class ThreadSafeCounter:
+    def __init__(self) -> None:
+        self.val = 0
+        self.lock = Lock()
+
+    def get_and_inc(self):
+        with self.lock:
+            self.val += 1
+            return self.val
 
 
 class Utils:
+    T = TypeVar("T")
+
     @staticmethod
-    def batch_files(
-        files: list[Path], size_threshold: float
-    ) -> Generator[list[Path], None, None]:
-        group: list[Path] = []
+    def batcher(
+        items: Iterator[T], size_extractor: Callable[[T], int], size_threshold: float
+    ) -> Iterator[list[T]]:
+        group = []
         total = 0
-        for file in files:
-            new_total = total + file.stat().st_size
+        for item in items:
+            item_size = size_extractor(item)
+            new_total = total + item_size
             if new_total > size_threshold:
                 yield group
-                group = [file]
-                total = file.stat().st_size
+                group = [item]
+                total = item_size
             else:
-                group.append(file)
+                group.append(item)
                 total = new_total
         if len(group) > 0:
             yield group
 
     @staticmethod
-    def tar_files(name: str, workdir: Path, files: list[Path]) -> Path:
-        tar_path: Path = workdir / f"{name}.tar"
-        with tarfile.TarFile(tar_path, mode="w") as tarball:
-            for file in files:
-                tarball.add(file, arcname=file.name)
-                os.remove(file)
-        return tar_path
+    def get_sample_size(item: tuple[str, io.BytesIO]) -> int:
+        nbytes = item[1].getbuffer().nbytes
+        return nbytes
+
+    @staticmethod
+    def tar_samples(
+        samples: list[tuple[str, io.BytesIO]], ctr: ThreadSafeCounter
+    ) -> tuple[str, io.BytesIO]:
+        tar_fileobj = io.BytesIO()
+        with tarfile.open(fileobj=tar_fileobj, mode="w|") as tar:
+            for name, sample in samples:
+                tf = tarfile.TarInfo(name=name)
+                tf.mtime = time.time()
+                tf.size = sample.getbuffer().nbytes
+
+                tar.addfile(tf, sample)
+        tar_fileobj.seek(0)
+
+        return f"shard_{ctr.get_and_inc()}.tar", tar_fileobj
 
     @staticmethod
     def parse_resolution(
@@ -77,30 +107,69 @@ class Utils:
             return int(width), int(height)
 
     @staticmethod
-    def upload_to_s3(region: str, file: Path, bucket: str, prefix: str | None):
+    def upload_to_s3(region: str, data: io.BytesIO, bucket: str, key: str):
+        click.echo(f"Uploading to {key=}")
         s3_client = boto3.client("s3", region_name=region)
-        s3_key_parts = []
-        if prefix:
-            s3_key_parts.append(prefix)
-        s3_key_parts.append(os.path.basename(file))
-        s3_key = "/".join(s3_key_parts)
-        s3_client.upload_file(file, bucket, s3_key)
+        s3_client.upload_fileobj(data, bucket, key)
 
     @staticmethod
     def parse_human_readable_bytes(
         ctx: click.Context, param: str, value: str
     ) -> float | None:
         if value is not None:
-            return prefixed.Float(value.rstrip("b").rstrip("B"))
+            return pr.Float(value.rstrip("b").rstrip("B"))
+
+
+Sentinel = NewType("Sentinel", None)
+
+
+class ThreadSafeIterator:
+    """Takes an iterator/generator and makes it thread-safe by
+    serializing call to the `next` method of given iterator/generator.
+    """
+
+    def __init__(self, it):
+        self.it = it
+        self.lock = Lock()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self.lock:
+            return self.it.__next__()
+
+
+def producer(generator: Iterator, barrier: Barrier, queue: Queue, identifier: int):
+    for item in generator:
+        queue.put(item)
+    # wait for all producers to finish
+    barrier.wait()
+    # signal that there are no further items
+    if identifier == 0:
+        queue.put(Sentinel)
+
+
+def consumer(
+    queue: Queue, activity: Callable[[tuple[str, io.BytesIO]], None], identifier: int
+):
+    while True:
+        # click.echo(f"Consumer running on thread {threading.current_thread().ident}")
+        item: tuple[str, io.BytesIO] | Sentinel = queue.get()
+        if item is Sentinel:
+            # add signal back for other consumers
+            queue.put(item)
+            break
+        activity(*item)
 
 
 @click.command(context_settings={"show_default": True})
 @click.option(
     "-n",
     "--num-samples",
-    type=pr.Float,
+    callback=lambda p1, p2, val: pr.Float(val),
     default="1k",
-    help="Number of samples to generate.  Can be supplied as an IEC or SI prefix. Eg: 1k, 2M."
+    help="Number of sample_generator to generate.  Can be supplied as an IEC or SI prefix. Eg: 1k, 2M."
     " Note: these are case-sensitive notations.",
 )
 @click.option(
@@ -146,63 +215,110 @@ def synthesize_dataset(
     """
     Synthesizes a dataset that will be used for benchmarking and uploads it to an S3 bucket.
     """
-    with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = Path(tempdir)
-        # TODO: parameterize the data generator to allow for creating other kinds of datasets(eg: text).
-        generator = ImageGenerator(*resolution)
-        # generate dataset locally
-        with parallel_config(backend="multiprocessing", n_jobs=cpu_count()):
-            s = int(num_samples)
-            Parallel()(
-                delayed(generator.generate)(i, tempdir)
-                for i in tqdm(range(s), desc="Generating data")
-            )
-            if shard_size:
-                files: list[Path] = [(tempdir / file) for file in os.listdir(tempdir)]
-                Parallel()(
-                    delayed(Utils.tar_files)(
-                        f"train_shard_{batch_idx}", files=file_batch, workdir=tempdir
-                    )
-                    for (batch_idx, file_batch) in enumerate(
-                        Utils.batch_files(files, shard_size)
-                    )
-                )
-        # upload to s3
-        with parallel_config(backend="threading", n_jobs=cpu_count()):
-            files: list[Path] = [(tempdir / file) for file in os.listdir(tempdir)]
-            disambiguator = (
-                s3_prefix or f"{num_samples:.0h}_{resolution[0]}x{resolution[1]}_images"
-            )
-            if shard_size:
-                disambiguator = disambiguator + f"_{shard_size:.0h}b_shards"
-            fq_key = f"s3://{s3_bucket}/{disambiguator}/"
-            Parallel()(
-                delayed(Utils.upload_to_s3)(
-                    region=region, file=file, bucket=s3_bucket, prefix=disambiguator
-                )
-                for file in tqdm(files, desc="Uploading to S3")
-            )
-            click.echo(f"Dataset uploaded to: {fq_key}")
-        # generate hydra dataset config file
-        dataset_cfg = {
-            "prefix_uri": fq_key,
-            "region": region,
-            "sharding": bool(shard_size),
-        }
-        cfg_path = f"./configuration/dataset/{disambiguator}.yaml"
-        with open(cfg_path, "w") as outfile:
-            yaml.dump(dataset_cfg, outfile, default_flow_style=False)
-            click.echo(f"Dataset Configuration created at: {cfg_path}")
-        click.echo(
-            f"Configure your experiment by setting the entry:\n\tdataset: {disambiguator}"
+    # define the pipeline to generate the dataset
+    # TODO: parameterize the data generator to allow for creating other kinds of datasets(eg: text).
+    sample_generator = ImageGenerator(*resolution)
+    pipeline: Iterator[tuple[str, io.BytesIO]] = sample_generator.create(
+        i for i in range(int(num_samples))
+    )
+    if shard_size:
+        monotonic_ctr = ThreadSafeCounter()
+        pipeline: Iterator[list[tuple[str, io.BytesIO]]] = Utils.batcher(
+            items=pipeline,
+            size_extractor=lambda item: item[1].getbuffer().nbytes,
+            size_threshold=shard_size,
         )
-        click.echo(
-            "Alternatively, you can run specify it on the cmd-line when running the benchmark like so:"
+        pipeline: Iterator[tuple[str, io.BytesIO]] = (
+            Utils.tar_samples(batch, monotonic_ctr) for batch in pipeline
         )
-        click.echo(
-            f"\tpython benchmark.py -m -cn <CONFIG-NAME> 'dataset={disambiguator}'"
+    pipeline = ThreadSafeIterator(pipeline)
+
+    num_workers = os.cpu_count()
+    Q = Queue(num_workers)
+    # setup the asynchronous workflow to upload the generated datasets to s3
+    disambiguator = (
+        s3_prefix or f"{num_samples:.0h}_{resolution[0]}x{resolution[1]}_images"
+    )
+    if shard_size:
+        disambiguator = disambiguator + f"_{shard_size:.0h}b_shards"
+    fq_key = f"s3://{s3_bucket}/{disambiguator}/"
+    consumers = [
+        Thread(
+            target=consumer,
+            name=f"Uploader-{i}",
+            kwargs={
+                "identifier": i,
+                "queue": Q,
+                "activity": lambda label, data: Utils.upload_to_s3(
+                    region=region,
+                    data=data,
+                    bucket=s3_bucket,
+                    key=f"{disambiguator}/{label}",
+                ),
+            },
         )
+        for i in range(num_workers)
+    ]
+    for worker in consumers:
+        worker.start()
+
+    barrier = Barrier(num_workers)
+    producers = [
+        Thread(
+            target=producer,
+            name=f"DataGenerator-{i}",
+            kwargs={
+                "identifier": i,
+                "queue": Q,
+                "generator": pipeline,
+                "barrier": barrier,
+            },
+        )
+        for i in range(num_workers)
+    ]
+    for worker in producers:
+        worker.start()
+
+    # wait for all threads to finish
+    for worker in producers:
+        worker.join()
+    for worker in consumers:
+        worker.join()
+
+    click.echo(f"Dataset uploaded to: {fq_key}")
+    # generate hydra dataset config file
+    dataset_cfg = {
+        "prefix_uri": fq_key,
+        "region": region,
+        "sharding": bool(shard_size),
+    }
+    cfg_path = f"./configuration/dataset/{disambiguator}.yaml"
+    with open(cfg_path, "w") as outfile:
+        yaml.dump(dataset_cfg, outfile, default_flow_style=False)
+        click.echo(f"Dataset Configuration created at: {cfg_path}")
+    click.echo(
+        f"Configure your experiment by setting the entry:\n\tdataset: {disambiguator}"
+    )
+    click.echo(
+        "Alternatively, you can run specify it on the cmd-line when running the benchmark like so:"
+    )
+    click.echo(f"\tpython benchmark.py -m -cn <CONFIG-NAME> 'dataset={disambiguator}'")
+
+
+def tar_files():
+    bb = io.BytesIO()
+    generator = ImageGenerator(512, 512)
+    img_gen: Iterator[tuple[str, BytesIO]] = generator.create(iter(range(5)))
+    with tarfile.open(fileobj=bb, mode="w|") as tar:
+        for label, data in img_gen:
+            tf = tarfile.TarInfo(name=label)
+            tf.size = len(data.getvalue())
+            tar.addfile(tarinfo=tf, fileobj=data)
+
+    with open("file.tar", "wb") as f:
+        f.write(bb.getvalue())
 
 
 if __name__ == "__main__":
     synthesize_dataset()
+    # tar_files()
