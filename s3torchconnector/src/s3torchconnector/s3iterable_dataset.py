@@ -7,7 +7,7 @@ import logging
 import torch.utils.data
 
 from . import S3Reader
-from ._s3bucket_key import S3BucketKey
+from ._s3bucket_key_data import S3BucketKeyData
 from ._s3client import S3Client
 from ._s3dataset_common import (
     identity,
@@ -28,7 +28,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKeyData]],
         endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
@@ -113,9 +113,11 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             self._client = S3Client(self.region, self.endpoint)
         return self._client
 
-    def _get_transformed_object(self, bucket_key: S3BucketKey) -> Any:
+    def _get_transformed_object(self, bucket_key: S3BucketKeyData) -> Any:
         return self._transform(
-            self._get_client().get_object(bucket_key.bucket, bucket_key.key)
+            self._get_client().get_object(
+                bucket_key.bucket, bucket_key.key, object_info=bucket_key.object_info
+            )
         )
 
     def __iter__(self) -> Iterator[Any]:

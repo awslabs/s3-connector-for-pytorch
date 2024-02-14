@@ -5,7 +5,7 @@ from typing import List, Any, Callable, Iterable, Union
 import logging
 
 import torch.utils.data
-from s3torchconnector._s3bucket_key import S3BucketKey
+from s3torchconnector._s3bucket_key_data import S3BucketKeyData
 
 from ._s3client import S3Client
 from . import S3Reader
@@ -29,7 +29,7 @@ class S3MapDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         region: str,
-        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKey]],
+        get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKeyData]],
         endpoint: str = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
@@ -49,7 +49,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         return self._endpoint
 
     @property
-    def _dataset_bucket_key_pairs(self) -> List[S3BucketKey]:
+    def _dataset_bucket_key_pairs(self) -> List[S3BucketKeyData]:
         if self._bucket_key_pairs is None:
             self._bucket_key_pairs = list(self._get_dataset_objects(self._get_client()))
         return self._bucket_key_pairs
@@ -123,7 +123,9 @@ class S3MapDataset(torch.utils.data.Dataset):
 
     def _get_object(self, i: int) -> S3Reader:
         bucket_key = self._dataset_bucket_key_pairs[i]
-        return self._get_client().get_object(bucket_key.bucket, bucket_key.key)
+        return self._get_client().get_object(
+            bucket_key.bucket, bucket_key.key, object_info=bucket_key.object_info
+        )
 
     def __getitem__(self, i: int) -> Any:
         return self._transform(self._get_object(i))
