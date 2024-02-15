@@ -9,8 +9,8 @@ use mountpoint_s3_crt::common::uri::Uri;
 use mountpoint_s3_crt::common::allocator::Allocator;
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
-use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use mountpoint_s3_client::user_agent::UserAgent;
+use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use nix::unistd::Pid;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pymethods, PyRef, PyResult, ToPyObject};
@@ -74,7 +74,8 @@ impl MountpointS3Client {
         };
         let auth_config = auth_config(profile.as_deref(), no_sign_request);
 
-        let user_agent_suffix = &format!("{}/{}", build_info::PACKAGE_NAME, build_info::FULL_VERSION);
+        let user_agent_suffix =
+            &format!("{}/{}", build_info::PACKAGE_NAME, build_info::FULL_VERSION);
         let mut user_agent_string = &format!("{} {}", &user_agent_prefix, &user_agent_suffix);
         if user_agent_prefix.ends_with(user_agent_suffix) {
             // If we unpickle a client, we should not append the suffix again
@@ -139,6 +140,10 @@ impl MountpointS3Client {
         key: String,
     ) -> PyResult<PyObjectInfo> {
         slf.client.head_object(slf.py(), bucket, key)
+    }
+
+    pub fn delete_object(slf: PyRef<'_, Self>, bucket: String, key: String) -> PyResult<()> {
+        slf.client.delete_object(slf.py(), bucket, key)
     }
 
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {

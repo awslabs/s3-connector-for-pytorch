@@ -1,6 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-
+import logging
 from typing import Iterable, Callable, Sequence, Any
 
 import pytest
@@ -16,16 +16,20 @@ from test_s3dataset_common import (
 )
 
 
-def test_dataset_creation_from_prefix_with_region():
-    dataset = S3IterableDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
+def test_dataset_creation_from_prefix_with_region(caplog):
+    with caplog.at_level(logging.INFO):
+        dataset = S3IterableDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
     assert isinstance(dataset, S3IterableDataset)
     assert dataset.region == TEST_REGION
+    assert "Building S3IterableDataset from_prefix" in caplog.text
 
 
-def test_dataset_creation_from_objects_with_region():
-    dataset = S3IterableDataset.from_objects([], region=TEST_REGION)
+def test_dataset_creation_from_objects_with_region(caplog):
+    with caplog.at_level(logging.INFO):
+        dataset = S3IterableDataset.from_objects([], region=TEST_REGION)
     assert isinstance(dataset, S3IterableDataset)
     assert dataset.region == TEST_REGION
+    assert "Building S3IterableDataset from_objects" in caplog.text
 
 
 @pytest.mark.parametrize(

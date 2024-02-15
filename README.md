@@ -1,12 +1,18 @@
 # Amazon S3 Connector for PyTorch
-The Amazon S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in Amazon S3. Using the S3 Connector for PyTorch 
-automatically optimizes performance when downloading training data from and writing checkpoints to Amazon S3, eliminating the need to write your own code to list S3 buckets and manage concurrent requests.
+The Amazon S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in 
+Amazon S3. Using the S3 Connector for PyTorch 
+automatically optimizes performance when downloading training data from and writing checkpoints to Amazon S3, 
+eliminating the need to write your own code to list S3 buckets and manage concurrent requests.
 
 
- Amazon S3 Connector for PyTorch provides implementations of PyTorch's [dataset primitives](https://pytorch.org/tutorials/beginner/basics/data_tutorial.html) that you can use to load training data from Amazon S3.
- It supports both [map-style datasets](https://pytorch.org/docs/stable/data.html#map-style-datasets) for random data access patterns and 
- [iterable-style datasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets) for streaming sequential data access patterns. 
- The S3 Connector for PyTorch also includes a checkpointing interface to save and load checkpoints directly to Amazon S3, without first saving to local storage.
+Amazon S3 Connector for PyTorch provides implementations of PyTorch's 
+[dataset primitives](https://pytorch.org/tutorials/beginner/basics/data_tutorial.html) that you can use to load 
+training data from Amazon S3.
+It supports both [map-style datasets](https://pytorch.org/docs/stable/data.html#map-style-datasets) for random data 
+access patterns and [iterable-style datasets](https://pytorch.org/docs/stable/data.html#iterable-style-datasets) for 
+streaming sequential data access patterns. 
+The S3 Connector for PyTorch also includes a checkpointing interface to save and load checkpoints directly to 
+Amazon S3, without first saving to local storage.
    
 
 ## Getting Started
@@ -22,25 +28,30 @@ automatically optimizes performance when downloading training data from and writ
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports only Linux via Pip for now. For other platforms, see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) for build instructions.
+Amazon S3 Connector for PyTorch supports only Linux via Pip for now. For other platforms, see 
+[DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) for build instructions.
 
 ### Configuration
 
 To use `s3torchconnector`, AWS credentials must be provided through one of the following methods:
 
-- If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to that role.
+- If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to 
+that role.
 - Install and configure [`awscli`](https://aws.amazon.com/cli/) and run `aws configure`.
-- Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` on Unix or macOS.
+- Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` 
+on Unix or macOS.
 - Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
 
 ### Examples
 
 [API docs](http://awslabs.github.io/s3-connector-for-pytorch) are showing API of the public components. 
-End to end example of how to use `s3torchconnector` can be found under the [examples](https://github.com/awslabs/s3-connector-for-pytorch/tree/main/examples) directory.
+End to end example of how to use `s3torchconnector` can be found under the 
+[examples](https://github.com/awslabs/s3-connector-for-pytorch/tree/main/examples) directory.
 
 #### Sample Examples
 
-The simplest way to use the S3 Connector for PyTorch is to construct a dataset, either a map-style or iterable-style dataset, by specifying an S3 URI (a bucket and optional prefix) and the region the bucket is located in:
+The simplest way to use the S3 Connector for PyTorch is to construct a dataset, either a map-style or iterable-style 
+dataset, by specifying an S3 URI (a bucket and optional prefix) and the region the bucket is located in:
 ```shell
 from s3torchconnector import S3MapDataset, S3IterableDataset
 
@@ -67,7 +78,8 @@ for object in iterable_dataset:
 
 ```
 
-In addition to data loading primitives, the S3 Connector for PyTorch also provides an interface for saving and loading model checkpoints directly to and from an S3 bucket. 
+In addition to data loading primitives, the S3 Connector for PyTorch also provides an interface for saving and loading 
+model checkpoints directly to and from an S3 bucket. 
 
 ```shell
 from s3torchconnector import S3Checkpoint
@@ -92,28 +104,40 @@ with checkpoint.reader(CHECKPOINT_URI + "epoch0.ckpt") as reader:
 model.load_state_dict(state_dict)
 ```
 
-Using datasets or checkpoints with [Amazon S3 Express One Zone](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-one-zone.html) 
+Using datasets or checkpoints with
+[Amazon S3 Express One Zone](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-one-zone.html) 
 directory buckets requires only to update the URI, following `base-name--azid--x-s3` bucket name format.
 For example, assuming the following directory bucket name `my-test-bucket--usw2-az1--x-s3` with the Availability Zone ID
-usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the prefix
-for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
+usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
+prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
 ## Contributing
-We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CONTRIBUTING.md) For more information on how to report bugs or submit pull requests.
+We welcome contributions to Amazon S3 Connector for PyTorch. Please 
+see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CONTRIBUTING.md) 
+For more information on how to report bugs or submit pull requests.
 
 ### Development
-See [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) for information about code style,
-development process, and guidelines.
+See [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) for information 
+about code style, development process, and guidelines.
 
+### Compatibility with other storage services
+S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in Amazon S3. 
+While it may be functional against other storage services that use S3-like APIs, they may inadvertently break when we 
+make changes to better support Amazon S3. We welcome contributions of minor compatibility fixes or performance 
+improvements for these services if the changes can be tested against Amazon S3.
 
 ### Security issue notifications
-If you discover a potential security issue in this project we ask that you notify AWS Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/).
+If you discover a potential security issue in this project we ask that you notify AWS Security via our 
+[vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/).
 
 ### Code of conduct
 
-This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct). See [CODE_OF_CONDUCT.md](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CODE_OF_CONDUCT.md) for more details.
+This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
+See [CODE_OF_CONDUCT.md](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CODE_OF_CONDUCT.md) for 
+more details.
 
 ## License
 
-Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/LICENSE) file.
+Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the 
+[LICENSE](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/LICENSE) file.
 

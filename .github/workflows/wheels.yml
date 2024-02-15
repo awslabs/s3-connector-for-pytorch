@@ -34,17 +34,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialise environment
-        shell: bash
-        env:
-          REPO_NAME: ${{ github.event.repository.name }}
-        run: |
-          REPO_NAME_SAFE=$(echo $REPO_NAME | sed -e 's/[^A-Za-z0-9 \-\_]//g' -e 's/\s/-/g' -e 's/\([A-Z]\)/\L\1/g')
-          ARTIFACT_NAME="ort-results-${REPO_NAME_SAFE}--"
-          export ARTIFACT_NAME
-          printenv >> "$GITHUB_ENV"
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         id: creds
@@ -58,14 +47,14 @@ jobs:
       # https://github.com/actions/upload-artifact/issues/478
       - uses: actions/download-artifact@v3
         with:
-          name: ${{ ARTIFACT_NAME }}
+          name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
       - name: Rename third party license
         run: |
           mv NOTICE_DEFAULT THIRD-PARTY-LICENSES
 
       - name: Build wheels for s3torchconnectorclient
-        uses: pypa/cibuildwheel@v2.16.2
+        uses: pypa/cibuildwheel@v2.16.5
         env:
           CIBW_BUILD: ${{ matrix.build_target }}
         with:
@@ -91,7 +80,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: ${{ ARTIFACT_NAME }}
+          name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
       - name: Copy license files
         run: |

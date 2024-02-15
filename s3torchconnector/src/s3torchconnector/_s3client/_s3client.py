@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import logging
 import os
 from functools import partial
 from typing import Optional, Any
@@ -21,6 +22,9 @@ _s3client.py
     Internal client wrapper class on top of S3 client implementation 
     with multi-process support.
 """
+
+
+log = logging.getLogger(__name__)
 
 
 def _identity(obj: Any) -> Any:
@@ -54,6 +58,7 @@ class S3Client:
         )
 
     def get_object(self, bucket: str, key: str) -> S3Reader:
+        log.debug(f"GetObject s3://{bucket}/{key}")
         return S3Reader(
             bucket,
             key,
@@ -67,21 +72,25 @@ class S3Client:
     def put_object(
         self, bucket: str, key: str, storage_class: Optional[str] = None
     ) -> S3Writer:
+        log.debug(f"PutObject s3://{bucket}/{key}")
         return S3Writer(self._client.put_object(bucket, key, storage_class))
 
     # TODO: Probably need a ListObjectResult on dataset side
     def list_objects(
         self, bucket: str, prefix: str = "", delimiter: str = "", max_keys: int = 1000
     ) -> ListObjectStream:
+        log.debug(f"ListObjects s3://{bucket}/{prefix}")
         return self._client.list_objects(bucket, prefix, delimiter, max_keys)
 
     # TODO: We need ObjectInfo on dataset side
     def head_object(self, bucket: str, key: str) -> ObjectInfo:
+        log.debug(f"HeadObject s3://{bucket}/{key}")
         return self._client.head_object(bucket, key)
 
     def from_bucket_and_object_info(
         self, bucket: str, object_info: ObjectInfo
     ) -> S3Reader:
+        log.debug(f"GetObjectWithInfo s3://{bucket}/{object_info.key}")
         return S3Reader(
             bucket,
             object_info.key,

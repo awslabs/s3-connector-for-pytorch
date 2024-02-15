@@ -1,0 +1,26 @@
+name: Workflow Failure Slack Notifier
+
+on:
+  workflow_run:
+    workflows:
+      - Build Wheels
+    types: [completed]
+
+jobs:
+  on-failure:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: Send notification to Slack
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "action": "${{ github.event.action }}",
+              "conclusion": "${{ github.event.workflow_run.conclusion }}",
+              "workflow_name": "${{ github.event.workflow.name }}",
+              "workflow_run_url": "${{ github.event.workflow_run.html_url }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_WORKFLOW_FAILURE }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

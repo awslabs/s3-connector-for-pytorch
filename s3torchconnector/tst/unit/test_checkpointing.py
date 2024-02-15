@@ -1,7 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-
-from io import BytesIO
+import logging
+from io import BytesIO, SEEK_END
 from operator import eq
 from typing import Any, Callable
 from unittest.mock import patch
@@ -146,12 +146,26 @@ def test_general_checkpointing_untyped_storage_loads_no_modern_pytorch_format(
         equal=lambda a, b: list(a) == list(b),
     )
 
-
 def test_checkpoint_creation_with_region_and_endpoint():
     checkpoint = S3Checkpoint(TEST_REGION, endpoint=TEST_ENDPOINT)
     assert isinstance(checkpoint, S3Checkpoint)
     assert checkpoint.endpoint == TEST_ENDPOINT
 
+def test_checkpoint_seek_logging(caplog):
+    checkpoint = S3Checkpoint(TEST_REGION)
+
+    # Use MockClient instead of actual client.
+    client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    checkpoint._client = client
+
+    s3_uri = f"s3://{TEST_BUCKET}/{TEST_KEY}"
+    with checkpoint.writer(s3_uri) as writer:
+        writer.write(b"test")
+
+    with checkpoint.reader(s3_uri) as reader:
+        with caplog.at_level(logging.DEBUG):
+            reader.seek(0, SEEK_END)
+    assert f"HeadObject {s3_uri}" in caplog.messages
 
 def _test_save(
     data,
