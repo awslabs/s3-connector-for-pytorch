@@ -301,6 +301,7 @@ def test_mountpoint_client_creation_with_region_and_invalid_endpoint():
         == "Client error: Failed to construct request: Invalid S3 endpoint: endpoint could not be resolved: Custom endpoint `INVALID` was not a valid URI"
     )
 
+
 def test_delete_object():
     key = "hello_world.txt"
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
