@@ -54,24 +54,22 @@ def test_get_object_with_unpickled_client(sample_directory):
 
 def test_get_object_invalid_bucket(sample_directory):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
-    with pytest.raises(S3Exception) as error:
+    with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         next(
             client.get_object(
                 f"{sample_directory.bucket}-{uuid.uuid4()}", sample_directory.prefix
             )
         )
-    assert str(error.value) == "Service error: The bucket does not exist"
 
 
 def test_get_object_invalid_prefix(sample_directory):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
-    with pytest.raises(S3Exception) as error:
+    with pytest.raises(S3Exception, match="Service error: The key does not exist"):
         next(
             client.get_object(
                 sample_directory.bucket, f"{sample_directory.prefix}-{uuid.uuid4()}"
             )
         )
-    assert str(error.value) == "Service error: The key does not exist"
 
 
 def test_list_objects(image_directory):

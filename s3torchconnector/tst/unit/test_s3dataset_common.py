@@ -53,9 +53,8 @@ def test_s3dataset_base_parse_s3_uri_success(uri, expected_bucket, expected_key)
     ],
 )
 def test_s3dataset_base_parse_s3_uri_fail(uri, error_msg):
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError, match=f"^{error_msg}$"):
         parse_s3_uri(uri)
-    assert str(error.value) == error_msg
 
 
 @pytest.mark.parametrize(
@@ -79,13 +78,12 @@ def test_get_objects_from_prefix(prefix: str, keys: Sequence[str], expected_coun
 
 def test_list_objects_for_bucket_invalid():
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
-    with pytest.raises(S3Exception) as error:
+    with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         objects = get_objects_from_prefix(
             "s3://DIFFERENT_BUCKET",
             mock_client,
         )
         next(iter(objects))
-    assert str(error.value) == "Service error: The bucket does not exist"
 
 
 @pytest.mark.parametrize(
@@ -117,9 +115,8 @@ def test_get_objects_from_uris_success(
 )
 def test_get_objects_from_uris_fail(uri, error_msg):
     mock_client = _create_mock_client_with_dummy_objects(TEST_BUCKET, [])
-    with pytest.raises(ValueError) as error:
-        objects = get_objects_from_uris(uri, mock_client)
-    assert str(error.value) == error_msg
+    with pytest.raises(ValueError, match=f"^{error_msg}$"):
+        get_objects_from_uris(uri, mock_client)
 
 
 def _create_mock_client_with_dummy_objects(
