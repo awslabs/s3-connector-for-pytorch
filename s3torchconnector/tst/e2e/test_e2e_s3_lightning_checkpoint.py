@@ -12,6 +12,7 @@ from lightning.pytorch.plugins import AsyncCheckpointIO
 from torch.utils.data import DataLoader
 
 from s3torchconnector import S3Checkpoint
+from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnector.lightning import S3LightningCheckpoint
 from s3torchconnectorclient import S3Exception
@@ -130,9 +131,9 @@ def test_compatibility_with_checkpoint_callback(checkpoint_directory):
 
     trainer.fit(model, dataloader)
     expected_checkpoint_name = "checkpoint-epoch=00-step=03.ckpt"
-    # Workaround to verify there is only one checkpoint file. Client should NOT be accessed this way.
     bucket, prefix = parse_s3_uri(checkpoint_directory.s3_uri)
-    list_result = list(s3_lightning_checkpoint._client.list_objects(bucket, prefix))
+    s3_client = S3Client(region=checkpoint_directory.region)
+    list_result = list(s3_client.list_objects(bucket, prefix))
     assert list_result is not None
     assert len(list_result) == 1
     assert str.endswith(list_result[0].object_info[0].key, expected_checkpoint_name)
