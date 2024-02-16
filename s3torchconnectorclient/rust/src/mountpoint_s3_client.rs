@@ -5,6 +5,8 @@
 
 use std::sync::Arc;
 
+use mountpoint_s3_crt::common::uri::Uri;
+use mountpoint_s3_crt::common::allocator::Allocator;
 use mountpoint_s3_client::config::{EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::user_agent::UserAgent;
@@ -42,6 +44,8 @@ pub struct MountpointS3Client {
     no_sign_request: bool,
     #[pyo3(get)]
     user_agent_prefix: String,
+    #[pyo3(get)]
+    endpoint: Option<String>,
 
     owner_pid: Pid,
 }
@@ -49,7 +53,7 @@ pub struct MountpointS3Client {
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false, endpoint=None))]
     pub fn new_s3_client(
         region: String,
         user_agent_prefix: String,
@@ -57,11 +61,17 @@ impl MountpointS3Client {
         part_size: usize,
         profile: Option<String>,
         no_sign_request: bool,
+        endpoint: Option<String>,
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
 
-        let endpoint_config = EndpointConfig::new(&region);
+        let endpoint_str = endpoint.as_deref().unwrap_or("");
+        let endpoint_config = if endpoint_str.is_empty() {
+            EndpointConfig::new(&region)
+        } else {
+            EndpointConfig::new(&region).endpoint(Uri::new_from_str(&Allocator::default(), endpoint_str).unwrap())
+        };
         let auth_config = auth_config(profile.as_deref(), no_sign_request);
 
         let user_agent_suffix =
@@ -88,6 +98,7 @@ impl MountpointS3Client {
             profile,
             no_sign_request,
             crt_client,
+            endpoint,
         ))
     }
 
@@ -144,11 +155,13 @@ impl MountpointS3Client {
             slf.part_size.to_object(py),
             slf.profile.to_object(py),
             slf.no_sign_request.to_object(py),
+            slf.endpoint.to_object(py),
         ];
         Ok(PyTuple::new(py, state))
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 impl MountpointS3Client {
     pub(crate) fn new<Client: ObjectClient>(
         region: String,
@@ -158,6 +171,7 @@ impl MountpointS3Client {
         profile: Option<String>,
         no_sign_request: bool,
         client: Arc<Client>,
+        endpoint: Option<String>,
     ) -> Self
     where
         Client: Sync + Send + 'static,
@@ -172,6 +186,7 @@ impl MountpointS3Client {
             no_sign_request,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
             user_agent_prefix,
+            endpoint,
             owner_pid: nix::unistd::getpid(),
         }
     }

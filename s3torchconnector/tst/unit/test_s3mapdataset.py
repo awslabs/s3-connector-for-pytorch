@@ -12,6 +12,7 @@ from test_s3dataset_common import (
     TEST_REGION,
     _create_mock_client_with_dummy_objects,
     S3_PREFIX,
+    TEST_ENDPOINT,
 )
 
 
@@ -176,6 +177,14 @@ def test_call_len_twice(keys: Sequence[str], length: int):
     assert isinstance(dataset, S3MapDataset)
     assert len(dataset) == length
     assert len(dataset) == length
+
+
+def test_dataset_creation_from_prefix_with_region_and_endpoint():
+    dataset = S3MapDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, endpoint=TEST_ENDPOINT
+    )
+    assert isinstance(dataset, S3MapDataset)
+    assert dataset.endpoint == TEST_ENDPOINT
 
 
 def verify_item(dataset: S3MapDataset, index: int, expected_key: str):

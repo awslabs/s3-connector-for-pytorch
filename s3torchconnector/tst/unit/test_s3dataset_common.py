@@ -26,6 +26,7 @@ TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_PREFIX = f"s3://{TEST_BUCKET}"
+TEST_ENDPOINT = "https://s3.us-east-1.amazonaws.com"
 
 
 @pytest.mark.parametrize(

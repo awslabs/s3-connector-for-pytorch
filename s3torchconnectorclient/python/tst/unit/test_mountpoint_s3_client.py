@@ -24,6 +24,7 @@ logging.getLogger().setLevel(LOG_TRACE)
 
 REGION = "us-east-1"
 MOCK_BUCKET = "mock-bucket"
+INVALID_ENDPOINT = "INVALID"
 
 
 @pytest.mark.parametrize(
@@ -272,6 +273,33 @@ def test_mountpoint_client_pickles():
     )
     assert client.profile == loaded.profile == expected_profile
     assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
+
+
+@pytest.mark.parametrize(
+    "endpoint, expected",
+    [
+        ("https://s3.us-east-1.amazonaws.com", "https://s3.us-east-1.amazonaws.com"),
+        ("", ""),
+        (None, None),
+        ("https://us-east-1.amazonaws.com", "https://us-east-1.amazonaws.com"),
+    ],
+)
+def test_mountpoint_client_creation_with_region_and_endpoint(endpoint, expected):
+    client = MountpointS3Client(region=REGION, endpoint=endpoint)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == expected
+
+
+def test_mountpoint_client_creation_with_region_and_invalid_endpoint():
+    client = MountpointS3Client(region=REGION, endpoint=INVALID_ENDPOINT)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == INVALID_ENDPOINT
+    with pytest.raises(S3Exception) as e:
+        put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert (
+        str(e.value)
+        == "Client error: Failed to construct request: Invalid S3 endpoint: endpoint could not be resolved: Custom endpoint `INVALID` was not a valid URI"
+    )
 
 
 def test_delete_object():
