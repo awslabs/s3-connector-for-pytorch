@@ -10,6 +10,7 @@ BUCKET_NAME=$3
 PREFIX=$4
 EXPRESS_REGION_NAME=$5
 EXPRESS_BUCKET_NAME=$6
+S3_CUSTOM_ENDPOINT_URL=$7
 
 FILE_NAME="tmp_cred.json"
 # Set metadata token TTL to 6 hours
@@ -28,5 +29,6 @@ export S3_BUCKET=${BUCKET_NAME}
 export S3_PREFIX=${PREFIX}
 export S3_EXPRESS_REGION=${EXPRESS_REGION_NAME}
 export S3_EXPRESS_BUCKET=${EXPRESS_BUCKET_NAME}
+export S3_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL}
 
 cibuildwheel --output-dir wheelhouse --platform linux s3torchconnectorclient
