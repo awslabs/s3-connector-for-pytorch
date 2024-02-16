@@ -30,10 +30,12 @@ jobs:
             bucket: ${{ vars.S3_BUCKET }}
             region: ${{ vars.S3_REGION }}
             storage-class: ""
+            endpoint-url: ${{ vars.S3_CUSTOM_ENDPOINT_URL }}
           - name: "S3 Express"
             bucket: ${{ vars.S3_EXPRESS_BUCKET }}
             region: ${{ vars.S3_EXPRESS_REGION }}
             storage-class: "EXPRESS_ONEZONE"
+            endpoint-url: ""
     permissions:
       id-token: write
       contents: read
@@ -95,6 +97,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          CI_CUSTOM_ENDPOINT_URL=${{ matrix.test-run.endpoint-url }} \
           pytest s3torchconnectorclient/python/tst/integration -n auto
 
       - name: Save Cargo cache

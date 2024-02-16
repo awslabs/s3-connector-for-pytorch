@@ -40,7 +40,7 @@ def test_get_object_with_endpoint(sample_directory):
     client = MountpointS3Client(
         sample_directory.region,
         TEST_USER_AGENT_PREFIX,
-        endpoint="http://s3.amazonaws.com",
+        endpoint=sample_directory.endpoint_url,
     )
     stream = client.get_object(
         sample_directory.bucket, f"{sample_directory.prefix}hello_world.txt"
