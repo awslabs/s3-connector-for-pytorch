@@ -130,11 +130,41 @@ jobs:
         with:
           inputs: "s3torchconnectorclient"
 
-# TODO: This fails during release as we publish the binaries together
-#      - name: Audit s3torchconnector dependencies
-#        uses: pypa/gh-action-pip-audit@v1.0.8
-#        with:
-#          inputs: "s3torchconnector"
+      - name: Install local s3torchconnectorclient
+        run: |
+          python -m pip install -e "s3torchconnectorclient"
+      - name: Audit s3torchconnector dependencies
+        uses: pypa/gh-action-pip-audit@v1.0.8
+        with:
+          inputs: "s3torchconnector"
 
       - name: Security vulnerabilities check s3torchconnector
         run: safety check -r s3torchconnector/requirements.txt
+
+  wheels:
+    name: Wheels build checks
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Check s3torchconnectorclient wheels build
+        run: |
+          rm -rf /tmp/check_wheels/tmp_client_wheel
+          mkdir -p /tmp/check_wheels/tmp_client_wheel
+          python -m pip wheel "s3torchconnectorclient" \
+            --wheel-dir=/tmp/check_wheels/tmp_client_wheel --no-deps --no-cache-dir
+
+      - name: Check s3torchconnector wheels build
+        run: |
+          rm -rf /tmp/check_wheels/tmp_connector_wheel
+          mkdir -p /tmp/check_wheels/tmp_connector_wheel
+          python -m pip wheel "s3torchconnector" \
+            --wheel-dir=/tmp/check_wheels/tmp_connector_wheel --no-deps --no-cache-dir
