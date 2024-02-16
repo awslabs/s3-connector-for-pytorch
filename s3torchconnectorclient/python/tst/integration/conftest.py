@@ -26,14 +26,21 @@ class BucketPrefixFixture(object):
     bucket: str
     prefix: str
     storage_class: str = None
+    endpoint_url: str = None
 
     def __init__(
-        self, region: str, bucket: str, prefix: str, storage_class: str = None
+        self,
+        region: str,
+        bucket: str,
+        prefix: str,
+        storage_class: str = None,
+        endpoint_url: str = None,
     ):
         self.bucket = bucket
         self.prefix = prefix
         self.region = region
         self.storage_class = storage_class
+        self.endpoint_url = endpoint_url
         self.contents = {}
         session = boto3.Session(region_name=region)
         self.s3 = session.client("s3")
@@ -61,12 +68,13 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
     prefix = getenv("CI_PREFIX")
     region = getenv("CI_REGION")
     storage_class = getenv("CI_STORAGE_CLASS", optional=True)
+    endpoint_url = getenv("CI_CUSTOM_ENDPOINT_URL", optional=True)
     assert prefix == "" or prefix.endswith("/")
 
     nonce = random.randrange(2**64)
     prefix = f"{prefix}{name}/{nonce}/"
 
-    return BucketPrefixFixture(region, bucket, prefix, storage_class)
+    return BucketPrefixFixture(region, bucket, prefix, storage_class, endpoint_url)
 
 
 @pytest.fixture
