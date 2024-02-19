@@ -44,7 +44,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-          submodules: true
           persist-credentials: false
 
       - name: Configure AWS credentials
