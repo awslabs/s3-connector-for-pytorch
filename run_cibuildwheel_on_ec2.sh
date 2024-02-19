@@ -1,6 +1,6 @@
-if [ $# -ne 6 ]; then
-    echo "Invalid number of parameters, you need to provide role name, region name, bucket name, prefix, express region name and express bucket name"
-    echo "Usage: $0 S3RoleName us-west-2 s3torchconnector-test-bucket-name prefix-name/ us-east-1 s3torchconnectorclient-express-bucket-name"
+if [ $# -ne 7 ]; then
+    echo "Invalid number of parameters, you need to provide role name, region name, bucket name, prefix, express region name and express bucket name, custom endpoint for s3 standard"
+    echo "Usage: $0 S3RoleName us-west-2 s3torchconnector-test-bucket-name prefix-name/ us-east-1 s3torchconnectorclient-express-bucket-name https://s3.amazon.com"
     exit 1
 fi
 
