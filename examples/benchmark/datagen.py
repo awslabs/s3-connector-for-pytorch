@@ -5,9 +5,11 @@ import io
 import os
 import tarfile
 import time
+from dataclasses import dataclass
 from multiprocessing import Queue
+from pathlib import Path
 from threading import Thread, Lock, Barrier
-from typing import Any, Callable, Iterator, TypeVar, NewType
+from typing import Any, Callable, Iterator, TypeVar, Tuple, Dict, List, Optional, Union
 
 import boto3
 import click
@@ -17,9 +19,19 @@ import yaml
 from PIL import Image
 
 
+@dataclass
+class LabelledSample:
+    label: str
+    data: io.BytesIO
+
+
+class Sentinel:
+    pass
+
+
 class DataGenerator(abc.ABC):
     @abc.abstractmethod
-    def create(self, idx_gen: Iterator[int]) -> Iterator[tuple[str, io.BytesIO]]:
+    def create(self, idx_gen: Iterator[int]) -> Iterator[LabelledSample]:
         pass
 
 
@@ -29,7 +41,7 @@ class ImageGenerator(DataGenerator):
         self.height = height
         self.img_format = img_format
 
-    def create(self, idx_iter: Iterator[int]) -> Iterator[tuple[str, io.BytesIO]]:
+    def create(self, idx_iter: Iterator[int]) -> Iterator[LabelledSample]:
         for index in idx_iter:
             img = Image.fromarray(
                 np.random.randint(
@@ -40,7 +52,9 @@ class ImageGenerator(DataGenerator):
             img.save(byte_buf, format=self.img_format)
             byte_buf.seek(0)
 
-            yield f"image_{index}.{self.img_format}", byte_buf
+            yield LabelledSample(
+                label=f"image_{index}.{self.img_format}", data=byte_buf
+            )
 
 
 class ThreadSafeCounter:
@@ -60,7 +74,7 @@ class Utils:
     @staticmethod
     def batcher(
         items: Iterator[T], size_extractor: Callable[[T], int], size_threshold: float
-    ) -> Iterator[list[T]]:
+    ) -> Iterator[List[T]]:
         group = []
         total = 0
         for item in items:
@@ -77,30 +91,25 @@ class Utils:
             yield group
 
     @staticmethod
-    def get_sample_size(item: tuple[str, io.BytesIO]) -> int:
-        nbytes = item[1].getbuffer().nbytes
-        return nbytes
-
-    @staticmethod
     def tar_samples(
-        samples: list[tuple[str, io.BytesIO]], ctr: ThreadSafeCounter
-    ) -> tuple[str, io.BytesIO]:
+        samples: List[LabelledSample], ctr: ThreadSafeCounter
+    ) -> LabelledSample:
         tar_fileobj = io.BytesIO()
         with tarfile.open(fileobj=tar_fileobj, mode="w|") as tar:
-            for name, sample in samples:
-                tf = tarfile.TarInfo(name=name)
+            for sample in samples:
+                tf = tarfile.TarInfo(name=sample.label)
                 tf.mtime = time.time()
-                tf.size = sample.getbuffer().nbytes
+                tf.size = sample.data.getbuffer().nbytes
 
-                tar.addfile(tf, sample)
+                tar.addfile(tf, sample.data)
         tar_fileobj.seek(0)
 
-        return f"shard_{ctr.get_and_inc()}.tar", tar_fileobj
+        return LabelledSample(label=f"shard_{ctr.get_and_inc()}.tar", data=tar_fileobj)
 
     @staticmethod
     def parse_resolution(
         ctx: click.Context, param: str, value: str
-    ) -> tuple[int, int] | None:
+    ) -> Optional[Tuple[int, int]]:
         if value is not None:
             width, _, height = value.replace(" ", "").lower().partition("x")
             return int(width), int(height)
@@ -114,19 +123,22 @@ class Utils:
     @staticmethod
     def parse_human_readable_bytes(
         ctx: click.Context, param: str, value: str
-    ) -> float | None:
+    ) -> Optional[float]:
         if value is not None:
             return pr.Float(value.rstrip("b").rstrip("B"))
 
     @classmethod
-    def write_dataset_config(cls, disambiguator: str, dataset_cfg: dict[str, Any]):
-        cfg_path = f"./configuration/dataset/{disambiguator}.yaml"
+    def write_dataset_config(cls, disambiguator: str, dataset_cfg: Dict[str, Any]):
+        file_path = os.path.realpath(__file__)
+        cfg_path = (
+            Path(file_path).parent
+            / "configuration"
+            / "dataset"
+            / f"{disambiguator}.yaml"
+        )
         with open(cfg_path, "w") as outfile:
             yaml.dump(dataset_cfg, outfile, default_flow_style=False)
             click.echo(f"Dataset Configuration created at: {cfg_path}")
-
-
-Sentinel = NewType("Sentinel", None)
 
 
 class ThreadSafeIterator:
@@ -135,34 +147,34 @@ class ThreadSafeIterator:
     """
 
     def __init__(self, it):
-        self.it = it
-        self.lock = Lock()
+        self._it = it
+        self._lock = Lock()
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        with self.lock:
-            return self.it.__next__()
+        with self._lock:
+            return self._it.__next__()
 
 
 def build_pipeline(
-    num_samples: float, resolution: tuple[int, int], shard_size: float
-) -> Iterator[tuple[str, io.BytesIO]]:
+    num_samples: float, resolution: Tuple[int, int], shard_size: float
+) -> Iterator[LabelledSample]:
     # define the pipeline to generate the dataset
     # TODO: parameterize the data generator to allow for creating other kinds of datasets(eg: text).
     sample_generator = ImageGenerator(*resolution)
-    pipeline: Iterator[tuple[str, io.BytesIO]] = sample_generator.create(
-        i for i in range(int(num_samples))
+    pipeline: Iterator[LabelledSample] = sample_generator.create(
+        iter(range(int(num_samples)))
     )
     if shard_size:
         monotonic_ctr = ThreadSafeCounter()
-        pipeline: Iterator[list[tuple[str, io.BytesIO]]] = Utils.batcher(
+        pipeline: Iterator[List[LabelledSample]] = Utils.batcher(
             items=pipeline,
-            size_extractor=lambda item: item[1].getbuffer().nbytes,
+            size_extractor=lambda item: item.data.getbuffer().nbytes,
             size_threshold=shard_size,
         )
-        pipeline: Iterator[tuple[str, io.BytesIO]] = (
+        pipeline: Iterator[LabelledSample] = (
             Utils.tar_samples(batch, monotonic_ctr) for batch in pipeline
         )
 
@@ -170,12 +182,11 @@ def build_pipeline(
 
 
 def build_producers(
-    num_workers: int, queue: Queue, dataset_generator: Iterator[tuple[str, io.BytesIO]]
-) -> list[Thread]:
+    num_workers: int, queue: Queue, dataset_generator: Iterator[LabelledSample]
+) -> List[Thread]:
     barrier = Barrier(num_workers)
-    out = []
-    for i in range(num_workers):
-        worker = Thread(
+    return [
+        Thread(
             target=producer,
             name=f"DataGenerator-{i}",
             kwargs={
@@ -185,14 +196,13 @@ def build_producers(
                 "barrier": barrier,
             },
         )
-        out.append(worker)
-
-    return out
+        for i in range(num_workers)
+    ]
 
 
 def build_consumers(
     num_workers: int, queue: Queue, disambiguator: str, region: str, s3_bucket: str
-) -> list[Thread]:
+) -> List[Thread]:
     return [
         Thread(
             target=consumer,
@@ -200,11 +210,11 @@ def build_consumers(
             kwargs={
                 "identifier": i,
                 "queue": queue,
-                "activity": lambda label, data: Utils.upload_to_s3(
+                "activity": lambda sample: Utils.upload_to_s3(
                     region=region,
-                    data=data,
+                    data=sample.data,
                     bucket=s3_bucket,
-                    key=f"{disambiguator}/{label}",
+                    key=f"{disambiguator}/{sample.label}",
                 ),
             },
         )
@@ -219,20 +229,18 @@ def producer(generator: Iterator, barrier: Barrier, queue: Queue, identifier: in
     barrier.wait()
     # signal that there are no further items
     if identifier == 0:
-        queue.put(Sentinel)
+        queue.put(Sentinel())
 
 
-def consumer(
-    queue: Queue, activity: Callable[[tuple[str, io.BytesIO]], None], identifier: int
-):
+def consumer(queue: Queue, activity: Callable[[LabelledSample], None], identifier: int):
     while True:
         # click.echo(f"Consumer running on thread {threading.current_thread().ident}")
-        item: tuple[str, io.BytesIO] | Sentinel = queue.get()
-        if item is Sentinel:
+        item: Union[LabelledSample, Sentinel] = queue.get()
+        if type(item) is Sentinel:
             # add signal back for other consumers
             queue.put(item)
             break
-        activity(*item)
+        activity(item)
 
 
 @click.command(context_settings={"show_default": True})
@@ -278,7 +286,7 @@ def consumer(
 )
 def synthesize_dataset(
     num_samples: float,
-    resolution: tuple[int, int],
+    resolution: Tuple[int, int],
     shard_size: float,
     s3_bucket: str,
     s3_prefix: str,
@@ -288,14 +296,14 @@ def synthesize_dataset(
     Synthesizes a dataset that will be used for benchmarking and uploads it to an S3 bucket.
     """
     num_workers = os.cpu_count()
-    Q = Queue(num_workers)
+    task_queue = Queue(num_workers)
 
     # setup upstream stage to generate the dataset in memory
     pipeline = build_pipeline(
         num_samples=num_samples, resolution=resolution, shard_size=shard_size
     )
     producers = build_producers(
-        num_workers=num_workers, queue=Q, dataset_generator=pipeline
+        num_workers=num_workers, queue=task_queue, dataset_generator=pipeline
     )
 
     # setup downstream stage to upload generated datasets to s3
@@ -306,7 +314,7 @@ def synthesize_dataset(
         disambiguator = disambiguator + f"_{shard_size:.0h}b_shards"
     consumers = build_consumers(
         num_workers=num_workers,
-        queue=Q,
+        queue=task_queue,
         disambiguator=disambiguator,
         region=region,
         s3_bucket=s3_bucket,
@@ -328,7 +336,8 @@ def synthesize_dataset(
         dataset_cfg={
             "prefix_uri": fq_key,
             "region": region,
-            "sharding": bool(shard_size),
+            # TODO: extend this when introduce other sharding types
+            "sharding": "TAR" if shard_size else None,
         },
     )
 

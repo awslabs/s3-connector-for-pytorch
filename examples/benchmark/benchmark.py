@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 from enum import Enum
+from typing import Optional
 
 import hydra
 import torchdata
@@ -18,8 +19,7 @@ def run_experiment(config: DictConfig):
     model = make_model(config)
     dataset = make_dataset(
         kind=config.dataloader.kind,
-        # TODO: accept sharding as an enumerated parameter rather than a boolean once more sharding types are supported
-        sharding=(DatasetSharding.TAR if config.dataset.sharding else None),
+        sharding=DatasetSharding.from_conf(config.dataset),
         prefix_uri=config.dataset.prefix_uri,
         region=config.dataset.region,
         load_sample=model.load_sample,
@@ -54,7 +54,7 @@ def make_model(config: DictConfig) -> ModelInterface:
     if config.training.model == "entitlement":
         return Entitlement()
     elif config.training.model == "vit":
-        num_labels = int(config.training.num_labels or 1000)
+        num_labels = int(config.training.get("num_labels", 1000))
         return ViT(num_labels, config.checkpoint)
     else:
         raise Exception(f"unknown model {config.training.model}")
@@ -63,10 +63,15 @@ def make_model(config: DictConfig) -> ModelInterface:
 class DatasetSharding(Enum):
     TAR = 1
 
+    @staticmethod
+    def from_conf(dataset_config: DictConfig):
+        if dataset_config.get("sharding"):
+            return DatasetSharding[dataset_config.sharding]
+
 
 def make_dataset(
     kind: str,
-    sharding: DatasetSharding | None,
+    sharding: Optional[DatasetSharding],
     prefix_uri: str,
     region: str,
     load_sample,
@@ -106,7 +111,7 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int):
         dataset=dataset,
         batch_size=batch_size,
         shuffle=False,
-        drop_last=True,
+        drop_last=False,
         num_workers=num_workers,
         collate_fn=default_collate,
     )

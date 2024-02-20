@@ -107,8 +107,7 @@ class ResourceMonitor:
         mean_measurements = {}
         for key, arr in self.resource_data.items():
             last_vals = arr[start_idx : self.cur_index]
-            avg = np.mean(last_vals)
-            mean_measurements[key] = avg
+            mean_measurements[key] = np.mean(last_vals)
 
         return mean_measurements
 

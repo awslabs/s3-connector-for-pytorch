@@ -58,7 +58,7 @@ choosing
 the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/)
 as your AMI.
 
-**(Optional) Configure a python virtualenv**
+**(Optional) Configure a Python virtualenv**
 
     python -m venv <ENV-NAME>
     python <PATH-TO-VENV>/bin/activate
@@ -66,6 +66,12 @@ as your AMI.
 Then from this directory, install the dependencies for the example code:
 
     python -m pip install -r requirements.txt
+
+### (Pre-requisite) Configure AWS Credentials
+
+The commands provided below(`datagen.py`, `benchmark.py`) rely on the standard [AWS credential discovery mechanism](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). 
+Supplement the command as necessary to ensure the AWS credentials are made available to the process. For eg: by setting
+the `AWS_PROFILE` environment variable.
 
 ### Configuring the dataset
 
@@ -80,7 +86,7 @@ If you already have a dataset, you only need upload it to an S3 bucket and setup
 
 prefix_uri: s3://<S3_BUCKET>/<S3_PREFIX>/
 region: <AWS_REGION>
-sharding: True|False # if the samples have been packed into TAR archives.
+sharding: TAR|null # if the samples have been packed into TAR archives.
 ```
 
 This dataset can then be referenced in an experiment with an entry like `dataset: custom_dataset` (note that we're 
@@ -130,8 +136,6 @@ Here are some sample dataset configurations that we ran our benchmarks against:
 Example:
 
 ```
-# Configure AWS Credentials
-
 $ python datagen.py -n 20k \
    --resolution 496x387 \
    --shard-size 4MB \
