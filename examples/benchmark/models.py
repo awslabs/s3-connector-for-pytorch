@@ -21,8 +21,8 @@ from s3torchconnector import S3Reader, S3Checkpoint
 
 
 class ModelInterface(metaclass=abc.ABCMeta):
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self):
+        self.name = self.__class__.__name__
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         """Transform given sample (a file-like Object) to a model's input"""
@@ -70,7 +70,7 @@ class Entitlement(ModelInterface):
     """
 
     def __init__(self, num_labels: int = None):
-        super(Entitlement, self).__init__("Entitlement")
+        super().__init__()
         self.num_labels = num_labels
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
@@ -92,7 +92,7 @@ class ViT(ModelInterface):
     """
 
     def __init__(self, num_labels: int, checkpoint: DictConfig):
-        super(ViT, self).__init__("ViT")
+        super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_labels = num_labels
         self.loss_fn = nn.CrossEntropyLoss()

@@ -172,6 +172,5 @@ Utilisation, GPU Utilisation (if available) etc.
 
 ## Next Steps
 
-- Generate and upload samples directly to S3 bypassing the filesystem.
 - Use [Hydra Callbacks](https://hydra.cc/docs/experimental/callbacks/) to aggregate and plot benchmark results.
 - Add more models (LLMs?) to monitor training performance.

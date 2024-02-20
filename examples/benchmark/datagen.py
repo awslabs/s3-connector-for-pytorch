@@ -36,10 +36,10 @@ class DataGenerator(abc.ABC):
 
 
 class ImageGenerator(DataGenerator):
-    def __init__(self, width: int, height: int, img_format: str = "JPEG"):
+    def __init__(self, width: int, height: int, image_format: str):
         self.width = width
         self.height = height
-        self.img_format = img_format
+        self.img_format = image_format
 
     def create(self, idx_iter: Iterator[int]) -> Iterator[LabelledSample]:
         for index in idx_iter:
@@ -127,8 +127,8 @@ class Utils:
         if value is not None:
             return pr.Float(value.rstrip("b").rstrip("B"))
 
-    @classmethod
-    def write_dataset_config(cls, disambiguator: str, dataset_cfg: Dict[str, Any]):
+    @staticmethod
+    def write_dataset_config(disambiguator: str, dataset_cfg: Dict[str, Any]):
         file_path = os.path.realpath(__file__)
         cfg_path = (
             Path(file_path).parent
@@ -139,6 +139,17 @@ class Utils:
         with open(cfg_path, "w") as outfile:
             yaml.dump(dataset_cfg, outfile, default_flow_style=False)
             click.echo(f"Dataset Configuration created at: {cfg_path}")
+
+    @staticmethod
+    def validate_image_format(ctx: click.Context, param: str, value: str):
+        supported_formats = set(Image.registered_extensions().values())
+        supported_format_str = ", ".join(supported_formats)
+        if value in supported_formats:
+            return value
+
+        raise click.BadParameter(
+            f"'{value}' not among set of supported formats:\n{supported_format_str}"
+        )
 
 
 class ThreadSafeIterator:
@@ -159,11 +170,14 @@ class ThreadSafeIterator:
 
 
 def build_pipeline(
-    num_samples: float, resolution: Tuple[int, int], shard_size: float
+    num_samples: float,
+    resolution: Tuple[int, int],
+    shard_size: float,
+    image_format: str,
 ) -> Iterator[LabelledSample]:
     # define the pipeline to generate the dataset
     # TODO: parameterize the data generator to allow for creating other kinds of datasets(eg: text).
-    sample_generator = ImageGenerator(*resolution)
+    sample_generator = ImageGenerator(*resolution, image_format=image_format)
     pipeline: Iterator[LabelledSample] = sample_generator.create(
         iter(range(int(num_samples)))
     )
@@ -229,14 +243,14 @@ def producer(generator: Iterator, barrier: Barrier, queue: Queue, identifier: in
     barrier.wait()
     # signal that there are no further items
     if identifier == 0:
-        queue.put(Sentinel())
+        queue.put(Sentinel)
 
 
 def consumer(queue: Queue, activity: Callable[[LabelledSample], None], identifier: int):
     while True:
         # click.echo(f"Consumer running on thread {threading.current_thread().ident}")
         item: Union[LabelledSample, Sentinel] = queue.get()
-        if type(item) is Sentinel:
+        if item is Sentinel:
             # add signal back for other consumers
             queue.put(item)
             break
@@ -257,6 +271,12 @@ def consumer(queue: Queue, activity: Callable[[LabelledSample], None], identifie
     callback=Utils.parse_resolution,
     default="496x387",
     help="Resolution written in 'widthxheight' format",
+)
+@click.option(
+    "--image-format",
+    callback=Utils.validate_image_format,
+    default="JPEG",
+    help="Image file format",
 )
 @click.option(
     "--shard-size",
@@ -287,6 +307,7 @@ def consumer(queue: Queue, activity: Callable[[LabelledSample], None], identifie
 def synthesize_dataset(
     num_samples: float,
     resolution: Tuple[int, int],
+    image_format: str,
     shard_size: float,
     s3_bucket: str,
     s3_prefix: str,
@@ -300,7 +321,10 @@ def synthesize_dataset(
 
     # setup upstream stage to generate the dataset in memory
     pipeline = build_pipeline(
-        num_samples=num_samples, resolution=resolution, shard_size=shard_size
+        num_samples=num_samples,
+        resolution=resolution,
+        shard_size=shard_size,
+        image_format=image_format,
     )
     producers = build_producers(
         num_workers=num_workers, queue=task_queue, dataset_generator=pipeline
