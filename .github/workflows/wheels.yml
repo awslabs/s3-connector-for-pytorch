@@ -18,17 +18,22 @@ jobs:
     uses: ./.github/workflows/generate_third_party_licenses.yml
 
   build_wheels:
-    name: Build wheels for ${{ matrix.build_target }}
-    runs-on: ubuntu-20.04
+    name: Build wheels for ${{ matrix.build_prefix }} - ${{ matrix.builder.arch }}
+    runs-on: ${{ matrix.builder.runner }}
     needs: generate_third_party_licenses
     strategy:
       matrix:
-        build_target:
-          - cp38-manylinux_x86_64
-          - cp39-manylinux_x86_64
-          - cp310-manylinux_x86_64
-          - cp311-manylinux_x86_64
-          - cp312-manylinux_x86_64
+        build_prefix:
+          - cp38
+          - cp39
+          - cp310
+          - cp311
+          - cp312
+        builder:
+          - runner: codebuild-ubuntu-large
+            arch: x86_64
+          - runner: codebuild-arm-large
+            arch: aarch64
     permissions:
       id-token: write
       contents: read
@@ -54,12 +59,27 @@ jobs:
         run: |
           mv NOTICE_DEFAULT THIRD-PARTY-LICENSES
 
-      - name: Build wheels for s3torchconnectorclient
-        uses: pypa/cibuildwheel@v2.16.5
-        env:
-          CIBW_BUILD: ${{ matrix.build_target }}
+      # actions/setup-python doesn't yet support ARM
+      # https://github.com/actions/setup-python/issues/678
+      - if: ${{ matrix.builder.arch != 'aarch64' }}
+        uses: actions/setup-python@v4
         with:
-          package-dir: s3torchconnectorclient
+          python-version: "3.11"
+
+      - name: Install pipx
+        run: |
+          python -m pip install --upgrade pipx 
+
+      # Run cibuildwheel manually, as the current runner uses setup-python
+      # https://github.com/pypa/cibuildwheel/issues/1623
+      - run: >
+          python -m pipx run
+          cibuildwheel
+          "s3torchconnectorclient"
+          --output-dir "wheelhouse"
+          --only "${{ matrix.build_prefix }}-manylinux_${{ matrix.builder.arch }}"
+          2>&1
+        shell: bash
 
       - uses: actions/upload-artifact@v3
         with:
