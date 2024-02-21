@@ -1,11 +1,11 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import logging
+from unittest.mock import MagicMock
 
 import pytest
 
 from s3torchconnector._s3client import S3Client, MockS3Client
-from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -23,16 +23,13 @@ def s3_client() -> S3Client:
 def test_get_object_log(s3_client: S3Client, caplog):
     with caplog.at_level(logging.DEBUG):
         s3_client.get_object(TEST_BUCKET, TEST_KEY)
-    assert f"GetObject {S3_URI}" in caplog.messages
+    assert f"GetObject {S3_URI}, object_info is None=True" in caplog.messages
 
 
-def test_get_object_info_log(s3_client: S3Client, caplog):
+def test_get_object_log_with_info(s3_client: S3Client, caplog):
     with caplog.at_level(logging.DEBUG):
-        s3_client.from_bucket_and_object_info(
-            TEST_BUCKET,
-            ObjectInfo(TEST_KEY, "", 0, 0, None, None),
-        )
-    assert f"GetObjectWithInfo {S3_URI}" in caplog.messages
+        s3_client.get_object(TEST_BUCKET, TEST_KEY, object_info=MagicMock())
+    assert f"GetObject {S3_URI}, object_info is None=False" in caplog.messages
 
 
 def test_head_object_log(s3_client: S3Client, caplog):

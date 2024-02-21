@@ -1,11 +1,14 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import logging
+from io import SEEK_END
 from typing import Sequence, Callable, Any
+from unittest.mock import patch
 
 import pytest
 
 from s3torchconnector import S3MapDataset, S3Reader
+from s3torchconnector._s3client import MockS3Client
 
 from test_s3dataset_common import (
     TEST_BUCKET,
@@ -157,6 +160,21 @@ def test_transform_from_objects(
 
     assert isinstance(dataset, S3MapDataset)
     assert list(dataset) == [expected]
+
+
+def test_from_prefix_seek_no_head():
+    dataset = S3MapDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
+
+    # use mock client for unit testing
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, ["foo"])
+    dataset._client = client
+
+    with patch.object(
+        MockS3Client, "head_object", wraps=client.head_object
+    ) as head_object:
+        s3_object = next(iter(dataset))
+        s3_object.seek(0, SEEK_END)
+    head_object.assert_not_called()
 
 
 @pytest.mark.parametrize(

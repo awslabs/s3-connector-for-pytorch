@@ -57,12 +57,19 @@ class S3Client:
             user_agent_prefix=user_agent_prefix,
         )
 
-    def get_object(self, bucket: str, key: str) -> S3Reader:
-        log.debug(f"GetObject s3://{bucket}/{key}")
+    def get_object(
+        self, bucket: str, key: str, *, object_info: Optional[ObjectInfo] = None
+    ) -> S3Reader:
+        log.debug(f"GetObject s3://{bucket}/{key}, {object_info is None=}")
+        if object_info is None:
+            get_object_info = partial(self.head_object, bucket, key)
+        else:
+            get_object_info = partial(_identity, object_info)
+
         return S3Reader(
             bucket,
             key,
-            get_object_info=partial(self.head_object, bucket, key),
+            get_object_info=get_object_info,
             get_stream=partial(self._get_object_stream, bucket, key),
         )
 
@@ -86,14 +93,3 @@ class S3Client:
     def head_object(self, bucket: str, key: str) -> ObjectInfo:
         log.debug(f"HeadObject s3://{bucket}/{key}")
         return self._client.head_object(bucket, key)
-
-    def from_bucket_and_object_info(
-        self, bucket: str, object_info: ObjectInfo
-    ) -> S3Reader:
-        log.debug(f"GetObjectWithInfo s3://{bucket}/{object_info.key}")
-        return S3Reader(
-            bucket,
-            object_info.key,
-            get_object_info=partial(_identity, object_info),
-            get_stream=partial(self._get_object_stream, bucket, object_info.key),
-        )
