@@ -1,4 +1,5 @@
 defaults:
+  - _self_
   - dataloader: ???
   - dataset: unsharded_dataset
   - training: entitlement
@@ -6,7 +7,6 @@ defaults:
 
 hydra:
   mode: MULTIRUN
-
   sweeper:
     params:
       dataloader: s3iterabledataset, fsspec

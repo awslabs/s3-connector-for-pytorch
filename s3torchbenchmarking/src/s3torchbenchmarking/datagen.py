@@ -131,8 +131,8 @@ class Utils:
     def write_dataset_config(disambiguator: str, dataset_cfg: Dict[str, Any]):
         file_path = os.path.realpath(__file__)
         cfg_path = (
-            Path(file_path).parent
-            / "configuration"
+            Path(file_path).parent.parent.parent
+            / "conf"
             / "dataset"
             / f"{disambiguator}.yaml"
         )
@@ -314,7 +314,7 @@ def synthesize_dataset(
     region: str,
 ):
     """
-    Synthesizes a dataset that will be used for benchmarking and uploads it to an S3 bucket.
+    Synthesizes a dataset that will be used for s3torchbenchmarking and uploads it to an S3 bucket.
     """
     num_workers = os.cpu_count()
     task_queue = Queue(num_workers)
@@ -371,7 +371,9 @@ def synthesize_dataset(
     click.echo(
         "Alternatively, you can run specify it on the cmd-line when running the benchmark like so:"
     )
-    click.echo(f"\tpython benchmark.py -m -cn <CONFIG-NAME> 'dataset={disambiguator}'")
+    click.echo(
+        f"\ts3torch-benchmark -cd conf -m -cn <CONFIG-NAME> 'dataset={disambiguator}'"
+    )
 
 
 if __name__ == "__main__":

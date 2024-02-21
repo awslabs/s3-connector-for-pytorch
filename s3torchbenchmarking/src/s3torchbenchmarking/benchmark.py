@@ -1,5 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+
+
 from enum import Enum
 from typing import Optional
 
@@ -10,11 +12,11 @@ from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper
 
-from benchmark_utils import ResourceMonitor
-from models import Entitlement, ViT, ModelInterface
+from s3torchbenchmarking.benchmark_utils import ResourceMonitor
+from s3torchbenchmarking.models import Entitlement, ViT, ModelInterface
 
 
-@hydra.main(version_base=None, config_path="configuration")
+@hydra.main(version_base=None)
 def run_experiment(config: DictConfig):
     model = make_model(config)
     dataset = make_dataset(

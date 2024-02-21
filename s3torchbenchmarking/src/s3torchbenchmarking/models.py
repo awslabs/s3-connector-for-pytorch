@@ -16,7 +16,7 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2
 from transformers import ViTForImageClassification
 
-from benchmark_utils import ExperimentResult
+from s3torchbenchmarking.benchmark_utils import ExperimentResult
 from s3torchconnector import S3Reader, S3Checkpoint
 
 

@@ -28,6 +28,7 @@ venv/
 *.egg-info/
 .installed.cfg
 *.egg
+multirun/
 
 # Prevent publishing file with third party licenses
 THIRD-PARTY-LICENSES

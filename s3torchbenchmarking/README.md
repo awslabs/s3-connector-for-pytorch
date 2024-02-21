@@ -25,7 +25,7 @@ defines a Model interface where each model expected to implement `load_sample`, 
 Once the sub-configurations are defined, one can easily create an experimental configuration that will use the Hydra Sweeper
 to launch multiple experiments sequentially.
 
-For example, the `dataloading` experiment stored at `./configuration/dataloading.yaml` has the following
+For example, the `dataloading` experiment stored at `./conf/dataloading.yaml` has the following
 content:
 
 ```
@@ -52,20 +52,28 @@ experiment is helpful to see upper-limit of dataloader throughput without being 
 
 ## Getting Started
 
-To get started, launch an EC2 instance with a GPU (we used
-a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)),
-choosing
-the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/)
-as your AMI.
+The benchmarking code is available within the `s3torchbenchmarking`. First navigate into the directory:
 
-**(Optional) Configure a Python virtualenv**
+    cd s3torchbenchmkaring
+
+To get started, launch an EC2 instance with a GPU (we used a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)), choosing 
+the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/) as your AMI. Activate the venv within this machine
+by running:
+
+    source pytorch activate
+
+If running locally you can optionally configure a Python virtualenv:
 
     python -m venv <ENV-NAME>
     python <PATH-TO-VENV>/bin/activate
 
-Then from this directory, install the dependencies for the example code:
 
-    python -m pip install -r requirements.txt
+Then from this directory, install the dependencies:
+
+    python -m pip install .
+
+This would make the `s3torch-benchmark` and `s3torch-datagen` commands available to you. Note: the installation would
+recommend $PATH modifications if necessary, allowing you to use the commands directly.
 
 ### (Pre-requisite) Configure AWS Credentials
 
@@ -79,7 +87,7 @@ _Note: This is a one-time setup for each dataset configuration. The dataset conf
 and can be used in subsequent benchmarks, as long as the dataset on the S3 bucket is intact._
 
 If you already have a dataset, you only need upload it to an S3 bucket and setup a YAML file under
-`./configuration/dataset/` in the following format:
+`./conf/dataset/` in the following format:
 
 ```yaml
 # custom_dataset.yaml
@@ -91,7 +99,7 @@ sharding: TAR|null # if the samples have been packed into TAR archives.
 
 This dataset can then be referenced in an experiment with an entry like `dataset: custom_dataset` (note that we're 
 omitting the *.yaml extension). This will result in running the benchmarks against this dataset. Some experiments have 
-already been defined for your reference - see `./configuration/dataloading.yaml` or `./configuration/sharding.yaml`.
+already been defined for your reference - see `./conf/dataloading.yaml` or `./configuration/sharding.yaml`.
 
 _Note: Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your
 measurements._
@@ -100,8 +108,8 @@ Alternatively, you can use `datagen.py` to procedurally generate an image datase
 also creates a Hydra configuration file at the appropriate path.
 
 ```
-$ python datagen.py --help
-Usage: datagen.py [OPTIONS]
+$ s3torch-datagen --help
+Usage: s3torch-datagen [OPTIONS]
 
   Synthesizes a dataset that will be used for benchmarking and uploads it to
   an S3 bucket.
@@ -136,7 +144,7 @@ Here are some sample dataset configurations that we ran our benchmarks against:
 Example:
 
 ```
-$ python datagen.py -n 20k \
+$ s3torch-datagen -n 20k \
    --resolution 496x387 \
    --shard-size 4MB \
    --s3-bucket swift-benchmark-dataset \
@@ -145,27 +153,29 @@ $ python datagen.py -n 20k \
 Generating data: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:00<00:00, 1243.50it/s]
 Uploading to S3: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 9/9 [00:00<00:00, 3378.87it/s]
 Dataset uploaded to: s3://swift-benchmark-dataset/20k_496x387_images_4MB_shards/
-Dataset Configuration created at: ./configuration/dataset/20k_496x387_images_4MB_shards.yaml
+Dataset Configuration created at: ./conf/dataset/20k_496x387_images_4MB_shards.yaml
 Configure your experiment by setting the entry:
     dataset: 20k_496x387_images_4MB_shards
 Alternatively, you can run specify it on the cmd-line when running the benchmark like so:
-    python benchmark.py -m -cn <CONFIG-NAME> 'dataset=20k_496x387_images_4MB_shards'
+    s3torch-benchmark -cd conf  -m -cn <CONFIG-NAME> 'dataset=20k_496x387_images_4MB_shards'
 ```
 
 ---
 
-Finally, once the dataset and other configuration modules have been defined, you can kick off the benchmark by running: 
+Finally, once the dataset and other configuration modules have been defined, you can kick off the benchmark by running:
 
-    $ python benchmark.py -m -cn YOUR-TEST-CONFIGURATION 
+    $ cd s3torchbenchmarking/
+
+    $ s3torch-benchmark -cd conf -m -cn YOUR-TEST-CONFIGURATION 
     
     # Example-1:
-    $ python benchmark.py -m -cn dataloading 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
+    $ s3torch-benchmark -cd conf -m -cn dataloading 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
 
     # Example-2:
-    $ python benchmark.py -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
+    $ s3torch-benchmark -cd conf -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
 
 _Note: For overriding any other benchmark parameters,
-see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/)._
+see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/). You can also run `s3torch-benchmark --hydra-help` to learn more._
 
 Experiments will report total training time, number of training samples as well as host-level metrics like CPU
 Utilisation, GPU Utilisation (if available) etc.
