@@ -171,6 +171,26 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
     _verify_equal_state_dict(model.state_dict(), loaded_checkpoint["state_dict"])
 
 
+def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
+    nonce = random.randrange(2**64)
+    dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
+    dataloader = DataLoader(dataset, num_workers=3)
+    model = LightningTransformer(vocab_size=dataset.vocab_size)
+    s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    trainer = L.Trainer(
+        default_root_dir=checkpoint_directory.s3_uri,
+        plugins=[s3_lightning_checkpoint],
+        max_epochs=1,
+        max_steps=3,
+    )
+    trainer.fit(model, dataloader)
+    checkpoint_key = "lightning_logs/version_0/checkpoints/epoch=0-step=3.ckpt"
+    checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
+    new_model = LightningTransformer(vocab_size=dataset.vocab_size)
+    trainer.fit(new_model, dataloader, ckpt_path=checkpoint_s3_uri)
+    _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
+
+
 def test_nn_checkpointing(checkpoint_directory):
     nn_model = Net()
     checkpoint_name = "lightning_neural_network_model.pt"
