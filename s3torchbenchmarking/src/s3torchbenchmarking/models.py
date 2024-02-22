@@ -132,7 +132,7 @@ class ViT(ModelInterface):
     # This logic is not specific to Model but actually how we store img-target pairs in S3.
     # As we are not evaluating the model accuracy but actual training time for a
     # fixed number of epochs, it is OK to randomly generate a label between
-    # 0 and self.num_labels -1
+    # 0 and self.num_labels - 1.
     def _get_random_label(self):
         return random.randint(0, self.num_labels - 1)
 
