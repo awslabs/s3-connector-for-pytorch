@@ -1,3 +1,0 @@
-prefix_uri: ??? # <S3-URI> eg: s3://example-bucket/dataset-prefix/
-region: ??? # <AWS-REGION> eg: us-east-1
-sharding: null

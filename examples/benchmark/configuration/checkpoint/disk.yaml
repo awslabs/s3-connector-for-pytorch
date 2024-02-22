@@ -1,4 +1,0 @@
-save_one_in: 25
-destination: disk
-uri: checkpoints/
-region: eu-west-2
