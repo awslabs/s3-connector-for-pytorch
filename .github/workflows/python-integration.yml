@@ -19,11 +19,12 @@ env:
 jobs:
   integration-test:
     name: Integration tests
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     environment: ${{ inputs.environment }}
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-22.04, macos-13]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         test-run:
           - name: "S3"
@@ -53,17 +54,13 @@ jobs:
           aws-region: ${{ vars.S3_REGION }}
 
       - name: Set up stable Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Restore Cargo cache
         id: restore-cargo-cache
         uses: actions/cache/restore@v3
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
@@ -114,7 +111,6 @@ jobs:
         if: inputs.environment != 'integration-tests'
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/

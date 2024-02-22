@@ -2,7 +2,7 @@ name: Integration tests (Main)
 
 on:
   push:
-    branches: [ "main", "feature/*" ]
+    branches: [ "main", "feature/*", "workflow/*" ]
   merge_group:
     types: [ "checks_requested" ]
 
