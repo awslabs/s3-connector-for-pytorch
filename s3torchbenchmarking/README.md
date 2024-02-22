@@ -56,7 +56,7 @@ The benchmarking code is available within the `s3torchbenchmarking`. First navig
 
     cd s3torchbenchmkaring
 
-To get started, launch an EC2 instance with a GPU (we used a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)), choosing 
+The tests can be run locally, or you can launch an EC2 instance with a GPU(we used a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)), choosing 
 the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/) as your AMI. Activate the venv within this machine
 by running:
 
@@ -99,13 +99,13 @@ sharding: TAR|null # if the samples have been packed into TAR archives.
 
 This dataset can then be referenced in an experiment with an entry like `dataset: custom_dataset` (note that we're 
 omitting the *.yaml extension). This will result in running the benchmarks against this dataset. Some experiments have 
-already been defined for your reference - see `./conf/dataloading.yaml` or `./configuration/sharding.yaml`.
+already been defined for reference - see `./conf/dataloading.yaml` or `./conf/sharding.yaml`.
 
 _Note: Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your
 measurements._
 
-Alternatively, you can use `datagen.py` to procedurally generate an image dataset and upload it to Amazon S3. The script
-also creates a Hydra configuration file at the appropriate path.
+Alternatively, you can use the `s3torch-datagen` command to procedurally generate an image dataset and upload it to 
+Amazon S3. The script also creates a Hydra configuration file at the appropriate path.
 
 ```
 $ s3torch-datagen --help
@@ -138,8 +138,8 @@ Options:
 
 Here are some sample dataset configurations that we ran our benchmarks against:
 
-- `n: 20k, resolution: 496x387`
-- `n: 20k, resolution: 496x387, shard-size: {4, 8, 16, 32, 64}MB`
+- `-n 20k --resolution 496x387`
+- `-n 20k --resolution 496x387 --shard-size {4, 8, 16, 32, 64}MiB`
 
 Example:
 
@@ -184,3 +184,4 @@ Utilisation, GPU Utilisation (if available) etc.
 
 - Use [Hydra Callbacks](https://hydra.cc/docs/experimental/callbacks/) to aggregate and plot benchmark results.
 - Add more models (LLMs?) to monitor training performance.
+- Support plugging in user-defined models and automatic discovery of the same.
