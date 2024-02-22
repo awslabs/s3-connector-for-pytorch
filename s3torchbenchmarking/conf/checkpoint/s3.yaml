@@ -1,0 +1,4 @@
+save_one_in: 25
+destination: s3
+uri: s3://swift-benchmark-dataset/checkpoints/
+region: eu-west-2

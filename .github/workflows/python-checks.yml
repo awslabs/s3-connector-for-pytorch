@@ -51,11 +51,14 @@ jobs:
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
           python -m pip install -e "s3torchconnectorclient[test]"
           python -m pip install -e "s3torchconnector[test]"
+          python -m pip install -e "s3torchbenchmarking[test]"
 
       - name: s3torchconnectorclient unit tests
         run: pytest s3torchconnectorclient/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
       - name: s3torchconnector unit tests
         run: pytest s3torchconnector/tst/unit --ignore s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics
+      - name: s3torchbenchmarking unit tests
+        run: pytest s3torchbenchmarking/tst --hypothesis-profile ci --hypothesis-show-statistics
 
   lint:
     name: Python lints

@@ -1,0 +1,13 @@
+defaults:
+  - _self_
+  - dataloader: ???
+  - dataset: unsharded_dataset
+  - training: entitlement
+  - checkpoint: none
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      dataloader: s3iterabledataset, fsspec
+      dataloader.num_workers: 2,4,8,16

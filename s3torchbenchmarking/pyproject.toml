@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s3torchbenchmarking"
+version = "0.0.1"
+description = "Tools to run and compare benchmarks against various PyTorch connectors like the s3torchconnector."
+requires-python = ">=3.8,<3.12"
+readme = "README.md"
+dependencies = [
+    "torch >= 2.0.1",
+    "s3torchconnector>=1.1.1",
+    "hydra-core",
+    "torchdata>=0.6.1",
+    "torchvision",
+    "s3fs",
+    "transformers",
+    "numpy",
+    "psutil",
+    "pynvml",
+    "boto3",
+    "prefixed",
+    "click",
+    "omegaconf",
+]
+optional-dependencies = { test = ["pytest"] }
+scripts = { s3torch-benchmark = "s3torchbenchmarking.benchmark:run_experiment", s3torch-datagen = "s3torchbenchmarking.datagen:synthesize_dataset" }
+
+[tool.setuptools.packages]
+# Pure Python packages/modules and configuration files
+find = { where = ["src"] }
