@@ -6,7 +6,7 @@ from typing import Iterable, Union, Tuple
 from ._s3_bucket_iterable import S3BucketIterable
 from ._s3client import S3Client
 from . import S3Reader
-from ._s3bucket_key import S3BucketKey
+from ._s3bucket_key_data import S3BucketKeyData
 
 """
 _s3dataset_common.py
@@ -38,18 +38,15 @@ def parse_s3_uri(uri: str) -> Tuple[str, str]:
 
 def get_objects_from_uris(
     object_uris: Union[str, Iterable[str]], client: S3Client
-) -> Iterable[S3BucketKey]:
+) -> Iterable[S3BucketKeyData]:
     if isinstance(object_uris, str):
         object_uris = [object_uris]
     # TODO: We should be consistent with URIs parsing. Revise if we want to do this upfront or lazily.
     bucket_key_pairs = [parse_s3_uri(uri) for uri in object_uris]
 
-    return (S3BucketKey(bucket, key) for bucket, key in bucket_key_pairs)
+    return (S3BucketKeyData(bucket, key) for bucket, key in bucket_key_pairs)
 
 
-def get_objects_from_prefix(s3_uri: str, client: S3Client) -> Iterable[S3BucketKey]:
+def get_objects_from_prefix(s3_uri: str, client: S3Client) -> Iterable[S3BucketKeyData]:
     bucket, prefix = parse_s3_uri(s3_uri)
-    s3objects = S3BucketIterable(client, bucket, prefix)
-    bucket_key_pairs = (S3BucketKey(obj.bucket, obj.key) for obj in s3objects)
-
-    return bucket_key_pairs
+    return iter(S3BucketIterable(client, bucket, prefix))

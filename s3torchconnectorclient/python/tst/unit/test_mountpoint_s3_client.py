@@ -24,6 +24,7 @@ logging.getLogger().setLevel(LOG_TRACE)
 
 REGION = "us-east-1"
 MOCK_BUCKET = "mock-bucket"
+INVALID_ENDPOINT = "INVALID"
 
 
 @pytest.mark.parametrize(
@@ -66,32 +67,24 @@ def test_get_object_bad_bucket():
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     client = mock_client.create_mocked_client()
 
-    try:
+    with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.get_object("does_not_exist", "foo")
-    except S3Exception as e:
-        assert str(e) == "Service error: The bucket does not exist"
 
 
 def test_get_object_none_bucket():
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     client = mock_client.create_mocked_client()
 
-    try:
+    with pytest.raises(TypeError):
         client.get_object(None, "foo")
-    except TypeError:
-        pass
-    else:
-        raise AssertionError("Should raise TypeError")
 
 
 def test_get_object_bad_object():
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     client = mock_client.create_mocked_client()
 
-    try:
+    with pytest.raises(S3Exception, match="Service error: The key does not exist"):
         client.get_object(MOCK_BUCKET, "does_not_exist")
-    except S3Exception as e:
-        assert str(e) == "Service error: The key does not exist"
 
 
 def test_get_object_iterates_once():
@@ -121,12 +114,8 @@ def test_get_object_throws_stop_iteration():
         pass
 
     for _ in range(10):
-        try:
+        with pytest.raises(StopIteration):
             next(stream)
-        except StopIteration:
-            pass
-        else:
-            raise AssertionError("Should always throw StopIteration after stream ends")
 
 
 @pytest.mark.parametrize(
@@ -224,9 +213,8 @@ def test_put_object_no_multiple_close():
 
     put_stream.write(b"")
     put_stream.close()
-    with pytest.raises(S3Exception) as e:
+    with pytest.raises(S3Exception, match="Cannot close object more than once"):
         put_stream.close()
-    assert str(e.value) == "Cannot close object more than once"
 
 
 def test_put_object_no_write_after_close():
@@ -238,9 +226,8 @@ def test_put_object_no_write_after_close():
 
     put_stream.write(b"")
     put_stream.close()
-    with pytest.raises(S3Exception) as e:
+    with pytest.raises(S3Exception, match="Cannot write to closed object"):
         put_stream.write(b"")
-    assert str(e.value) == "Cannot write to closed object"
 
 
 def test_put_object_with_storage_class():
@@ -286,6 +273,33 @@ def test_mountpoint_client_pickles():
     )
     assert client.profile == loaded.profile == expected_profile
     assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
+
+
+@pytest.mark.parametrize(
+    "endpoint, expected",
+    [
+        ("https://s3.us-east-1.amazonaws.com", "https://s3.us-east-1.amazonaws.com"),
+        ("", ""),
+        (None, None),
+        ("https://us-east-1.amazonaws.com", "https://us-east-1.amazonaws.com"),
+    ],
+)
+def test_mountpoint_client_creation_with_region_and_endpoint(endpoint, expected):
+    client = MountpointS3Client(region=REGION, endpoint=endpoint)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == expected
+
+
+def test_mountpoint_client_creation_with_region_and_invalid_endpoint():
+    client = MountpointS3Client(region=REGION, endpoint=INVALID_ENDPOINT)
+    assert isinstance(client, MountpointS3Client)
+    assert client.endpoint == INVALID_ENDPOINT
+    with pytest.raises(S3Exception) as e:
+        put_stream = client.put_object(MOCK_BUCKET, "key")
+    assert (
+        str(e.value)
+        == "Client error: Failed to construct request: Invalid S3 endpoint: endpoint could not be resolved: Custom endpoint `INVALID` was not a valid URI"
+    )
 
 
 def test_delete_object():

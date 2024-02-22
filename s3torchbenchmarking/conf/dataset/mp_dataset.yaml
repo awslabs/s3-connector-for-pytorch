@@ -1,0 +1,2 @@
+prefix_uri: /tmp/s3mounts/swift-benchmark-dataset/100_images
+sharding: False

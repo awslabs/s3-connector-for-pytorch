@@ -1,0 +1,14 @@
+defaults:
+  - _self_
+  - dataloader: ???
+  - dataset: sharded_dataset
+  - training: entitlement
+  - checkpoint: none
+
+
+hydra:
+  mode: MULTIRUN
+
+  sweeper:
+    params:
+      dataloader: s3iterabledataset, fsspec

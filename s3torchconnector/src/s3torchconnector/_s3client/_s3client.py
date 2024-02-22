@@ -32,8 +32,9 @@ def _identity(obj: Any) -> Any:
 
 
 class S3Client:
-    def __init__(self, region: str):
+    def __init__(self, region: str, endpoint: str = None):
         self._region = region
+        self._endpoint = endpoint
         self._real_client = None
         self._client_pid = None
 
@@ -51,15 +52,24 @@ class S3Client:
 
     def _client_builder(self) -> MountpointS3Client:
         return MountpointS3Client(
-            region=self._region, user_agent_prefix=user_agent_prefix
+            region=self._region,
+            endpoint=self._endpoint,
+            user_agent_prefix=user_agent_prefix,
         )
 
-    def get_object(self, bucket: str, key: str) -> S3Reader:
-        log.debug(f"GetObject s3://{bucket}/{key}")
+    def get_object(
+        self, bucket: str, key: str, *, object_info: Optional[ObjectInfo] = None
+    ) -> S3Reader:
+        log.debug(f"GetObject s3://{bucket}/{key}, {object_info is None=}")
+        if object_info is None:
+            get_object_info = partial(self.head_object, bucket, key)
+        else:
+            get_object_info = partial(_identity, object_info)
+
         return S3Reader(
             bucket,
             key,
-            get_object_info=partial(self.head_object, bucket, key),
+            get_object_info=get_object_info,
             get_stream=partial(self._get_object_stream, bucket, key),
         )
 
@@ -83,14 +93,3 @@ class S3Client:
     def head_object(self, bucket: str, key: str) -> ObjectInfo:
         log.debug(f"HeadObject s3://{bucket}/{key}")
         return self._client.head_object(bucket, key)
-
-    def from_bucket_and_object_info(
-        self, bucket: str, object_info: ObjectInfo
-    ) -> S3Reader:
-        log.debug(f"GetObjectWithInfo s3://{bucket}/{object_info.key}")
-        return S3Reader(
-            bucket,
-            object_info.key,
-            get_object_info=partial(_identity, object_info),
-            get_stream=partial(self._get_object_stream, bucket, object_info.key),
-        )

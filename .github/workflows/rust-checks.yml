@@ -37,7 +37,8 @@ jobs:
       - name: Run cargo deny
         uses: EmbarkStudios/cargo-deny-action@v1
         with:
-          command: --manifest-path s3torchconnectorclient/Cargo.toml check ${{ matrix.checks }}
+          command: check ${{ matrix.checks }}
+          manifest-path: s3torchconnectorclient/Cargo.toml
 
   clippy:
     runs-on: ubuntu-22.04

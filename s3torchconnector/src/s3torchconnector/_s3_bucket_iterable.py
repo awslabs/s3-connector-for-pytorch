@@ -11,8 +11,8 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     ListObjectStream,
 )
 
+from ._s3bucket_key_data import S3BucketKeyData
 from ._s3client import S3Client
-from . import S3Reader
 
 
 class S3BucketIterable:
@@ -21,7 +21,7 @@ class S3BucketIterable:
         self._bucket = bucket
         self._prefix = prefix
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[S3BucketKeyData]:
         # This allows us to iterate multiple times by re-creating the `_list_stream`
         return iter(S3BucketIterator(self._client, self._bucket, self._prefix))
 
@@ -32,10 +32,9 @@ class S3BucketIterator:
         self._bucket = bucket
         self._list_stream = _PickleableListObjectStream(client, bucket, prefix)
 
-    def __iter__(self) -> Iterator[S3Reader]:
-        return map(
-            partial(self._client.from_bucket_and_object_info, self._bucket),
-            chain.from_iterable(map(_extract_object_info, self._list_stream)),
+    def __iter__(self) -> Iterator[S3BucketKeyData]:
+        return chain.from_iterable(
+            map(partial(_extract_list_results, self._bucket), self._list_stream)
         )
 
 
@@ -66,5 +65,11 @@ class _PickleableListObjectStream:
         self._list_stream = ListObjectStream._from_state(**state)
 
 
-def _extract_object_info(list_result: ListObjectResult) -> List[ObjectInfo]:
-    return list_result.object_info
+def _extract_list_results(
+    bucket: str, list_result: ListObjectResult
+) -> Iterator[S3BucketKeyData]:
+    return map(partial(_extract_object_info, bucket), list_result.object_info)
+
+
+def _extract_object_info(bucket: str, object_info: ObjectInfo) -> S3BucketKeyData:
+    return S3BucketKeyData(bucket=bucket, key=object_info.key, object_info=object_info)
