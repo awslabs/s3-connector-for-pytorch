@@ -10,7 +10,7 @@ requires-python = ">=3.8,<3.12"
 readme = "README.md"
 dependencies = [
     "torch >= 2.0.1",
-    "s3torchconnector>=1.1.1",
+    "s3torchconnector",
     "hydra-core",
     "torchdata>=0.6.1",
     "torchvision",
