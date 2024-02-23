@@ -48,7 +48,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Manually install CPU-only version of torch so we're not carrying around giant GPU drivers/kernels
-          python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
+          python -m pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
           python -m pip install -e "s3torchconnectorclient[test]"
           python -m pip install -e "s3torchconnector[test]"
           python -m pip install -e "s3torchbenchmarking[test]"
