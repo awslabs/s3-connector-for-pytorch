@@ -61,6 +61,9 @@ class BucketPrefixFixture(object):
     def __iter__(self):
         return iter(self.contents)
 
+    def __del__(self):
+        self.s3.delete_object(Bucket=self.bucket, Key=self.prefix)
+
 
 def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
     """Create a new bucket/prefix fixture for the given test name."""
