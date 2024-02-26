@@ -25,6 +25,8 @@ log = "0.4.20"
 tracing = { version = "0.1.37", features = ["log"] }
 tracing-subscriber = "0.3.17"
 nix = { version = "0.27.1", features = ["process"] }
+env_logger = "0.11.2"
+chrono = "0.4.34"
 
 [features]
 extension-module = ["pyo3/extension-module"]
