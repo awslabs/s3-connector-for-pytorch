@@ -1,5 +1,22 @@
 ## Unreleased
 
+## v1.1.4 (February 26, 2024)
+
+### New features
+* Support for Python 3.12.
+* Additional logging when constructing Datasets, and when making requests to S3.
+* Provide tooling for running benchmarks for S3 Connector for Pytorch.
+* Update crates and Mountpoint dependencies.
+* **[Experimental]** Allow passing in the S3 endpoint URL to Dataset constructors.
+
+### Bug Fixes
+
+* HeadObject is no longer called when constructing datasets with `from_prefix` and seeking relative to end of file.
+
+### Breaking changes
+* No breaking changes.
+
+
 ## v1.1.3 (January 25, 2024)
 
 ### New features
