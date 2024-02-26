@@ -30,9 +30,9 @@ jobs:
           - cp311
           - cp312
         builder:
-          - runner: codebuild-ubuntu-large
+          - runner: codebuild-${{ github.event.repository.name }}-ubuntu-7.0-large
             arch: x86_64
-          - runner: codebuild-arm-large
+          - runner: codebuild-${{ github.event.repository.name }}-arm-3.0-large
             arch: aarch64
     permissions:
       id-token: write
