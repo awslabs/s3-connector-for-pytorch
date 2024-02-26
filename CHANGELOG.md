@@ -3,11 +3,11 @@
 ## v1.1.4 (February 26, 2024)
 
 ### New features
-* Support for Python 3.12
+* Support for Python 3.12.
 * Additional logging when constructing Datasets, and when making requests to S3.
-* Provide tooling for running benchmarks for S3 Connector for Pytorch
+* Provide tooling for running benchmarks for S3 Connector for Pytorch.
 * Update crates and Mountpoint dependencies.
-* **[Experimental]** Allow passing in the S3 endpoint URL to Dataset constructors
+* **[Experimental]** Allow passing in the S3 endpoint URL to Dataset constructors.
 
 ### Bug Fixes
 
