@@ -111,6 +111,40 @@ For example, assuming the following directory bucket name `my-test-bucket--usw2-
 usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
+
+## Lightning Integration
+
+Amazon S3 Connector for PyTorch includes an integration for PyTorch Lightning, featuring S3LightningCheckpoint, an 
+implementation of Lightning's CheckpointIO. This allows users to make use of Amazon S3 Connector for PyTorch's S3 
+checkpointing functionality with Pytorch Lightning.
+
+### Getting Started
+
+#### Installation
+
+```sh
+pip install s3torchconnector[lightning]
+```
+
+### Examples
+
+End to end examples for the Pytorch Lightning integration can be found in the 
+[examples/lightning](https://github.com/awslabs/s3-connector-for-pytorch/tree/main/examples/lightning) directory
+
+```py
+from lightning import Trainer
+from s3torchconnector.lightning import S3LightningCheckpoint
+
+...
+
+s3_checkpoint_io = S3LightningCheckpoint("us-east-1")
+trainer = Trainer(
+    plugins=[s3_checkpoint_io],
+    default_root_dir="s3://bucket_name/key_prefix/"
+)
+trainer.fit(model)
+```
+
 ## Contributing
 We welcome contributions to Amazon S3 Connector for PyTorch. Please 
 see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CONTRIBUTING.md) 
