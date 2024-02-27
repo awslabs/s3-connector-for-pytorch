@@ -1,5 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import sys
 import pytest
 
 PYTHON_TEST_CODE = """
@@ -7,7 +8,6 @@ import logging
 import os
 import sys
 
-os.environ["PYTHONUNBUFFERED"] = "1"
 os.environ["ENABLE_CRT_LOGS"] = "{0}"
 
 from s3torchconnector import S3MapDataset
@@ -18,14 +18,13 @@ logging.basicConfig(
 )
 logging.getLogger().setLevel(logging.INFO)
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        exit("The script needs an S3 uri and a region")
-    s3_uri = sys.argv[1]
-    region = sys.argv[2]
-    map_dataset = S3MapDataset.from_prefix(s3_uri, region=region)
-    obj = map_dataset[0]
-    assert obj is not None
+if len(sys.argv) != 3:
+    exit("The script needs an S3 uri and a region")
+s3_uri = sys.argv[1]
+region = sys.argv[2]
+map_dataset = S3MapDataset.from_prefix(s3_uri, region=region)
+obj = map_dataset[0]
+assert obj is not None
 """
 
 import subprocess
@@ -37,11 +36,7 @@ import subprocess
         (
             "info",
             ["INFO s3torchconnector.s3map_dataset"],
-            [
-                "DEBUG awscrt::AWSProfile",
-                "TRACE awscrt::AWSProfile",
-                "DEBUG awscrt::AuthCredentialsProvider",
-            ],
+            ["DEBUG", "TRACE"],
         ),
         (
             "debug",
@@ -50,7 +45,7 @@ import subprocess
                 "DEBUG awscrt::AWSProfile",
                 "DEBUG awscrt::AuthCredentialsProvider",
             ],
-            ["TRACE awscrt::AWSProfile"],
+            ["TRACE"],
         ),
         (
             "trace",
@@ -60,6 +55,7 @@ import subprocess
                 "DEBUG awscrt::AuthCredentialsProvider",
                 "TRACE awscrt::event-loop",
             ],
+            # Python log level is set to INFO in the test script
             ["TRACE s3torchconnector.s3map_dataset"],
         ),
     ],
@@ -67,15 +63,15 @@ import subprocess
 def test_logging_valid(log_level, should_contain, should_not_contain, image_directory):
     stdout, stderr = _start_subprocess(log_level, image_directory)
     assert stderr == ""
-    assert stdout is not None
-    assert all([s in stdout for s in should_contain])
-    assert all([s not in stdout for s in should_not_contain])
+    assert stdout != ""
+    assert all(s in stdout for s in should_contain)
+    assert all(s not in stdout for s in should_not_contain)
 
 
 def test_logging_off(image_directory):
     stdout, stderr = _start_subprocess("off", image_directory)
     assert stderr == ""
-    assert stdout is not None
+    assert stdout != ""
     assert "INFO s3torchconnector.s3map_dataset" in stdout
     assert "awscrt" not in stdout
 
@@ -92,7 +88,7 @@ def test_logging_invalid(image_directory):
 def _start_subprocess(log_level, image_directory):
     process = subprocess.Popen(
         [
-            "python",
+            sys.executable,
             "-c",
             PYTHON_TEST_CODE.format(log_level),
             image_directory.s3_uri,
