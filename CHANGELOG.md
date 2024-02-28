@@ -1,5 +1,12 @@
 ## Unreleased
 
+### New features
+
+### Bug Fixes
+* Fix debug logging deadlock CRT logging from Python logging to avoid deadlock when enabling CRT logs and removed
+former experimental method _enable_debug_logging()
+
+
 ## v1.1.4 (February 26, 2024)
 
 ### New features

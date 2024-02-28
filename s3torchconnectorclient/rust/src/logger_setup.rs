@@ -15,31 +15,33 @@ pub const ENABLE_CRT_LOGS_ENV_VAR: &str = "ENABLE_CRT_LOGS";
 pub const CRT_LOGS_DIR_PATH_ENV_VAR: &str = "CRT_LOGS_DIR_PATH";
 
 pub fn setup_logging() -> PyResult<()> {
-    let enable_crt_logs = env::var(ENABLE_CRT_LOGS_ENV_VAR).ok();
+    let enable_crt_logs = env::var(ENABLE_CRT_LOGS_ENV_VAR);
 
-    match enable_crt_logs {
-        None => enable_default_logging(),
-        Some(..) => enable_crt_logging()
+    if enable_crt_logs.is_ok() {
+        enable_crt_logging()
+    } else {
+        enable_default_logging()
     }
 }
 
 fn enable_crt_logging() -> PyResult<()> {
     RustLogAdapter::try_init().map_err(python_exception)?;
 
-    let filter = EnvFilter::try_from_env(ENABLE_CRT_LOGS_ENV_VAR).map_err(python_exception);
+    let filter = EnvFilter::try_from_env(ENABLE_CRT_LOGS_ENV_VAR).map_err(python_exception)?;
     let crt_logs_path = env::var(CRT_LOGS_DIR_PATH_ENV_VAR).ok();
+
     match crt_logs_path {
         Some(logs_path) => {
             let logfile = tracing_appender::rolling::hourly(logs_path, "s3torchconnectorclient.log");
             let subscriber_builder = tracing_subscriber::fmt()
                 .with_writer(logfile)
-                 .with_env_filter(filter.unwrap_or_default())
-                 .with_ansi(false);
+                .with_env_filter(filter)
+                .with_ansi(false);
             subscriber_builder.finish().try_init().map_err(python_exception)?;
         },
         None => {
             let subscriber_builder = tracing_subscriber::fmt()
-                 .with_env_filter(filter.unwrap_or_default())
+                 .with_env_filter(filter)
                  .with_ansi(false);
             subscriber_builder.finish().try_init().map_err(python_exception)?;
         }
