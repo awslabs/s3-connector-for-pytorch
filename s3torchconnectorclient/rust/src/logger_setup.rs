@@ -8,7 +8,6 @@ use mountpoint_s3_crt::common::rust_log_adapter::RustLogAdapter;
 use pyo3::{PyResult};
 use pyo3_log::Logger;
 use tracing_subscriber::{filter::EnvFilter};
-use tracing_subscriber::fmt::writer::{MakeWriterExt};
 use tracing_subscriber::util::{SubscriberInitExt};
 use crate::exception::python_exception;
 
