@@ -1,5 +1,11 @@
 ## Unreleased
 
+### New features
+
+### Bug Fixes
+* Fix deadlock when enabling CRT debug logs. Removed former experimental method _enable_debug_logging().
+
+
 ## v1.1.4 (February 26, 2024)
 
 ### New features
