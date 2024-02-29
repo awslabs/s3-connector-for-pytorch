@@ -82,5 +82,3 @@ def test_user_agent_always_starts_with_package_version(comments):
     if comments_str:
         assert comments_str in s3_client.user_agent_prefix
         assert comments_str in s3_client._client.user_agent_prefix
-
-

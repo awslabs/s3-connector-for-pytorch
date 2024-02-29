@@ -34,6 +34,7 @@ def test_default_user_agent_creation():
     user_agent = UserAgent()
     assert user_agent.prefix == DEFAULT_PREFIX
 
+
 def test_invalid_comments_argument():
     with pytest.raises(ValueError, match="Argument comments must be a List\[str\]"):
         UserAgent("string")
