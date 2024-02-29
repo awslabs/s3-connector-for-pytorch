@@ -2,9 +2,9 @@
 
 ### New features
 
-### Bug Fixes
+### Bug Fixes / Improvements
 * Fix deadlock when enabling CRT debug logs. Removed former experimental method _enable_debug_logging().
-
+* Refactor User-Agent setup for extensibility.
 
 ## v1.1.4 (February 26, 2024)
 

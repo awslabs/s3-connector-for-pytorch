@@ -7,7 +7,6 @@ from functools import partial
 from typing import Optional, Any
 
 from s3torchconnector import S3Reader, S3Writer
-from s3torchconnector._version import user_agent_prefix
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     MountpointS3Client,
@@ -16,6 +15,7 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     GetObjectStream,
 )
 
+from s3torchconnector._user_agent import UserAgent
 
 """
 _s3client.py
@@ -32,11 +32,13 @@ def _identity(obj: Any) -> Any:
 
 
 class S3Client:
-    def __init__(self, region: str, endpoint: str = None):
+    def __init__(self, region: str, endpoint: str = None, user_agent: UserAgent = None):
         self._region = region
         self._endpoint = endpoint
         self._real_client = None
         self._client_pid = None
+        user_agent = user_agent or UserAgent()
+        self._user_agent_prefix = user_agent.prefix
 
     @property
     def _client(self) -> MountpointS3Client:
@@ -50,11 +52,15 @@ class S3Client:
     def region(self) -> str:
         return self._region
 
+    @property
+    def user_agent_prefix(self) -> str:
+        return self._user_agent_prefix
+
     def _client_builder(self) -> MountpointS3Client:
         return MountpointS3Client(
             region=self._region,
             endpoint=self._endpoint,
-            user_agent_prefix=user_agent_prefix,
+            user_agent_prefix=self._user_agent_prefix,
         )
 
     def get_object(
