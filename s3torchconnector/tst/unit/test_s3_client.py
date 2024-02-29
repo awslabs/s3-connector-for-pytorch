@@ -4,7 +4,7 @@ import logging
 import pytest
 
 from hypothesis import given
-from hypothesis.strategies import text
+from hypothesis.strategies import lists, text
 from unittest.mock import MagicMock
 
 from s3torchconnector._user_agent import UserAgent
@@ -72,9 +72,15 @@ def test_s3_client_custom_user_agent():
     assert s3_client._client.user_agent_prefix == expected_user_agent
 
 
-@given(text())
+@given(lists(text()))
 def test_user_agent_always_starts_with_package_version(comments):
     s3_client = S3Client(region=TEST_REGION, user_agent=UserAgent(comments))
     expected_prefix = f"s3torchconnector/{__version__}"
     assert s3_client.user_agent_prefix.startswith(expected_prefix)
     assert s3_client._client.user_agent_prefix.startswith(expected_prefix)
+    comments_str = "; ".join(filter(None, comments))
+    if comments_str:
+        assert comments_str in s3_client.user_agent_prefix
+        assert comments_str in s3_client._client.user_agent_prefix
+
+

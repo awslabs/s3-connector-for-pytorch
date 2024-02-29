@@ -9,6 +9,8 @@ from ._version import __version__
 
 class UserAgent:
     def __init__(self, comments: List[str] = None):
+        if comments and not isinstance(comments, list):
+            raise ValueError("Argument comments must be a List[str]")
         self._user_agent_prefix = f"{__package__}/{__version__}"
         self._comments = comments or []
 
