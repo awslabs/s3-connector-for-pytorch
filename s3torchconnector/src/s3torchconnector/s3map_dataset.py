@@ -1,7 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 from functools import partial
-from typing import List, Any, Callable, Iterable, Union
+from typing import List, Any, Callable, Iterable, Union, Optional
 import logging
 
 import torch.utils.data
@@ -30,7 +30,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         self,
         region: str,
         get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKeyData]],
-        endpoint: str = None,
+        endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -38,7 +38,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         self._region = region
         self._endpoint = endpoint
         self._client = None
-        self._bucket_key_pairs = None
+        self._bucket_key_pairs: Optional[List[S3BucketKeyData]] = None
 
     @property
     def region(self):
@@ -52,6 +52,7 @@ class S3MapDataset(torch.utils.data.Dataset):
     def _dataset_bucket_key_pairs(self) -> List[S3BucketKeyData]:
         if self._bucket_key_pairs is None:
             self._bucket_key_pairs = list(self._get_dataset_objects(self._get_client()))
+        assert self._bucket_key_pairs is not None
         return self._bucket_key_pairs
 
     @classmethod
@@ -60,7 +61,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         object_uris: Union[str, Iterable[str]],
         *,
         region: str,
-        endpoint: str = None,
+        endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         """Returns an instance of S3MapDataset using the S3 URI(s) provided.
@@ -91,7 +92,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         s3_uri: str,
         *,
         region: str,
-        endpoint: str = None,
+        endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
     ):
         """Returns an instance of S3MapDataset using the S3 URI provided.

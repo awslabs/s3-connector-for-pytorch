@@ -74,7 +74,7 @@ def test_s3reader_creation(object_info, get_stream):
 )
 def test_s3reader_invalid_creation(bucket, key):
     with pytest.raises(ValueError, match="Bucket should be specified"):
-        S3Reader(bucket, key)
+        S3Reader(bucket, key, lambda: None, lambda: [])
 
 
 @pytest.mark.parametrize(

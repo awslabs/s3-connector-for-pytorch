@@ -6,23 +6,23 @@ from typing import List, Optional
 # This interface is unstable!
 
 class MountpointS3Client:
-    region: str
-    endpoint: str
-    user_agent_prefix: str
     throughput_target_gbps: float
+    region: str
     part_size: int
-    profile: str
+    profile: Optional[str]
     no_sign_request: bool
+    user_agent_prefix: str
+    endpoint: str
 
     def __init__(
         self,
         region: str,
-        endpoint: str = "",
         user_agent_prefix: str = "",
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,
-        profile: str = None,
+        profile: Optional[str] = None,
         no_sign_request: bool = False,
+        endpoint: Optional[str] = None,
     ): ...
     def get_object(self, bucket: str, key: str) -> GetObjectStream: ...
     def put_object(
@@ -35,6 +35,11 @@ class MountpointS3Client:
     def delete_object(self, bucket: str, key: str) -> None: ...
 
 class MockMountpointS3Client:
+    throughput_target_gbps: float
+    region: str
+    part_size: int
+    user_agent_prefix: str
+
     def __init__(
         self,
         region: str,
@@ -42,6 +47,7 @@ class MockMountpointS3Client:
         endpoint: str = "",
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,
+        user_agent_prefix: str = "mock_client",
     ): ...
     def create_mocked_client(self) -> MountpointS3Client: ...
     def add_object(self, key: str, data: bytes) -> None: ...
@@ -112,3 +118,5 @@ class ListObjectStream:
 
 class S3Exception(Exception):
     pass
+
+__version__: str
