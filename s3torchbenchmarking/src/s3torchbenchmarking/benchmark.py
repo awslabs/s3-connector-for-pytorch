@@ -1,55 +1,59 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-
-
 from enum import Enum
 from typing import Optional
 
 import hydra
 import torchdata
 from omegaconf import DictConfig
-from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper
 
-from s3torchbenchmarking.benchmark_utils import ResourceMonitor
-from s3torchbenchmarking.models import Entitlement, ViT, ModelInterface
+from s3torchbenchmarking.lightning_benchmark import run_lightning_experiment
+from s3torchbenchmarking.models import (
+    Entitlement,
+    ViT,
+    ModelInterface,
+)
+from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
 
 
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig):
-    model = make_model(config)
-    dataset = make_dataset(
-        kind=config.dataloader.kind,
-        sharding=DatasetSharding.from_conf(config.dataset),
-        prefix_uri=config.dataset.prefix_uri,
-        region=config.dataset.region,
-        load_sample=model.load_sample,
-        num_workers=config.dataloader.num_workers,
-    )
-    dataloader = make_dataloader(
-        dataset=dataset,
-        num_workers=config.dataloader.num_workers,
-        batch_size=config.dataloader.batch_size,
-    )
+    if config.training.kind == "lightning":
+        run_lightning_experiment(config)
+        return
+    else:
+        model = make_model(config)
+        dataset = make_dataset(
+            kind=config.dataloader.kind,
+            sharding=DatasetSharding.from_conf(config.dataset),
+            prefix_uri=config.dataset.get("prefix_uri"),
+            region=config.dataset.get("region"),
+            load_sample=model.load_sample,
+            num_workers=config.dataloader.num_workers,
+        )
+        dataloader = make_dataloader(
+            dataset=dataset,
+            num_workers=config.dataloader.num_workers,
+            batch_size=config.dataloader.batch_size,
+        )
 
-    with ResourceMonitor() as monitor:
         result = model.train(dataloader, config.training.max_epochs)
-    result.resource_data = monitor.get_full_data()
-    # TODO: Decide if we need to do averaging in Monitor vs in ExperimentResult
-    result.avg_resource_data = monitor.get_avg_data()
 
-    # TODO: We are currently only printing the result of the experiment here. We should either write it to a file
-    # for further processing, or use CALLBACKS to actually graph/analyse the result. Ideally we should do both.
-    print(
-        f"{config.dataloader.kind} trained {config.training.model} in "
-        f"{result.training_time:.4f}s with {result.throughput:.4f} samples per second"
-    )
+        # TODO: We are currently only printing the result of the experiment here. We should either write it to a file
+        # for further processing, or use CALLBACKS to actually graph/analyse the result. Ideally we should do both.
+        # print(
+        #     f"{config.dataloader.kind} trained {config.training.model} in "
+        #     f"{result.training_time:.4f}s with {result.throughput:.4f} samples per second"
+        # )
+        #
+        # print(
+        #     f"Resource usage of the workload was as follows:\n"
+        #     f"{result.summarized_utilization!s}"
+        # )
 
-    print(
-        f"Resource usage of the workload was as follows:\n"
-        f"{result.avg_resource_data}"
-    )
+        print(f"{result=!s}")
 
 
 def make_model(config: DictConfig) -> ModelInterface:
@@ -74,8 +78,8 @@ class DatasetSharding(Enum):
 def make_dataset(
     kind: str,
     sharding: Optional[DatasetSharding],
-    prefix_uri: str,
-    region: str,
+    prefix_uri: Optional[str],
+    region: Optional[str],
     load_sample,
     num_workers: int,
 ):

@@ -10,10 +10,11 @@ requires-python = ">=3.8,<3.13"
 readme = "README.md"
 dependencies = [
     "torch >= 2.0.1",
+    "lightning >= 2.0",
     "s3torchconnector",
     "hydra-core",
     "torchdata>=0.6.1",
-    "torchvision",
+    "torchvision>=0.17",
     "s3fs",
     "transformers",
     "numpy",
@@ -23,6 +24,7 @@ dependencies = [
     "prefixed",
     "click",
     "omegaconf",
+    "accelerate",
 ]
 optional-dependencies = { test = ["pytest"] }
 scripts = { s3torch-benchmark = "s3torchbenchmarking.benchmark:run_experiment", s3torch-datagen = "s3torchbenchmarking.datagen:synthesize_dataset" }
