@@ -19,7 +19,11 @@ class S3Writer(io.BufferedIOBase):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def write(self, data: Union[bytes, memoryview]) -> int:
+    def write(
+        self,
+        # Ignoring the type for this as we don't currently support the Buffer protocol
+        data: Union[bytes, memoryview],  # type: ignore
+    ) -> int:
         """Write bytes to S3 Object specified by bucket and key
 
         Args:

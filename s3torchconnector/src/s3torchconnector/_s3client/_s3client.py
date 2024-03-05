@@ -32,11 +32,16 @@ def _identity(obj: Any) -> Any:
 
 
 class S3Client:
-    def __init__(self, region: str, endpoint: str = None, user_agent: UserAgent = None):
+    def __init__(
+        self,
+        region: str,
+        endpoint: Optional[str] = None,
+        user_agent: Optional[UserAgent] = None,
+    ):
         self._region = region
         self._endpoint = endpoint
-        self._real_client = None
-        self._client_pid = None
+        self._real_client: Optional[MountpointS3Client] = None
+        self._client_pid: Optional[int] = None
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
 
@@ -46,6 +51,7 @@ class S3Client:
             self._client_pid = os.getpid()
             # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
             self._real_client = self._client_builder()
+        assert self._real_client is not None
         return self._real_client
 
     @property

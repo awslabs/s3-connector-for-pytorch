@@ -32,7 +32,8 @@ test = [
     "pytest-timeout",
     "hypothesis",
     "flake8",
-    "black"
+    "black",
+    "mypy"
 ]
 
 e2e = [

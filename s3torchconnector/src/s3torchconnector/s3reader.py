@@ -4,7 +4,7 @@
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
-from typing import Callable, Optional
+from typing import Callable, Optional, Iterable, Iterator
 
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
@@ -16,8 +16,8 @@ class S3Reader(io.BufferedIOBase):
         self,
         bucket: str,
         key: str,
-        get_object_info: Callable[[], ObjectInfo] = None,
-        get_stream: Callable[[], GetObjectStream] = None,
+        get_object_info: Callable[[], ObjectInfo],
+        get_stream: Callable[[], GetObjectStream],
     ):
         if not bucket:
             raise ValueError("Bucket should be specified")
@@ -25,9 +25,9 @@ class S3Reader(io.BufferedIOBase):
         self._key = key
         self._get_object_info = get_object_info
         self._get_stream = get_stream
-        self._stream = None
+        self._stream: Optional[Iterator[bytes]] = None
         self._buffer = io.BytesIO()
-        self._size = None
+        self._size: Optional[int] = None
         # Invariant: _position == _buffer._tell() unless _position_at_end()
         self._position = 0
 
@@ -77,6 +77,7 @@ class S3Reader(io.BufferedIOBase):
             return b""
 
         self.prefetch()
+        assert self._stream is not None
         cur_pos = self._position
         if size is None or size < 0:
             # Special case read() all to use O(n) algorithm
@@ -138,6 +139,7 @@ class S3Reader(io.BufferedIOBase):
 
     def _prefetch_to_offset(self, offset: int) -> None:
         self.prefetch()
+        assert self._stream is not None
         buf_size = self._buffer.seek(0, SEEK_END)
         try:
             while offset > buf_size:
