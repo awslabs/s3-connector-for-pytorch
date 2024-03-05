@@ -1,5 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import lightning
 import pytest
 import random
 import torch
@@ -15,7 +16,7 @@ from s3torchconnector import S3Checkpoint
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnector.lightning import S3LightningCheckpoint
-from s3torchconnectorclient import S3Exception
+from s3torchconnectorclient import S3Exception, __version__
 
 from models.net import Net
 from models.lightning_transformer import LightningTransformer, L
@@ -24,6 +25,7 @@ from models.lightning_transformer import LightningTransformer, L
 def test_save_and_load_checkpoint(checkpoint_directory):
     tensor = torch.rand(3, 10, 10)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
     checkpoint_name = "lightning_checkpoint.ckpt"
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
     s3_lightning_checkpoint.save_checkpoint(tensor, s3_uri)
@@ -38,17 +40,19 @@ def test_load_compatibility_with_s3_checkpoint(checkpoint_directory):
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
     with checkpoint.writer(s3_uri) as writer:
         torch.save(tensor, writer)
-    lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
-    loaded_checkpoint = lightning_checkpoint.load_checkpoint(s3_uri)
+    s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
+    loaded_checkpoint = s3_lightning_checkpoint.load_checkpoint(s3_uri)
     assert torch.equal(tensor, loaded_checkpoint)
 
 
 def test_save_compatibility_with_s3_checkpoint(checkpoint_directory):
     tensor = torch.rand(3, 10, 10)
     checkpoint_name = "lightning_checkpoint.ckpt"
-    lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
-    lightning_checkpoint.save_checkpoint(tensor, s3_uri)
+    s3_lightning_checkpoint.save_checkpoint(tensor, s3_uri)
     checkpoint = S3Checkpoint(region=checkpoint_directory.region)
     loaded_checkpoint = torch.load(checkpoint.reader(s3_uri))
     assert torch.equal(tensor, loaded_checkpoint)
@@ -57,14 +61,15 @@ def test_save_compatibility_with_s3_checkpoint(checkpoint_directory):
 def test_delete_checkpoint(checkpoint_directory):
     tensor = torch.rand(3, 10, 10)
     checkpoint_name = "lightning_checkpoint.ckpt"
-    lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
-    lightning_checkpoint.save_checkpoint(tensor, s3_uri)
-    loaded_checkpoint = lightning_checkpoint.load_checkpoint(s3_uri)
+    s3_lightning_checkpoint.save_checkpoint(tensor, s3_uri)
+    loaded_checkpoint = s3_lightning_checkpoint.load_checkpoint(s3_uri)
     assert torch.equal(tensor, loaded_checkpoint)
-    lightning_checkpoint.remove_checkpoint(s3_uri)
+    s3_lightning_checkpoint.remove_checkpoint(s3_uri)
     with pytest.raises(S3Exception, match="Service error: The key does not exist"):
-        lightning_checkpoint.load_checkpoint(s3_uri)
+        s3_lightning_checkpoint.load_checkpoint(s3_uri)
 
 
 def test_load_trained_checkpoint(checkpoint_directory):
@@ -78,6 +83,7 @@ def test_load_trained_checkpoint(checkpoint_directory):
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
     trainer.save_checkpoint(s3_uri)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
     loaded_checkpoint = s3_lightning_checkpoint.load_checkpoint(s3_uri)
     _verify_equal_state_dict(model.state_dict(), loaded_checkpoint["state_dict"])
 
@@ -88,6 +94,7 @@ def test_compatibility_with_trainer_plugins(checkpoint_directory):
     dataloader = DataLoader(dataset, num_workers=3)
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
     trainer = L.Trainer(
         default_root_dir=checkpoint_directory.s3_uri,
         plugins=[s3_lightning_checkpoint],
@@ -113,6 +120,7 @@ def test_compatibility_with_checkpoint_callback(checkpoint_directory):
 
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_directory.s3_uri,
@@ -140,6 +148,7 @@ def test_compatibility_with_checkpoint_callback(checkpoint_directory):
 
     checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{expected_checkpoint_name}"
     loaded_checkpoint = s3_lightning_checkpoint.load_checkpoint(checkpoint_s3_uri)
+    _verify_user_agent(s3_lightning_checkpoint)
     _verify_equal_state_dict(model.state_dict(), loaded_checkpoint["state_dict"])
 
 
@@ -150,6 +159,7 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
 
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(checkpoint_directory.region)
+    _verify_user_agent(s3_lightning_checkpoint)
     async_s3_lightning_checkpoint = AsyncCheckpointIO(s3_lightning_checkpoint)
 
     trainer = L.Trainer(
@@ -168,6 +178,7 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
     checkpoint_key = "lightning_logs/version_0/checkpoints/epoch=0-step=3.ckpt"
     checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
     loaded_checkpoint = s3_lightning_checkpoint.load_checkpoint(checkpoint_s3_uri)
+    _verify_user_agent(s3_lightning_checkpoint)
     _verify_equal_state_dict(model.state_dict(), loaded_checkpoint["state_dict"])
 
 
@@ -225,6 +236,7 @@ def test_nn_checkpointing(checkpoint_directory):
     # Assert that eval and train do not raise
     loaded_nn_model.eval()
     loaded_nn_model.train()
+    _verify_user_agent(s3_lightning_checkpoint)
 
 
 def _verify_equal_state_dict(
@@ -236,3 +248,10 @@ def _verify_equal_state_dict(
         # These are tuples (str, Tensor)
         assert model_key == loaded_key
         assert torch.equal(model_value, loaded_value)
+
+
+def _verify_user_agent(s3_lightning_checkpoint: S3LightningCheckpoint):
+    expected_user_agent = (
+        f"s3torchconnector/{__version__} (lightning; {lightning.__version__})"
+    )
+    assert s3_lightning_checkpoint._client.user_agent_prefix == expected_user_agent

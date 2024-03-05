@@ -5,6 +5,7 @@
 ### Bug Fixes / Improvements
 * Fix deadlock when enabling CRT debug logs. Removed former experimental method _enable_debug_logging().
 * Refactor User-Agent setup for extensibility.
+* Update lightning User-Agent prefix to `s3torchconnector/{__version__} (lightning; {lightning.__version__}`.
 
 ## v1.1.4 (February 26, 2024)
 
