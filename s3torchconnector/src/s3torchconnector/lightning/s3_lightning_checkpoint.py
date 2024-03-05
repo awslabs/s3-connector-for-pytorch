@@ -3,12 +3,14 @@
 
 from typing import Optional, Dict, Any
 
+import lightning
 import torch
 
 from lightning.pytorch.plugins.io import CheckpointIO
 
 from .._s3client import S3Client
 from .._s3dataset_common import parse_s3_uri
+from .._user_agent import UserAgent
 
 
 class S3LightningCheckpoint(CheckpointIO):
@@ -16,7 +18,8 @@ class S3LightningCheckpoint(CheckpointIO):
 
     def __init__(self, region: str):
         self.region = region
-        self._client = S3Client(region)
+        user_agent = UserAgent(["lightning", lightning.__version__])
+        self._client = S3Client(region, user_agent=user_agent)
 
     def save_checkpoint(
         self,
