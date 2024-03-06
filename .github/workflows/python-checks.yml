@@ -105,8 +105,8 @@ jobs:
           src: "."
       - name: Typecheck with mypy
         run: |
-          mypy s3torchconnector/src
-          mypy s3torchconnectorclient/python/src
+          mypy --strict s3torchconnector/src
+          mypy --strict s3torchconnectorclient/python/src
 
   dependencies:
     name: Python dependencies checks

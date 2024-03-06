@@ -1,9 +1,11 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+from __future__ import annotations
+
 
 from functools import partial
 from itertools import chain
-from typing import Iterator, List
+from typing import Iterator, Dict, Any
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -43,13 +45,13 @@ class _PickleableListObjectStream:
         self._client = client
         self._list_stream = iter(client.list_objects(bucket, prefix))
 
-    def __iter__(self):
+    def __iter__(self) -> _PickleableListObjectStream:
         return self
 
     def __next__(self) -> ListObjectResult:
         return next(self._list_stream)
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         return {
             "client": self._client,
             "bucket": self._list_stream.bucket,
@@ -60,7 +62,7 @@ class _PickleableListObjectStream:
             "complete": self._list_stream.complete,
         }
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         self._client = state["client"]
         self._list_stream = ListObjectStream._from_state(**state)
 

@@ -1,7 +1,9 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+from __future__ import annotations
+
 from functools import partial
-from typing import List, Any, Callable, Iterable, Union, Optional
+from typing import List, Callable, Iterable, Union, Optional, TypeVar, overload, cast
 import logging
 
 import torch.utils.data
@@ -19,7 +21,10 @@ from ._s3dataset_common import (
 log = logging.getLogger(__name__)
 
 
-class S3MapDataset(torch.utils.data.Dataset):
+T_co = TypeVar("T_co", covariant=True)
+
+
+class S3MapDataset(torch.utils.data.Dataset[T_co]):
     """A Map-Style dataset created from S3 objects.
 
     To create an instance of S3MapDataset, you need to use
@@ -29,23 +34,24 @@ class S3MapDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         region: str,
+        *,
         get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKeyData]],
         endpoint: Optional[str] = None,
-        transform: Callable[[S3Reader], Any] = identity,
+        transform: Callable[[S3Reader], T_co],
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
         self._region = region
         self._endpoint = endpoint
-        self._client = None
+        self._client: Optional[S3Client] = None
         self._bucket_key_pairs: Optional[List[S3BucketKeyData]] = None
 
     @property
-    def region(self):
+    def region(self) -> str:
         return self._region
 
     @property
-    def endpoint(self):
+    def endpoint(self) -> Optional[str]:
         return self._endpoint
 
     @property
@@ -55,6 +61,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         assert self._bucket_key_pairs is not None
         return self._bucket_key_pairs
 
+    @overload
     @classmethod
     def from_objects(
         cls,
@@ -62,8 +69,28 @@ class S3MapDataset(torch.utils.data.Dataset):
         *,
         region: str,
         endpoint: Optional[str] = None,
-        transform: Callable[[S3Reader], Any] = identity,
-    ):
+    ) -> S3MapDataset[S3Reader]: ...
+
+    @overload
+    @classmethod
+    def from_objects(
+        cls,
+        object_uris: Union[str, Iterable[str]],
+        *,
+        region: str,
+        endpoint: Optional[str] = None,
+        transform: Callable[[S3Reader], T_co],
+    ) -> S3MapDataset[T_co]: ...
+
+    @classmethod
+    def from_objects(
+        cls,
+        object_uris: Union[str, Iterable[str]],
+        *,
+        region: str,
+        endpoint: Optional[str] = None,
+        transform: Callable[[S3Reader], T_co | S3Reader] = identity,
+    ) -> S3MapDataset[T_co | S3Reader]:
         """Returns an instance of S3MapDataset using the S3 URI(s) provided.
 
         Args:
@@ -81,10 +108,31 @@ class S3MapDataset(torch.utils.data.Dataset):
         log.info(f"Building {cls.__name__} from_objects")
         return cls(
             region,
-            partial(get_objects_from_uris, object_uris),
-            endpoint,
-            transform=transform,
+            get_dataset_objects=partial(get_objects_from_uris, object_uris),
+            endpoint=endpoint,
+            transform=cast(Callable[[S3Reader], T_co], transform),
         )
+
+    @overload
+    @classmethod
+    def from_prefix(
+        cls,
+        s3_uri: str,
+        *,
+        region: str,
+        endpoint: Optional[str] = None,
+    ) -> S3MapDataset[S3Reader]: ...
+
+    @overload
+    @classmethod
+    def from_prefix(
+        cls,
+        s3_uri: str,
+        *,
+        region: str,
+        endpoint: Optional[str] = None,
+        transform: Callable[[S3Reader], T_co],
+    ) -> S3MapDataset[T_co]: ...
 
     @classmethod
     def from_prefix(
@@ -93,8 +141,8 @@ class S3MapDataset(torch.utils.data.Dataset):
         *,
         region: str,
         endpoint: Optional[str] = None,
-        transform: Callable[[S3Reader], Any] = identity,
-    ):
+        transform: Callable[[S3Reader], T_co | S3Reader] = identity,
+    ) -> S3MapDataset[T_co | S3Reader]:
         """Returns an instance of S3MapDataset using the S3 URI provided.
 
         Args:
@@ -112,12 +160,12 @@ class S3MapDataset(torch.utils.data.Dataset):
         log.info(f"Building {cls.__name__} from_prefix {s3_uri=}")
         return cls(
             region,
-            partial(get_objects_from_prefix, s3_uri),
-            endpoint,
-            transform=transform,
+            get_dataset_objects=partial(get_objects_from_prefix, s3_uri),
+            endpoint=endpoint,
+            transform=cast(Callable[[S3Reader], T_co], transform),
         )
 
-    def _get_client(self):
+    def _get_client(self) -> S3Client:
         if self._client is None:
             self._client = S3Client(self.region, self.endpoint)
         return self._client
@@ -128,8 +176,8 @@ class S3MapDataset(torch.utils.data.Dataset):
             bucket_key.bucket, bucket_key.key, object_info=bucket_key.object_info
         )
 
-    def __getitem__(self, i: int) -> Any:
+    def __getitem__(self, i: int) -> T_co:
         return self._transform(self._get_object(i))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._dataset_bucket_key_pairs)
