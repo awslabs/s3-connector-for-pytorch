@@ -97,7 +97,7 @@ jobs:
           python -m pip install flake8 black mypy
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
           python -m pip install ./s3torchconnectorclient
-          python -m pip install ./s3torchconnector
+          python -m pip install ./s3torchconnector[lightning]
 
       - name: Lint with flake8
         run: |

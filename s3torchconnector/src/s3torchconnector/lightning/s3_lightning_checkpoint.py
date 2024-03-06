@@ -24,7 +24,8 @@ class S3LightningCheckpoint(CheckpointIO):
     def save_checkpoint(
         self,
         checkpoint: Dict[str, Any],
-        path: str,
+        # We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems
+        path: str,  # type: ignore
         storage_options: Optional[Any] = None,
     ) -> None:
         """Save model/training states as a checkpoint file through state-dump and upload to S3.
@@ -41,7 +42,8 @@ class S3LightningCheckpoint(CheckpointIO):
 
     def load_checkpoint(
         self,
-        path: str,
+        # We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems
+        path: str,  # type: ignore
         map_location: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.
@@ -59,9 +61,15 @@ class S3LightningCheckpoint(CheckpointIO):
         self._validate_path(path)
         bucket, key = parse_s3_uri(path)
         s3reader = self._client.get_object(bucket, key)
-        return torch.load(s3reader, map_location)
+        # FIXME - io.BufferedIOBase and typing.IO aren't compatible
+        #  See https://github.com/python/typeshed/issues/6077
+        return torch.load(s3reader, map_location)  # type: ignore
 
-    def remove_checkpoint(self, path: str) -> None:
+    def remove_checkpoint(
+        self,
+        # We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems
+        path: str,  # type: ignore
+    ) -> None:
         """Remove checkpoint file from the S3 uri.
 
         Args:
