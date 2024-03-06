@@ -154,7 +154,7 @@ When versioning is enabled on an S3 bucket:
 * You can retrieve previous versions of your objects.
 * Unintended overwrites and deletions are reversible.
 
-To enable versioning for S3, please follow the instruction [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/manage-versioning-examples.html) instruction. Please note that this incurs extra costs for storing object versions. For more details please check **How am I charged for using Versioning?** section in [Amazon S3 FAQs](https://aws.amazon.com/s3/faqs/?nc=sn&loc=7#Billing).
+To enable versioning for S3, please follow the instruction [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/manage-versioning-examples.html). Please note that this incurs extra costs for storing object versions. For more details please check **How am I charged for using Versioning?** section in [Amazon S3 FAQs](https://aws.amazon.com/s3/faqs/?nc=sn&loc=7#Billing).
 S3 Versioning is available only on S3 Standard, it is not supported by S3 Express One Zone.
 
 ## Contributing
