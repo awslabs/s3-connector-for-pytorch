@@ -67,7 +67,7 @@ for object in iterable_dataset:
 
 # S3MapDataset eagerly lists all the objects under the given prefix 
 # to provide support of random access.  
-# S3MapDataset builds list of all objects at the first access to its elements or 
+# S3MapDataset builds a list of all objects at the first access to its elements or 
 # at the first call to get count of its elements, whichever happens first.
 # This process might take some time and may give the impression of being unresponsive.
 map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
