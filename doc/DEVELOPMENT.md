@@ -75,6 +75,12 @@ mypy s3torchconnectorclient/python/src
 ```
  to lint.
 
+To run mypy without `lightning` installed, run
+```bash
+mypy s3torchconnector/src --exclude s3torchconnector/src/s3torchconnector/lightning
+mypy s3torchconnectorclient/python/src
+```
+
 ### Debugging
 
 Either a Python or GDB style debugger will be useful here.
