@@ -52,16 +52,25 @@ End to end example of how to use `s3torchconnector` can be found under the
 
 The simplest way to use the S3 Connector for PyTorch is to construct a dataset, either a map-style or iterable-style 
 dataset, by specifying an S3 URI (a bucket and optional prefix) and the region the bucket is located in:
-```shell
+```py
 from s3torchconnector import S3MapDataset, S3IterableDataset
 
 # You need to update <BUCKET> and <PREFIX>
 DATASET_URI="s3://<BUCKET>/<PREFIX>"
 REGION = "us-east-1"
 
-map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
-
 iterable_dataset = S3IterableDataset.from_prefix(DATASET_URI, region=REGION)
+
+# Datasets are also iterators. 
+for object in iterable_dataset:
+  print(object.key)
+
+# S3MapDataset eagerly lists all the objects under the given prefix 
+# to provide support of random access.  
+# S3MapDataset build list of all objects at the first access to its elements or 
+# at the first call to get count of its elements, whichever happens first.
+# This process might take some time and may give the impression of being unresponsive.
+map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
 
 # Randomly access to an item in map_dataset.
 object = map_dataset[0]
@@ -71,17 +80,12 @@ bucket = object.bucket
 key = object.key
 content = object.read()
 len(content)
-
-# Datasets are also iterators. 
-for object in iterable_dataset:
-  print(object.key)
-
 ```
 
 In addition to data loading primitives, the S3 Connector for PyTorch also provides an interface for saving and loading 
 model checkpoints directly to and from an S3 bucket. 
 
-```shell
+```py
 from s3torchconnector import S3Checkpoint
 
 import torchvision
