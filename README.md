@@ -62,23 +62,23 @@ REGION = "us-east-1"
 iterable_dataset = S3IterableDataset.from_prefix(DATASET_URI, region=REGION)
 
 # Datasets are also iterators. 
-for object in iterable_dataset:
-  print(object.key)
+for item in iterable_dataset:
+  print(item.key)
 
 # S3MapDataset eagerly lists all the objects under the given prefix 
 # to provide support of random access.  
 # S3MapDataset builds a list of all objects at the first access to its elements or 
-# at the first call to get count of its elements, whichever happens first.
+# at the first call to get the number of elements, whichever happens first.
 # This process might take some time and may give the impression of being unresponsive.
 map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
 
 # Randomly access to an item in map_dataset.
-object = map_dataset[0]
+item = map_dataset[0]
 
 # Learn about bucket, key, and content of the object
-bucket = object.bucket
-key = object.key
-content = object.read()
+bucket = item.bucket
+key = item.key
+content = item.read()
 len(content)
 ```
 
