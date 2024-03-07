@@ -146,16 +146,13 @@ trainer.fit(model)
 ```
 
 ## Using S3 Versioning to Manage Checkpoints
-When working with model checkpoints, users can accidentally overwrite or delete critical files. This can happen due to incorrect configuration, multiple hosts accessing the same storage path concurrently, or race conditions caused by usage of the async checkpoint interface.
-Amazon S3 bucket versioning provides a way to protect checkpoints from inadvertent loss. With versioning enabled, S3 preserves every version of every object in the bucket.
+When working with model checkpoints, you can use the [S3 Versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html) feature to preserve, retrieve, and restore every version of your checkpoint objects. With versioning, you can recover more easily from unintended overwrites or deletions of existing checkpoint files due to incorrect configuration or multiple hosts accessing the same storage path.
 
-When versioning is enabled on an S3 bucket:
-* S3 stores a version history of your objects. The current version is returned by default.
-* You can retrieve previous versions of your objects.
-* Unintended overwrites and deletions are reversible.
+When versioning is enabled on an S3 bucket, deletions insert a delete marker instead of removing the object permanently. The delete marker becomes the current object version. If you overwrite an object, it results in a new object version in the bucket. You can always restore the previous version. See [Deleting object versions from a versioning-enabled bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectVersions.html) for more details on managing object versions.
 
-To enable versioning for S3, please follow the instruction [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/manage-versioning-examples.html). Please note that this incurs extra costs for storing object versions. For more details please check **How am I charged for using Versioning?** section in [Amazon S3 FAQs](https://aws.amazon.com/s3/faqs/?nc=sn&loc=7#Billing).
-S3 Versioning is available only on S3 Standard, it is not supported by S3 Express One Zone.
+To enable versioning on an S3 bucket, see [Enabling versioning on buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/manage-versioning-examples.html). Normal Amazon S3 rates apply for every version of an object stored and transferred. To customize your data retention approach and control storage costs for earlier versions of objects, use [object versioning with S3 Lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html).
+
+S3 Versioning and S3 Lifecycle are not supported by S3 Express One Zone.
 
 ## Contributing
 We welcome contributions to Amazon S3 Connector for PyTorch. Please 
