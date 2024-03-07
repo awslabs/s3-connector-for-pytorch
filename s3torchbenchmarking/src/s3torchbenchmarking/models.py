@@ -102,7 +102,7 @@ class ViT(ModelInterface):
     def model(self):
         return ViTForImageClassification.from_pretrained(
             "google/vit-base-patch16-224-in21k", num_labels=self.num_labels
-        )
+        ).to(self.device)
 
     @cached_property
     def transform(self):
