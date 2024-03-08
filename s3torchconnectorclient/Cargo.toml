@@ -19,8 +19,8 @@ built = "0.7"
 pyo3 = { version = "0.19.2" }
 pyo3-log = "0.8.3"
 futures = "0.3.28"
-mountpoint-s3-client = { version = "0.7.0", features = ["mock"] }
-mountpoint-s3-crt = "0.6.1"
+mountpoint-s3-client = { version = "0.8.0", features = ["mock"] }
+mountpoint-s3-crt = "0.6.2"
 log = "0.4.20"
 tracing = { version = "0.1.40", default-features = false, features = ["std", "log"] }
 tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter"]}
