@@ -1,4 +1,4 @@
-## v1.2.40 (March 13, 2024)
+## v1.2.0 (March 13, 2024)
 
 ### New features
 * Add PyTorch Lightning checkpoints support
