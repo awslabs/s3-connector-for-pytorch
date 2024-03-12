@@ -3,6 +3,8 @@
 import lightning
 import pytest
 import random
+
+import s3fs
 import torch
 
 from pathlib import Path
@@ -73,6 +75,8 @@ def test_delete_checkpoint(checkpoint_directory):
 
 
 def test_load_trained_checkpoint(checkpoint_directory):
+    # Force s3fs to acknowledge the bucket existence
+    assert s3fs.S3FileSystem().exists(checkpoint_directory.bucket)
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
     dataloader = DataLoader(dataset, num_workers=3)
