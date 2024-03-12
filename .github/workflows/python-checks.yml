@@ -54,11 +54,11 @@ jobs:
           python -m pip install -e "s3torchbenchmarking[test]"
 
       - name: s3torchconnectorclient unit tests
-        run: pytest s3torchconnectorclient/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics
+        run: pytest s3torchconnectorclient/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics -c ./
       - name: s3torchconnector unit tests
-        run: pytest s3torchconnector/tst/unit --ignore s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics
+        run: pytest s3torchconnector/tst/unit --ignore s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics -c ./
       - name: s3torchbenchmarking unit tests
-        run: pytest s3torchbenchmarking/tst --hypothesis-profile ci --hypothesis-show-statistics
+        run: pytest s3torchbenchmarking/tst --hypothesis-profile ci --hypothesis-show-statistics -c ./
 
   lint:
     name: Python lints
