@@ -4,6 +4,7 @@ import lightning
 import pytest
 import random
 import torch
+import os
 
 from pathlib import Path
 from typing import Dict, Any
@@ -77,7 +78,7 @@ def test_load_trained_checkpoint(checkpoint_directory):
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
     dataloader = DataLoader(dataset, num_workers=3)
     model = LightningTransformer(vocab_size=dataset.vocab_size)
-    trainer = L.Trainer(fast_dev_run=2)
+    trainer = L.Trainer(default_root_dir=os.getcwd(), fast_dev_run=2)
     trainer.fit(model=model, train_dataloaders=dataloader)
     checkpoint_name = "lightning_module_training_checkpoint.pt"
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
