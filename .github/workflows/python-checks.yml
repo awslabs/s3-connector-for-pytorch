@@ -64,7 +64,7 @@ jobs:
         run: |
           python -m pip install -e "s3torchconnector[lightning]"
       - name: s3torchconnector lightning unit tests
-        run: pytest s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics
+        run: pytest s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics -c ./
 
   lint:
     name: Python lints
