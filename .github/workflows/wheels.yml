@@ -4,6 +4,7 @@ on:
   push:
     tags: [ "v[0-9]+.[0-9]+.[0-9]+" ]
     branches: [ "dependabot/*", "main", "workflow/*" ]
+  workflow_dispatch:
 
 env:
   S3_REGION: ${{ vars.S3_REGION }}
