@@ -1110,7 +1110,7 @@ checksum = "f98d2aa92eebf49b69786be48e4477826b256916e84a57ff2a4f21923b48eb4c"
 
 [[package]]
 name = "s3torchconnectorclient"
-version = "1.1.4"
+version = "1.2.0"
 dependencies = [
  "built",
  "futures",
