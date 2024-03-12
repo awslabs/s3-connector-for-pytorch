@@ -47,7 +47,7 @@ e2e = [
 
 lightning = [
     "lightning >= 2.0",
-    "s3fs"
+    "s3fs >= 2024.2.0"
 ]
 
 [tool.setuptools.packages]
