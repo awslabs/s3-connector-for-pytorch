@@ -89,6 +89,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          CI_CUSTOM_ENDPOINT_URL=${{ matrix.test-run.endpoint-url }} \
           pytest s3torchconnector/tst/e2e --ignore s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
 
       - name: Install Lightning dependency
@@ -99,6 +100,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          CI_CUSTOM_ENDPOINT_URL=${{ matrix.test-run.endpoint-url }} \
           pytest s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
 
       - name: s3torchconnectorclient ${{ matrix.test-run.name }} integration tests
