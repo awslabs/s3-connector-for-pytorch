@@ -1,8 +1,12 @@
+"""
+Based on: https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html
+Source: https://github.com/pytorch/tutorials/blob/main/beginner_source/blitz/neural_networks_tutorial.py
+License: https://github.com/pytorch/tutorials/blob/main/LICENSE
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import nn
-
-# Based on https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html
 
 
 class Net(nn.Module):

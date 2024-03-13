@@ -46,7 +46,11 @@ e2e = [
 ]
 
 lightning = [
-    "lightning >= 2.0",
+    "lightning >= 2.0"
+]
+
+lightning-tests = [
+    "s3torchconnector[lightning]",
     "s3fs"
 ]
 
