@@ -93,7 +93,7 @@ jobs:
 
       - name: Install Lightning dependency
         run: |
-          python -m pip install -e "s3torchconnector[lightning]"
+          python -m pip install -e "s3torchconnector[lightning-tests]"
       - name: s3torchconnector lightning e2e tests
         run: |
           CI_REGION=${{ matrix.test-run.region }} \
