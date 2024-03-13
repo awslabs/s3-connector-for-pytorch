@@ -1,9 +1,13 @@
+"""
+Based on: https://lightning.ai/docs/pytorch/stable/common/lightning_module.html
+Source: https://github.com/Lightning-AI/pytorch-lightning/blob/master/docs/source-pytorch/common/lightning_module.rst
+License: https://github.com/Lightning-AI/pytorch-lightning/blob/master/LICENSE
+"""
+
 import lightning as L
 import torch
 
 from lightning.pytorch.demos import Transformer
-
-# Based on https://lightning.ai/docs/pytorch/stable/common/lightning_module.html
 
 
 class LightningTransformer(L.LightningModule):
