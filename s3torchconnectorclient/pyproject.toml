@@ -56,7 +56,7 @@ test-command = [
     "python -m pip install -e '{package}/../s3torchconnector[lightning]'",
     "pytest {package}/../s3torchconnector/tst/unit/lightning",
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
-    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
+    "AWS_DEFAULT_REGION=${S3_EXPRESS_REGION} CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
 ]
 environment-pass = [
     "AWS_ACCESS_KEY_ID",
