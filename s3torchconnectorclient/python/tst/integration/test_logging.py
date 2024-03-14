@@ -152,7 +152,8 @@ def test_logging_to_file(
         assert all(s in out for s in out_should_contain)
         assert all(s not in out for s in out_should_not_contain)
         files = os.listdir(log_dir)
-        assert len(files) == 1
+        # There will be two files if the hour changes while running the test
+        assert len(files) >= 1
         log_file = os.path.join(log_dir, files[0])
         assert os.path.isfile(log_file)
         with open(log_file) as f:
