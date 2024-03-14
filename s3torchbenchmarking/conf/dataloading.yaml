@@ -4,6 +4,8 @@ defaults:
   - dataset: unsharded_dataset
   - training: entitlement
   - checkpoint: none
+  - /hydra/callbacks:
+    - collate_results
 
 hydra:
   mode: MULTIRUN

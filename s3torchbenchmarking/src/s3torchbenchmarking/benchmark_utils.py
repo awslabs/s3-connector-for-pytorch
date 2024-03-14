@@ -1,7 +1,13 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import json
 import threading
 import time
+from collections import defaultdict
+from dataclasses import dataclass
+from functools import cached_property
+from json import JSONEncoder
+from typing import Dict, Any
 
 import numpy as np
 import psutil
@@ -19,16 +25,67 @@ if torch.cuda.is_available():
     nvmlInit()
 
 
+class Distribution:
+    def __init__(self, initial_capacity: int, precision: int = 4):
+        self.initial_capacity = initial_capacity
+        self._values = np.zeros(shape=initial_capacity, dtype=np.float32)
+        self._idx = 0
+        self.precision = precision
+
+    def _expand_if_needed(self):
+        if self._idx > self._values.size - 1:
+            self._values = np.concatenate(
+                self._values, np.zeros(self.initial_capacity, dtype=np.float32)
+            )
+
+    def add(self, val: float):
+        self._expand_if_needed()
+        self._values[self._idx] = val
+        self._idx += 1
+
+    def summarize(self) -> dict:
+        window = self._values[: self._idx]
+        if window.size == 0:
+            return
+        return {
+            "n": window.size,
+            "mean": round(float(window.mean()), self.precision),
+            "min": round(np.percentile(window, 0), self.precision),
+            "p50": round(np.percentile(window, 50), self.precision),
+            "p75": round(np.percentile(window, 75), self.precision),
+            "p90": round(np.percentile(window, 90), self.precision),
+            "max": round(np.percentile(window, 100), self.precision),
+        }
+
+    def __repr__(self):
+        summary_str = json.dumps(self.summarize())
+        return "Distribution({0})".format(summary_str)
+
+
+@dataclass(frozen=True)
 class ExperimentResult:
-    def __init__(
-        self, training_time: float, num_samples: int, checkpoint_results: [] = None
-    ):
-        self.training_time = training_time
-        self.num_samples = num_samples
-        self.throughput = self.num_samples / self.training_time
-        self.resource_data = {}
-        self.avg_resource_data = {}
-        self.checkpoint_results = checkpoint_results
+    elapsed_time: float
+    volume: float
+    checkpoint_times: Distribution = None
+    utilization: Dict[str, Distribution] = None
+
+    @cached_property
+    def throughput(self):
+        return self.volume / self.elapsed_time
+
+
+class ExperimentResultJsonEncoder(JSONEncoder):
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, ExperimentResult):
+            o: ExperimentResult = o
+            return {
+                "volume": o.volume,
+                "elapsed_time": o.elapsed_time,
+                "throughput": o.throughput,
+                "utilization": {k: v.summarize() for k, v in o.utilization.items()},
+            }
+        return super().default(o)
 
 
 class ResourceMonitor:
@@ -41,32 +98,16 @@ class ResourceMonitor:
         self, sleep_time_s: float = 0.05, gpu_device: int = 0, chunk_size: int = 25_000
     ):
         self.monitor_thread = None
-        self.resource_data = {
-            "cpu_util": np.zeros(chunk_size),
-            "cpu_mem": np.zeros(chunk_size),
-            "gpu_util": np.zeros(chunk_size),
-            "gpu_mem": np.zeros(chunk_size),
-        }
+        self._utilization = defaultdict(lambda: Distribution(chunk_size))
         self.stop_event = threading.Event()
         self.sleep_time_s = sleep_time_s
         self.gpu_device = gpu_device
         self.chunk_size = chunk_size
-        self.cur_index = 0
-
-    def _check_and_expand(self):
-        if self.cur_index >= len(self.resource_data["cpu_util"]) - 1:
-            for key, arr in self.resource_data.items():
-                self.resource_data[key] = np.concatenate(
-                    (arr, np.zeros(self.chunk_size))
-                )
 
     def _monitor(self):
         while not self.stop_event.is_set():
-            self._check_and_expand()
-            self.resource_data["cpu_util"][self.cur_index] = psutil.cpu_percent()
-            self.resource_data["cpu_mem"][
-                self.cur_index
-            ] = psutil.virtual_memory().percent
+            self._utilization["cpu_util"].add(psutil.cpu_percent())
+            self._utilization["cpu_mem"].add(psutil.virtual_memory().percent)
 
             if monitor_gpu:
                 gpu_info = nvmlDeviceGetUtilizationRates(
@@ -75,12 +116,15 @@ class ResourceMonitor:
                 gpu_mem_info = nvmlDeviceGetMemoryInfo(
                     nvmlDeviceGetHandleByIndex(self.gpu_device)
                 )
-                self.resource_data["gpu_util"][self.cur_index] = gpu_info.gpu
-                self.resource_data["gpu_mem"][self.cur_index] = (
+                self._utilization["gpu_util"].add(gpu_info.gpu)
+                self._utilization["gpu_mem"].add(
                     gpu_mem_info.used / gpu_mem_info.total * 100
                 )
-            self.cur_index += 1
             time.sleep(self.sleep_time_s)
+
+    @property
+    def resource_data(self):
+        return dict(self._utilization)
 
     def __enter__(self):
         self.start()
@@ -96,25 +140,3 @@ class ResourceMonitor:
     def stop(self):
         self.stop_event.set()
         self.monitor_thread.join()
-
-        for key, arr in self.resource_data.items():
-            self.resource_data[key] = arr[: self.cur_index]
-
-    def get_full_data(self):
-        return self.resource_data
-
-    def _calculate_avg(self, start_idx: int):
-        mean_measurements = {}
-        for key, arr in self.resource_data.items():
-            last_vals = arr[start_idx : self.cur_index]
-            mean_measurements[key] = np.mean(last_vals)
-
-        return mean_measurements
-
-    def get_running_avg(self, window_size=50):
-        start_index = max(0, self.cur_index - window_size)
-
-        return self._calculate_avg(start_index)
-
-    def get_avg_data(self):
-        return self._calculate_avg(0)

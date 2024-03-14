@@ -1,0 +1,5 @@
+# @package _global_
+hydra:
+  callbacks:
+    my_callback:
+      _target_: s3torchbenchmarking.ResultCollatingCallback

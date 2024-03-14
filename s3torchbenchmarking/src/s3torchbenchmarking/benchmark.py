@@ -1,23 +1,26 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import json
 import atexit
 import shutil
 import subprocess
 import tempfile
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Any
 
 import hydra
 import torchdata
+from hydra.core.hydra_config import HydraConfig
+from hydra.experimental.callback import Callback
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper
 
-from s3torchbenchmarking.benchmark_utils import ResourceMonitor
-from s3torchbenchmarking.models import Entitlement, ViT, ModelInterface
 from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
 from s3torchconnector._s3dataset_common import parse_s3_uri
+from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
+from .models import Entitlement, ViT, ModelInterface
 
 
 @hydra.main(version_base=None)
@@ -37,23 +40,19 @@ def run_experiment(config: DictConfig):
         batch_size=config.dataloader.batch_size,
     )
 
-    with ResourceMonitor() as monitor:
-        result = model.train(dataloader, config.training.max_epochs)
-    result.resource_data = monitor.get_full_data()
-    # TODO: Decide if we need to do averaging in Monitor vs in ExperimentResult
-    result.avg_resource_data = monitor.get_avg_data()
+    result = model.train(dataloader, config.training.max_epochs)
+    root_config = HydraConfig.get()
+    output_dir = root_config.runtime.output_dir
+    job_result_path = write_result(result, Path(output_dir))
+    print(f"{root_config.job.name} results written to: {job_result_path}")
 
-    # TODO: We are currently only printing the result of the experiment here. We should either write it to a file
-    # for further processing, or use CALLBACKS to actually graph/analyse the result. Ideally we should do both.
-    print(
-        f"{config.dataloader.kind} trained {config.training.model} in "
-        f"{result.training_time:.4f}s with {result.throughput:.4f} samples per second"
-    )
 
-    print(
-        f"Resource usage of the workload was as follows:\n"
-        f"{result.avg_resource_data}"
-    )
+def write_result(result: ExperimentResult, out_dir: Path) -> Path:
+    result_path = out_dir / "result.json"
+    with open(result_path, "w") as outfile:
+        json.dump(result, outfile, cls=ExperimentResultJsonEncoder)
+
+    return result_path
 
 
 def make_model(config: DictConfig) -> ModelInterface:

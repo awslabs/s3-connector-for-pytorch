@@ -185,11 +185,17 @@ Finally, once the dataset and other configuration modules have been defined, you
     # Example-2:
     $ s3torch-benchmark -cd conf -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
 
+    # Example with suppressed warnings (*nix only) - makes logs less noisy.
+    $ s3torch-benchmark -cd conf -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2' 2>/dev/null
+
 _Note: For overriding any other benchmark parameters,
 see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/). You can also run `s3torch-benchmark --hydra-help` to learn more._
 
+
 Experiments will report total training time, number of training samples as well as host-level metrics like CPU
-Utilisation, GPU Utilisation (if available) etc.
+Utilisation, GPU Utilisation (if available) etc. The results for individual jobs will be written out to dedicated
+`result.json` files within their corresponding [output dirs](https://hydra.cc/docs/configure_hydra/intro/#hydraruntime).
+When using Multirun mode, a `collated_results.json` will be written out to the [common sweep dir](https://hydra.cc/docs/configure_hydra/intro/#hydrasweep). 
 
 ## Next Steps
 

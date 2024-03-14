@@ -4,6 +4,8 @@ defaults:
   - dataset: unsharded_dataset
   - training: vit
   - checkpoint: ???
+  - /hydra/callbacks:
+    - collate_results
 
 
 hydra:

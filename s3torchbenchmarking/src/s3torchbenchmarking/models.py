@@ -12,12 +12,12 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from omegaconf import DictConfig
+from s3torchconnector import S3Reader, S3Checkpoint
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2
 from transformers import ViTForImageClassification
 
-from s3torchbenchmarking.benchmark_utils import ExperimentResult
-from s3torchconnector import S3Reader, S3Checkpoint
+from .benchmark_utils import ExperimentResult, ResourceMonitor, Distribution
 
 
 class ModelInterface(metaclass=abc.ABCMeta):
@@ -39,22 +39,24 @@ class ModelInterface(metaclass=abc.ABCMeta):
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
-        num_samples = 0
-        start_time = time.perf_counter()
-        checkpoint_results = []
-        for epoch in range(0, epochs):
-            for batch_idx, (data, target) in enumerate(dataloader):
-                result = self.train_batch(batch_idx, data, target)
-                num_samples += len(data)
-                if result:
-                    checkpoint_results.append(result)
-        end_time = time.perf_counter()
-        training_time = end_time - start_time
+        with ResourceMonitor() as monitor:
+            num_samples = 0
+            start_time = time.perf_counter()
+            checkpoint_times = Distribution(initial_capacity=1024)
+            for epoch in range(0, epochs):
+                for batch_idx, (data, target) in enumerate(dataloader):
+                    result = self.train_batch(batch_idx, data, target)
+                    num_samples += len(data)
+                    if result:
+                        checkpoint_times.add(result)
+            end_time = time.perf_counter()
+            training_time = end_time - start_time
 
         return ExperimentResult(
-            training_time=training_time,
-            num_samples=num_samples,
-            checkpoint_results=checkpoint_results,
+            elapsed_time=training_time,
+            volume=num_samples,
+            checkpoint_times=checkpoint_times,
+            utilization=monitor.resource_data,
         )
 
     @abc.abstractmethod
