@@ -1,9 +1,7 @@
-## Unreleased
-
-### New features
+## v1.2.1 (March 14, 2024)
 
 ### Breaking changes
-* Separate completely Rust logs and Python logs. Logs from Rust components, used for debugging purposes 
+* Separate completely Rust logs and Python logs. Logs from Rust components used for debugging purposes 
 are configured through the following environment variables: S3_TORCH_CONNECTOR_DEBUG_LOGS, 
 S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
 
@@ -12,7 +10,7 @@ S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
 ### New features
 * Add PyTorch Lightning checkpoints support
 
-### Bug Fixes / Improvements
+### Bug fixes / Improvements
 * Fix deadlock when enabling CRT debug logs. Removed former experimental method _enable_debug_logging().
 * Refactor User-Agent setup for extensibility.
 * Update lightning User-Agent prefix to `s3torchconnector/{__version__} (lightning; {lightning.__version__}`.
@@ -30,7 +28,7 @@ S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
 * Update crates and Mountpoint dependencies.
 * **[Experimental]** Allow passing in the S3 endpoint URL to Dataset constructors.
 
-### Bug Fixes
+### Bug fixes
 
 * HeadObject is no longer called when constructing datasets with `from_prefix` and seeking relative to end of file.
 
