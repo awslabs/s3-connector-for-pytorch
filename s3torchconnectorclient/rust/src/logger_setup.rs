@@ -3,62 +3,55 @@
  * // SPDX-License-Identifier: BSD
  */
 use std::{env};
-use log::{LevelFilter};
 use mountpoint_s3_crt::common::rust_log_adapter::RustLogAdapter;
 use pyo3::{PyResult};
-use pyo3_log::Logger;
 use tracing_subscriber::{filter::EnvFilter};
 use tracing_subscriber::util::{SubscriberInitExt};
 use crate::exception::python_exception;
 
-pub const ENABLE_CRT_LOGS_ENV_VAR: &str = "ENABLE_CRT_LOGS";
-pub const CRT_LOGS_DIR_PATH_ENV_VAR: &str = "CRT_LOGS_DIR_PATH";
+pub const S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR: &str = "S3_TORCH_CONNECTOR_DEBUG_LOGS";
+pub const S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR: &str = "S3_TORCH_CONNECTOR_LOGS_DIR_PATH";
+pub const LOG_FILE_PREFIX: &str = "s3torchconnectorclient.log";
 
 pub fn setup_logging() -> PyResult<()> {
-    let enable_crt_logs = env::var(ENABLE_CRT_LOGS_ENV_VAR);
+    let enable_logs = env::var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR);
 
-    if enable_crt_logs.is_ok() {
-        enable_crt_logging()
-    } else {
-        enable_default_logging()
-    }
-}
+    if enable_logs.is_ok() {
+        let filter = EnvFilter::try_from_env(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR)
+            .map_err(python_exception)?;
+        let debug_logs_path = env::var(S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR).ok();
 
-fn enable_crt_logging() -> PyResult<()> {
-    RustLogAdapter::try_init().map_err(python_exception)?;
+        RustLogAdapter::try_init().map_err(python_exception)?;
 
-    let filter = EnvFilter::try_from_env(ENABLE_CRT_LOGS_ENV_VAR).map_err(python_exception)?;
-    let crt_logs_path = env::var(CRT_LOGS_DIR_PATH_ENV_VAR).ok();
-
-    match crt_logs_path {
-        Some(logs_path) => {
-            let logfile = tracing_appender::rolling::hourly(logs_path, "s3torchconnectorclient.log");
-            let subscriber_builder = tracing_subscriber::fmt()
-                .with_writer(logfile)
-                .with_env_filter(filter)
-                .with_ansi(false);
-            subscriber_builder.finish().try_init().map_err(python_exception)?;
-        },
-        None => {
-            let subscriber_builder = tracing_subscriber::fmt()
-                 .with_env_filter(filter)
-                 .with_ansi(false);
-            subscriber_builder.finish().try_init().map_err(python_exception)?;
+        match debug_logs_path {
+            Some(logs_path) => {
+                enable_file_logging(filter, logs_path)?;
+            }
+            None => {
+                enable_default_logging(filter)?;
+            }
         }
     }
 
     Ok(())
 }
 
-fn enable_default_logging() -> PyResult<()> {
-    let logger = Logger::default()
-        .filter_target(
-            "mountpoint_s3_client::s3_crt_client::request".to_owned(),
-            LevelFilter::Off,
-        )
-        .filter(LevelFilter::Trace);
+fn enable_file_logging(filter: EnvFilter, logs_path: String) -> PyResult<()> {
+    let logfile = tracing_appender::rolling::hourly(logs_path, LOG_FILE_PREFIX);
+    let subscriber_builder = tracing_subscriber::fmt()
+        .with_writer(logfile)
+        .with_env_filter(filter)
+        .with_ansi(false);
+    subscriber_builder.finish().try_init().map_err(python_exception)?;
 
-    logger.install().map_err(python_exception)?;
+    Ok(())
+}
+
+fn enable_default_logging(filter: EnvFilter) -> PyResult<()> {
+    let subscriber_builder = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_ansi(false);
+    subscriber_builder.finish().try_init().map_err(python_exception)?;
 
     Ok(())
 }
@@ -68,52 +61,69 @@ mod tests {
     use rusty_fork::rusty_fork_test;
     use std::{env};
     use pyo3::PyResult;
-    use crate::logger_setup::{ENABLE_CRT_LOGS_ENV_VAR, setup_logging};
+    use crate::logger_setup::{S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR,
+                              S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR, setup_logging};
 
     fn check_valid_log_level(log_level: &str) {
         pyo3::prepare_freethreaded_python();
-        env::set_var(ENABLE_CRT_LOGS_ENV_VAR, log_level);
+        env::set_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR, log_level);
         let result: PyResult<()> = setup_logging();
         assert!(result.is_ok());
     }
 
     rusty_fork_test! {
         #[test]
-        fn test_environment_variable_unset() {
+        fn test_debug_log_environment_variable_unset() {
             pyo3::prepare_freethreaded_python();
-            env::remove_var(ENABLE_CRT_LOGS_ENV_VAR);
+            env::remove_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR);
             let result: PyResult<()> = setup_logging();
             assert!(result.is_ok());
         }
 
         #[test]
-        fn test_logging_off() {
+        fn test_logs_dir_environment_variable_unset() {
+            pyo3::prepare_freethreaded_python();
+            env::remove_var(S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR);
+            let result: PyResult<()> = setup_logging();
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_debug_logging_off() {
             check_valid_log_level("OFF");
         }
 
         #[test]
-        fn test_logging_level_error() {
+        fn test_debug_logging_level_error() {
             check_valid_log_level("ERROR");
         }
 
         #[test]
-        fn test_logging_level_warn() {
+        fn test_debug_logging_level_warn() {
             check_valid_log_level("WARN");
         }
 
         #[test]
-        fn test_logging_level_info() {
+        fn test_debug_logging_level_info() {
             check_valid_log_level("INFO");
         }
 
         #[test]
-        fn test_logging_level_debug() {
+        fn test_debug_logging_level_debug() {
             check_valid_log_level("debug");
         }
 
         #[test]
-        fn test_logging_level_trace() {
+        fn test_debug_logging_level_trace() {
             check_valid_log_level("trace");
+        }
+
+        #[test]
+        fn test_invalid_logging_level() {
+            pyo3::prepare_freethreaded_python();
+            env::set_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR, "invalid123.&/?");
+            let result: PyResult<()> = setup_logging();
+            assert!(result.is_err());
         }
     }
 }
