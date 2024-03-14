@@ -3,22 +3,29 @@
 import hashlib
 import logging
 import math
+import os
 import pickle
 import sys
 import uuid
 import random
 import pytest
 
-from s3torchconnectorclient._mountpoint_s3_client import (
-    MountpointS3Client,
-    S3Exception,
-    ListObjectStream,
-)
+from unittest.mock import patch
+
+with patch.dict(
+    os.environ, {"S3_TORCH_CONNECTOR_DEBUG_LOGS": "debug,awscrt=warn"}, clear=True
+):
+    from s3torchconnectorclient._mountpoint_s3_client import (
+        MountpointS3Client,
+        S3Exception,
+        ListObjectStream,
+    )
+
+from conftest import BucketPrefixFixture
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
 )
-logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +33,7 @@ HELLO_WORLD_DATA = b"Hello, World!\n"
 TEST_USER_AGENT_PREFIX = "integration-tests"
 
 
-def test_get_object(sample_directory):
+def test_get_object(sample_directory: BucketPrefixFixture):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
     stream = client.get_object(
         sample_directory.bucket, f"{sample_directory.prefix}hello_world.txt"
@@ -36,7 +43,7 @@ def test_get_object(sample_directory):
     assert full_data == HELLO_WORLD_DATA
 
 
-def test_get_object_with_endpoint(sample_directory):
+def test_get_object_with_endpoint(sample_directory: BucketPrefixFixture):
     client = MountpointS3Client(
         sample_directory.region,
         TEST_USER_AGENT_PREFIX,
@@ -50,7 +57,7 @@ def test_get_object_with_endpoint(sample_directory):
     assert full_data == HELLO_WORLD_DATA
 
 
-def test_get_object_with_unpickled_client(sample_directory):
+def test_get_object_with_unpickled_client(sample_directory: BucketPrefixFixture):
     original_client = MountpointS3Client(
         sample_directory.region, TEST_USER_AGENT_PREFIX
     )
@@ -66,7 +73,7 @@ def test_get_object_with_unpickled_client(sample_directory):
     assert full_data == HELLO_WORLD_DATA
 
 
-def test_get_object_invalid_bucket(sample_directory):
+def test_get_object_invalid_bucket(sample_directory: BucketPrefixFixture):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         next(
@@ -76,7 +83,7 @@ def test_get_object_invalid_bucket(sample_directory):
         )
 
 
-def test_get_object_invalid_prefix(sample_directory):
+def test_get_object_invalid_prefix(sample_directory: BucketPrefixFixture):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
     with pytest.raises(S3Exception, match="Service error: The key does not exist"):
         next(
@@ -86,7 +93,7 @@ def test_get_object_invalid_prefix(sample_directory):
         )
 
 
-def test_list_objects(image_directory):
+def test_list_objects(image_directory: BucketPrefixFixture):
     client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
     stream = client.list_objects(image_directory.bucket)
 
@@ -100,7 +107,7 @@ def test_list_objects(image_directory):
     assert keys > expected_img_10_keys
 
 
-def test_list_objects_with_prefix(image_directory):
+def test_list_objects_with_prefix(image_directory: BucketPrefixFixture):
     client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
     stream = client.list_objects(image_directory.bucket, image_directory.prefix)
 
@@ -113,7 +120,7 @@ def test_list_objects_with_prefix(image_directory):
     assert keys == expected_img_10_keys
 
 
-def test_multi_list_requests_return_same_list(image_directory):
+def test_multi_list_requests_return_same_list(image_directory: BucketPrefixFixture):
     client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
     stream = client.list_objects(image_directory.bucket, image_directory.prefix)
 
@@ -141,7 +148,9 @@ def test_multi_list_requests_return_same_list(image_directory):
         ),
     ],
 )
-def test_put_object(filename: str, content: bytes, put_object_tests_directory):
+def test_put_object(
+    filename: str, content: bytes, put_object_tests_directory: BucketPrefixFixture
+):
     client = MountpointS3Client(
         put_object_tests_directory.region, TEST_USER_AGENT_PREFIX
     )
@@ -160,7 +169,7 @@ def test_put_object(filename: str, content: bytes, put_object_tests_directory):
     assert b"".join(get_stream) == content
 
 
-def test_put_object_overwrite(put_object_tests_directory):
+def test_put_object_overwrite(put_object_tests_directory: BucketPrefixFixture):
     client = MountpointS3Client(
         put_object_tests_directory.region, TEST_USER_AGENT_PREFIX
     )
@@ -189,7 +198,9 @@ def test_put_object_overwrite(put_object_tests_directory):
 
 
 @pytest.mark.parametrize("max_keys", {1, 4, 1000})
-def test_s3_list_object_with_continuation(max_keys: int, image_directory):
+def test_s3_list_object_with_continuation(
+    max_keys: int, image_directory: BucketPrefixFixture
+):
     client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
     stream = client.list_objects(
         image_directory.bucket, prefix=image_directory.prefix, max_keys=max_keys
@@ -229,7 +240,9 @@ def test_s3_list_object_with_continuation(max_keys: int, image_directory):
         ),
     ],
 )
-def test_put_object_mpu(part_count: int, part_size: int, put_object_tests_directory):
+def test_put_object_mpu(
+    part_count: int, part_size: int, put_object_tests_directory: BucketPrefixFixture
+):
     data_to_write = randbytes(part_count * part_size)
 
     client = MountpointS3Client(
@@ -250,7 +263,7 @@ def test_put_object_mpu(part_count: int, part_size: int, put_object_tests_direct
     assert b"".join(get_stream) == data_to_write
 
 
-def test_head_object(sample_directory):
+def test_head_object(sample_directory: BucketPrefixFixture):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
     object_info = client.head_object(
         sample_directory.bucket,
@@ -270,7 +283,7 @@ def test_head_object(sample_directory):
         assert object_info.etag == expected_etag
 
 
-def test_delete_object(sample_directory):
+def test_delete_object(sample_directory: BucketPrefixFixture):
     client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
     client.delete_object(
         sample_directory.bucket,
@@ -285,7 +298,7 @@ def test_delete_object(sample_directory):
         )
 
 
-def test_delete_object_does_not_exist(empty_directory):
+def test_delete_object_does_not_exist(empty_directory: BucketPrefixFixture):
     client = MountpointS3Client(empty_directory.region, TEST_USER_AGENT_PREFIX)
     client.delete_object(
         empty_directory.bucket, f"{empty_directory.prefix}hello_world.txt"
@@ -293,7 +306,7 @@ def test_delete_object_does_not_exist(empty_directory):
     # Assert no exception is thrown in case the object already doesn't exist - implicit
 
 
-def test_delete_object_invalid_bucket(empty_directory):
+def test_delete_object_invalid_bucket(empty_directory: BucketPrefixFixture):
     client = MountpointS3Client(empty_directory.region, TEST_USER_AGENT_PREFIX)
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.delete_object(
@@ -311,5 +324,5 @@ def _parse_list_result(stream: ListObjectStream, max_keys: int):
     return object_infos
 
 
-def randbytes(n):
+def randbytes(n: int):
     return random.getrandbits(n * 8).to_bytes(n, sys.byteorder)

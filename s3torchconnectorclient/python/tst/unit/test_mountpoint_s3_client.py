@@ -4,9 +4,9 @@
 import logging
 import pickle
 import pytest
-from typing import Set
+from typing import Set, Optional
 
-from s3torchconnectorclient import LOG_TRACE, __version__
+from s3torchconnectorclient import __version__
 from s3torchconnectorclient._mountpoint_s3_client import (
     S3Exception,
     GetObjectStream,
@@ -19,7 +19,6 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
 )
-logging.getLogger().setLevel(LOG_TRACE)
 
 
 REGION = "us-east-1"
@@ -126,7 +125,7 @@ def test_get_object_throws_stop_iteration():
         (set()),
     ],
 )
-def test_list_objects(expected_keys):
+def test_list_objects(expected_keys: Set[str]):
     mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
     for key in expected_keys:
         mock_client.add_object(key, b"")
@@ -284,7 +283,9 @@ def test_mountpoint_client_pickles():
         ("https://us-east-1.amazonaws.com", "https://us-east-1.amazonaws.com"),
     ],
 )
-def test_mountpoint_client_creation_with_region_and_endpoint(endpoint, expected):
+def test_mountpoint_client_creation_with_region_and_endpoint(
+    endpoint: Optional[str], expected: Optional[str]
+):
     client = MountpointS3Client(region=REGION, endpoint=endpoint)
     assert isinstance(client, MountpointS3Client)
     assert client.endpoint == expected

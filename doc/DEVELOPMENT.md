@@ -92,3 +92,49 @@ Fill in the path of the Python executable in your virtual environment (`venv/bin
 as the program argument.
 Then put a breakpoint in the Rust/C code and try running it.
 
+#### Enabling Debug Logging
+The [Python logger](https://docs.python.org/3/library/logging.html) handles logging messages from the Python-side 
+of our implementation.
+For debug purposes, you can also enable the logs for our Rust components, which are off by default. 
+These are handled by [tracing_subscriber](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/) and can be 
+configured through the following environment variables:
+- `S3_TORCH_CONNECTOR_DEBUG_LOGS` - Configured similarly to the
+[RUST_LOG](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) variable for
+filtering logs from our Rust components. This includes finer granularity logs from 
+[AWS Common Runtime (CRT)](https://docs.aws.amazon.com/sdkref/latest/guide/common-runtime.html).
+**Please note that the AWS CRT logs are very noisy. We recommend to filter them out by appending `"awscrt=off"` to
+your S3_TORCH_CONNECTOR_DEBUG_LOGS setup.**
+- `S3_TORCH_CONNECTOR_LOGS_DIR_PATH` - The path to a local directory where you have write permissions. 
+When configured, the logs from the Rust components will be appended to a file at this location. 
+This will result in a log file located at 
+`${S3_TORCH_CONNECTOR_LOGS_DIR_PATH}/s3torchconnectorclient.log.yyyy-MM-dd-HH`, rolled on an hourly basis. 
+The log messages of the latest run are appended to the end of the most recent log file.
+
+**Examples**
+- Configure INFO level logs to be written to STDOUT:
+```sh
+  export S3_TORCH_CONNECTOR_DEBUG_LOGS=info
+```
+
+- Enable TRACE level logs (most verbose) to be written at `/tmp/s3torchconnector-logs`:
+```sh
+  export S3_TORCH_CONNECTOR_DEBUG_LOGS=trace
+  export S3_TORCH_CONNECTOR_LOGS_DIR_PATH="/tmp/s3torchconnector-logs"
+```
+After running your script, you will find the logs under `/tmp/s3torchconnector-logs`.
+The file will include AWS CRT logs. 
+
+- Enable TRACE level logs with AWS CRT logs filtered out, written at `/tmp/s3torchconnector-logs`:
+```sh
+  export S3_TORCH_CONNECTOR_DEBUG_LOGS=trace,awscrt=off
+  export S3_TORCH_CONNECTOR_LOGS_DIR_PATH="/tmp/s3torchconnector-logs"
+```
+
+- Set up different levels for inner components:
+```sh
+  export S3_TORCH_CONNECTOR_DEBUG_LOGS=trace,mountpoint_s3_client=debug,awscrt=error
+```
+This will set the log level to TRACE by default, DEBUG for mountpoint-s3-client and ERROR for AWS CRT.
+
+For more examples please check the 
+[env_logger documentation](https://docs.rs/env_logger/latest/env_logger/#enabling-logging).

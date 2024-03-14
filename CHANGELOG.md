@@ -1,3 +1,12 @@
+## Unreleased
+
+### New features
+
+### Breaking changes
+* Separate completely Rust logs and Python logs. Logs from Rust components, used for debugging purposes 
+are configured through the following environment variables: S3_TORCH_CONNECTOR_DEBUG_LOGS, 
+S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
+
 ## v1.2.0 (March 13, 2024)
 
 ### New features
@@ -10,6 +19,7 @@
 
 ### Breaking changes
 * No breaking changes.
+
 
 ## v1.1.4 (February 26, 2024)
 
@@ -37,7 +47,6 @@
 * No breaking changes.
 
 
-
 ## v1.1.2 (January 19, 2024)
 
 ### New features
@@ -46,7 +55,6 @@
 
 ### Breaking changes
 * No breaking changes.
-
 
 
 ## v1.1.1 (December 11, 2023)
@@ -69,12 +77,11 @@
 * No breaking changes.
 
 
-
 ## v1.0.0 (November 22, 2023)
 * The Amazon S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access and store data in Amazon S3.
 
 ### New features
-* S3IterableDataset and S3MapDataset, which allow building either an iterable-style or map-style dataset, using your S3 
+* S3IterableDataset and S3MapDataset, which allow building either an iterable-style or map-style dataset, using your S3
 stored data, by specifying an S3 URI (a bucket and optional prefix) and the region the bucket is in.
 * Support for multiprocess data loading for the above datasets.
 * S3Checkpoint, an interface for saving and loading model checkpoints directly to and from an S3 bucket.
