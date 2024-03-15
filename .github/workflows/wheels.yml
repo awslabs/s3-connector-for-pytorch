@@ -65,7 +65,7 @@ jobs:
       # actions/setup-python doesn't yet support ARM
       # https://github.com/actions/setup-python/issues/678
       - if: ${{ matrix.builder.arch != 'aarch64' }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
