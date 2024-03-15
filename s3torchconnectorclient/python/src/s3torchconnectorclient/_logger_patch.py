@@ -6,5 +6,5 @@ import logging
 TRACE = 5
 
 
-def _install_trace_logging():
+def _install_trace_logging() -> None:
     logging.addLevelName(TRACE, "TRACE")

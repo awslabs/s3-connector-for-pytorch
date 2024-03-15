@@ -15,7 +15,7 @@ class UserAgent:
         self._comments = comments or []
 
     @property
-    def prefix(self):
+    def prefix(self) -> str:
         comments_str = "; ".join(filter(None, self._comments))
         if comments_str:
             return f"{self._user_agent_prefix} ({comments_str})"

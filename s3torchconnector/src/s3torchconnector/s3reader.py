@@ -1,15 +1,16 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+from __future__ import annotations
 
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
-from typing import Callable, Optional, Iterable, Iterator
+from typing import Callable, Optional, IO, Iterator, List, Any, Iterable
 
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 
-class S3Reader(io.BufferedIOBase):
+class S3Reader(io.BufferedIOBase, IO[bytes]):
     """A read-only, file like representation of a single object stored in S3."""
 
     def __init__(
@@ -32,15 +33,15 @@ class S3Reader(io.BufferedIOBase):
         self._position = 0
 
     @property
-    def bucket(self):
+    def bucket(self) -> str:
         return self._bucket
 
     @property
-    def key(self):
+    def key(self) -> str:
         return self._key
 
     @cached_property
-    def _object_info(self):
+    def _object_info(self) -> ObjectInfo:
         return self._get_object_info()
 
     def prefetch(self) -> None:
@@ -187,3 +188,12 @@ class S3Reader(io.BufferedIOBase):
             bool: Return whether object was opened for writing.
         """
         return False
+
+    def write(self, data: Any) -> int:
+        raise OSError("Not implemented")
+
+    def writelines(self, data: Iterable[Any]) -> None:
+        raise OSError("Not implemented")
+
+    def __enter__(self) -> S3Reader:
+        return self

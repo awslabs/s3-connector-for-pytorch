@@ -70,8 +70,8 @@ For Python code changes, run
 black --verbose .
 flake8 s3torchconnector/ --count --select=E9,F63,F7,F82 --show-source --statistics
 flake8 s3torchconnectorclient/python --count --select=E9,F63,F7,F82 --show-source --statistics
-mypy s3torchconnector/src
-mypy s3torchconnectorclient/python/src
+mypy --strict s3torchconnector/src
+mypy --strict s3torchconnectorclient/python/src
 ```
  to lint.
 
