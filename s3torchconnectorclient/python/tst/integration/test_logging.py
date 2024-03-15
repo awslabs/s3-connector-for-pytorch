@@ -154,12 +154,13 @@ def test_logging_to_file(
         files = os.listdir(log_dir)
         # There will be two files if the hour changes while running the test
         assert len(files) >= 1
-        log_file = os.path.join(log_dir, files[0])
-        assert os.path.isfile(log_file)
-        with open(log_file) as f:
-            file_content = f.read()
-            assert all(s in file_content for s in file_should_contain)
-            assert all(s not in file_content for s in file_should_not_contain)
+        log_files = [os.path.join(log_dir, f) for f in files]
+        assert all(os.path.isfile(log_file) for log_file in log_files)
+        log_files_content = "".join(
+            [_read_log_file(log_file) for log_file in log_files]
+        )
+        assert all(s in log_files_content for s in file_should_contain)
+        assert all(s not in log_files_content for s in file_should_not_contain)
 
 
 def test_invalid_logging(image_directory):
@@ -191,3 +192,8 @@ def _start_subprocess(
         text=True,
     )
     return process.communicate()
+
+
+def _read_log_file(log_file: str):
+    with open(log_file) as f:
+        return f.read()
