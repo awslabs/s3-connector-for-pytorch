@@ -75,6 +75,17 @@ Then from this directory, install the dependencies:
 This would make the `s3torch-benchmark` and `s3torch-datagen` commands available to you. Note: the installation would
 recommend $PATH modifications if necessary, allowing you to use the commands directly.
 
+**(Optional) Install Mountpoint**
+
+Required only if you're running benchmarks using PyTorch with Mountpoint for S3.
+
+    wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.rpm
+    sudo yum install ./mount-s3.rpm # For an RHEL system
+
+For other distros see [Installing Mountpoint for Amazon S3](https://github.com/awslabs/mountpoint-s3/blob/main/doc/INSTALL.md).
+
+_Note: Mountpoint benchmarks are currently only supported on *nix-based systems and rely on `sudo` capabilities._  
+
 ### (Pre-requisite) Configure AWS Credentials
 
 The commands provided below(`datagen.py`, `benchmark.py`) rely on the standard [AWS credential discovery mechanism](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). 
