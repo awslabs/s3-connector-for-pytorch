@@ -109,7 +109,16 @@ def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float):
     assert s3_client._client.throughput_target_gbps == throughput_target_gbps
 
 
-@pytest.mark.parametrize("part_size", [1, 2 * KiB, 6 * GiB])
+@pytest.mark.parametrize(
+    "part_size",
+    [
+        1,
+        2 * KiB,
+        5 * MiB - 1,
+        5 * GiB + 1,
+        6 * GiB,
+    ],
+)
 def test_s3_client_invalid_part_size_config(part_size: int):
     with pytest.raises(
         S3Exception,
@@ -120,4 +129,4 @@ def test_s3_client_invalid_part_size_config(part_size: int):
             s3client_config=S3ClientConfig(part_size=part_size),
         )
         # The client is lazily initialized
-        assert s3_client._client.part_size is not None
+        assert s3_client._client.part_size == part_size
