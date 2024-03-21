@@ -3,7 +3,7 @@
 import logging
 import pytest
 
-from hypothesis import given
+from hypothesis import given, example
 from hypothesis.strategies import lists, text, integers, floats
 from unittest.mock import MagicMock
 
@@ -17,6 +17,10 @@ TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_URI = f"s3://{TEST_BUCKET}/{TEST_KEY}"
+
+KiB = 1 << 10
+MiB = 1 << 20
+GiB = 1 << 30
 
 
 @pytest.fixture
@@ -87,12 +91,13 @@ def test_user_agent_always_starts_with_package_version(comments):
 
 
 @given(
-    part_size=integers(min_value=5 * 1024, max_value=5 * 1024 * 1024),
+    part_size=integers(min_value=5 * MiB, max_value=5 * GiB),
     throughput_target_gbps=floats(min_value=10.0, max_value=100.0),
 )
+@example(part_size=5 * MiB, throughput_target_gbps=10.0)
+@example(part_size=5 * GiB, throughput_target_gbps=15.0)
 def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float):
     # Part size must have values between 5MiB and 5GiB
-    part_size = part_size * 1024
     s3_client = S3Client(
         region=TEST_REGION,
         s3client_config=S3ClientConfig(
@@ -101,17 +106,18 @@ def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float):
         ),
     )
     assert s3_client._client.part_size == part_size
-    assert abs(s3_client._client.throughput_target_gbps - throughput_target_gbps) < 1e-9
+    assert s3_client._client.throughput_target_gbps == throughput_target_gbps
 
 
-def test_s3_client_invalid_part_size_config():
+@pytest.mark.parametrize("part_size", [1, 2 * KiB, 6 * GiB])
+def test_s3_client_invalid_part_size_config(part_size: int):
     with pytest.raises(
         S3Exception,
         match="invalid configuration: part size must be at between 5MiB and 5GiB",
     ):
         s3_client = S3Client(
             region=TEST_REGION,
-            s3client_config=S3ClientConfig(part_size=1),
+            s3client_config=S3ClientConfig(part_size=part_size),
         )
         # The client is lazily initialized
         assert s3_client._client.part_size is not None

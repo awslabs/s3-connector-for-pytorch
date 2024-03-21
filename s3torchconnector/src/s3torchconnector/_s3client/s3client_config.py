@@ -6,11 +6,9 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class S3ClientConfig:
     """A dataclass exposing configurable parameters for the S3 client.
-    Returns a config wrapper object.
 
     Args:
     throughput_target_gbps(float): Throughput target in Gigabits per second (Gbps) that we are trying to reach.
-        You can also use get_recommended_throughput_target_gbps() to get recommended value for your system.
         10.0 Gbps by default (may change in future).
     part_size(int): Size, in bytes, of parts that files will be downloaded or uploaded in.
         Note: for saving checkpoints, the inner client will adjust the part size to meet the service limits.
