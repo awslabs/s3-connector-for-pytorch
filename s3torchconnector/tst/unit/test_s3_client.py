@@ -4,12 +4,14 @@ import logging
 import pytest
 
 from hypothesis import given
-from hypothesis.strategies import lists, text
+from hypothesis.strategies import lists, text, integers, floats
 from unittest.mock import MagicMock
+
+from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 
 from s3torchconnector._user_agent import UserAgent
 from s3torchconnector._version import __version__
-from s3torchconnector._s3client import S3Client, MockS3Client
+from s3torchconnector._s3client import S3Client, MockS3Client, S3ClientConfig
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
@@ -82,3 +84,34 @@ def test_user_agent_always_starts_with_package_version(comments):
     if comments_str:
         assert comments_str in s3_client.user_agent_prefix
         assert comments_str in s3_client._client.user_agent_prefix
+
+
+@given(
+    part_size=integers(min_value=5 * 1024, max_value=5 * 1024 * 1024),
+    throughput_target_gbps=floats(min_value=10.0, max_value=100.0),
+)
+def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float):
+    # Part size must have values between 5MiB and 5GiB
+    part_size = part_size * 1024
+    s3_client = S3Client(
+        region=TEST_REGION,
+        s3client_config=S3ClientConfig(
+            part_size=part_size,
+            throughput_target_gbps=throughput_target_gbps,
+        ),
+    )
+    assert s3_client._client.part_size == part_size
+    assert abs(s3_client._client.throughput_target_gbps - throughput_target_gbps) < 1e-9
+
+
+def test_s3_client_invalid_part_size_config():
+    with pytest.raises(
+        S3Exception,
+        match="invalid configuration: part size must be at between 5MiB and 5GiB",
+    ):
+        s3_client = S3Client(
+            region=TEST_REGION,
+            s3client_config=S3ClientConfig(part_size=1),
+        )
+        # The client is lazily initialized
+        assert s3_client._client.part_size is not None

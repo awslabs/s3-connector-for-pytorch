@@ -1,3 +1,8 @@
+## Unreleased
+
+### New features
+* Expose `throughput_target_gbps` and `part_size` configurations of the inner S3 client.
+
 ## v1.2.1 (March 14, 2024)
 
 ### Breaking changes
