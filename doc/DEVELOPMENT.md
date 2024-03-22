@@ -2,10 +2,11 @@
 
 To develop `s3torchconnector`, you need to have Python, `pip` and `python-venv` installed. 
 
-`s3torchconnector` uses `s3torchconnectorclient` as the underlying S3 Connector. `s3torchconnectorclient` is a Python wrapper around MountpointS3Client that uses S3 CRT to optimize performance
-of S3 read/write
+`s3torchconnector` uses `s3torchconnectorclient` as the underlying S3 Connector. `s3torchconnectorclient` is a 
+Python wrapper around MountpointS3Client that uses S3 CRT to optimize performance of S3 read/write
 .
-Since MountpointS3Client is implemented in Rust, for development and building from source, you will need to install `clang`, `cmake` and rust compiler (as detailed below). 
+Since MountpointS3Client is implemented in Rust, for development and building from source, you will need to install 
+`clang`, `cmake` and rust compiler (as detailed below). 
 
 Note: CLI commands for Ubuntu/Debian 
 #### Install Python 3.x and pip
@@ -44,8 +45,8 @@ sudo apt install python3-pip
 ```
 
 
-When you make changes to the Rust code, you need to run `pip install -e s3torchconnectorclient` before changes will be viewable from 
-Python.
+When you make changes to the Rust code, you need to run `pip install -e s3torchconnectorclient` before changes will 
+be viewable from Python.
 
 
 ### Licensing
@@ -136,5 +137,35 @@ The file will include AWS CRT logs.
 ```
 This will set the log level to TRACE by default, DEBUG for mountpoint-s3-client and ERROR for AWS CRT.
 
-For more examples please check the 
+For more examples please check the
 [env_logger documentation](https://docs.rs/env_logger/latest/env_logger/#enabling-logging).
+
+### Fine Tuning
+Using S3ClientConfig you can set up the following parameters for the underlying S3 client: 
+* `throughput_target_gbps(float)`: Throughput target in Gigabits per second (Gbps) that we are trying to reach.
+  **10.0 Gbps** by default (may change in future).
+
+* `part_size(int)`: Size (bytes) of file parts that will be uploaded/downloaded.
+  Note: for saving checkpoints, the inner client will adjust the part size to meet the service limits.
+  (max number of parts per upload is 10,000, minimum upload part size is 5 MiB).
+  Part size must have **values between 5MiB and 5GiB.** Is set by default to **8MiB** (may change in future).
+
+For example this can be passed in like: 
+```py
+from s3torchconnector import S3MapDataset, S3ClientConfig
+
+# Setup for DATASET_URI and REGION.
+...
+# Setting part_size to 5 MiB and throughput_target_gbps to 15 Gbps.
+config = S3ClientConfig(part_size=5 * 1024 * 1024, throughput_target_gbps=15)
+# Passing this on to an S3MapDataset.
+s3_map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION, s3client_config=config)
+# Updating the configuration for checkpoints.
+# Please note that you can also pass in a different configuration to checkpoints.
+s3_checkpoint = S3Checkpoint(region=REGION, s3client_config=config)
+# Works similarly for Lightning checkpoints.
+s3_lightning_checkpoint = S3LightningCheckpoint(region=REGION, s3client_config=config)
+```
+
+**When modifying the default values for these flags, we strongly recommend to run benchmarking to ensure you are not
+introducing a performance regression.**
