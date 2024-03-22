@@ -4,7 +4,7 @@
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
-from typing import Callable, Optional, Iterable, Iterator
+from typing import Callable, Optional, Iterator
 
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 

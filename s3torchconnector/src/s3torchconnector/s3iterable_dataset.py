@@ -8,7 +8,7 @@ import torch.utils.data
 
 from . import S3Reader
 from ._s3bucket_key_data import S3BucketKeyData
-from ._s3client import S3Client
+from ._s3client import S3Client, S3ClientConfig
 from ._s3dataset_common import (
     identity,
     get_objects_from_uris,
@@ -31,11 +31,13 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         get_dataset_objects: Callable[[S3Client], Iterable[S3BucketKeyData]],
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
+        s3client_config: Optional[S3ClientConfig] = None,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
         self._region = region
         self._endpoint = endpoint
+        self._s3client_config = s3client_config
         self._client = None
 
     @property
@@ -54,6 +56,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         region: str,
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
+        s3client_config: Optional[S3ClientConfig] = None,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
 
@@ -62,6 +65,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           region(str): AWS region of the S3 bucket where the objects are stored.
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
+          s3client_config: Optional S3ClientConfig with parameters for S3 client.
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -75,6 +79,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             partial(get_objects_from_uris, object_uris),
             endpoint,
             transform=transform,
+            s3client_config=s3client_config,
         )
 
     @classmethod
@@ -85,6 +90,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         region: str,
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
+        s3client_config: Optional[S3ClientConfig] = None,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI provided.
 
@@ -93,6 +99,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           region(str): AWS region of the S3 bucket where the objects are stored.
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
+          s3client_config: Optional S3ClientConfig with parameters for S3 client.
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -106,11 +113,16 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             partial(get_objects_from_prefix, s3_uri),
             endpoint,
             transform=transform,
+            s3client_config=s3client_config,
         )
 
     def _get_client(self):
         if self._client is None:
-            self._client = S3Client(self.region, self.endpoint)
+            self._client = S3Client(
+                self.region,
+                endpoint=self.endpoint,
+                s3client_config=self._s3client_config,
+            )
         return self._client
 
     def _get_transformed_object(self, bucket_key: S3BucketKeyData) -> Any:

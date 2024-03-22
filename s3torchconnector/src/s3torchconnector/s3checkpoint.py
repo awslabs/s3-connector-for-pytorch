@@ -3,7 +3,7 @@
 from typing import Optional
 
 from ._s3dataset_common import parse_s3_uri
-from ._s3client import S3Client
+from ._s3client import S3Client, S3ClientConfig
 from . import S3Reader, S3Writer
 
 
@@ -17,10 +17,17 @@ class S3Checkpoint:
     torch.load, and torch.save.
     """
 
-    def __init__(self, region: str, endpoint: Optional[str] = None):
+    def __init__(
+        self,
+        region: str,
+        endpoint: Optional[str] = None,
+        s3client_config: Optional[S3ClientConfig] = None,
+    ):
         self.region = region
         self.endpoint = endpoint
-        self._client = S3Client(region, endpoint)
+        self._client = S3Client(
+            region, endpoint=endpoint, s3client_config=s3client_config
+        )
 
     def reader(self, s3_uri: str) -> S3Reader:
         """Creates an S3Reader from a given s3_uri.

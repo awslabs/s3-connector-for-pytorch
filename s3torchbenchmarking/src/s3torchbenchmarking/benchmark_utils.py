@@ -75,7 +75,6 @@ class ExperimentResult:
 
 
 class ExperimentResultJsonEncoder(JSONEncoder):
-
     def default(self, o: Any) -> Any:
         if isinstance(o, ExperimentResult):
             o: ExperimentResult = o

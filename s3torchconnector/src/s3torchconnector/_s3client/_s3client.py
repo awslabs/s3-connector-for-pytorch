@@ -7,6 +7,7 @@ from functools import partial
 from typing import Optional, Any
 
 from s3torchconnector import S3Reader, S3Writer
+from .s3client_config import S3ClientConfig
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     MountpointS3Client,
@@ -35,8 +36,10 @@ class S3Client:
     def __init__(
         self,
         region: str,
+        *,
         endpoint: Optional[str] = None,
         user_agent: Optional[UserAgent] = None,
+        s3client_config: Optional[S3ClientConfig] = None,
     ):
         self._region = region
         self._endpoint = endpoint
@@ -44,6 +47,7 @@ class S3Client:
         self._client_pid: Optional[int] = None
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
+        self._s3client_config = s3client_config or S3ClientConfig()
 
     @property
     def _client(self) -> MountpointS3Client:
@@ -59,6 +63,10 @@ class S3Client:
         return self._region
 
     @property
+    def s3client_config(self) -> S3ClientConfig:
+        return self._s3client_config
+
+    @property
     def user_agent_prefix(self) -> str:
         return self._user_agent_prefix
 
@@ -67,6 +75,8 @@ class S3Client:
             region=self._region,
             endpoint=self._endpoint,
             user_agent_prefix=self._user_agent_prefix,
+            throughput_target_gbps=self._s3client_config.throughput_target_gbps,
+            part_size=self._s3client_config.part_size,
         )
 
     def get_object(
