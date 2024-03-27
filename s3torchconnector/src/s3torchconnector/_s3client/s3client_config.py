@@ -19,3 +19,4 @@ class S3ClientConfig:
 
     throughput_target_gbps: float = 10.0
     part_size: int = 8 * 1024 * 1024
+    unsigned: bool = False

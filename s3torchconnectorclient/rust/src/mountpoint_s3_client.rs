@@ -41,7 +41,7 @@ pub struct MountpointS3Client {
     #[pyo3(get)]
     profile: Option<String>,
     #[pyo3(get)]
-    no_sign_request: bool,
+    unsigned: bool,
     #[pyo3(get)]
     user_agent_prefix: String,
     #[pyo3(get)]
@@ -53,14 +53,14 @@ pub struct MountpointS3Client {
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, no_sign_request=false, endpoint=None))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None))]
     pub fn new_s3_client(
         region: String,
         user_agent_prefix: String,
         throughput_target_gbps: f64,
         part_size: usize,
         profile: Option<String>,
-        no_sign_request: bool,
+        unsigned: bool,
         endpoint: Option<String>,
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
@@ -72,7 +72,7 @@ impl MountpointS3Client {
         } else {
             EndpointConfig::new(&region).endpoint(Uri::new_from_str(&Allocator::default(), endpoint_str).unwrap())
         };
-        let auth_config = auth_config(profile.as_deref(), no_sign_request);
+        let auth_config = auth_config(profile.as_deref(), unsigned);
 
         let user_agent_suffix =
             &format!("{}/{}", build_info::PACKAGE_NAME, build_info::FULL_VERSION);
@@ -96,7 +96,7 @@ impl MountpointS3Client {
             throughput_target_gbps,
             part_size,
             profile,
-            no_sign_request,
+            unsigned,
             crt_client,
             endpoint,
         ))
@@ -154,7 +154,7 @@ impl MountpointS3Client {
             slf.throughput_target_gbps.to_object(py),
             slf.part_size.to_object(py),
             slf.profile.to_object(py),
-            slf.no_sign_request.to_object(py),
+            slf.unsigned.to_object(py),
             slf.endpoint.to_object(py),
         ];
         Ok(PyTuple::new(py, state))
@@ -169,7 +169,8 @@ impl MountpointS3Client {
         throughput_target_gbps: f64,
         part_size: usize,
         profile: Option<String>,
-        no_sign_request: bool,
+        // no_sign_request on mountpoint-s3-client
+        unsigned: bool,
         client: Arc<Client>,
         endpoint: Option<String>,
     ) -> Self
@@ -183,7 +184,7 @@ impl MountpointS3Client {
             part_size,
             region,
             profile,
-            no_sign_request,
+            unsigned,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
             user_agent_prefix,
             endpoint,
@@ -192,8 +193,8 @@ impl MountpointS3Client {
     }
 }
 
-fn auth_config(profile: Option<&str>, no_sign_request: bool) -> S3ClientAuthConfig {
-    if no_sign_request {
+fn auth_config(profile: Option<&str>, unsigned: bool) -> S3ClientAuthConfig {
+    if unsigned {
         S3ClientAuthConfig::NoSigning
     } else if let Some(profile_name) = profile {
         S3ClientAuthConfig::Profile(profile_name.to_string())

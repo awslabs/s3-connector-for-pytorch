@@ -107,6 +107,7 @@ def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float):
     )
     assert s3_client._client.part_size == part_size
     assert s3_client._client.throughput_target_gbps == throughput_target_gbps
+    assert s3_client._client.unsigned is False
 
 
 @pytest.mark.parametrize(
@@ -130,3 +131,11 @@ def test_s3_client_invalid_part_size_config(part_size: int):
         )
         # The client is lazily initialized
         assert s3_client._client.part_size == part_size
+
+
+def test_unsigned_s3_client():
+    s3_client = S3Client(
+        region=TEST_REGION,
+        s3client_config=S3ClientConfig(unsigned=True),
+    )
+    assert s3_client._client.unsigned is True

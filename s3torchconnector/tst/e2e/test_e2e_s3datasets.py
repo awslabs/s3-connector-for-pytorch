@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.datapipes.datapipe import MapDataPipe
 from torchdata.datapipes.iter import IterableWrapper, IterDataPipe
 
-from s3torchconnector import S3IterableDataset, S3MapDataset
+from s3torchconnector import S3IterableDataset, S3MapDataset, S3ClientConfig
 
 
 def test_s3iterable_dataset_images_10_from_prefix(image_directory):
@@ -98,6 +98,21 @@ def test_dataset_unpickled_iterates(image_directory):
     actual = [i.key for i in unpickled]
 
     assert expected == actual
+
+
+def test_unsigned_client():
+    s3_uri = "s3://s3torchconnector-demo/geonet/images/"
+    region = "us-east-1"
+    s3_dataset = S3MapDataset.from_prefix(
+        s3_uri=s3_uri,
+        region=region,
+        transform=lambda obj: obj.read(),
+        s3client_config=S3ClientConfig(unsigned=True),
+    )
+    s3_dataloader = _pytorch_dataloader(s3_dataset)
+    assert s3_dataloader is not None
+    assert isinstance(s3_dataloader.dataset, S3MapDataset)
+    assert len(s3_dataloader) >= 1296
 
 
 def _compare_dataloaders(

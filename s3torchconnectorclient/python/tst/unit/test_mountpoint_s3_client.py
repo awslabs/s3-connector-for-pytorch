@@ -243,7 +243,7 @@ def test_put_object_with_storage_class():
 # TODO: Add hypothesis setup after aligning on limits
 def test_mountpoint_client_pickles():
     expected_profile = None
-    expected_no_sign_request = False
+    expected_unsigned = False
     expected_region = REGION
     expected_part_size = 5 * 2**20
     expected_throughput_target_gbps = 3.5
@@ -254,7 +254,7 @@ def test_mountpoint_client_pickles():
         part_size=expected_part_size,
         throughput_target_gbps=expected_throughput_target_gbps,
         profile=expected_profile,
-        no_sign_request=expected_no_sign_request,
+        unsigned=expected_unsigned,
     )
     dumped = pickle.dumps(client)
     loaded = pickle.loads(dumped)
@@ -271,7 +271,7 @@ def test_mountpoint_client_pickles():
         == expected_throughput_target_gbps
     )
     assert client.profile == loaded.profile == expected_profile
-    assert client.no_sign_request == loaded.no_sign_request == expected_no_sign_request
+    assert client.unsigned == loaded.unsigned == expected_unsigned
 
 
 @pytest.mark.parametrize(

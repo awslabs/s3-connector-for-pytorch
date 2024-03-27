@@ -10,7 +10,7 @@ class MountpointS3Client:
     region: str
     part_size: int
     profile: Optional[str]
-    no_sign_request: bool
+    unsigned: Optional[bool]
     user_agent_prefix: str
     endpoint: str
 
@@ -21,7 +21,7 @@ class MountpointS3Client:
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,
         profile: Optional[str] = None,
-        no_sign_request: bool = False,
+        unsigned: Optional[bool] = False,
         endpoint: Optional[str] = None,
     ): ...
     def get_object(self, bucket: str, key: str) -> GetObjectStream: ...
@@ -39,6 +39,7 @@ class MockMountpointS3Client:
     region: str
     part_size: int
     user_agent_prefix: str
+    unsigned: bool
 
     def __init__(
         self,
@@ -48,6 +49,7 @@ class MockMountpointS3Client:
         throughput_target_gbps: float = 10.0,
         part_size: int = 8 * 1024 * 1024,
         user_agent_prefix: str = "mock_client",
+        unsigned: bool = False,
     ): ...
     def create_mocked_client(self) -> MountpointS3Client: ...
     def add_object(self, key: str, data: bytes) -> None: ...

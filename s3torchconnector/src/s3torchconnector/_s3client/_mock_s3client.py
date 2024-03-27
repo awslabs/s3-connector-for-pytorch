@@ -37,6 +37,7 @@ class MockS3Client(S3Client):
             throughput_target_gbps=self.s3client_config.throughput_target_gbps,
             part_size=self.s3client_config.part_size,
             user_agent_prefix=self.user_agent_prefix,
+            unsigned=self.s3client_config.unsigned,
         )
 
     def add_object(self, key: str, data: bytes) -> None:

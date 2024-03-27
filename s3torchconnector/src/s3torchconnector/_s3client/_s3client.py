@@ -77,6 +77,7 @@ class S3Client:
             user_agent_prefix=self._user_agent_prefix,
             throughput_target_gbps=self._s3client_config.throughput_target_gbps,
             part_size=self._s3client_config.part_size,
+            unsigned=self._s3client_config.unsigned,
         )
 
     def get_object(

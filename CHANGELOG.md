@@ -1,3 +1,9 @@
+## Unreleased
+
+### New features
+* Update S3ClientConfig to pass in the configuration for allowing unsigned requests, under boolean flag `unsigned`.
+
+
 ## v1.2.2 (March 22, 2024)
 
 ### New features
