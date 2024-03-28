@@ -26,18 +26,21 @@ pub struct PyMockClient {
     pub(crate) part_size: usize,
     #[pyo3(get)]
     pub(crate) user_agent_prefix: String,
+    #[pyo3(get)]
+    pub(crate) unsigned: bool,
 }
 
 #[pymethods]
 impl PyMockClient {
     #[new]
-    #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string()))]
+    #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string(), unsigned=false))]
     pub fn new(
         region: String,
         bucket: String,
         throughput_target_gbps: f64,
         part_size: usize,
         user_agent_prefix: String,
+        unsigned: bool,
     ) -> PyMockClient {
         let unordered_list_seed: Option<u64> = None;
         let config = MockClientConfig { bucket, part_size, unordered_list_seed };
@@ -48,7 +51,8 @@ impl PyMockClient {
             region,
             throughput_target_gbps,
             part_size,
-            user_agent_prefix
+            user_agent_prefix,
+            unsigned
         }
     }
 
@@ -59,7 +63,7 @@ impl PyMockClient {
             self.throughput_target_gbps,
             self.part_size,
             None,
-            false,
+            self.unsigned,
             self.mock_client.clone(),
             None,
         )
