@@ -22,6 +22,9 @@ from models.net import Net
 from models.lightning_transformer import LightningTransformer, L
 
 
+LIGHTNING_ACCELERATOR = "cpu"
+
+
 def test_save_and_load_checkpoint(checkpoint_directory):
     tensor = torch.rand(3, 10, 10)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
@@ -77,7 +80,7 @@ def test_load_trained_checkpoint(checkpoint_directory):
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
     dataloader = DataLoader(dataset, num_workers=3)
     model = LightningTransformer(vocab_size=dataset.vocab_size)
-    trainer = L.Trainer(fast_dev_run=2)
+    trainer = L.Trainer(accelerator=LIGHTNING_ACCELERATOR, fast_dev_run=2)
     trainer.fit(model=model, train_dataloaders=dataloader)
     checkpoint_name = "lightning_module_training_checkpoint.pt"
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
@@ -96,6 +99,7 @@ def test_compatibility_with_trainer_plugins(checkpoint_directory):
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
     _verify_user_agent(s3_lightning_checkpoint)
     trainer = L.Trainer(
+        accelerator=LIGHTNING_ACCELERATOR,
         default_root_dir=checkpoint_directory.s3_uri,
         plugins=[s3_lightning_checkpoint],
         max_epochs=1,
@@ -130,6 +134,7 @@ def test_compatibility_with_checkpoint_callback(checkpoint_directory):
         enable_version_counter=True,
     )
     trainer = L.Trainer(
+        accelerator=LIGHTNING_ACCELERATOR,
         plugins=[s3_lightning_checkpoint],
         callbacks=[checkpoint_callback],
         min_epochs=4,
@@ -163,6 +168,7 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
     async_s3_lightning_checkpoint = AsyncCheckpointIO(s3_lightning_checkpoint)
 
     trainer = L.Trainer(
+        accelerator=LIGHTNING_ACCELERATOR,
         default_root_dir=checkpoint_directory.s3_uri,
         plugins=[async_s3_lightning_checkpoint],
         min_epochs=4,
@@ -189,6 +195,7 @@ def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
     trainer = L.Trainer(
+        accelerator=LIGHTNING_ACCELERATOR,
         default_root_dir=checkpoint_directory.s3_uri,
         plugins=[s3_lightning_checkpoint],
         max_epochs=1,
