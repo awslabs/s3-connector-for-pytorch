@@ -1,0 +1,64 @@
+:orphan:
+
+:py:mod:`s3torchconnector._s3client._s3client`
+==============================================
+
+.. py:module:: s3torchconnector._s3client._s3client
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3client._s3client.S3Client
+
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3client._s3client.log
+
+
+.. py:data:: log
+
+   
+
+.. py:class:: S3Client(region: str, *, endpoint: Optional[str] = None, user_agent: Optional[s3torchconnector._user_agent.UserAgent] = None, s3client_config: Optional[s3torchconnector._s3client.s3client_config.S3ClientConfig] = None)
+
+
+   .. py:property:: region
+      :type: str
+
+
+   .. py:property:: s3client_config
+      :type: s3torchconnector._s3client.s3client_config.S3ClientConfig
+
+
+   .. py:property:: user_agent_prefix
+      :type: str
+
+
+   .. py:method:: get_object(bucket: str, key: str, *, object_info: Optional[s3torchconnectorclient._mountpoint_s3_client.ObjectInfo] = None) -> s3torchconnector.S3Reader
+
+
+   .. py:method:: put_object(bucket: str, key: str, storage_class: Optional[str] = None) -> s3torchconnector.S3Writer
+
+
+   .. py:method:: list_objects(bucket: str, prefix: str = '', delimiter: str = '', max_keys: int = 1000) -> s3torchconnectorclient._mountpoint_s3_client.ListObjectStream
+
+
+   .. py:method:: head_object(bucket: str, key: str) -> s3torchconnectorclient._mountpoint_s3_client.ObjectInfo
+
+
+   .. py:method:: delete_object(bucket: str, key: str) -> None
+
+
+

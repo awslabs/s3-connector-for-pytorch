@@ -1,0 +1,64 @@
+:py:mod:`s3torchconnector.s3writer`
+===================================
+
+.. py:module:: s3torchconnector.s3writer
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector.s3writer.S3Writer
+
+
+
+
+.. py:class:: S3Writer(stream: s3torchconnectorclient._mountpoint_s3_client.PutObjectStream)
+
+
+   Bases: :py:obj:`io.BufferedIOBase`
+
+   A write-only, file like representation of a single object stored in S3.
+
+   .. py:method:: write(data: Union[bytes, memoryview]) -> int
+
+      Write bytes to S3 Object specified by bucket and key
+
+      :param data: bytes to write
+      :type data: bytes | memoryview
+
+      :returns: Number of bytes written
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: close()
+
+      Close write-stream to S3. Ensures all bytes are written successfully.
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+   .. py:method:: flush()
+
+      No-op
+
+
+   .. py:method:: readable() -> bool
+
+      :returns: Return whether object was opened for reading.
+      :rtype: bool
+
+
+   .. py:method:: writable() -> bool
+
+      :returns: Return whether object was opened for writing.
+      :rtype: bool
+
+
+

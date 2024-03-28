@@ -1,0 +1,8 @@
+:orphan:
+
+:py:mod:`s3torchconnector._version`
+===================================
+
+.. py:module:: s3torchconnector._version
+
+

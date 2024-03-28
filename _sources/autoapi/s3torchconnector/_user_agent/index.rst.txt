@@ -1,0 +1,28 @@
+:orphan:
+
+:py:mod:`s3torchconnector._user_agent`
+======================================
+
+.. py:module:: s3torchconnector._user_agent
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._user_agent.UserAgent
+
+
+
+
+.. py:class:: UserAgent(comments: Optional[List[str]] = None)
+
+
+   .. py:property:: prefix
+
+
+

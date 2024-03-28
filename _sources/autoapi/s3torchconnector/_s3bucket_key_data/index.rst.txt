@@ -1,0 +1,44 @@
+:orphan:
+
+:py:mod:`s3torchconnector._s3bucket_key_data`
+=============================================
+
+.. py:module:: s3torchconnector._s3bucket_key_data
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3bucket_key_data.S3BucketKeyData
+
+
+
+
+.. py:class:: S3BucketKeyData
+
+
+   Bases: :py:obj:`NamedTuple`
+
+   Read-only information about object stored in S3.
+
+   .. py:attribute:: bucket
+      :type: str
+
+      
+
+   .. py:attribute:: key
+      :type: str
+
+      
+
+   .. py:attribute:: object_info
+      :type: Optional[s3torchconnectorclient._mountpoint_s3_client.ObjectInfo]
+
+      
+
+

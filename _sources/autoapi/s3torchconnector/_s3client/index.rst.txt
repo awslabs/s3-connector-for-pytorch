@@ -1,0 +1,107 @@
+:orphan:
+
+:py:mod:`s3torchconnector._s3client`
+====================================
+
+.. py:module:: s3torchconnector._s3client
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   s3client_config/index.rst
+
+
+Package Contents
+----------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   s3torchconnector._s3client.S3ClientConfig
+   s3torchconnector._s3client.S3Client
+   s3torchconnector._s3client.MockS3Client
+
+
+
+
+.. py:class:: S3ClientConfig
+
+
+   A dataclass exposing configurable parameters for the S3 client.
+
+   Args:
+   throughput_target_gbps(float): Throughput target in Gigabits per second (Gbps) that we are trying to reach.
+       10.0 Gbps by default (may change in future).
+   part_size(int): Size (bytes) of file parts that will be uploaded/downloaded.
+       Note: for saving checkpoints, the inner client will adjust the part size to meet the service limits.
+       (max number of parts per upload is 10,000, minimum upload part size is 5 MiB).
+       Part size must have values between 5MiB and 5GiB.
+       8MiB by default (may change in future).
+
+   .. py:attribute:: throughput_target_gbps
+      :type: float
+      :value: 10.0
+
+      
+
+   .. py:attribute:: part_size
+      :type: int
+
+      
+
+   .. py:attribute:: unsigned
+      :type: bool
+      :value: False
+
+      
+
+
+.. py:class:: S3Client(region: str, *, endpoint: Optional[str] = None, user_agent: Optional[s3torchconnector._user_agent.UserAgent] = None, s3client_config: Optional[s3torchconnector._s3client.s3client_config.S3ClientConfig] = None)
+
+
+   .. py:property:: region
+      :type: str
+
+
+   .. py:property:: s3client_config
+      :type: s3torchconnector._s3client.s3client_config.S3ClientConfig
+
+
+   .. py:property:: user_agent_prefix
+      :type: str
+
+
+   .. py:method:: get_object(bucket: str, key: str, *, object_info: Optional[s3torchconnectorclient._mountpoint_s3_client.ObjectInfo] = None) -> s3torchconnector.S3Reader
+
+
+   .. py:method:: put_object(bucket: str, key: str, storage_class: Optional[str] = None) -> s3torchconnector.S3Writer
+
+
+   .. py:method:: list_objects(bucket: str, prefix: str = '', delimiter: str = '', max_keys: int = 1000) -> s3torchconnectorclient._mountpoint_s3_client.ListObjectStream
+
+
+   .. py:method:: head_object(bucket: str, key: str) -> s3torchconnectorclient._mountpoint_s3_client.ObjectInfo
+
+
+   .. py:method:: delete_object(bucket: str, key: str) -> None
+
+
+
+.. py:class:: MockS3Client(region: str, bucket: str, user_agent: Optional[s3torchconnector._user_agent.UserAgent] = None, s3client_config: Optional[s3torchconnector._s3client.s3client_config.S3ClientConfig] = None)
+
+
+   Bases: :py:obj:`s3torchconnector._s3client.S3Client`
+
+   .. py:method:: add_object(key: str, data: bytes) -> None
+
+
+   .. py:method:: remove_object(key: str) -> None
+
+
+
