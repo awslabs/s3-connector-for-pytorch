@@ -169,7 +169,8 @@ s3_checkpoint = S3Checkpoint(region=REGION, s3client_config=config)
 s3_lightning_checkpoint = S3LightningCheckpoint(region=REGION, s3client_config=config)
 
 # Disable signing to make requests without AWS credentials
-s3_client = S3Client(region=REGION, s3client_config=S3ClientConfig(unsigned=True))
+config = S3ClientConfig(unsigned=True)
+s3_map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION, s3client_config=config)
 ```
 
 **When modifying the default values for these flags, we strongly recommend to run benchmarking to ensure you are not
