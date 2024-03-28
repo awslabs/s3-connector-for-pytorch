@@ -150,8 +150,7 @@ Using S3ClientConfig you can set up the following parameters for the underlying 
   (max number of parts per upload is 10,000, minimum upload part size is 5 MiB).
   Part size must have **values between 5MiB and 5GiB.** Is set by default to **8MiB** (may change in future).
 
-* `unsigned(bool)`: Allows the usage of unsigned clients when accessing public datasets or when other mechanisms are
-  in place to grant access.
+* `unsigned(bool)`: Set to true to disable signing S3 requests.
 
 For example this can be passed in like: 
 ```py
@@ -169,7 +168,7 @@ s3_checkpoint = S3Checkpoint(region=REGION, s3client_config=config)
 # Works similarly for Lightning checkpoints.
 s3_lightning_checkpoint = S3LightningCheckpoint(region=REGION, s3client_config=config)
 
-# Use an unsigned S3 client
+# Disable signing to make requests without AWS credentials
 s3_client = S3Client(region=REGION, s3client_config=S3ClientConfig(unsigned=True))
 ```
 
