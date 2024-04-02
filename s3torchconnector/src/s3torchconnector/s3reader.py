@@ -53,6 +53,34 @@ class S3Reader(io.BufferedIOBase):
         if self._stream is None:
             self._stream = self._get_stream()
 
+    def readinto(self, buf) -> int:
+        """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+        Return the number of bytes read. If no bytes available, zero is returned.
+
+        Args:
+            buf : writable bytes-like object
+
+        Returns:
+            int : numer of bytes read or zero, if no bytes available
+        """
+        buf_size = len(buf)
+        if self._position_at_end() or buf_size == 0:
+            # If no bytes are available or no place to write data, zero should be returned
+            return 0
+
+        self.prefetch()
+        assert self._stream is not None
+
+        cur_pos = self._position
+        # preload enough bytes in buffer
+        self.seek(buf_size, SEEK_CUR)
+        # restore position, before starting to write into buf
+        self._buffer.seek(cur_pos)
+        size = self._buffer.readinto(buf)
+        self._position = self._buffer.tell()
+
+        return size
+
     def read(self, size: Optional[int] = None) -> bytes:
         """Read up to size bytes from the object and return them.
 
@@ -82,7 +110,9 @@ class S3Reader(io.BufferedIOBase):
         if size is None or size < 0:
             # Special case read() all to use O(n) algorithm
             self._buffer.seek(0, SEEK_END)
-            self._buffer.write(b"".join(self._stream))
+            for batch in self._stream:
+                self._buffer.write(batch)
+
             # Once we've emptied the buffer, we'll always be at EOF!
             self._size = self._buffer.tell()
         else:
