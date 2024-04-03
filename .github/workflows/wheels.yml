@@ -31,9 +31,9 @@ jobs:
           - cp311
           - cp312
         builder:
-          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-ubuntu-7.0-large
+          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
             arch: x86_64
-          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-arm-3.0-large
+          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
             arch: aarch64
 #          - runner: ubuntu-20.04
 #            arch: x86_64
