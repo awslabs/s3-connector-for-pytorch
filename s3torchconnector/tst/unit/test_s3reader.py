@@ -309,7 +309,7 @@ def test_s3reader_writes_size_after_read_all_explicit(stream: List[bytes]):
     lists(binary(min_size=20, max_size=30), min_size=0, max_size=2),
     integers(min_value=0, max_value=10),
 )
-def test_s3reader_readinto_buffer_smaller_then_chunks(
+def test_s3reader_readinto_buffer_smaller_than_chunks(
     stream: List[bytes], buf_size: int
 ):
     s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
@@ -333,7 +333,7 @@ def test_s3reader_readinto_buffer_smaller_then_chunks(
     lists(binary(min_size=20, max_size=30), min_size=2, max_size=3),
     integers(min_value=30, max_value=40),
 )
-def test_s3reader_readinto_buffer_bigger_then_chunks(
+def test_s3reader_readinto_buffer_bigger_than_chunks(
     stream: List[bytes], buf_size: int
 ):
     s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
@@ -344,14 +344,14 @@ def test_s3reader_readinto_buffer_bigger_then_chunks(
     assert s3reader.tell() == buf_size
     all_data = b"".join(stream)
     # confirm that read data is the same as in source
-    assert (buf == all_data[:buf_size])
+    assert buf == all_data[:buf_size]
 
 
 @given(
     lists(binary(min_size=20, max_size=30), min_size=1, max_size=3),
     integers(min_value=100, max_value=100),
 )
-def test_s3reader_readinto_buffer_bigger_then_whole_object(
+def test_s3reader_readinto_buffer_bigger_than_whole_object(
     stream: List[bytes], buf_size: int
 ):
     s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
@@ -363,8 +363,9 @@ def test_s3reader_readinto_buffer_bigger_then_whole_object(
     assert s3reader.tell() == total_length
     all_data = b"".join(stream)
     # confirm that read data is the same as in source
-    assert (buf[:total_length] == all_data)
+    assert buf[:total_length] == all_data
     assert s3reader._size == total_length
+
 
 @given(
     lists(binary(min_size=2, max_size=12), min_size=1, max_size=5),
