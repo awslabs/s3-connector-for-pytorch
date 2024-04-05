@@ -55,7 +55,7 @@ class S3Reader(io.BufferedIOBase):
 
     def readinto(self, buf) -> int:
         """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
-        Return the number of bytes read. If no bytes available, zero is returned.
+        Return the number of bytes read. If no bytes are available, zero is returned.
 
         Args:
             buf : writable bytes-like object

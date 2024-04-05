@@ -306,8 +306,8 @@ def test_s3reader_writes_size_after_read_all_explicit(stream: List[bytes]):
 
 
 @given(
-    lists(binary(min_size=2, max_size=3), min_size=0, max_size=3),
-    integers(min_value=0, max_value=1),
+    lists(binary(min_size=20, max_size=30), min_size=0, max_size=2),
+    integers(min_value=0, max_value=10),
 )
 def test_s3reader_readinto_buffer_smaller_then_chunks(
     stream: List[bytes], buf_size: int
@@ -330,45 +330,41 @@ def test_s3reader_readinto_buffer_smaller_then_chunks(
 
 
 @given(
-    lists(binary(min_size=2, max_size=3), min_size=1, max_size=3),
-    integers(min_value=3, max_value=10),
+    lists(binary(min_size=20, max_size=30), min_size=2, max_size=3),
+    integers(min_value=30, max_value=40),
 )
 def test_s3reader_readinto_buffer_bigger_then_chunks(
     stream: List[bytes], buf_size: int
 ):
     s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
     assert s3reader._size is None
-    total_length = sum(map(len, stream))
     buf = memoryview(bytearray(buf_size))
-    should_read_bytes_in_first_pass = min(buf_size, total_length)
-    # We're able to read all the available data or the data that can be accommodated in buf
-    assert s3reader.readinto(buf) == should_read_bytes_in_first_pass
-    assert s3reader.tell() == should_read_bytes_in_first_pass
+    # We're able to read the data that can be accommodated in buf
+    assert s3reader.readinto(buf) == buf_size
+    assert s3reader.tell() == buf_size
     all_data = b"".join(stream)
     # confirm that read data is the same as in source
-    assert (
-        buf[:should_read_bytes_in_first_pass]
-        == all_data[:should_read_bytes_in_first_pass]
-    )
-    if total_length < buf_size:
-        assert s3reader._size == total_length
+    assert (buf == all_data[:buf_size])
 
-    should_read_bytes_in_second_pass = max(
-        min(buf_size, total_length - should_read_bytes_in_first_pass), 0
-    )
-    if should_read_bytes_in_second_pass > 0:
-        # We're able to read all the available data or the data that can be accommodated in buf
-        assert s3reader.readinto(buf) == should_read_bytes_in_second_pass
-        total_read = should_read_bytes_in_first_pass + should_read_bytes_in_second_pass
-        assert s3reader.tell() == total_read
-        # confirm that read data is the same as in source
-        assert (
-            buf[:should_read_bytes_in_second_pass]
-            == all_data[should_read_bytes_in_first_pass:total_read]
-        )
-        if total_length < total_read:
-            assert s3reader._size == total_read
 
+@given(
+    lists(binary(min_size=20, max_size=30), min_size=1, max_size=3),
+    integers(min_value=100, max_value=100),
+)
+def test_s3reader_readinto_buffer_bigger_then_whole_object(
+    stream: List[bytes], buf_size: int
+):
+    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    assert s3reader._size is None
+    total_length = sum(map(len, stream))
+    buf = memoryview(bytearray(buf_size))
+    # We're able to read all the available data
+    assert s3reader.readinto(buf) == total_length
+    assert s3reader.tell() == total_length
+    all_data = b"".join(stream)
+    # confirm that read data is the same as in source
+    assert (buf[:total_length] == all_data)
+    assert s3reader._size == total_length
 
 @given(
     lists(binary(min_size=2, max_size=12), min_size=1, max_size=5),
