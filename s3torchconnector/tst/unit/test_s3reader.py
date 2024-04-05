@@ -21,7 +21,6 @@ logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
-
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 MOCK_OBJECT_INFO = Mock(ObjectInfo)
@@ -182,14 +181,17 @@ def test_over_read(stream: List[bytes], overread: int):
 def test_seeks_end():
     s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]))
     s3reader._size = 10
+    buf = memoryview(bytearray(10))
 
     assert s3reader.seek(0, SEEK_END) == 10
     assert s3reader.tell() == 10
     assert s3reader.read() == b""
+    assert s3reader.readinto(buf) == 0
 
     assert s3reader.seek(0, SEEK_CUR) == 10
     assert s3reader.tell() == 10
     assert s3reader.read() == b""
+    assert s3reader.readinto(buf) == 0
 
 
 def test_not_writable():
@@ -301,3 +303,107 @@ def test_s3reader_writes_size_after_read_all_explicit(stream: List[bytes]):
     assert s3reader.read(1) == b""
     # Once we've read past the end, we know how big the file is
     assert s3reader._size == total_length
+
+
+@given(
+    lists(binary(min_size=20, max_size=30), min_size=0, max_size=2),
+    integers(min_value=0, max_value=10),
+)
+def test_s3reader_readinto_buffer_smaller_than_chunks(
+    stream: List[bytes], buf_size: int
+):
+    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    assert s3reader._size is None
+    total_length = sum(map(len, stream))
+    buf = memoryview(bytearray(buf_size))
+    # We're able to read all the available data or the data that can be accommodated in buf
+    if buf_size > 0 and total_length > 0:
+        assert s3reader.readinto(buf) == buf_size
+        assert s3reader.tell() == buf_size
+        # We haven't reached the end yet
+        assert s3reader._size is None
+        # confirm that read data is the same as in source
+        assert buf[:buf_size] == (b"".join(stream))[:buf_size]
+    else:
+        assert s3reader.readinto(buf) == 0
+        assert s3reader.tell() == 0
+
+
+@given(
+    lists(binary(min_size=20, max_size=30), min_size=2, max_size=3),
+    integers(min_value=30, max_value=40),
+)
+def test_s3reader_readinto_buffer_bigger_than_chunks(
+    stream: List[bytes], buf_size: int
+):
+    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    assert s3reader._size is None
+    buf = memoryview(bytearray(buf_size))
+    # We're able to read the data that can be accommodated in buf
+    assert s3reader.readinto(buf) == buf_size
+    assert s3reader.tell() == buf_size
+    all_data = b"".join(stream)
+    # confirm that read data is the same as in source
+    assert buf == all_data[:buf_size]
+
+
+@given(
+    lists(binary(min_size=20, max_size=30), min_size=1, max_size=3),
+    integers(min_value=100, max_value=100),
+)
+def test_s3reader_readinto_buffer_bigger_than_whole_object(
+    stream: List[bytes], buf_size: int
+):
+    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    assert s3reader._size is None
+    total_length = sum(map(len, stream))
+    buf = memoryview(bytearray(buf_size))
+    # We're able to read all the available data
+    assert s3reader.readinto(buf) == total_length
+    assert s3reader.tell() == total_length
+    all_data = b"".join(stream)
+    # confirm that read data is the same as in source
+    assert buf[:total_length] == all_data
+    assert s3reader._size == total_length
+
+
+@given(
+    lists(binary(min_size=2, max_size=12), min_size=1, max_size=5),
+    integers(min_value=3, max_value=10),
+    integers(min_value=0, max_value=1),
+)
+def test_s3reader_mixing_readinto_and_read(
+    stream: List[bytes], buf_size: int, flip: int
+):
+    position = 0
+    loops_count = 20
+    all_data = b"".join(stream)
+    total_length = len(all_data)
+    buf = memoryview(bytearray(buf_size))
+    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    for i in range(0, loops_count):
+        if position >= total_length:
+            break
+
+        if (i + flip) % 2 == 0:
+            result = s3reader.read(buf_size)
+            # confirm that read data is the same as in source
+            if position + buf_size < total_length:
+                assert result[:buf_size] == all_data[position : position + buf_size]
+            else:
+                read_bytes = total_length - position
+                assert result[:read_bytes] == all_data[position:total_length]
+            position += buf_size
+        else:
+            read_bytes = s3reader.readinto(buf)
+            # confirm that read data is the same as in source
+            assert buf[position:read_bytes] == all_data[position:read_bytes]
+            position += read_bytes
+
+        if position > total_length:
+            # we read all the data, it is time to stop
+            assert s3reader.tell() == total_length
+            break
+        else:
+            # confirm that position is as expected
+            assert s3reader.tell() == position

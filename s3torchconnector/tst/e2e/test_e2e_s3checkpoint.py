@@ -2,13 +2,18 @@
 #  // SPDX-License-Identifier: BSD
 
 import torch
+import pytest
 
 from s3torchconnector import S3Checkpoint
 from models.net import Net
 
 
-def test_general_checkpointing(checkpoint_directory):
-    tensor = torch.tensor([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
+@pytest.mark.parametrize(
+    "tensor_dimensions",
+    [[3, 2], [10, 1024, 1024]],
+)
+def test_general_checkpointing(checkpoint_directory, tensor_dimensions):
+    tensor = torch.rand(tensor_dimensions)
     checkpoint_name = "general_checkpoint.pt"
     checkpoint = S3Checkpoint(region=checkpoint_directory.region)
     s3_uri = f"{checkpoint_directory.s3_uri}/{checkpoint_name}"
