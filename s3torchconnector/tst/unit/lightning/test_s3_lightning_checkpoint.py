@@ -27,6 +27,7 @@ from s3torchconnectorclient import S3Exception
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
+TEST_ENDPOINT = "https://s3.us-east-1.amazonaws.com"
 
 
 @pytest.fixture()
@@ -146,6 +147,11 @@ def test_invalid_path(lightning_checkpoint, checkpoint_method_name, kwargs):
 def test_teardown(lightning_checkpoint):
     lightning_checkpoint.teardown()
     # Assert no exception is thrown - implicit
+
+
+def test_lightning_checkpoint_creation_with_region_and_endpoint():
+    checkpoint = S3LightningCheckpoint(TEST_REGION, endpoint=TEST_ENDPOINT)
+    assert isinstance(checkpoint, S3LightningCheckpoint)
 
 
 def _test_save(

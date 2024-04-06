@@ -20,6 +20,7 @@ class S3LightningCheckpoint(CheckpointIO):
         self,
         region: str,
         s3client_config: Optional[S3ClientConfig] = None,
+        endpoint: Optional[str] = None,
     ):
         self.region = region
         user_agent = UserAgent(["lightning", lightning.__version__])
@@ -27,6 +28,7 @@ class S3LightningCheckpoint(CheckpointIO):
             region,
             user_agent=user_agent,
             s3client_config=s3client_config,
+            endpoint=endpoint,
         )
 
     def save_checkpoint(
