@@ -3,6 +3,7 @@
 ### New features
 * Update S3ClientConfig to pass in the configuration for allowing unsigned requests, under boolean flag `unsigned`.
 * Improve the performance of `s3reader` when utilized with `pytorch.load` by incorporating support for the `readinto` method.
+* Add support for passing an optional custom endpoint to S3LightningCheckpoint constructor method.
 
 
 ## v1.2.2 (March 22, 2024)
