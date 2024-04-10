@@ -43,9 +43,9 @@ jobs:
           - runner: macos-13
             kind: macosx
             arch: x86_64
-#          - runner: macos-14
-#            kind: macosx
-#            arch: arm64
+          - runner: macos-14
+            kind: macosx
+            arch: arm64
     permissions:
       id-token: write
       contents: read
@@ -71,9 +71,18 @@ jobs:
         run: |
           mv NOTICE_DEFAULT THIRD-PARTY-LICENSES
 
+      # actions/setup-python requires /Users/runner/hostedtoolcache to exist to work properly
+      # with macosx due to fixed shared library path
+      # https://github.com/actions/setup-python/blob/main/docs/advanced-usage.md#macos
+      - name: Create hostedtoolcache dir for macosx
+        if: ${{ matrix.builder.kind == 'macosx' }}
+        run: |
+          mkdir -p /Users/runner/hostedtoolcache
+
       # actions/setup-python doesn't yet support ARM
       # https://github.com/actions/setup-python/issues/678
-      - if: ${{ matrix.builder.arch != 'aarch64' }}
+      - name: Setup Python
+        if: ${{ matrix.builder.arch != 'aarch64' }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -81,6 +90,8 @@ jobs:
       - name: Install pipx
         run: |
           which python
+          which pip
+          python -m pip install --upgrade pip
           python -m pip install --upgrade pipx
           python -m pipx ensurepath
 
