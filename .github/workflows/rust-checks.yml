@@ -28,11 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up stable Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          submodules: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Run cargo deny
         uses: EmbarkStudios/cargo-deny-action@v1
@@ -48,17 +44,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up stable Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cargo cache
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
@@ -69,18 +60,17 @@ jobs:
         run: cargo clippy --all-targets --all-features --manifest-path s3torchconnectorclient/Cargo.toml
 
   tests:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     name: Rust tests
+    strategy:
+      matrix:
+        runner: [ubuntu-22.04, macos-13]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up stable Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          submodules: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Rust tests
         run: cargo test --no-default-features --no-run --manifest-path s3torchconnectorclient/Cargo.toml

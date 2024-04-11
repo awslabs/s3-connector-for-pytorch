@@ -19,12 +19,12 @@ jobs:
     uses: ./.github/workflows/generate_third_party_licenses.yml
 
   build_wheels:
-    name: Build wheels for ${{ matrix.build_prefix }} - ${{ matrix.builder.arch }}
+    name: Wheels for ${{ matrix.python }} - ${{ matrix.builder.kind }} - ${{ matrix.builder.arch }}
     runs-on: ${{ matrix.builder.runner }}
     needs: generate_third_party_licenses
     strategy:
       matrix:
-        build_prefix:
+        python:
           - cp38
           - cp39
           - cp310
@@ -32,11 +32,20 @@ jobs:
           - cp312
         builder:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
+            kind: manylinux
             arch: x86_64
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
+            kind: manylinux
             arch: aarch64
 #          - runner: ubuntu-20.04
+#            kind: manylinux
 #            arch: x86_64
+          - runner: macos-13
+            kind: macosx
+            arch: x86_64
+          - runner: macos-14
+            kind: macosx
+            arch: arm64
     permissions:
       id-token: write
       contents: read
@@ -62,16 +71,29 @@ jobs:
         run: |
           mv NOTICE_DEFAULT THIRD-PARTY-LICENSES
 
+      # actions/setup-python requires /Users/runner/hostedtoolcache to exist to work properly
+      # with macosx due to fixed shared library path
+      # https://github.com/actions/setup-python/blob/main/docs/advanced-usage.md#macos
+      - name: Create hostedtoolcache dir for macosx
+        if: ${{ matrix.builder.kind == 'macosx' }}
+        run: |
+          mkdir -p /Users/runner/hostedtoolcache
+
       # actions/setup-python doesn't yet support ARM
       # https://github.com/actions/setup-python/issues/678
-      - if: ${{ matrix.builder.arch != 'aarch64' }}
-        uses: actions/setup-python@v4
+      - name: Setup Python
+        if: ${{ matrix.builder.arch != 'aarch64' }}
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install pipx
         run: |
-          python -m pip install --upgrade pipx 
+          which python
+          which pip
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade pipx
+          python -m pipx ensurepath
 
       # Run cibuildwheel manually, as the current runner uses setup-python
       # https://github.com/pypa/cibuildwheel/issues/1623
@@ -80,7 +102,7 @@ jobs:
           cibuildwheel
           "s3torchconnectorclient"
           --output-dir "wheelhouse"
-          --only "${{ matrix.build_prefix }}-manylinux_${{ matrix.builder.arch }}"
+          --only "${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}"
           2>&1
         shell: bash
 
