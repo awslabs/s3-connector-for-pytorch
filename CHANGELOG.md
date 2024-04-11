@@ -1,22 +1,27 @@
-## Unreleased
+## v1.2.3 (April 11, 2024)
 
 ### New features
-* Update S3ClientConfig to pass in the configuration for allowing unsigned requests, under boolean flag `unsigned`.
-* Improve the performance of `s3reader` when utilized with `pytorch.load` by incorporating support for the `readinto` method.
-* Add support for passing an optional custom endpoint to S3LightningCheckpoint constructor method.
+* Update `S3ClientConfig` to pass in the configuration for allowing unsigned requests, under boolean flag `unsigned`.
+* Improve the performance of `S3Reader` when utilized with `pytorch.load` by incorporating support for the `readinto` method.
+* **[Experimental]** Add support for passing an optional custom endpoint to `S3LightningCheckpoint` constructor method.
 
+### Breaking changes
+* No breaking changes.
 
 ## v1.2.2 (March 22, 2024)
 
 ### New features
-* Expose a new class, S3ClientConfig, with `throughput_target_gbps` and `part_size` parameters of the inner S3 client.
+* Expose a new class, `S3ClientConfig`, with `throughput_target_gbps` and `part_size` parameters of the inner S3 client.
+
+### Breaking changes
+* No breaking changes.
 
 ## v1.2.1 (March 14, 2024)
 
 ### Breaking changes
 * Separate completely Rust logs and Python logs. Logs from Rust components used for debugging purposes 
-are configured through the following environment variables: S3_TORCH_CONNECTOR_DEBUG_LOGS, 
-S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
+are configured through the following environment variables: `S3_TORCH_CONNECTOR_DEBUG_LOGS`, 
+`S3_TORCH_CONNECTOR_LOGS_DIR_PATH`.
 
 ## v1.2.0 (March 13, 2024)
 
@@ -72,7 +77,8 @@ S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
 
 ### New features
 * Update crates and Mountpoint dependencies.
-* Avoid excessive memory consumption when utilizing s3map_dataset. Issue [#89](https://github.com/awslabs/s3-connector-for-pytorch/issues/89).
+* Avoid excessive memory consumption when utilizing `S3MapDataset`. 
+Issue [#89](https://github.com/awslabs/s3-connector-for-pytorch/issues/89).
 * Run all tests against S3 and S3 Express.
 
 ### Breaking changes
@@ -92,10 +98,10 @@ S3_TORCH_CONNECTOR_LOGS_DIR_PATH.
 * The Amazon S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access and store data in Amazon S3.
 
 ### New features
-* S3IterableDataset and S3MapDataset, which allow building either an iterable-style or map-style dataset, using your S3
+* `S3IterableDataset` and `S3MapDataset`, which allow building either an iterable-style or map-style dataset, using your S3
 stored data, by specifying an S3 URI (a bucket and optional prefix) and the region the bucket is in.
 * Support for multiprocess data loading for the above datasets.
-* S3Checkpoint, an interface for saving and loading model checkpoints directly to and from an S3 bucket.
+* `S3Checkpoint`, an interface for saving and loading model checkpoints directly to and from an S3 bucket.
 
 ### Breaking changes
 * No breaking changes.
