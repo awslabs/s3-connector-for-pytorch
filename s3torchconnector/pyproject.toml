@@ -22,7 +22,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "torch >= 2.0.1",
+    #TODO: Remove torch != 2.3.0 restriction when https://github.com/pytorch/data/issues/1244 is fixed
+    "torch >= 2.0.1, != 2.3.0",
     "s3torchconnectorclient >= 1.2.3",
 ]
 
