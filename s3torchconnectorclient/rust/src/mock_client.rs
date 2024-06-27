@@ -43,7 +43,7 @@ impl PyMockClient {
         unsigned: bool,
     ) -> PyMockClient {
         let unordered_list_seed: Option<u64> = None;
-        let config = MockClientConfig { bucket, part_size, unordered_list_seed };
+        let config = MockClientConfig { bucket, part_size, unordered_list_seed, ..Default::default() };
         let mock_client = Arc::new(MockClient::new(config));
 
         PyMockClient {

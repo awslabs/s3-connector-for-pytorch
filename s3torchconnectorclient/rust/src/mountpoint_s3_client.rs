@@ -176,7 +176,7 @@ impl MountpointS3Client {
     ) -> Self
     where
         Client: Sync + Send + 'static,
-        <Client as ObjectClient>::GetObjectResult: Unpin + Sync,
+        <Client as ObjectClient>::GetObjectRequest: Unpin + Sync,
         <Client as ObjectClient>::PutObjectRequest: Sync,
     {
         Self {
