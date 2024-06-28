@@ -163,7 +163,7 @@ impl MountpointS3Client {
 
 #[allow(clippy::too_many_arguments)]
 impl MountpointS3Client {
-    pub(crate) fn new<Client: ObjectClient>(
+    pub(crate) fn new<Client>(
         region: String,
         user_agent_prefix: String,
         throughput_target_gbps: f64,
@@ -175,8 +175,8 @@ impl MountpointS3Client {
         endpoint: Option<String>,
     ) -> Self
     where
-        Client: Sync + Send + 'static,
-        <Client as ObjectClient>::GetObjectResult: Unpin + Sync,
+        Client: ObjectClient + Sync + Send + 'static,
+        <Client as ObjectClient>::GetObjectRequest: Unpin + Sync,
         <Client as ObjectClient>::PutObjectRequest: Sync,
     {
         Self {

@@ -57,7 +57,7 @@ impl<T: ObjectClient> MountpointS3ClientInnerImpl<T> {
 impl<Client> MountpointS3ClientInner for MountpointS3ClientInnerImpl<Client>
 where
     Client: ObjectClient,
-    <Client as ObjectClient>::GetObjectResult: Sync + Send + Unpin + 'static,
+    <Client as ObjectClient>::GetObjectRequest: Sync + Unpin + 'static,
     <Client as ObjectClient>::PutObjectRequest: Sync + 'static,
 {
     fn get_object(&self, py: Python, bucket: String, key: String) -> PyResult<GetObjectStream> {

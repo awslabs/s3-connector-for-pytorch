@@ -658,9 +658,9 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "mountpoint-s3-client"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "322418903003c4d58baf36a049d6281f967d9e23b2daf51d51e2a68ea817db48"
+checksum = "e9a8f51eac69f2d4ebb69f89327798605c48922d92a320588356d475b2d4b783"
 dependencies = [
  "async-io",
  "async-lock",
@@ -693,9 +693,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be1226c7cec848a8ccdfc4ad1014c0e39b54f27b0b44029579b5a6a5943f483e"
+checksum = "b85431534bac19718eb53447d708d233b31e502c02174b13191a2560e0685926"
 dependencies = [
  "async-channel",
  "futures",
@@ -709,9 +709,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt-sys"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce60f488399cdf2d62af4c90f38042cfa58116fc2574965e44c25eabe06e55f9"
+checksum = "a44b7d483f0a9096502881b50a099c48f0e0e2da5615d1fdc76db999dfd69e78"
 dependencies = [
  "bindgen",
  "cc",

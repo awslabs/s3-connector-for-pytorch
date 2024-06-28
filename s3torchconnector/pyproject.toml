@@ -22,8 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    #TODO: Remove torch != 2.3.0 restriction when https://github.com/pytorch/data/issues/1244 is fixed
-    "torch >= 2.0.1, != 2.3.0",
+    "torch >= 2.0.1",
     "s3torchconnectorclient >= 1.2.3",
 ]
 
@@ -42,7 +41,7 @@ e2e = [
     "torchvision",
     "Pillow",
     "boto3",
-    "numpy",
+    "numpy < 2",
     "pytest-xdist"
 ]
 
