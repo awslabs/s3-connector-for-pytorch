@@ -41,7 +41,7 @@ e2e = [
     "torchvision",
     "Pillow",
     "boto3",
-    "numpy < 2",
+    "numpy < 3",
     "pytest-xdist"
 ]
 
