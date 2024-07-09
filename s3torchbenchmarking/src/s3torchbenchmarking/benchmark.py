@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import Optional, List
 
 import hydra
-import torchdata
+import torchdata  # type: ignore
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
-from torchdata.datapipes.utils import StreamWrapper
+from torchdata.datapipes.utils import StreamWrapper  # type: ignore
 
 from .lightning_benchmark import run_lightning_experiment
 from .models import (
@@ -23,7 +23,7 @@ from .models import (
     ModelInterface,
 )
 from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
-from s3torchconnector._s3dataset_common import parse_s3_uri
+from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
 
 
@@ -85,7 +85,7 @@ class DatasetSharding(Enum):
 def make_mountpoint(
     prefix_uri: str,
     mountpoint_path: Optional[str] = None,
-    additional_args: List[str] = None,
+    additional_args: Optional[List[str]] = None,
 ) -> str:
     def teardown(path: str):
         subprocess.run(["sudo", "umount", path])
@@ -106,16 +106,20 @@ def make_mountpoint(
 def make_dataset(
     kind: str,
     sharding: Optional[DatasetSharding],
-    prefix_uri: Optional[str],
+    prefix_uri: str,
     region: Optional[str],
     load_sample,
     num_workers: int,
 ):
     if kind == "s3iterabledataset":
+        if not region:
+            raise ValueError("Must provide region for s3iterabledataset")
         return create_s3_iterable_dataset(
             sharding, prefix_uri, region, load_sample, num_workers
         )
     elif kind == "s3mapdataset":
+        if not region:
+            raise ValueError("Must provide region for s3mapdataset")
         return create_s3_map_dataset(sharding, prefix_uri, region, load_sample)
     elif kind == "fsspec":
         return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)

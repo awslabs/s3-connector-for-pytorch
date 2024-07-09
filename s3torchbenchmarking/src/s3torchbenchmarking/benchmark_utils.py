@@ -7,19 +7,19 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
 from json import JSONEncoder
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import numpy as np
 import psutil
 import torch.cuda
 from PIL import Image
-from pynvml import (
+from pynvml import (  # type: ignore
     nvmlInit,
     nvmlDeviceGetUtilizationRates,
     nvmlDeviceGetHandleByIndex,
     nvmlDeviceGetMemoryInfo,
 )
-from torchvision.transforms import v2
+from torchvision.transforms import v2  # type: ignore
 
 monitor_gpu = False
 if torch.cuda.is_available():
@@ -68,8 +68,8 @@ class Distribution:
 class ExperimentResult:
     elapsed_time: float
     volume: int
-    checkpoint_times: Distribution = None
-    utilization: Dict[str, Distribution] = None
+    checkpoint_times: Optional[Distribution] = None
+    utilization: Optional[Dict[str, Distribution]] = None
 
     @cached_property
     def throughput(self):
@@ -104,12 +104,19 @@ class ExperimentResult:
 class ExperimentResultJsonEncoder(JSONEncoder):
     def default(self, o: Any) -> Any:
         if isinstance(o, ExperimentResult):
-            o: ExperimentResult = o
+            result: ExperimentResult = o
+            utilization: Optional[Dict[str, Distribution]] = result.utilization
+            if utilization is not None:
+                summarized_utilization = {
+                    k: v.summarize() for k, v in utilization.items()
+                }
+            else:
+                summarized_utilization = {}
             return {
-                "volume": o.volume,
-                "elapsed_time": o.elapsed_time,
-                "throughput": o.throughput,
-                "utilization": {k: v.summarize() for k, v in o.utilization.items()},
+                "volume": result.volume,
+                "elapsed_time": result.elapsed_time,
+                "throughput": result.throughput,
+                "utilization": summarized_utilization,
             }
         return super().default(o)
 
@@ -124,7 +131,9 @@ class ResourceMonitor:
         self, sleep_time_s: float = 0.05, gpu_device: int = 0, chunk_size: int = 25_000
     ):
         self.monitor_thread = None
-        self._utilization = defaultdict(lambda: Distribution(chunk_size))
+        self._utilization: Dict[str, Distribution] = defaultdict(
+            lambda: Distribution(chunk_size)
+        )
         self.stop_event = threading.Event()
         self.sleep_time_s = sleep_time_s
         self.gpu_device = gpu_device

@@ -7,15 +7,15 @@ from lightning.pytorch import callbacks
 from lightning.pytorch.strategies import SingleDeviceStrategy
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
-from torchdata.datapipes.iter import IterableWrapper
-from transformers import CLIPModel, AutoModelForSeq2SeqLM
+from torchdata.datapipes.iter import IterableWrapper  # type: ignore
+from transformers import CLIPModel, AutoModelForSeq2SeqLM  # type: ignore
 from transformers import ViTForImageClassification, AutoModelForSpeechSeq2Seq
 
 from .benchmark_utils import ResourceMonitor, Distribution
 from .lightning_utils.checkpoint_profiler import CheckpointProfiler
 from .models import LightningAdapter
-from s3torchconnector._s3dataset_common import parse_s3_uri
-from s3torchconnector.lightning import S3LightningCheckpoint
+from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
+from s3torchconnector.lightning import S3LightningCheckpoint  # type: ignore
 
 
 def run_lightning_experiment(config: DictConfig):

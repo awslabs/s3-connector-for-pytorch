@@ -8,8 +8,8 @@ from omegaconf import DictConfig, OmegaConf
 
 
 class ResultCollatingCallback(Callback):
-    def __init__(self):
-        self.multirun_dir = Optional[Path]
+    def __init__(self) -> None:
+        self.multirun_dir: Optional[Path] = None
         self.job_returns: List[JobReturn] = []
 
     def on_job_end(
@@ -22,6 +22,8 @@ class ResultCollatingCallback(Callback):
         self.job_returns.append(job_return)
         self.multirun_dir = Path(
             job_return.hydra_cfg["hydra"]["runtime"]["output_dir"]
+            if job_return.hydra_cfg
+            else ""
         ).parent
 
     def on_multirun_end(self, config: DictConfig, **kwargs: Any) -> None:
@@ -34,11 +36,15 @@ class ResultCollatingCallback(Callback):
         for job_return in self.job_returns:
             job_output_dir = Path(
                 job_return.hydra_cfg["hydra"]["runtime"]["output_dir"]
+                if job_return.hydra_cfg
+                else "."
             )
             job_result_path = job_output_dir / "result.json"
             with open(job_result_path) as infile:
                 item = {
-                    "job_id": job_return.hydra_cfg["hydra"]["job"]["id"],
+                    "job_id": job_return.hydra_cfg["hydra"]["job"]["id"]
+                    if job_return.hydra_cfg
+                    else "",
                     "cfg": OmegaConf.to_container(job_return.cfg),
                     "result": json.load(infile),
                 }
@@ -46,7 +52,11 @@ class ResultCollatingCallback(Callback):
         return collated_results
 
     def _write_results(self, collated_results: List) -> Path:
-        results_path = self.multirun_dir / "collated_results.json"
+        results_path = (
+            self.multirun_dir
+            if self.multirun_dir
+            else Path(".") / "collated_results.json"
+        )
         with open(results_path, "w") as outfile:
             json.dump(collated_results, outfile)
 

@@ -11,15 +11,15 @@ from typing import Optional, Any, Tuple, Union
 import lightning as L
 import torch
 import torch.nn as nn
-import torchdata
+import torchdata  # type: ignore
 from PIL import Image
 from lightning.pytorch import callbacks
 from lightning.pytorch.strategies import SingleDeviceStrategy
 from omegaconf import DictConfig
 from s3torchconnector import S3Reader, S3Checkpoint, S3IterableDataset
 from torch.utils.data.dataloader import DataLoader
-from torchvision.transforms import v2
-from transformers import ViTForImageClassification
+from torchvision.transforms import v2  # type: ignore
+from transformers import ViTForImageClassification  # type: ignore
 
 from .benchmark_utils import (
     ExperimentResult,
@@ -29,7 +29,7 @@ from .benchmark_utils import (
 )
 from .lightning_utils.checkpoint_profiler import CheckpointProfiler
 from .lightning_utils.sample_counter import SampleCounter
-from s3torchconnector.lightning import S3LightningCheckpoint
+from s3torchconnector.lightning import S3LightningCheckpoint  # type: ignore
 
 
 class ModelInterface(metaclass=abc.ABCMeta):
@@ -83,7 +83,7 @@ class Entitlement(ModelInterface):
     object data from S3, so that we may identify the max achievable throughput for a given dataset.
     """
 
-    def __init__(self, num_labels: int = None):
+    def __init__(self, num_labels: Optional[int] = None):
         super().__init__()
         self.num_labels = num_labels
 
@@ -163,6 +163,7 @@ class ViT(ModelInterface):
             and (batch_idx + 1) % self.checkpoint.save_one_in == 0
         ):
             return self.save(batch_idx=batch_idx + 1)
+        return None
 
     def save(self, batch_idx: int):
         destination = self.checkpoint.destination
@@ -244,8 +245,8 @@ class LightningAdapter(ModelInterface):
             training_time = end_time - start_time
 
         return ExperimentResult(
-            training_time=training_time,
-            num_samples=sample_counting_cb.count,
+            elapsed_time=training_time,
+            volume=sample_counting_cb.count,
             checkpoint_times=profiling_checkpointer.save_times,
             utilization=monitor.resource_data,
         )
