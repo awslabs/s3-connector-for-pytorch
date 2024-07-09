@@ -7,38 +7,46 @@ import subprocess
 import tempfile
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Optional, List
 
 import hydra
 import torchdata
 from hydra.core.hydra_config import HydraConfig
-from hydra.experimental.callback import Callback
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper
 
+from .lightning_benchmark import run_lightning_experiment
+from .models import (
+    Entitlement,
+    ViT,
+    ModelInterface,
+)
 from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
-from .models import Entitlement, ViT, ModelInterface
 
 
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig):
-    model = make_model(config)
-    dataset = make_dataset(
-        kind=config.dataloader.kind,
-        sharding=DatasetSharding.from_conf(config.dataset),
-        prefix_uri=config.dataset.prefix_uri,
-        region=config.dataset.region,
-        load_sample=model.load_sample,
-        num_workers=config.dataloader.num_workers,
-    )
-    dataloader = make_dataloader(
-        dataset=dataset,
-        num_workers=config.dataloader.num_workers,
-        batch_size=config.dataloader.batch_size,
-    )
+    if config.training.kind == "lightning":
+        run_lightning_experiment(config)
+        return
+    else:
+        model = make_model(config)
+        dataset = make_dataset(
+            kind=config.dataloader.kind,
+            sharding=DatasetSharding.from_conf(config.dataset),
+            prefix_uri=config.dataset.get("prefix_uri"),
+            region=config.dataset.get("region"),
+            load_sample=model.load_sample,
+            num_workers=config.dataloader.num_workers,
+        )
+        dataloader = make_dataloader(
+            dataset=dataset,
+            num_workers=config.dataloader.num_workers,
+            batch_size=config.dataloader.batch_size,
+        )
 
     result = model.train(dataloader, config.training.max_epochs)
     root_config = HydraConfig.get()
@@ -98,8 +106,8 @@ def make_mountpoint(
 def make_dataset(
     kind: str,
     sharding: Optional[DatasetSharding],
-    prefix_uri: str,
-    region: str,
+    prefix_uri: Optional[str],
+    region: Optional[str],
     load_sample,
     num_workers: int,
 ):

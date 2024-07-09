@@ -12,12 +12,14 @@ from typing import Dict, Any
 import numpy as np
 import psutil
 import torch.cuda
+from PIL import Image
 from pynvml import (
     nvmlInit,
     nvmlDeviceGetUtilizationRates,
     nvmlDeviceGetHandleByIndex,
     nvmlDeviceGetMemoryInfo,
 )
+from torchvision.transforms import v2
 
 monitor_gpu = False
 if torch.cuda.is_available():
@@ -46,7 +48,7 @@ class Distribution:
     def summarize(self) -> dict:
         window = self._values[: self._idx]
         if window.size == 0:
-            return
+            return {}
         return {
             "n": window.size,
             "mean": round(float(window.mean()), self.precision),
@@ -57,21 +59,46 @@ class Distribution:
             "max": round(np.percentile(window, 100), self.precision),
         }
 
-    def __repr__(self):
-        summary_str = json.dumps(self.summarize())
+    def __str__(self):
+        summary_str = json.dumps(self.summarize(), indent=2)
         return "Distribution({0})".format(summary_str)
 
 
-@dataclass(frozen=True)
+@dataclass(repr=False)
 class ExperimentResult:
     elapsed_time: float
-    volume: float
+    volume: int
     checkpoint_times: Distribution = None
     utilization: Dict[str, Distribution] = None
 
     @cached_property
     def throughput(self):
         return self.volume / self.elapsed_time
+
+    @cached_property
+    def summarized_utilization(self):
+        summary = {}
+        for k, v in self.utilization.items():
+            summary[k] = v.summarize()
+
+        return json.dumps(summary, indent=2)
+
+    def __str__(self):
+        return (
+            "ExperimentResult["
+            "\n\ttraining_time: {0:.4f} seconds"
+            "\n\tthroughput: {1:.4f} samples/second"
+            "\n\tutilization:"
+            "\n\t\t{2}"
+            "\n\tcheckpoint_times:"
+            "\n\t\t{3}"
+            "\n]".format(
+                self.training_time,
+                self.throughput,
+                self.summarized_utilization,
+                self.checkpoint_times,
+            )
+        )
 
 
 class ExperimentResultJsonEncoder(JSONEncoder):
@@ -139,3 +166,20 @@ class ResourceMonitor:
     def stop(self):
         self.stop_event.set()
         self.monitor_thread.join()
+
+
+class Transforms:
+    IMG_TRANSFORMS = v2.Compose(
+        [
+            v2.ToImage(),
+            v2.ToDtype(torch.uint8, scale=True),
+            v2.RandomResizedCrop((224, 224), antialias=True),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
+    @staticmethod
+    def transform_image(data):
+        img = Image.open(data)
+        return Transforms.IMG_TRANSFORMS(img)
