@@ -130,13 +130,8 @@ class Utils:
 
     @staticmethod
     def write_dataset_config(disambiguator: str, dataset_cfg: Dict[str, Any]):
-        file_path = os.path.realpath(__file__)
-        cfg_path = (
-            Path(file_path).parent.parent.parent
-            / "conf"
-            / "dataset"
-            / f"{disambiguator}.yaml"
-        )
+        current_dir = os.getcwd()
+        cfg_path = Path(current_dir) / "conf" / "dataset" / f"{disambiguator}.yaml"
         with open(cfg_path, "w") as outfile:
             yaml.dump(dataset_cfg, outfile, default_flow_style=False)
             click.echo(f"Dataset Configuration created at: {cfg_path}")
