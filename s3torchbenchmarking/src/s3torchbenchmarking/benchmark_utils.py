@@ -85,7 +85,7 @@ class ExperimentResult:
             "\n\tcheckpoint_times:"
             "\n\t\t{3}"
             "\n]".format(
-                self.training_time,
+                self.elapsed_time,
                 self.throughput,
                 self.summarized_utilization,
                 self.checkpoint_times,
