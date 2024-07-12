@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from json import JSONEncoder
 from typing import Dict, Any, Optional
+from collections import deque
 
 import numpy as np
 import psutil
@@ -30,27 +31,18 @@ if torch.cuda.is_available():
 class Distribution:
     def __init__(self, initial_capacity: int, precision: int = 4):
         self.initial_capacity = initial_capacity
-        self._values = np.zeros(shape=initial_capacity, dtype=np.float32)
-        self._idx = 0
+        self._values = deque(maxlen=None)
         self.precision = precision
 
-    def _expand_if_needed(self):
-        if self._idx > self._values.size - 1:
-            self._values = np.concatenate(
-                self._values, np.zeros(self.initial_capacity, dtype=np.float32)
-            )
-
     def add(self, val: float):
-        self._expand_if_needed()
-        self._values[self._idx] = val
-        self._idx += 1
+        self._values.append(val)
 
     def summarize(self) -> dict:
-        window = self._values[: self._idx]
-        if window.size == 0:
+        if not self._values:
             return {}
+        window = np.array(self._values)
         return {
-            "n": window.size,
+            "n": len(window),
             "mean": round(float(window.mean()), self.precision),
             "min": round(np.percentile(window, 0), self.precision),
             "p50": round(np.percentile(window, 50), self.precision),
