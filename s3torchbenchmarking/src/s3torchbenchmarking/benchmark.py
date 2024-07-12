@@ -29,9 +29,8 @@ from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
 
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig):
-    if config.training.kind == "lightning":
-        run_lightning_experiment(config)
-        return
+    if config.training.get("kind") and config.training.kind == "lightning":
+        result = run_lightning_experiment(config)
     else:
         model = make_model(config)
         dataset = make_dataset(
@@ -48,7 +47,7 @@ def run_experiment(config: DictConfig):
             batch_size=config.dataloader.batch_size,
         )
 
-    result = model.train(dataloader, config.training.max_epochs)
+        result = model.train(dataloader, config.training.max_epochs)
     root_config = HydraConfig.get()
     output_dir = root_config.runtime.output_dir
     job_result_path = write_result(result, Path(output_dir))

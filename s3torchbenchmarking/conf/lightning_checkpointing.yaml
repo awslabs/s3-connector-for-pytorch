@@ -2,6 +2,8 @@ defaults:
   - _self_
   - training: lightning
   - checkpoint: ???
+  - /hydra/callbacks:
+    - collate_results
 
 hydra:
   mode: MULTIRUN

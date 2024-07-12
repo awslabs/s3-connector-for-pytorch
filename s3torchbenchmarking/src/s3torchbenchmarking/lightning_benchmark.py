@@ -79,10 +79,11 @@ def run_lightning_experiment(config: DictConfig):
     print(f"{model_size=}")
     print(f"{save_times=!s}")
     print(f"{throughput_stats_pretty=!s}")
-    # utilization_summary = json.dumps(
-    #     {k: v.summarize() for k, v in monitor.resource_data.items()}, indent=2
-    # )
-    # print(f"{utilization_summary=!s}")
+    utilization_summary = json.dumps(
+        {k: v.summarize() for k, v in monitor.resource_data.items()}, indent=2
+    )
+    print(f"{utilization_summary=!s}")
+    return throughput_stats
 
 
 def build_checkpoint_path(uri: str, suffix: str) -> str:
@@ -114,6 +115,8 @@ def calculate_throughput(save_times: Distribution, model_size: float) -> dict:
         "p90": "p10",
         "p75": "p25",
         "mean": "mean",
+        "model_size": model_size,
+        "save_times": save_times,
     }
     return {
         latency_throughput_stat_map.get(stat, stat): "{:.3f}MB/s".format(
