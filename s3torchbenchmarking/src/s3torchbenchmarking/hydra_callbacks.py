@@ -1,4 +1,5 @@
 import json
+import os.path
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -39,7 +40,7 @@ class ResultCollatingCallback(Callback):
                 if job_return.hydra_cfg
                 else "."
             )
-            job_result_path = job_output_dir / "result.json"
+            job_result_path = os.path.join(job_output_dir, "result.json")
             with open(job_result_path) as infile:
                 item = {
                     "job_id": job_return.hydra_cfg["hydra"]["job"]["id"]
@@ -52,12 +53,11 @@ class ResultCollatingCallback(Callback):
         return collated_results
 
     def _write_results(self, collated_results: List) -> Path:
-        results_path = (
-            self.multirun_dir
-            if self.multirun_dir
-            else Path(".") / "collated_results.json"
+        results_path = os.path.join(
+            self.multirun_dir if self.multirun_dir else Path("."),
+            "collated_results.json",
         )
         with open(results_path, "w") as outfile:
             json.dump(collated_results, outfile)
 
-        return results_path
+        return Path(results_path)
