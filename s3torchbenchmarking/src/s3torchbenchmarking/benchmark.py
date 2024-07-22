@@ -123,7 +123,13 @@ def make_dataset(
     elif kind == "fsspec":
         return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
     elif kind == "mountpoint":
-        return create_mountpoint_dataset(sharding, prefix_uri, load_sample, num_workers)
+        return create_mountpoint_dataset(
+            sharding, prefix_uri, load_sample, num_workers, False
+        )
+    elif kind == "mountpointcache":
+        return create_mountpoint_dataset(
+            sharding, prefix_uri, load_sample, num_workers, True
+        )
     else:
         raise Exception(f"unknown dataset kind {kind}")
 
@@ -159,9 +165,17 @@ def create_s3_map_dataset(
 
 
 def create_mountpoint_dataset(
-    sharding: Optional[DatasetSharding], prefix_uri: str, load_sample, num_workers: int
+    sharding: Optional[DatasetSharding],
+    prefix_uri: str,
+    load_sample,
+    num_workers: int,
+    use_cache: bool,
 ):
-    prefix_uri = make_mountpoint(prefix_uri=prefix_uri)
+    arguments = []
+    if use_cache:
+        cache_dir = tempfile.mkdtemp(prefix="s3mp_cache_")
+        arguments = ["--cache", cache_dir]
+    prefix_uri = make_mountpoint(prefix_uri=prefix_uri, additional_args=arguments)
     # TODO: compare the performance of using torchdata file APIs and use the more performant option.
     return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
 
