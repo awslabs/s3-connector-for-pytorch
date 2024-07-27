@@ -33,8 +33,11 @@ INVALID_ENDPOINT = "INVALID"
         ("multipart", b"The quick brown fox jumps over the lazy dog.", 2),
     ],
 )
-def test_get_object(key: str, data: bytes, part_size: int):
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, part_size=part_size)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object(key: str, data: bytes, part_size: int, force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, part_size=part_size, force_path_style=force_path_style
+    )
     mock_client.add_object(key, data)
     client = mock_client.create_mocked_client()
 
@@ -45,8 +48,11 @@ def test_get_object(key: str, data: bytes, part_size: int):
     assert returned_data == data
 
 
-def test_get_object_part_size():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, part_size=2)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_part_size(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, part_size=2, force_path_style=force_path_style
+    )
     mock_client.add_object("key", b"1234567890")
     client = mock_client.create_mocked_client()
 
@@ -62,32 +68,44 @@ def test_get_object_part_size():
         assert stream.tell() == expected_position
 
 
-def test_get_object_bad_bucket():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_bad_bucket(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.get_object("does_not_exist", "foo")
 
 
-def test_get_object_none_bucket():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_none_bucket(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     with pytest.raises(TypeError):
         client.get_object(None, "foo")
 
 
-def test_get_object_bad_object():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_bad_object(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     with pytest.raises(S3Exception, match="Service error: The key does not exist"):
         client.get_object(MOCK_BUCKET, "does_not_exist")
 
 
-def test_get_object_iterates_once():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_iterates_once(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     mock_client.add_object("key", b"data")
     client = mock_client.create_mocked_client()
 
@@ -101,8 +119,11 @@ def test_get_object_iterates_once():
     assert returned_data == b""
 
 
-def test_get_object_throws_stop_iteration():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_throws_stop_iteration(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     mock_client.add_object("key", b"data")
     client = mock_client.create_mocked_client()
 
@@ -125,8 +146,11 @@ def test_get_object_throws_stop_iteration():
         (set()),
     ],
 )
-def test_list_objects(expected_keys: Set[str]):
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_list_objects(expected_keys: Set[str], force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     for key in expected_keys:
         mock_client.add_object(key, b"")
     client = mock_client.create_mocked_client()
@@ -151,8 +175,13 @@ def test_list_objects(expected_keys: Set[str]):
         ("test", set(), set()),
     ],
 )
-def test_list_objects_with_prefix(prefix: str, keys: Set[str], expected_keys: Set[str]):
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_list_objects_with_prefix(
+    prefix: str, keys: Set[str], expected_keys: Set[str], force_path_style: bool
+):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     for key in keys:
         mock_client.add_object(key, b"")
     client = mock_client.create_mocked_client()
@@ -174,8 +203,11 @@ def test_list_objects_with_prefix(prefix: str, keys: Set[str], expected_keys: Se
         (b"", 2000),
     ],
 )
-def test_put_object(data_to_write: bytes, part_size: int):
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, part_size=part_size)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_put_object(data_to_write: bytes, part_size: int, force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, part_size=part_size, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     put_stream = client.put_object(MOCK_BUCKET, "key")
@@ -188,8 +220,11 @@ def test_put_object(data_to_write: bytes, part_size: int):
     assert b"".join(get_stream) == data_to_write
 
 
-def test_put_object_overwrite():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_put_object_overwrite(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     mock_client.add_object("key", b"before")
     client = mock_client.create_mocked_client()
 
@@ -203,8 +238,11 @@ def test_put_object_overwrite():
     assert b"".join(get_stream) == b"after"
 
 
-def test_put_object_no_multiple_close():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_put_object_no_multiple_close(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     put_stream = client.put_object(MOCK_BUCKET, "key")
@@ -216,8 +254,11 @@ def test_put_object_no_multiple_close():
         put_stream.close()
 
 
-def test_put_object_no_write_after_close():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_put_object_no_write_after_close(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     put_stream = client.put_object(MOCK_BUCKET, "key")
@@ -229,8 +270,11 @@ def test_put_object_no_write_after_close():
         put_stream.write(b"")
 
 
-def test_put_object_with_storage_class():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_put_object_with_storage_class(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     put_stream = client.put_object(MOCK_BUCKET, "key", "STANDARD_IA")
@@ -247,6 +291,7 @@ def test_mountpoint_client_pickles():
     expected_region = REGION
     expected_part_size = 5 * 2**20
     expected_throughput_target_gbps = 3.5
+    expected_force_path_style = True
 
     client = MountpointS3Client(
         region=expected_region,
@@ -255,6 +300,7 @@ def test_mountpoint_client_pickles():
         throughput_target_gbps=expected_throughput_target_gbps,
         profile=expected_profile,
         unsigned=expected_unsigned,
+        force_path_style=expected_force_path_style,
     )
     dumped = pickle.dumps(client)
     loaded = pickle.loads(dumped)
@@ -272,6 +318,9 @@ def test_mountpoint_client_pickles():
     )
     assert client.profile == loaded.profile == expected_profile
     assert client.unsigned == loaded.unsigned == expected_unsigned
+    assert (
+        client.force_path_style == loaded.force_path_style == expected_force_path_style
+    )
 
 
 @pytest.mark.parametrize(
@@ -283,12 +332,18 @@ def test_mountpoint_client_pickles():
         ("https://us-east-1.amazonaws.com", "https://us-east-1.amazonaws.com"),
     ],
 )
+@pytest.mark.parametrize("force_path_style", [False, True])
 def test_mountpoint_client_creation_with_region_and_endpoint(
-    endpoint: Optional[str], expected: Optional[str]
+    endpoint: Optional[str],
+    expected: Optional[str],
+    force_path_style: bool,
 ):
-    client = MountpointS3Client(region=REGION, endpoint=endpoint)
+    client = MountpointS3Client(
+        region=REGION, endpoint=endpoint, force_path_style=force_path_style
+    )
     assert isinstance(client, MountpointS3Client)
     assert client.endpoint == expected
+    assert client.force_path_style == force_path_style
 
 
 def test_mountpoint_client_creation_with_region_and_invalid_endpoint():
@@ -303,9 +358,12 @@ def test_mountpoint_client_creation_with_region_and_invalid_endpoint():
     )
 
 
-def test_delete_object():
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_delete_object(force_path_style: bool):
     key = "hello_world.txt"
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     mock_client.add_object(key, b"data")
     client = mock_client.create_mocked_client()
 
@@ -315,15 +373,19 @@ def test_delete_object():
         client.get_object(MOCK_BUCKET, key)
 
 
-def test_delete_object_already_deleted():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_delete_object_already_deleted(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     client.delete_object(MOCK_BUCKET, "hello_world.txt")
 
 
-def test_delete_object_non_existent_bucket():
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_delete_object_non_existent_bucket(force_path_style: bool):
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, force_path_style)
     client = mock_client.create_mocked_client()
 
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):

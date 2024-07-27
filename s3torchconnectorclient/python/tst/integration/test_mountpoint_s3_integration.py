@@ -33,8 +33,13 @@ HELLO_WORLD_DATA = b"Hello, World!\n"
 TEST_USER_AGENT_PREFIX = "integration-tests"
 
 
-def test_get_object(sample_directory: BucketPrefixFixture):
-    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object(sample_directory: BucketPrefixFixture, force_path_style: bool):
+    client = MountpointS3Client(
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     stream = client.get_object(
         sample_directory.bucket, f"{sample_directory.prefix}hello_world.txt"
     )
@@ -57,9 +62,14 @@ def test_get_object_with_endpoint(sample_directory: BucketPrefixFixture):
     assert full_data == HELLO_WORLD_DATA
 
 
-def test_get_object_with_unpickled_client(sample_directory: BucketPrefixFixture):
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_with_unpickled_client(
+    sample_directory: BucketPrefixFixture, force_path_style: bool
+):
     original_client = MountpointS3Client(
-        sample_directory.region, TEST_USER_AGENT_PREFIX
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
     )
     assert original_client.user_agent_prefix == TEST_USER_AGENT_PREFIX
     pickled_client = pickle.dumps(original_client)
@@ -73,8 +83,15 @@ def test_get_object_with_unpickled_client(sample_directory: BucketPrefixFixture)
     assert full_data == HELLO_WORLD_DATA
 
 
-def test_get_object_invalid_bucket(sample_directory: BucketPrefixFixture):
-    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_invalid_bucket(
+    sample_directory: BucketPrefixFixture, force_path_style: bool
+):
+    client = MountpointS3Client(
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         next(
             client.get_object(
@@ -83,8 +100,15 @@ def test_get_object_invalid_bucket(sample_directory: BucketPrefixFixture):
         )
 
 
-def test_get_object_invalid_prefix(sample_directory: BucketPrefixFixture):
-    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_get_object_invalid_prefix(
+    sample_directory: BucketPrefixFixture, force_path_style: bool
+):
+    client = MountpointS3Client(
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     with pytest.raises(S3Exception, match="Service error: The key does not exist"):
         next(
             client.get_object(
@@ -93,8 +117,13 @@ def test_get_object_invalid_prefix(sample_directory: BucketPrefixFixture):
         )
 
 
-def test_list_objects(image_directory: BucketPrefixFixture):
-    client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_list_objects(image_directory: BucketPrefixFixture, force_path_style: bool):
+    client = MountpointS3Client(
+        image_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     stream = client.list_objects(image_directory.bucket)
 
     object_infos = [object_info for page in stream for object_info in page.object_info]
@@ -107,8 +136,15 @@ def test_list_objects(image_directory: BucketPrefixFixture):
     assert keys > expected_img_10_keys
 
 
-def test_list_objects_with_prefix(image_directory: BucketPrefixFixture):
-    client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_list_objects_with_prefix(
+    image_directory: BucketPrefixFixture, force_path_style: bool
+):
+    client = MountpointS3Client(
+        image_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     stream = client.list_objects(image_directory.bucket, image_directory.prefix)
 
     object_infos = [object_info for page in stream for object_info in page.object_info]
@@ -120,8 +156,15 @@ def test_list_objects_with_prefix(image_directory: BucketPrefixFixture):
     assert keys == expected_img_10_keys
 
 
-def test_multi_list_requests_return_same_list(image_directory: BucketPrefixFixture):
-    client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_multi_list_requests_return_same_list(
+    image_directory: BucketPrefixFixture, force_path_style: bool
+):
+    client = MountpointS3Client(
+        image_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     stream = client.list_objects(image_directory.bucket, image_directory.prefix)
 
     object_infos = [object_info for page in stream for object_info in page.object_info]
@@ -148,11 +191,17 @@ def test_multi_list_requests_return_same_list(image_directory: BucketPrefixFixtu
         ),
     ],
 )
+@pytest.mark.parametrize("force_path_style", [False, True])
 def test_put_object(
-    filename: str, content: bytes, put_object_tests_directory: BucketPrefixFixture
+    filename: str,
+    content: bytes,
+    put_object_tests_directory: BucketPrefixFixture,
+    force_path_style: bool,
 ):
     client = MountpointS3Client(
-        put_object_tests_directory.region, TEST_USER_AGENT_PREFIX
+        put_object_tests_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
     )
     put_stream = client.put_object(
         put_object_tests_directory.bucket,
@@ -169,9 +218,14 @@ def test_put_object(
     assert b"".join(get_stream) == content
 
 
-def test_put_object_overwrite(put_object_tests_directory: BucketPrefixFixture):
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_put_object_overwrite(
+    put_object_tests_directory: BucketPrefixFixture, force_path_style: bool
+):
     client = MountpointS3Client(
-        put_object_tests_directory.region, TEST_USER_AGENT_PREFIX
+        put_object_tests_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
     )
 
     put_stream = client.put_object(
@@ -198,10 +252,15 @@ def test_put_object_overwrite(put_object_tests_directory: BucketPrefixFixture):
 
 
 @pytest.mark.parametrize("max_keys", {1, 4, 1000})
+@pytest.mark.parametrize("force_path_style", [False, True])
 def test_s3_list_object_with_continuation(
-    max_keys: int, image_directory: BucketPrefixFixture
+    max_keys: int, image_directory: BucketPrefixFixture, force_path_style: bool
 ):
-    client = MountpointS3Client(image_directory.region, TEST_USER_AGENT_PREFIX)
+    client = MountpointS3Client(
+        image_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     stream = client.list_objects(
         image_directory.bucket, prefix=image_directory.prefix, max_keys=max_keys
     )
@@ -240,13 +299,20 @@ def test_s3_list_object_with_continuation(
         ),
     ],
 )
+@pytest.mark.parametrize("force_path_style", [False, True])
 def test_put_object_mpu(
-    part_count: int, part_size: int, put_object_tests_directory: BucketPrefixFixture
+    part_count: int,
+    part_size: int,
+    put_object_tests_directory: BucketPrefixFixture,
+    force_path_style: bool,
 ):
     data_to_write = randbytes(part_count * part_size)
 
     client = MountpointS3Client(
-        put_object_tests_directory.region, TEST_USER_AGENT_PREFIX, part_size=part_size
+        put_object_tests_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        part_size=part_size,
+        force_path_style=force_path_style,
     )
 
     put_stream = client.put_object(
@@ -263,8 +329,13 @@ def test_put_object_mpu(
     assert b"".join(get_stream) == data_to_write
 
 
-def test_head_object(sample_directory: BucketPrefixFixture):
-    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_head_object(sample_directory: BucketPrefixFixture, force_path_style: bool):
+    client = MountpointS3Client(
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     object_info = client.head_object(
         sample_directory.bucket,
         f"{sample_directory.prefix}hello_world.txt",
@@ -283,8 +354,13 @@ def test_head_object(sample_directory: BucketPrefixFixture):
         assert object_info.etag == expected_etag
 
 
-def test_delete_object(sample_directory: BucketPrefixFixture):
-    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_delete_object(sample_directory: BucketPrefixFixture, force_path_style: bool):
+    client = MountpointS3Client(
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     client.delete_object(
         sample_directory.bucket,
         f"{sample_directory.prefix}hello_world.txt",
@@ -298,16 +374,30 @@ def test_delete_object(sample_directory: BucketPrefixFixture):
         )
 
 
-def test_delete_object_does_not_exist(empty_directory: BucketPrefixFixture):
-    client = MountpointS3Client(empty_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_delete_object_does_not_exist(
+    empty_directory: BucketPrefixFixture, force_path_style: bool
+):
+    client = MountpointS3Client(
+        empty_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     client.delete_object(
         empty_directory.bucket, f"{empty_directory.prefix}hello_world.txt"
     )
     # Assert no exception is thrown in case the object already doesn't exist - implicit
 
 
-def test_delete_object_invalid_bucket(empty_directory: BucketPrefixFixture):
-    client = MountpointS3Client(empty_directory.region, TEST_USER_AGENT_PREFIX)
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_delete_object_invalid_bucket(
+    empty_directory: BucketPrefixFixture, force_path_style: bool
+):
+    client = MountpointS3Client(
+        empty_directory.region,
+        TEST_USER_AGENT_PREFIX,
+        force_path_style=force_path_style,
+    )
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.delete_object(
             f"{empty_directory.bucket}-{uuid.uuid4()}", empty_directory.prefix
