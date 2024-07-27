@@ -38,6 +38,7 @@ class MockS3Client(S3Client):
             part_size=self.s3client_config.part_size,
             user_agent_prefix=self.user_agent_prefix,
             unsigned=self.s3client_config.unsigned,
+            force_path_style=self.s3client_config.force_path_style,
         )
 
     def add_object(self, key: str, data: bytes) -> None:

@@ -15,8 +15,10 @@ class S3ClientConfig:
         (max number of parts per upload is 10,000, minimum upload part size is 5 MiB).
         Part size must have values between 5MiB and 5GiB.
         8MiB by default (may change in future).
+    force_path_style(bool): forceful path style addressing for S3 client.
     """
 
     throughput_target_gbps: float = 10.0
     part_size: int = 8 * 1024 * 1024
     unsigned: bool = False
+    force_path_style: bool = False
