@@ -76,16 +76,12 @@ skip = "*musllinux* *i686"
 [tool.cibuildwheel.linux]
 before-all = [
   "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
-  "yum install -y epel-release centos-release-scl",
+  "bash -c 'platform=$(uname -p); if [ \"$platform\" == \"aarch64\" ]; then sed -i \"s|centos/7|altarch/7|g\" /etc/yum.repos.d/*.repo; fi'",
   "yum install -y fuse",
   "yum install -y fuse-devel",
   "yum install -y make",
-  "yum install -y cmake3",
   "yum install -y git",
   "yum install -y pkgconfig",
-  "yum install -y dpkg",
-  "yum install -y fakeroot",
-  "yum install -y rpmdevtools",
   "yum install -y tar",
   "yum install -y wget",
   "yum install -y devtoolset-10-gcc",
