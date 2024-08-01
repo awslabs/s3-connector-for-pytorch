@@ -75,15 +75,16 @@ def run_lightning_experiment(config: DictConfig):
     save_times = profiling_checkpointer.save_times
     model_size = get_model_size(model)
     throughput_stats = calculate_throughput(save_times, model_size)
-    throughput_stats_pretty = json.dumps(throughput_stats, indent=2)
-    print(f"{model_size=}")
-    print(f"{save_times=!s}")
-    print(f"{throughput_stats_pretty=!s}")
-    utilization_summary = json.dumps(
-        {k: v.summarize() for k, v in monitor.resource_data.items()}, indent=2
-    )
-    print(f"{utilization_summary=!s}")
-    return throughput_stats
+    utilization_stats = {k: v.summarize() for k, v in monitor.resource_data.items()}
+    all_stats = dict()
+    all_stats["throughput"] = throughput_stats
+    all_stats["utilization"] = utilization_stats
+    all_stats["model_size"] = f"{model_size:.2f}MB"
+    all_stats["mean_time"] = f"{save_times.summarize()['mean']}s"
+
+    all_stats_pretty = json.dumps(all_stats, indent=2)
+    print(f"{all_stats_pretty=!s}")
+    return all_stats
 
 
 def build_checkpoint_path(uri: str, suffix: str) -> str:
@@ -115,8 +116,6 @@ def calculate_throughput(save_times: Distribution, model_size: float) -> dict:
         "p90": "p10",
         "p75": "p25",
         "mean": "mean",
-        "model_size": model_size,
-        "save_times": save_times,
     }
     return {
         latency_throughput_stat_map.get(stat, stat): "{:.3f}MB/s".format(
