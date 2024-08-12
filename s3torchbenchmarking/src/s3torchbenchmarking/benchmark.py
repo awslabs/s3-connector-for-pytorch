@@ -175,6 +175,8 @@ def create_mountpoint_dataset(
     if use_cache:
         cache_dir = tempfile.mkdtemp(dir="./nvme/", prefix="s3mp_cache_")
         arguments = ["--cache", cache_dir, "--metadata-ttl", "indefinite"]
+    else:
+        arguments = ["--metadata-ttl", "indefinite"]
 
     prefix_uri = make_mountpoint(prefix_uri=prefix_uri, additional_args=arguments)
     # TODO: compare the performance of using torchdata file APIs and use the more performant option.
