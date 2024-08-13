@@ -43,9 +43,11 @@ class ResultCollatingCallback(Callback):
             job_result_path = os.path.join(job_output_dir, "result.json")
             with open(job_result_path) as infile:
                 item = {
-                    "job_id": job_return.hydra_cfg["hydra"]["job"]["id"]
-                    if job_return.hydra_cfg
-                    else "",
+                    "job_id": (
+                        job_return.hydra_cfg["hydra"]["job"]["id"]
+                        if job_return.hydra_cfg
+                        else ""
+                    ),
                     "cfg": OmegaConf.to_container(job_return.cfg),
                     "result": json.load(infile),
                 }

@@ -89,9 +89,11 @@ def extract_fields_dataloading(json_data: JsonData) -> ExtractedData:
 
         extracted_data.append(
             {
-                "sharding": cfg["dataset"].get("sharding")
-                if cfg["dataset"].get("sharding")
-                else "None",
+                "sharding": (
+                    cfg["dataset"].get("sharding")
+                    if cfg["dataset"].get("sharding")
+                    else "None"
+                ),
                 "model": cfg["training"]["model"],
                 "max_epochs": cfg["training"]["max_epochs"],
                 "prefix_uri_suffix": prefix_uri_suffix,

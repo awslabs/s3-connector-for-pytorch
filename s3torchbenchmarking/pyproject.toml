@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "s3torchbenchmarking"
 version = "0.0.1"
 description = "Tools to run and compare benchmarks against various PyTorch connectors like the s3torchconnector."
-requires-python = ">=3.8,<3.12"
+requires-python = ">=3.8,<3.13"
 readme = "README.md"
 dependencies = [
     #TODO: Remove torch != 2.3.0 restriction when https://github.com/pytorch/data/issues/1244 is fixed
