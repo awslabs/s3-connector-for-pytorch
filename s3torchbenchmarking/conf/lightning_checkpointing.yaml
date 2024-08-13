@@ -9,6 +9,6 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      training.model: vit, whisper, clip, t0_3b
+      training.model: vit, whisper, clip, t0_3b, t0pp
       checkpoint: disk, s3
       checkpoint.save_one_in: 1

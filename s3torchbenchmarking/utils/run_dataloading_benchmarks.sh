@@ -27,6 +27,7 @@ for dataset in "${datasets[@]}"; do
         s3torch-benchmark -cd conf -m -cn dataloading_sharded_ent "dataset=$dataset" "dataloader=$DATALOADER"
     else
         s3torch-benchmark -cd conf -m -cn dataloading_unsharded_1epochs "dataset=$dataset" "dataloader=$DATALOADER"
-        s3torch-benchmark -cd conf -m -cn dataloading_unsharded_10epochs "dataset=$dataset" "dataloader=$DATALOADER"
+        s3torch-benchmark -cd conf -m -cn dataloading_unsharded_vit_10epochs "dataset=$dataset" "dataloader=$DATALOADER"
+        s3torch-benchmark -cd conf -m -cn dataloading_unsharded_ent_10epochs "dataset=$dataset" "dataloader=$DATALOADER"
     fi
 done
