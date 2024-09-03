@@ -63,7 +63,7 @@ jobs:
       # https://github.com/actions/download-artifact
       # These actions should remain @v3 for now, ignore dependabot proposed upgrade.
       # https://github.com/actions/upload-artifact/issues/478
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -124,7 +124,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
