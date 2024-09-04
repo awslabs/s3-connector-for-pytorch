@@ -12,8 +12,10 @@ class S3Writer(io.BufferedIOBase):
 
     def __init__(self, stream: PutObjectStream):
         self.stream = stream
+        self._position = 0
 
     def __enter__(self):
+        self._position = 0
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -38,6 +40,7 @@ class S3Writer(io.BufferedIOBase):
         if isinstance(data, memoryview):
             data = data.tobytes()
         self.stream.write(data)
+        self._position += len(data)
         return len(data)
 
     def close(self):
@@ -65,3 +68,10 @@ class S3Writer(io.BufferedIOBase):
             bool: Return whether object was opened for writing.
         """
         return True
+
+    def tell(self) -> int:
+        """
+        Returns:
+              int: Current stream position.
+        """
+        return self._position
