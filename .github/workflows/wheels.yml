@@ -36,22 +36,22 @@ jobs:
         python:
           - cp38
           - cp39
-          - cp310
-          - cp311
-          - cp312
+#          - cp310
+#          - cp311
+#          - cp312
         builder:
-          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
-            kind: manylinux
-            arch: x86_64
-          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
-            kind: manylinux
-            arch: aarch64
-#          - runner: ubuntu-20.04
+#          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
 #            kind: manylinux
 #            arch: x86_64
-          - runner: macos-13
-            kind: macosx
-            arch: x86_64
+#          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
+#            kind: manylinux
+#            arch: aarch64
+##          - runner: ubuntu-20.04
+##            kind: manylinux
+##            arch: x86_64
+#          - runner: macos-13
+#            kind: macosx
+#            arch: x86_64
           - runner: macos-14
             kind: macosx
             arch: arm64
