@@ -59,7 +59,7 @@ jobs:
           role-to-assume: ${{ vars.ACTIONS_IAM_ROLE }}
           aws-region: ${{ vars.S3_REGION }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -120,7 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
