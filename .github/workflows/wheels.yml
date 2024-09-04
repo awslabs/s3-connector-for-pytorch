@@ -105,7 +105,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: "./wheelhouse/*.whl"
-          name: wheels
+          name: "wheels-${{ matrix.build_target }}"
 
   build_source_wheels:
     name: Build source wheels for ${{ matrix.build_target }}
@@ -140,4 +140,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: "./${{ matrix.build_target }}/dist/*"
-          name: wheels
+          name: "wheels-${{ matrix.build_target }}"
