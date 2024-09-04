@@ -14,9 +14,18 @@ env:
   S3_EXPRESS_REGION: ${{ vars.S3_EXPRESS_REGION }}
 
 jobs:
+  create_artifacts_directory:
+    name: Create artifacts directory
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Create wheels directory
+        run: |
+          mkdir -p ${{ github.workspace }}/wheelhouse
+
   generate_third_party_licenses:
     name: Generate THIRD-PARTY-LICENSES
     uses: ./.github/workflows/generate_third_party_licenses.yml
+    needs: create_artifacts_directory
 
   build_wheels:
     name: Wheels for ${{ matrix.python }} - ${{ matrix.builder.kind }} - ${{ matrix.builder.arch }}
@@ -97,15 +106,21 @@ jobs:
           python -m pipx run
           cibuildwheel
           "s3torchconnectorclient"
-          --output-dir "wheelhouse"
+          --output-dir "${{ github.workspace }}/wheelhouse"
           --only "${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}"
           2>&1
         shell: bash
 
-      - uses: actions/upload-artifact@v4
+  upload_wheels:
+    name: Upload wheels artifacts
+    runs-on: ubuntu-20.04
+    needs: build_wheels
+    steps:
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
         with:
-          path: "./wheelhouse/${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}".whl"
-          name: "wheels-${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}"
+          path: "${{ github.workspace }}/wheelhouse/*.whl"
+          name: "wheels-${{ matrix.build_target }}"
 
   build_source_wheels:
     name: Build source wheels for ${{ matrix.build_target }}
