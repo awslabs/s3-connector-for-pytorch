@@ -14,18 +14,9 @@ env:
   S3_EXPRESS_REGION: ${{ vars.S3_EXPRESS_REGION }}
 
 jobs:
-  create_artifacts_directory:
-    name: Create artifacts directory
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Create wheels directory
-        run: |
-          mkdir -p ${{ github.workspace }}/wheelhouse
-
   generate_third_party_licenses:
     name: Generate THIRD-PARTY-LICENSES
     uses: ./.github/workflows/generate_third_party_licenses.yml
-    needs: create_artifacts_directory
 
   build_wheels:
     name: Wheels for ${{ matrix.python }} - ${{ matrix.builder.kind }} - ${{ matrix.builder.arch }}
@@ -35,7 +26,7 @@ jobs:
       matrix:
         python:
           - cp38
-          - cp39
+#          - cp39
 #          - cp310
 #          - cp311
 #          - cp312
@@ -43,18 +34,18 @@ jobs:
 #          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
 #            kind: manylinux
 #            arch: x86_64
-#          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
+          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
+            kind: manylinux
+            arch: aarch64
+#          - runner: ubuntu-20.04
 #            kind: manylinux
-#            arch: aarch64
-##          - runner: ubuntu-20.04
-##            kind: manylinux
-##            arch: x86_64
-#          - runner: macos-13
-#            kind: macosx
 #            arch: x86_64
-          - runner: macos-14
+          - runner: macos-13
             kind: macosx
-            arch: arm64
+            arch: x86_64
+#          - runner: macos-14
+#            kind: macosx
+#            arch: arm64
     permissions:
       id-token: write
       contents: read
@@ -68,7 +59,11 @@ jobs:
           role-to-assume: ${{ vars.ACTIONS_IAM_ROLE }}
           aws-region: ${{ vars.S3_REGION }}
 
-      - uses: actions/download-artifact@v4.1.7
+      # Downloading artifacts that were created from action/upload-artifact@v3 and below are not supported.
+      # https://github.com/actions/download-artifact
+      # These actions should remain @v3 for now, ignore dependabot proposed upgrade.
+      # https://github.com/actions/upload-artifact/issues/478
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -106,21 +101,15 @@ jobs:
           python -m pipx run
           cibuildwheel
           "s3torchconnectorclient"
-          --output-dir "${{ github.workspace }}/wheelhouse"
+          --output-dir "wheelhouse"
           --only "${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}"
           2>&1
         shell: bash
 
-  upload_wheels:
-    name: Upload wheels artifacts
-    runs-on: ubuntu-20.04
-    needs: build_wheels
-    steps:
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          path: "${{ github.workspace }}/wheelhouse/*.whl"
-          name: "wheels-${{ matrix.build_target }}"
+          path: "./wheelhouse/*.whl"
+          name: "wheels-${{ matrix.python }}-${{ matrix.builder.kind }}-${{ matrix.builder.arch }}"
 
   build_source_wheels:
     name: Build source wheels for ${{ matrix.build_target }}
@@ -135,7 +124,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4.1.7
+      - uses: actions/download-artifact@v4
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -155,4 +144,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: "./${{ matrix.build_target }}/dist/*"
-          name: "${{ matrix.build_target }}-sources"
+          name: sources
