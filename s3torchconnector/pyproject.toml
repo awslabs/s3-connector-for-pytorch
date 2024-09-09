@@ -34,6 +34,7 @@ test = [
     "hypothesis",
     "flake8",
     "black",
+    "requests",
     "mypy"
 ]
 
@@ -42,6 +43,7 @@ e2e = [
     "torchvision",
     "Pillow>=10.3.0",
     "boto3",
+    "requests",
     "numpy < 2",
     "pytest-xdist"
 ]
