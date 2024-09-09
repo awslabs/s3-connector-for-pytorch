@@ -17,7 +17,7 @@ updates:
     directory: "/s3torchconnector"
     schedule:
       interval: daily
-      time: "03:09"
+      time: "03:27"
     groups:
       python-packages:
         patterns:
