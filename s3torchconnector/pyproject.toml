@@ -44,7 +44,7 @@ e2e = [
     "Pillow>=10.3.0",
     "boto3",
     "requests",
-    "numpy < 2",
+    "numpy < 3",
     "pytest-xdist"
 ]
 
