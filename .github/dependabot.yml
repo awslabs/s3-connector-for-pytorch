@@ -16,7 +16,8 @@ updates:
   - package-ecosystem: pip
     directory: "/s3torchconnector"
     schedule:
-      interval: weekly
+      interval: daily
+      time: "03:09"
     groups:
       python-packages:
         patterns:
