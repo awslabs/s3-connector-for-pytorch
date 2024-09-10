@@ -15,6 +15,10 @@ pyo3::create_exception!(
     PyException
 );
 
+fn log_error(message: &str) {
+    println!("ERROR: {}", message);
+}
+
 pub fn python_exception(error: impl Error) -> PyErr {
     let mut s = String::new();
     let mut error: &dyn Error = &error;
@@ -25,7 +29,10 @@ pub fn python_exception(error: impl Error) -> PyErr {
         write!(&mut s, ": {}", error).unwrap();
     }
 
-    S3Exception::new_err(s)
+    let py_err = S3Exception::new_err(s);
+    let py_err_str = format!("{}", py_err);
+    log_error(&py_err_str);
+    py_err
 }
 
 #[cfg(test)]
