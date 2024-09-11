@@ -68,8 +68,16 @@ def extract_fields_checkpoint(json_data: JsonData) -> ExtractedData:
                     "mean_time": result["mean_time"],
                     "throughput": result["throughput"]["mean"],
                     "utilization": result["utilization"],
-                    "gpu_util_mean": result["utilization"]["gpu_util"]["mean"],
-                    "gpu_mem_mean": result["utilization"]["gpu_mem"]["mean"],
+                    "gpu_util_mean": (
+                        result["utilization"]["gpu_util"]["mean"]
+                        if "gpu_util" in result["utilization"]
+                        else ""
+                    ),
+                    "gpu_mem_mean": (
+                        result["utilization"]["gpu_mem"]["mean"]
+                        if "gpu_mem" in result["utilization"]
+                        else ""
+                    ),
                     "cpu_util_mean": result["utilization"]["cpu_util"]["mean"],
                     "cpu_mem_mean": result["utilization"]["cpu_mem"]["mean"],
                 },
@@ -105,9 +113,17 @@ def extract_fields_dataloading(json_data: JsonData) -> ExtractedData:
                     "throughput": result["throughput"],
                     "utilization": result["utilization"],
                     "cpu_util_mean": result["utilization"]["cpu_util"]["mean"],
-                    "gpu_util_mean": result["utilization"]["gpu_util"]["mean"],
+                    "gpu_util_mean": (
+                        result["utilization"]["gpu_util"]["mean"]
+                        if "gpu_util" in result["utilization"]
+                        else ""
+                    ),
                     "cpu_mem_mean": result["utilization"]["cpu_mem"]["mean"],
-                    "gpu_mem_mean": result["utilization"]["gpu_mem"]["mean"],
+                    "gpu_mem_mean": (
+                        result["utilization"]["gpu_mem"]["mean"]
+                        if "gpu_mem" in result["utilization"]
+                        else ""
+                    ),
                 },
             }
         )
