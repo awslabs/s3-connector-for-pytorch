@@ -5,6 +5,7 @@
 
 use std::error::Error;
 use std::fmt::Write;
+use log::error;
 
 use pyo3::exceptions::PyException;
 use pyo3::PyErr;
@@ -16,7 +17,7 @@ pyo3::create_exception!(
 );
 
 fn log_error(message: &str) {
-    println!("ERROR: {}", message);
+    error!("ERROR: {}", message);
 }
 
 pub fn python_exception(error: impl Error) -> PyErr {
