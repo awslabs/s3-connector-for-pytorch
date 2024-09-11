@@ -1,6 +1,7 @@
-## v1.2.5 (September 05, 2024)
-* Support tell for S3writer
-* Extend support to other S3 object storage like MinIO which has path-style addressing to access bucket/object.
+## v1.2.5 (September 11, 2024)
+* Enhanced error logging.
+* Support tell for S3writer.
+* Path-style addressing support.
 
 ### Breaking changes
 * No breaking changes.
