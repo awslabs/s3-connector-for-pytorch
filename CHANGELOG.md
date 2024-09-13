@@ -1,3 +1,12 @@
+## v1.2.5 (September 11, 2024)
+* Enhanced error logging.
+* Support tell for S3writer.
+* Path-style addressing support.
+* Update crates and Mountpoint dependencies.
+
+### Breaking changes
+* No breaking changes.
+
 ## v1.2.4 (July 29, 2024)
 
 ### New features

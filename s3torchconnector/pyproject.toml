@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "s3torchconnector"
-version = "1.2.4"
+version = "1.2.5"
 description = "S3 connector integration for PyTorch"
 requires-python = ">=3.8,<3.13"
 readme = "README.md"
