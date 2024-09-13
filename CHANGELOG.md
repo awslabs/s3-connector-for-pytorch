@@ -2,6 +2,7 @@
 * Enhanced error logging.
 * Support tell for S3writer.
 * Path-style addressing support.
+* Update crates and Mountpoint dependencies.
 
 ### Breaking changes
 * No breaking changes.
