@@ -4,6 +4,8 @@ from typing import List, Dict, Any
 import json
 import boto3
 
+from html_result_generator import HtmlResultGenerator
+
 # Using type aliases for better code readability
 JsonData = List[Dict[str, Any]]
 ExtractedData = List[Dict[str, Any]]
@@ -130,43 +132,6 @@ def extract_fields_dataloading(json_data: JsonData) -> ExtractedData:
     return extracted_data
 
 
-# Helper function to count rows for rowspan
-def count_rows(data: Dict[str, Any]) -> int:
-    if "result" in data:
-        return 1
-    return sum(
-        count_rows(sub_data) for sub_data in data.values() if sub_data != "result"
-    )
-
-
-# Helper function to generate merged table cells
-def generate_table_rows(
-    data: Dict[str, Any], indent: int = 0, col_spans: List[int] = None
-) -> str:
-    if col_spans is None:
-        col_spans = [1] * 7
-
-    html = ""
-    if "result" in data:
-        html += "<tr>"
-        for _ in range(indent):
-            html += "<td></td>"
-        for key, value in data["result"].items():
-            html += f"<td>{value}</td>"
-        html += "</tr>"
-    else:
-        for key, value in data.items():
-            if key == "result":
-                continue
-            span_count = count_rows(value)
-            html += f"<tr><td rowspan='{span_count}'><strong>{key}</strong></td></tr>"
-            for sub_key, sub_value in value.items():
-                html += f"<tr><td rowspan='{count_rows(sub_value)}'>{sub_key}</td>"
-                html += generate_table_rows(sub_value, indent + 2, col_spans)
-                html += "</tr>"
-    return html
-
-
 # Function to read all json files from S3
 def load_data_from_s3(
     extract_fields_function: callable,
@@ -186,116 +151,6 @@ def load_data_from_s3(
 def save_data_to_simple_json(all_data: ExtractedData, file_name: str) -> None:
     with open(file_name, "w", encoding="utf-8") as file:
         json.dump(all_data, file, indent=4)
-
-
-# Function to generate html page that represent output data in table view
-def save_data_to_html(
-    all_data: ExtractedData,
-    file_name: str,
-    sort_keys: List[str],
-    field_names: List[str],
-    result_fields: List[str],
-    all_fields_captions: List[str],
-) -> None:
-    # Generate the HTML content
-    html_content = (
-        """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Benchmark Results</title>
-        <style>
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            th, td {
-                border: 1px solid #ddd;
-                padding: 8px;
-            }
-            th {
-                background-color: #f2f2f2;
-            }
-            tr:nth-child(even) {
-                background-color: #f9f9f9;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Benchmark Results</h1>
-        <table>
-            <thead>
-                <tr>
-    """
-        + "".join([f"<th>{field}</th>" for field in all_fields_captions])
-        + """
-                </tr>
-            </thead>
-            <tbody>
-    """
-    )
-
-    # Sort the data by the specified fields
-    sorted_data = sorted(
-        all_data,
-        key=lambda x: ([x[field] for field in sort_keys]),
-    )
-
-    # initialise array of span indexes with 1 at start for every rows in sorted_data for first X columns
-    column_count = len(field_names)
-    span_indexes = [1] * len(sorted_data) * column_count
-
-    # iterate over sorted_dat in reverse order
-    for i in range(len(sorted_data) - 1, 0, -1):
-        if sorted_data[i][field_names[0]] == sorted_data[i - 1][field_names[0]]:
-            span_indexes[(i - 1) * column_count] = span_indexes[i * column_count] + 1
-            span_indexes[i * column_count] = 0
-
-    for i in range(len(sorted_data) - 1, 0, -1):
-        for j in range(1, column_count, 1):
-            if (
-                sorted_data[i][field_names[j]] == sorted_data[i - 1][field_names[j]]
-                and span_indexes[i * column_count + j - 1] == 0
-            ):
-                span_indexes[(i - 1) * column_count + j] = (
-                    span_indexes[i * column_count + j] + 1
-                )
-                span_indexes[i * column_count + j] = 0
-
-    def get_cell(all_data, index, field_names, field, span_indexes):
-        field_index = field_names.index(field)
-        if index < len(all_data):
-            if span_indexes[index * len(field_names) + field_index] == 0:
-                return ""
-            if span_indexes[index * len(field_names) + field_index] == 1:
-                return f"<td>{data[field]}</td>"
-            return f'<td rowspan="{span_indexes[index * len(field_names) + field_index]}">{data[field]}</td>'
-        return ""
-
-    # Add rows for each benchmark result
-    for i in range(len(sorted_data)):
-        data = sorted_data[i]
-        html_content += "<tr>"
-        for field in sort_keys[:-1]:
-            html_content += get_cell(sorted_data, i, field_names, field, span_indexes)
-        html_content += f"<td>{data[sort_keys[-1]]}</td>"
-
-        for field in result_fields:
-            html_content += f"<td>{data['result'][field]}</td>"
-        html_content += "</tr>"
-
-    html_content += """
-            </tbody>
-        </table>
-    </body>
-    </html>
-    """
-
-    # Save the HTML content to a file
-    with open(file_name, "w") as f:
-        f.write(html_content)
 
 
 # Get field names and captions for data loading.
@@ -386,22 +241,24 @@ if __name__ == "__main__":
     if generate_for_mode == GenerateForMode.DATALOAD:
         sort_key_names, result_fields, all_fields_captions = get_dataloading_fields()
         grouped_by_key_names = sort_key_names[:-1]
-        data = load_data_from_s3(
+        records = load_data_from_s3(
             lambda json_data: extract_fields_dataloading(json_data), bucket_name, prefix
         )
     else:
         sort_key_names, result_fields, all_fields_captions = get_checkpointing_fields()
         grouped_by_key_names = sort_key_names[:-1]
-        data = load_data_from_s3(
+        records = load_data_from_s3(
             lambda json_data: extract_fields_checkpoint(json_data), bucket_name, prefix
         )
 
-    save_data_to_html(
-        data,
-        f"{file_name}.html",
+    html_generator = HtmlResultGenerator()
+    html = html_generator.generate_html(
+        records,
         sort_key_names,
         grouped_by_key_names,
         result_fields,
         all_fields_captions,
     )
-    save_data_to_simple_json(data, f"{file_name}.json")
+    html_generator.save_to_file(html, f"{file_name}.html")
+
+    save_data_to_simple_json(records, f"{file_name}.json")
