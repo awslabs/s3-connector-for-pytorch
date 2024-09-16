@@ -28,12 +28,14 @@ pub struct PyMockClient {
     pub(crate) user_agent_prefix: String,
     #[pyo3(get)]
     pub(crate) unsigned: bool,
+    #[pyo3(get)]
+    pub(crate) force_path_style: bool,
 }
 
 #[pymethods]
 impl PyMockClient {
     #[new]
-    #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string(), unsigned=false))]
+    #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string(), unsigned=false, force_path_style=false))]
     pub fn new(
         region: String,
         bucket: String,
@@ -41,9 +43,10 @@ impl PyMockClient {
         part_size: usize,
         user_agent_prefix: String,
         unsigned: bool,
+        force_path_style: bool,
     ) -> PyMockClient {
         let unordered_list_seed: Option<u64> = None;
-        let config = MockClientConfig { bucket, part_size, unordered_list_seed };
+        let config = MockClientConfig { bucket, part_size, unordered_list_seed, ..Default::default() };
         let mock_client = Arc::new(MockClient::new(config));
 
         PyMockClient {
@@ -52,7 +55,8 @@ impl PyMockClient {
             throughput_target_gbps,
             part_size,
             user_agent_prefix,
-            unsigned
+            unsigned,
+            force_path_style
         }
     }
 
@@ -64,6 +68,7 @@ impl PyMockClient {
             self.part_size,
             None,
             self.unsigned,
+            self.force_path_style,
             self.mock_client.clone(),
             None,
         )

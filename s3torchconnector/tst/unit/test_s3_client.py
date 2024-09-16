@@ -139,3 +139,11 @@ def test_unsigned_s3_client():
         s3client_config=S3ClientConfig(unsigned=True),
     )
     assert s3_client._client.unsigned is True
+
+
+def test_force_path_style_s3_client():
+    s3_client = S3Client(
+        region=TEST_REGION,
+        s3client_config=S3ClientConfig(force_path_style=True),
+    )
+    assert s3_client._client.force_path_style is True

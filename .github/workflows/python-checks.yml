@@ -141,7 +141,9 @@ jobs:
 #          inputs: "s3torchconnector"
 
       - name: Security vulnerabilities check s3torchconnector
-        run: safety check -r s3torchconnector/requirements.txt
+#       ignore CVE-2024-5480 (id 71670) https://data.safetycli.com/v/71670/97c/, maintainers is not going to fix it.
+#       it is by design https://github.com/pytorch/pytorch/issues/129228#issuecomment-2247224702
+        run: safety check -r s3torchconnector/requirements.txt  --ignore 71670
 
   wheels:
     name: Wheels build checks

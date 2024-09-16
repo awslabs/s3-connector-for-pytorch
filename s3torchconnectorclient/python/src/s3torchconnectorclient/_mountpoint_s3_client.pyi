@@ -11,6 +11,7 @@ class MountpointS3Client:
     part_size: int
     profile: Optional[str]
     unsigned: Optional[bool]
+    force_path_style: Optional[bool]
     user_agent_prefix: str
     endpoint: str
 
@@ -23,6 +24,7 @@ class MountpointS3Client:
         profile: Optional[str] = None,
         unsigned: Optional[bool] = False,
         endpoint: Optional[str] = None,
+        force_path_style: Optional[bool] = False,
     ): ...
     def get_object(self, bucket: str, key: str) -> GetObjectStream: ...
     def put_object(
@@ -40,6 +42,7 @@ class MockMountpointS3Client:
     part_size: int
     user_agent_prefix: str
     unsigned: bool
+    force_path_style: bool
 
     def __init__(
         self,
@@ -50,6 +53,7 @@ class MockMountpointS3Client:
         part_size: int = 8 * 1024 * 1024,
         user_agent_prefix: str = "mock_client",
         unsigned: bool = False,
+        force_path_style: bool = False,
     ): ...
     def create_mocked_client(self) -> MountpointS3Client: ...
     def add_object(self, key: str, data: bytes) -> None: ...

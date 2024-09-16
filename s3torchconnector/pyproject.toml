@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "s3torchconnector"
-version = "1.2.3"
+version = "1.2.5"
 description = "S3 connector integration for PyTorch"
 requires-python = ">=3.8,<3.13"
 readme = "README.md"
@@ -22,9 +22,8 @@ classifiers = [
 ]
 
 dependencies = [
-    #TODO: Remove torch != 2.3.0 restriction when https://github.com/pytorch/data/issues/1244 is fixed
-    "torch >= 2.0.1, != 2.3.0",
-    "s3torchconnectorclient >= 1.2.3",
+    "torch >= 2.0.1",
+    "s3torchconnectorclient >= 1.2.4",
 ]
 
 [project.optional-dependencies]
@@ -40,9 +39,9 @@ test = [
 e2e = [
     "torchdata",
     "torchvision",
-    "Pillow",
+    "Pillow>=10.3.0",
     "boto3",
-    "numpy",
+    "numpy < 2",
     "pytest-xdist"
 ]
 

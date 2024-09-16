@@ -78,6 +78,7 @@ class S3Client:
             throughput_target_gbps=self._s3client_config.throughput_target_gbps,
             part_size=self._s3client_config.part_size,
             unsigned=self._s3client_config.unsigned,
+            force_path_style=self._s3client_config.force_path_style,
         )
 
     def get_object(
