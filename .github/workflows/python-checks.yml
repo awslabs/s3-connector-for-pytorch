@@ -128,7 +128,7 @@ jobs:
         run: safety check -r s3torchconnectorclient/requirements.txt
 
       - name: Audit s3torchconnectorclient dependencies
-        uses: pypa/gh-action-pip-audit@v1.0.8
+        uses: pypa/gh-action-pip-audit@v1.1.0
         with:
           inputs: "s3torchconnectorclient"
 
@@ -136,7 +136,7 @@ jobs:
 #        run: |
 #          python -m pip install -e "s3torchconnectorclient"
 #      - name: Audit s3torchconnector dependencies
-#        uses: pypa/gh-action-pip-audit@v1.0.8
+#        uses: pypa/gh-action-pip-audit@v1.1.0
 #        with:
 #          inputs: "s3torchconnector"
 
