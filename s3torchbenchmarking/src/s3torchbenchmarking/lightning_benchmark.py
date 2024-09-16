@@ -76,12 +76,12 @@ def run_lightning_experiment(config: DictConfig):
     model_size = get_model_size(model)
     throughput_stats = calculate_throughput(save_times, model_size)
     utilization_stats = {k: v.summarize() for k, v in monitor.resource_data.items()}
-    all_stats = dict()
-    all_stats["throughput"] = throughput_stats
-    all_stats["utilization"] = utilization_stats
-    all_stats["model_size"] = f"{model_size:.2f}MB"
-    all_stats["mean_time"] = f"{save_times.summarize()['mean']}s"
-
+    all_stats = {
+        "throughput": throughput_stats,
+        "utilization": utilization_stats,
+        "model_size": f"{model_size:.2f}MB",
+        "mean_time": f"{save_times.summarize()['mean']}s",
+    }
     all_stats_pretty = json.dumps(all_stats, indent=2)
     print(f"{all_stats_pretty=!s}")
     return all_stats
@@ -90,8 +90,7 @@ def run_lightning_experiment(config: DictConfig):
 def build_checkpoint_path(uri: str, suffix: str) -> str:
     if uri.startswith("s3://"):
         bucket, prefix = parse_s3_uri(uri)
-        path = Path(bucket) / Path(prefix) / Path(suffix)
-        return "s3://{0}".format(path)
+        return f"s3://{bucket}/{prefix}/{suffix}"
     else:
         return str(Path(uri) / Path(suffix))
 

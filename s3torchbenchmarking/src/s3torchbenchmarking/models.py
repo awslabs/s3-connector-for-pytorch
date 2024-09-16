@@ -201,12 +201,12 @@ class LightningAdapter(ModelInterface):
         self.lightning_model = LightningAdapter.DelegateModule(model)
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
-        key, data = super().load_sample(sample)
+        _, data = super().load_sample(sample)
 
         return self.sample_transformer(data), self._get_random_label()
 
     def _get_random_label(self):
-        return random.randint(0, 1024 - 1)
+        return random.randrange(1024)
 
     def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
         pass

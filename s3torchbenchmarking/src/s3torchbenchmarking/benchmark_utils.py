@@ -63,16 +63,11 @@ class ExperimentResult:
     checkpoint_times: Optional[Distribution] = None
     utilization: Optional[Dict[str, Distribution]] = None
 
-    @cached_property
     def throughput(self):
         return self.volume / self.elapsed_time
 
-    @cached_property
     def summarized_utilization(self):
-        summary = {}
-        for k, v in self.utilization.items():
-            summary[k] = v.summarize()
-
+        summary = {k: v.summarize() for k, v in self.utilization.items()}
         return json.dumps(summary, indent=2)
 
     def __str__(self):
