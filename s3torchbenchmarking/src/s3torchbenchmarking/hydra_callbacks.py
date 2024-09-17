@@ -40,7 +40,7 @@ class ResultCollatingCallback(Callback):
                 if job_return.hydra_cfg
                 else "."
             )
-            job_result_path = os.path.join(job_output_dir, "result.json")
+            job_result_path = job_output_dir / "result.json"
             with open(job_result_path) as infile:
                 item = {
                     "job_id": (

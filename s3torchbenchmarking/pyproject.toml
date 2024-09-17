@@ -15,7 +15,7 @@ dependencies = [
     "s3torchconnector",
     "hydra-core",
     "torchdata>=0.6.1",
-    "torchvision>=0.17",
+    "torchvision",
     "s3fs>=2024.6.1",
     "transformers",
     "numpy",
