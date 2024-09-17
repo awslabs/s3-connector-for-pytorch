@@ -81,8 +81,8 @@ class ExperimentResult:
             "\n\t\t{3}"
             "\n]".format(
                 self.elapsed_time,
-                self.throughput,
-                self.summarized_utilization,
+                self.throughput(),
+                self.summarized_utilization(),
                 self.checkpoint_times,
             )
         )
@@ -102,7 +102,7 @@ class ExperimentResultJsonEncoder(JSONEncoder):
             return {
                 "volume": result.volume,
                 "elapsed_time": result.elapsed_time,
-                "throughput": result.throughput,
+                "throughput": result.throughput(),
                 "utilization": summarized_utilization,
             }
         return super().default(o)

@@ -109,7 +109,7 @@ class HtmlResultGenerator:
         span_indexes = [1] * len(records) * column_count
 
         # iterate over sorted_data in reverse order
-        for i in range(len(records) - 1, 0, -1):
+        for i in reversed(range(1, len(records))):
             first_field = field_names[0]
             if records[i - 1][first_field] == records[i][first_field]:
                 first_cell_in_current_row = (i - 1) * column_count
@@ -124,9 +124,8 @@ class HtmlResultGenerator:
                 # by the current row).
                 span_indexes[first_cell_in_previous_row] = 0
 
-        for i in range(len(records) - 1, 0, -1):
-            for j in range(1, column_count, 1):
-                field = field_names[j]
+        for i in reversed(range(1, len(records))):
+            for j, field in enumerate(field_names[1:], 1):
                 cell_in_current_row = (i - 1) * column_count + j
                 cell_in_previous_row = i * column_count + j
                 cell_in_previous_row_and_previous_column = i * column_count + j - 1

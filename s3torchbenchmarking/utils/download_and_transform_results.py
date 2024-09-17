@@ -240,6 +240,8 @@ if __name__ == "__main__":
 
     if generate_for_mode == GenerateForMode.DATALOAD:
         sort_key_names, result_fields, all_fields_captions = get_dataloading_fields()
+        # The last field in sort_key_names is excluded from grouped_by_key_names because
+        # we want to preserve the granularity of results at that level.
         grouped_by_key_names = sort_key_names[:-1]
         records = load_data_from_s3(
             lambda json_data: extract_fields_dataloading(json_data), bucket_name, prefix
