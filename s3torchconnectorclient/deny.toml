@@ -26,7 +26,4 @@ license-files = [
 ]
 
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "warn"
-notice = "deny"
+version = 2
