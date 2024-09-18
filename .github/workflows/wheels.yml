@@ -141,3 +141,15 @@ jobs:
         with:
           path: "./${{ matrix.build_target }}/dist/*"
           name: wheels-${{ matrix.build_target }}
+  merge:
+    name: Merge the wheels
+    runs-on: ubuntu-latest
+    needs:
+      - build_wheels
+      - build_source_wheels
+    steps:
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+           name: wheels
+           pattern: wheels-*
