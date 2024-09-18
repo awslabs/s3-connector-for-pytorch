@@ -7,17 +7,20 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
 from json import JSONEncoder
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from collections import deque
 
 import numpy as np
 import psutil
 import torch.cuda
-from pynvml import (
+from PIL import Image
+from pynvml import (  # type: ignore
     nvmlInit,
     nvmlDeviceGetUtilizationRates,
     nvmlDeviceGetHandleByIndex,
     nvmlDeviceGetMemoryInfo,
 )
+from torchvision.transforms import v2  # type: ignore
 
 monitor_gpu = False
 if torch.cuda.is_available():
@@ -28,27 +31,18 @@ if torch.cuda.is_available():
 class Distribution:
     def __init__(self, initial_capacity: int, precision: int = 4):
         self.initial_capacity = initial_capacity
-        self._values = np.zeros(shape=initial_capacity, dtype=np.float32)
-        self._idx = 0
+        self._values = deque(maxlen=None)
         self.precision = precision
 
-    def _expand_if_needed(self):
-        if self._idx > self._values.size - 1:
-            self._values = np.concatenate(
-                self._values, np.zeros(self.initial_capacity, dtype=np.float32)
-            )
-
     def add(self, val: float):
-        self._expand_if_needed()
-        self._values[self._idx] = val
-        self._idx += 1
+        self._values.append(val)
 
     def summarize(self) -> dict:
-        window = self._values[: self._idx]
-        if window.size == 0:
-            return
+        if not self._values:
+            return {}
+        window = np.array(self._values)
         return {
-            "n": window.size,
+            "n": len(window),
             "mean": round(float(window.mean()), self.precision),
             "min": round(np.percentile(window, 0), self.precision),
             "p50": round(np.percentile(window, 50), self.precision),
@@ -57,32 +51,59 @@ class Distribution:
             "max": round(np.percentile(window, 100), self.precision),
         }
 
-    def __repr__(self):
-        summary_str = json.dumps(self.summarize())
+    def __str__(self):
+        summary_str = json.dumps(self.summarize(), indent=2)
         return "Distribution({0})".format(summary_str)
 
 
-@dataclass(frozen=True)
+@dataclass(repr=False)
 class ExperimentResult:
     elapsed_time: float
-    volume: float
-    checkpoint_times: Distribution = None
-    utilization: Dict[str, Distribution] = None
+    volume: int
+    checkpoint_times: Optional[Distribution] = None
+    utilization: Optional[Dict[str, Distribution]] = None
 
-    @cached_property
     def throughput(self):
         return self.volume / self.elapsed_time
+
+    def summarized_utilization(self):
+        summary = {k: v.summarize() for k, v in self.utilization.items()}
+        return json.dumps(summary, indent=2)
+
+    def __str__(self):
+        return (
+            "ExperimentResult["
+            "\n\ttraining_time: {0:.4f} seconds"
+            "\n\tthroughput: {1:.4f} samples/second"
+            "\n\tutilization:"
+            "\n\t\t{2}"
+            "\n\tcheckpoint_times:"
+            "\n\t\t{3}"
+            "\n]".format(
+                self.elapsed_time,
+                self.throughput(),
+                self.summarized_utilization(),
+                self.checkpoint_times,
+            )
+        )
 
 
 class ExperimentResultJsonEncoder(JSONEncoder):
     def default(self, o: Any) -> Any:
         if isinstance(o, ExperimentResult):
-            o: ExperimentResult = o
+            result: ExperimentResult = o
+            utilization: Optional[Dict[str, Distribution]] = result.utilization
+            if utilization is not None:
+                summarized_utilization = {
+                    k: v.summarize() for k, v in utilization.items()
+                }
+            else:
+                summarized_utilization = {}
             return {
-                "volume": o.volume,
-                "elapsed_time": o.elapsed_time,
-                "throughput": o.throughput,
-                "utilization": {k: v.summarize() for k, v in o.utilization.items()},
+                "volume": result.volume,
+                "elapsed_time": result.elapsed_time,
+                "throughput": result.throughput(),
+                "utilization": summarized_utilization,
             }
         return super().default(o)
 
@@ -97,7 +118,9 @@ class ResourceMonitor:
         self, sleep_time_s: float = 0.05, gpu_device: int = 0, chunk_size: int = 25_000
     ):
         self.monitor_thread = None
-        self._utilization = defaultdict(lambda: Distribution(chunk_size))
+        self._utilization: Dict[str, Distribution] = defaultdict(
+            lambda: Distribution(chunk_size)
+        )
         self.stop_event = threading.Event()
         self.sleep_time_s = sleep_time_s
         self.gpu_device = gpu_device
@@ -139,3 +162,20 @@ class ResourceMonitor:
     def stop(self):
         self.stop_event.set()
         self.monitor_thread.join()
+
+
+class Transforms:
+    IMG_TRANSFORMS = v2.Compose(
+        [
+            v2.ToImage(),
+            v2.ToDtype(torch.uint8, scale=True),
+            v2.RandomResizedCrop((224, 224), antialias=True),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
+    @staticmethod
+    def transform_image(data):
+        img = Image.open(data)
+        return Transforms.IMG_TRANSFORMS(img)

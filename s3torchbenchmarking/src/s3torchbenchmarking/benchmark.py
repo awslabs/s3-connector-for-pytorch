@@ -7,40 +7,47 @@ import subprocess
 import tempfile
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Optional, List
 
 import hydra
-import torchdata
+import torchdata  # type: ignore
 from hydra.core.hydra_config import HydraConfig
-from hydra.experimental.callback import Callback
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
-from torchdata.datapipes.utils import StreamWrapper
+from torchdata.datapipes.utils import StreamWrapper  # type: ignore
 
+from .lightning_benchmark import run_lightning_experiment
+from .models import (
+    Entitlement,
+    ViT,
+    ModelInterface,
+)
 from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
-from s3torchconnector._s3dataset_common import parse_s3_uri
+from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
-from .models import Entitlement, ViT, ModelInterface
 
 
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig):
-    model = make_model(config)
-    dataset = make_dataset(
-        kind=config.dataloader.kind,
-        sharding=DatasetSharding.from_conf(config.dataset),
-        prefix_uri=config.dataset.prefix_uri,
-        region=config.dataset.region,
-        load_sample=model.load_sample,
-        num_workers=config.dataloader.num_workers,
-    )
-    dataloader = make_dataloader(
-        dataset=dataset,
-        num_workers=config.dataloader.num_workers,
-        batch_size=config.dataloader.batch_size,
-    )
+    if config.training.get("kind") and config.training.kind == "lightning":
+        result = run_lightning_experiment(config)
+    else:
+        model = make_model(config)
+        dataset = make_dataset(
+            kind=config.dataloader.kind,
+            sharding=DatasetSharding.from_conf(config.dataset),
+            prefix_uri=config.dataset.get("prefix_uri"),
+            region=config.dataset.get("region"),
+            load_sample=model.load_sample,
+            num_workers=config.dataloader.num_workers,
+        )
+        dataloader = make_dataloader(
+            dataset=dataset,
+            num_workers=config.dataloader.num_workers,
+            batch_size=config.dataloader.batch_size,
+        )
 
-    result = model.train(dataloader, config.training.max_epochs)
+        result = model.train(dataloader, config.training.max_epochs)
     root_config = HydraConfig.get()
     output_dir = root_config.runtime.output_dir
     job_result_path = write_result(result, Path(output_dir))
@@ -77,7 +84,7 @@ class DatasetSharding(Enum):
 def make_mountpoint(
     prefix_uri: str,
     mountpoint_path: Optional[str] = None,
-    additional_args: List[str] = None,
+    additional_args: Optional[List[str]] = None,
 ) -> str:
     def teardown(path: str):
         subprocess.run(["sudo", "umount", path])
@@ -99,20 +106,30 @@ def make_dataset(
     kind: str,
     sharding: Optional[DatasetSharding],
     prefix_uri: str,
-    region: str,
+    region: Optional[str],
     load_sample,
     num_workers: int,
 ):
     if kind == "s3iterabledataset":
+        if not region:
+            raise ValueError("Must provide region for s3iterabledataset")
         return create_s3_iterable_dataset(
             sharding, prefix_uri, region, load_sample, num_workers
         )
     elif kind == "s3mapdataset":
+        if not region:
+            raise ValueError("Must provide region for s3mapdataset")
         return create_s3_map_dataset(sharding, prefix_uri, region, load_sample)
     elif kind == "fsspec":
         return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
     elif kind == "mountpoint":
-        return create_mountpoint_dataset(sharding, prefix_uri, load_sample, num_workers)
+        return create_mountpoint_dataset(
+            sharding, prefix_uri, load_sample, num_workers, False
+        )
+    elif kind == "mountpointcache":
+        return create_mountpoint_dataset(
+            sharding, prefix_uri, load_sample, num_workers, True
+        )
     else:
         raise Exception(f"unknown dataset kind {kind}")
 
@@ -148,9 +165,20 @@ def create_s3_map_dataset(
 
 
 def create_mountpoint_dataset(
-    sharding: Optional[DatasetSharding], prefix_uri: str, load_sample, num_workers: int
+    sharding: Optional[DatasetSharding],
+    prefix_uri: str,
+    load_sample,
+    num_workers: int,
+    use_cache: bool,
 ):
-    prefix_uri = make_mountpoint(prefix_uri=prefix_uri)
+    arguments = []
+    if use_cache:
+        cache_dir = tempfile.mkdtemp(dir="./nvme/", prefix="s3mp_cache_")
+        arguments = ["--cache", cache_dir, "--metadata-ttl", "indefinite"]
+    else:
+        arguments = ["--metadata-ttl", "indefinite"]
+
+    prefix_uri = make_mountpoint(prefix_uri=prefix_uri, additional_args=arguments)
     # TODO: compare the performance of using torchdata file APIs and use the more performant option.
     return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
 

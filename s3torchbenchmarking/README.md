@@ -60,12 +60,12 @@ The tests can be run locally, or you can launch an EC2 instance with a GPU(we us
 the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/) as your AMI. Activate the venv within this machine
 by running:
 
-    source pytorch activate
+    source activate pytorch
 
 If running locally you can optionally configure a Python virtualenv:
 
     python -m venv <ENV-NAME>
-    python <PATH-TO-VENV>/bin/activate
+    source <PATH-TO-VENV>/bin/activate
 
 
 Then from this directory, install the dependencies:

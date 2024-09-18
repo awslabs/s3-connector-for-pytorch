@@ -8,16 +8,28 @@ from functools import cached_property
 from io import IOBase
 from typing import Optional, Any, Tuple, Union
 
+import lightning as L
 import torch
 import torch.nn as nn
+import torchdata  # type: ignore
 from PIL import Image
+from lightning.pytorch import callbacks
+from lightning.pytorch.strategies import SingleDeviceStrategy
 from omegaconf import DictConfig
-from s3torchconnector import S3Reader, S3Checkpoint
+from s3torchconnector import S3Reader, S3Checkpoint, S3IterableDataset
 from torch.utils.data.dataloader import DataLoader
-from torchvision.transforms import v2
-from transformers import ViTForImageClassification
+from torchvision.transforms import v2  # type: ignore
+from transformers import ViTForImageClassification  # type: ignore
 
-from .benchmark_utils import ExperimentResult, ResourceMonitor, Distribution
+from .benchmark_utils import (
+    ExperimentResult,
+    ResourceMonitor,
+    Distribution,
+    Transforms,
+)
+from .lightning_utils.checkpoint_profiler import CheckpointProfiler
+from .lightning_utils.sample_counter import SampleCounter
+from s3torchconnector.lightning import S3LightningCheckpoint  # type: ignore
 
 
 class ModelInterface(metaclass=abc.ABCMeta):
@@ -71,7 +83,7 @@ class Entitlement(ModelInterface):
     object data from S3, so that we may identify the max achievable throughput for a given dataset.
     """
 
-    def __init__(self, num_labels: int = None):
+    def __init__(self, num_labels: Optional[int] = None):
         super().__init__()
         self.num_labels = num_labels
 
@@ -151,6 +163,7 @@ class ViT(ModelInterface):
             and (batch_idx + 1) % self.checkpoint.save_one_in == 0
         ):
             return self.save(batch_idx=batch_idx + 1)
+        return None
 
     def save(self, batch_idx: int):
         destination = self.checkpoint.destination
@@ -160,6 +173,88 @@ class ViT(ModelInterface):
             )
         if destination == "disk":
             return save_checkpoint_to_disk(self.model, self.checkpoint.uri, batch_idx)
+
+
+class LightningAdapter(ModelInterface):
+    class DelegateModule(L.LightningModule):
+        def __init__(self, model):
+            super().__init__()
+            self.model = model
+            self.loss_fn = nn.CrossEntropyLoss()
+
+        def forward(self, inputs, target):
+            return self.model(inputs, target)
+
+        def training_step(self, batch, batch_idx):
+            inputs, target = batch
+            output = self(inputs, target)
+            loss = self.loss_fn(output.logits, target)
+            return loss
+
+        def configure_optimizers(self):
+            return torch.optim.Adam(self.model.parameters(), lr=0.001)
+
+    def __init__(self, model, sample_transformer, config: DictConfig):
+        super().__init__()
+        self.config = config
+        self.sample_transformer = sample_transformer
+        self.lightning_model = LightningAdapter.DelegateModule(model)
+
+    def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
+        _, data = super().load_sample(sample)
+
+        return self.sample_transformer(data), self._get_random_label()
+
+    def _get_random_label(self):
+        return random.randrange(1024)
+
+    def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
+        pass
+
+    def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
+        strategy = SingleDeviceStrategy()
+        checkpoint_io = strategy.checkpoint_io
+        sample_counting_cb = SampleCounter()
+        checkpoint_callback = callbacks.ModelCheckpoint(
+            dirpath=self.config.checkpoint.uri,
+            every_n_train_steps=self.config.checkpoint.save_one_in,
+            save_on_train_epoch_end=True,
+        )
+        checkpoint_dest = self.config.checkpoint.destination
+        if checkpoint_dest == "s3":
+            checkpoint_io = S3LightningCheckpoint(self.config.checkpoint.region)
+        profiling_checkpointer = CheckpointProfiler(checkpoint_io)
+        trainer = L.Trainer(
+            # log_every_n_steps=10,
+            logger=None,
+            # limit_train_batches=10,
+            plugins=[profiling_checkpointer],
+            max_epochs=epochs,
+            # profiler="simple",
+            callbacks=[
+                checkpoint_callback,
+                sample_counting_cb,
+                # callbacks.device_stats_monitor.DeviceStatsMonitor(cpu_stats=True)
+            ],
+        )
+
+        with ResourceMonitor() as monitor:
+            start_time = time.perf_counter()
+            trainer.fit(model=self.lightning_model, train_dataloaders=dataloader)
+            end_time = time.perf_counter()
+            training_time = end_time - start_time
+
+        return ExperimentResult(
+            elapsed_time=training_time,
+            volume=sample_counting_cb.count,
+            checkpoint_times=profiling_checkpointer.save_times,
+            utilization=monitor.resource_data,
+        )
+
+    def save(self, **kwargs):
+        raise NotImplementedError(
+            "Checkpoint functionality is built into the Lightning trainer."
+        )
 
 
 def save_checkpoint_to_s3(model: nn.Module, region: str, uri: str, batch_idx: int):

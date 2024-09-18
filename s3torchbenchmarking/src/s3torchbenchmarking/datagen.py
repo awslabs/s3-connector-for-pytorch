@@ -11,10 +11,10 @@ from pathlib import Path
 from threading import Thread, Lock, Barrier
 from typing import Any, Callable, Iterator, TypeVar, Tuple, Dict, List, Optional, Union
 
-import boto3
+import boto3  # type: ignore
 import click
 import numpy as np
-import prefixed as pr
+import prefixed as pr  # type: ignore
 import yaml
 from PIL import Image
 
@@ -68,26 +68,27 @@ class ThreadSafeCounter:
             return self.val
 
 
-class Utils:
-    T = TypeVar("T")
+T = TypeVar("T")
 
+
+class Utils:
     @staticmethod
     def batcher(
-        items: Iterator[T], size_extractor: Callable[[T], int], size_threshold: float
+        items: Iterator[T], size_extractor: Callable[[T], int], size_threshold: int
     ) -> Iterator[List[T]]:
-        group = []
-        total = 0
+        group: List[T] = []
+        total_size = 0
         for item in items:
             item_size = size_extractor(item)
-            new_total = total + item_size
+            new_total = total_size + item_size
             if new_total > size_threshold:
                 yield group
                 group = [item]
-                total = item_size
+                total_size = item_size
             else:
                 group.append(item)
-                total = new_total
-        if len(group) > 0:
+                total_size = new_total
+        if group:
             yield group
 
     @staticmethod
@@ -98,7 +99,7 @@ class Utils:
         with tarfile.open(fileobj=tar_fileobj, mode="w|") as tar:
             for sample in samples:
                 tf = tarfile.TarInfo(name=sample.label)
-                tf.mtime = time.time()
+                tf.mtime = int(time.time())
                 tf.size = sample.data.getbuffer().nbytes
 
                 tar.addfile(tf, sample.data)
@@ -129,13 +130,8 @@ class Utils:
 
     @staticmethod
     def write_dataset_config(disambiguator: str, dataset_cfg: Dict[str, Any]):
-        file_path = os.path.realpath(__file__)
-        cfg_path = (
-            Path(file_path).parent.parent.parent
-            / "conf"
-            / "dataset"
-            / f"{disambiguator}.yaml"
-        )
+        current_dir = os.getcwd()
+        cfg_path = Path(current_dir) / "conf" / "dataset" / f"{disambiguator}.yaml"
         with open(cfg_path, "w") as outfile:
             yaml.dump(dataset_cfg, outfile, default_flow_style=False)
             click.echo(f"Dataset Configuration created at: {cfg_path}")
@@ -172,7 +168,7 @@ class ThreadSafeIterator:
 def build_pipeline(
     num_samples: float,
     resolution: Tuple[int, int],
-    shard_size: float,
+    shard_size: int,
     image_format: str,
 ) -> Iterator[LabelledSample]:
     # define the pipeline to generate the dataset
@@ -183,13 +179,13 @@ def build_pipeline(
     )
     if shard_size:
         monotonic_ctr = ThreadSafeCounter()
-        pipeline: Iterator[List[LabelledSample]] = Utils.batcher(
+        pipeline_batches = Utils.batcher(
             items=pipeline,
             size_extractor=lambda item: item.data.getbuffer().nbytes,
             size_threshold=shard_size,
         )
-        pipeline: Iterator[LabelledSample] = (
-            Utils.tar_samples(batch, monotonic_ctr) for batch in pipeline
+        pipeline = (
+            Utils.tar_samples(batch, monotonic_ctr) for batch in pipeline_batches
         )
 
     return ThreadSafeIterator(pipeline)
@@ -246,7 +242,11 @@ def producer(generator: Iterator, barrier: Barrier, queue: Queue, identifier: in
         queue.put(Sentinel)
 
 
-def consumer(queue: Queue, activity: Callable[[LabelledSample], None], identifier: int):
+def consumer(
+    queue: Queue,
+    activity: Callable[[Union[LabelledSample, Sentinel]], None],
+    identifier: int,
+):
     while True:
         # click.echo(f"Consumer running on thread {threading.current_thread().ident}")
         item: Union[LabelledSample, Sentinel] = queue.get()
@@ -254,6 +254,7 @@ def consumer(queue: Queue, activity: Callable[[LabelledSample], None], identifie
             # add signal back for other consumers
             queue.put(item)
             break
+
         activity(item)
 
 
@@ -308,7 +309,7 @@ def synthesize_dataset(
     num_samples: float,
     resolution: Tuple[int, int],
     image_format: str,
-    shard_size: float,
+    shard_size: int,
     s3_bucket: str,
     s3_prefix: str,
     region: str,
@@ -316,8 +317,8 @@ def synthesize_dataset(
     """
     Synthesizes a dataset that will be used for s3torchbenchmarking and uploads it to an S3 bucket.
     """
-    num_workers = os.cpu_count()
-    task_queue = Queue(num_workers)
+    num_workers = os.cpu_count() or 1
+    task_queue: Queue = Queue(num_workers)
 
     # setup upstream stage to generate the dataset in memory
     pipeline = build_pipeline(
