@@ -74,9 +74,9 @@ def run_fsdp_checkpoint_save_example(rank, backend):
     }
 
     thread_count = 1
-    bucket = "dcp-poc-test"
+    bucket = "dcp-poc-test-2"
     path = f"s3://{bucket}/epoech_1/"
-    region = "us-east-1"
+    region = "eu-west-2"
     # writer_to_use = "local"
     writer_to_use = "s3_fs"
     writer = get_writer(region, path, thread_count, writer_to_use)
