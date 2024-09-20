@@ -113,6 +113,12 @@ class S3FS(FileSystemBase):
         """
         pass
 
+    def exists(self, path: Union[str, os.PathLike]) -> bool:
+        pass
+
+    def rm_file(self, path: Union[str, os.PathLike]) -> None:
+        pass
+
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         """
