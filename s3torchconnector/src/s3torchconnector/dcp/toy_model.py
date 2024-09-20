@@ -73,7 +73,7 @@ def run_fsdp_checkpoint_save_example(rank, backend):
         "model": model.state_dict(),
     }
 
-    thread_count = 1
+    thread_count = 4
     bucket = "dcp-poc-test-2"
     path = f"s3://{bucket}/epoech_1/"
     region = "eu-west-2"
