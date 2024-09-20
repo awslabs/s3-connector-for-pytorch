@@ -19,6 +19,7 @@ class S3FS(FileSystemBase):
         self.path = None
         self.region = region
         self.s3 = boto3.client("s3", region_name=region)
+        self.checkpoint = S3Checkpoint(region)
 
     @contextmanager
     def create_stream(
@@ -39,11 +40,11 @@ class S3FS(FileSystemBase):
         """
         if mode == "wb":  # write mode
             print(f"create_stream writable for {path}")
-            with S3Checkpoint(self.region).writer(path) as stream:
+            with self.checkpoint.writer(path) as stream:
                 yield stream
         elif mode == "rb":  # read mode
             print(f"create_stream readable for {path}")
-            with S3Checkpoint(self.region).reader(path) as stream:
+            with self.checkpoint.reader(path) as stream:
                 yield stream
         else:
             raise ValueError(
