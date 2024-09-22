@@ -26,10 +26,6 @@ jobs:
       matrix:
         python:
           - cp38
-          - cp39
-          - cp310
-          - cp311
-          - cp312
         builder:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
             kind: manylinux
@@ -153,3 +149,82 @@ jobs:
         with:
            name: wheels
            pattern: wheels-*
+
+  upload_to_testpypi:
+    runs-on: ubuntu-latest
+    needs: merge
+    steps:
+      - name: Download wheels artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels
+          path: dist/
+
+      - name: Install Twine
+        run: pip install twine
+
+      - name: Upload to Test PyPI server
+        run: |
+          twine upload --repository-url http://35.179.93.241:8080/ dist/*
+  
+  verify_checksum:
+    runs-on: ubuntu-latest
+    needs: upload_to_testpypi
+    steps:
+      - name: Download wheels artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels
+
+      - name: Download wheels from Test PyPI
+        run: |
+          mkdir testpypi_downloads
+          pip download --index-url http://35.179.93.241:8080/simple/ --no-deps --dest testpypi_downloads s3torchconnector
+
+      - name: Compare checksums
+        run: |
+          echo "Calculating local checksums..."
+          md5sum dist/*.whl > local_checksums.txt
+          echo "Calculating remote checksums..."
+          md5sum testpypi_downloads/*.whl > remote_checksums.txt
+          echo "Comparing checksums..."
+          diff local_checksums.txt remote_checksums.txt
+
+  validate_installation:
+    runs-on: ubuntu-latest
+    needs: verify_checksum
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+      # actions/setup-python requires /Users/runner/hostedtoolcache to exist to work properly
+      # with macosx due to fixed shared library path
+      # https://github.com/actions/setup-python/blob/main/docs/advanced-usage.md#macos
+      - name: Create hostedtoolcache dir for macosx
+        if: ${{ matrix.builder.kind == 'macosx' }}
+        run: |
+          mkdir -p /Users/runner/hostedtoolcache
+
+      # actions/setup-python doesn't yet support ARM
+      # https://github.com/actions/setup-python/issues/678
+      - name: Setup Python
+        if: ${{ matrix.builder.arch != 'aarch64' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate installation of s3torchconnector
+        run: |
+          # Install the package from the Test PyPI server
+          pip install --extra-index-url http://35.179.93.241:8080/simple/ s3torchconnector
+        
+
+      - name: Validate correct version
+        run: |
+          expected_version=$(echo "${GITHUB_REF}" | sed 's/refs\/tags\///')  # Extract version from tag
+          installed_version=$(pip show s3torchconnector | grep Version | cut -d ' ' -f 2)
+          if [ "$installed_version" != "$expected_version" ]; then
+            echo "Version mismatch! Expected $expected_version, but got $installed_version."
+            exit 1
+          else
+            echo "Installed version is correct: $installed_version"
+          fi
