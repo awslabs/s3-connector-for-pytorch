@@ -30,18 +30,6 @@ jobs:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
             kind: manylinux
             arch: x86_64
-          - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
-            kind: manylinux
-            arch: aarch64
-#          - runner: ubuntu-20.04
-#            kind: manylinux
-#            arch: x86_64
-          - runner: macos-13
-            kind: macosx
-            arch: x86_64
-          - runner: macos-14
-            kind: macosx
-            arch: arm64
     permissions:
       id-token: write
       contents: read
@@ -164,6 +152,9 @@ jobs:
         run: pip install twine
 
       - name: Upload to Test PyPI server
+        env:
+          TWINE_USERNAME: ${{ vars.USERNAME }}  # Use '__token__' for API token authentication
+          TWINE_PASSWORD: ${{ vars.PASSWORD }}  # Your Test PyPI API token
         run: |
           twine upload --repository-url http://35.179.93.241:8080/ dist/*
   
