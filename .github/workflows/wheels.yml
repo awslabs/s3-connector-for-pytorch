@@ -153,10 +153,10 @@ jobs:
 
       - name: Upload to Test PyPI server
         env:
-          TWINE_USERNAME: ${{ vars.USERNAME }}  # Use '__token__' for API token authentication
-          TWINE_PASSWORD: ${{ vars.PASSWORD }}  # Your Test PyPI API token
+          TWINE_USERNAME: ""  # Use '__token__' for API token authentication
+          TWINE_PASSWORD: ""  # Your Test PyPI API token
         run: |
-          twine upload --repository-url http://35.179.93.241:8080/ dist/*
+          twine upload --repository-url http://35.179.93.241:8080/ dist/* --non-interactive
   
   verify_checksum:
     runs-on: ubuntu-latest
