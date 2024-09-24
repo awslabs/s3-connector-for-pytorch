@@ -3,6 +3,7 @@
 
 import logging
 import os
+import threading
 from functools import partial
 from typing import Optional, Any
 
@@ -48,15 +49,17 @@ class S3Client:
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
+        self._lock = threading.Lock()
 
     @property
     def _client(self) -> MountpointS3Client:
-        if self._client_pid is None or self._client_pid != os.getpid():
-            self._client_pid = os.getpid()
-            # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
-            self._real_client = self._client_builder()
-        assert self._real_client is not None
-        return self._real_client
+        with self._lock:
+            if self._client_pid is None or self._client_pid != os.getpid():
+                self._client_pid = os.getpid()
+                # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
+                self._real_client = self._client_builder()
+            assert self._real_client is not None
+            return self._real_client
 
     @property
     def region(self) -> str:
