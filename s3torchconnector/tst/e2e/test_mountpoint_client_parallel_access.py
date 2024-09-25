@@ -13,12 +13,17 @@ class S3ClientWithoutLock(S3Client):
             self._client_pid = os.getpid()
             # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
             self._real_client = self._client_builder()
-        time.sleep(10)
         assert self._real_client is not None
         return self._real_client
 
-    def invalidate_client(self):
-        self._real_client = None
+    def _client_builder(self):
+        time.sleep(50)
+        super()._client_builder()
+
+class S3ClientWithLock(S3Client):
+    def _client_builder(self):
+        time.sleep(50)
+        super()._client_builder()
 
 def access_client(client, error_event):
     try:
@@ -29,38 +34,34 @@ def access_client(client, error_event):
         print(f"AssertionError in thread {threading.current_thread().name}: {e}")
         error_event.set()
 
-def invalidate_client(client, error_event):
-    if not error_event.is_set():
-        client.invalidate_client()
-        print(f"Client invalidated by thread {threading.current_thread().name}")
-
-def test_multiple_thread_accessing_mountpoint_client_in_parallel():
+def test_multiple_thread_accessing_mountpoint_client_in_parallel_without_lock():
     print("Running test without lock...")
     client = S3ClientWithoutLock("us-west-2")
+    if not access_mountpoint_client_in_parallel(client):
+        pytest.fail("Test failed as AssertionError did not happen in one of the threads.")
+
+def test_multiple_thread_accessing_mountpoint_client_in_parallel_with_lock():
+    print("Running test with lock...")
+    client = S3ClientWithLock("us-west-2")
+    if access_mountpoint_client_in_parallel(client):
+        pytest.fail("Test failed as AssertionError happened in one of the threads.")
+
+def access_mountpoint_client_in_parallel(client):
+
     error_event = threading.Event()
+    # Create and start multiple threads
+    accessor_threads = []
+    num_accessor_threads = 10
 
-    # Start one accessor thread
-    accessor_thread = threading.Thread(target=access_client, args=(client, error_event,), name="Accessor")
-    accessor_thread.start()
-
-    # Create and start multiple invalidator threads
-    invalidator_threads = []
-    num_invalidators = 500  # Number of invalidator threads
-
-    for i in range(num_invalidators):
+    for i in range(num_accessor_threads):
         if error_event.is_set():
             break
-        invalidator_thread = threading.Thread(target=invalidate_client, args=(client, error_event,),
-                                              name=f"Invalidator-{i + 1}")
-
-        invalidator_threads.append(invalidator_thread)
+        accessor_thread = threading.Thread(target=access_client, args=(client, error_event,), name=f"Accessor-{i + 1}")
+        accessor_threads.append(accessor_thread)
         time.sleep(random.uniform(0.1, 0.5))
-        invalidator_thread.start()
+        accessor_thread.start()
 
-    accessor_thread.join()
-
-    for thread in invalidator_threads:
+    for thread in accessor_threads:
         thread.join(timeout=1)
 
-    if error_event.is_set():
-        pytest.fail("Test failed due to AssertionError in one of the threads.")
+    return error_event.is_set()
