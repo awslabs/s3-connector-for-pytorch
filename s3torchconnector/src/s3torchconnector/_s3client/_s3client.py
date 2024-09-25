@@ -57,6 +57,7 @@ class S3Client:
     def _client(self) -> MountpointS3Client:
         # This is a fast check to avoid acquiring the lock unnecessarily.
         if self._client_pid is None or self._client_pid != os.getpid():
+            # Acquire the lock to ensure thread-safety when creating the client.
             with _client_lock:
                 # This double-check ensures that the client is only created once.
                 if self._client_pid is None or self._client_pid != os.getpid():
