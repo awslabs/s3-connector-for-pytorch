@@ -17,13 +17,13 @@ class S3ClientWithoutLock(S3Client):
         return self._real_client
 
     def _client_builder(self):
-        time.sleep(50)
-        super()._client_builder()
+        time.sleep(1)
+        return super()._client_builder()
 
 class S3ClientWithLock(S3Client):
     def _client_builder(self):
-        time.sleep(50)
-        super()._client_builder()
+        time.sleep(1)
+        return super()._client_builder()
 
 def access_client(client, error_event):
     try:
@@ -58,10 +58,9 @@ def access_mountpoint_client_in_parallel(client):
             break
         accessor_thread = threading.Thread(target=access_client, args=(client, error_event,), name=f"Accessor-{i + 1}")
         accessor_threads.append(accessor_thread)
-        time.sleep(random.uniform(0.1, 0.5))
         accessor_thread.start()
 
     for thread in accessor_threads:
-        thread.join(timeout=1)
+        thread.join()
 
     return error_event.is_set()
