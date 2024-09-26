@@ -109,7 +109,8 @@ def run_fsdp_checkpoint_load_example(rank, backend, state_dict):
     )
 
     # Prepare state_dict to load into
-    loaded_state_dict = {}
+    loaded_state_dict = {"model": model.state_dict(),}
+
 
     thread_count = 1
     bucket = "dcp-poc-test-3"
@@ -125,6 +126,7 @@ def run_fsdp_checkpoint_load_example(rank, backend, state_dict):
     model.load_state_dict(loaded_state_dict["model"])
     print("Checkpoint loaded and model state dict restored.")
 
+    print(loaded_state_dict)
     # Verify that saved and loaded state dicts are similar
     if torch.allclose(state_dict["model"], loaded_state_dict["model"]):
         print("The saved and loaded model state dicts are similar.")
