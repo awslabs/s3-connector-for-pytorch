@@ -65,7 +65,6 @@ def run_fsdp_checkpoint_save_example(rank, backend):
     bucket = "dcp-poc-test-3"
     path = f"s3://{bucket}/epoch_1/"
     region = "eu-west-2"
-    # writer_to_use = "local"
     writer_to_use = "s3_fs"
     writer = get_writer(region, path, thread_count, writer_to_use)
 
@@ -86,9 +85,7 @@ def run_fsdp_checkpoint_save_example(rank, backend):
 
     print("Checkpoint saved for epoch 2.")
 
-    return state_dict  # Return the state dict for verification
-
-def run_fsdp_checkpoint_load_example(rank, backend, state_dict):
+def run_fsdp_checkpoint_load_example(rank, backend):
     print(f"Running basic FSDP checkpoint loading example on rank {rank}.")
 
     # Need to put tensor on a GPU device for nccl backend
@@ -111,7 +108,6 @@ def run_fsdp_checkpoint_load_example(rank, backend, state_dict):
     # Prepare state_dict to load into
     loaded_state_dict = {"model": model.state_dict(),}
 
-
     thread_count = 1
     bucket = "dcp-poc-test-3"
     path = f"s3://{bucket}/epoch_2/"
@@ -127,11 +123,7 @@ def run_fsdp_checkpoint_load_example(rank, backend, state_dict):
     print("Checkpoint loaded and model state dict restored.")
 
     print(loaded_state_dict)
-    # Verify that saved and loaded state dicts are similar
-    if torch.allclose(state_dict["model"], loaded_state_dict["model"]):
-        print("The saved and loaded model state dicts are similar.")
-    else:
-        print("The saved and loaded model state dicts differ.")
+
 
 def get_writer(region, path, thread_count, writer_to_use):
     if writer_to_use == "local":
@@ -191,6 +183,7 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", type=str, default="nccl", choices=["nccl", "gloo"])
+    parser.add_argument("--action", type=str, default="save", choices=["save", "load"], help="Action to perform: 'save' or 'load'.")
     args = parser.parse_args()
 
     setup(args.backend)
@@ -199,7 +192,9 @@ if __name__ == "__main__":
     world_size = dist.get_world_size()
     print(f"Starting for rank {rank}, world_size is {world_size}")
 
-    state_dict = run_fsdp_checkpoint_save_example(rank, args.backend)
-    run_fsdp_checkpoint_load_example(rank, args.backend, state_dict)
+    if args.action == "save":
+        run_fsdp_checkpoint_save_example(rank, args.backend)
+    elif args.action == "load":
+        run_fsdp_checkpoint_load_example(rank, args.backend)
 
     cleanup()
