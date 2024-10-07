@@ -30,5 +30,8 @@ venv/
 *.egg
 multirun/
 
+# Unit test / coverage reports
+.hypothesis/
+
 # Prevent publishing file with third party licenses
 THIRD-PARTY-LICENSES
