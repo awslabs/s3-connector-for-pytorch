@@ -55,6 +55,10 @@ class BucketPrefixFixture(object):
         self.s3.put_object(Bucket=self.bucket, Key=full_key, Body=contents, **kwargs)
         self.contents[full_key] = contents
 
+    def remove(self, key: str):
+        full_key = f"{self.prefix}{key}"
+        self.s3.delete_object(Bucket=self.bucket, Key=full_key)
+
     def __getitem__(self, index):
         return self.contents[index]
 
@@ -120,3 +124,15 @@ def checkpoint_directory(request) -> BucketPrefixFixture:
 @pytest.fixture
 def empty_directory(request) -> BucketPrefixFixture:
     return get_test_bucket_prefix(f"{request.node.name}/empty_directory")
+
+
+@pytest.fixture
+def copy_directory(request) -> tuple[BucketPrefixFixture, str, str]:
+    fixture = get_test_bucket_prefix(f"{request.node.name}/copy_directory")
+    src_key, dst_key = "src.txt", "dst.txt"
+
+    # set up
+    fixture.add(src_key, b"Hello, World!\n")
+    fixture.remove(dst_key)
+
+    return fixture, fixture.prefix + src_key, fixture.prefix + dst_key
