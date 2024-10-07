@@ -60,6 +60,20 @@ def test_list_objects_log(s3_client: S3Client, caplog):
     assert f"ListObjects {S3_URI}" in caplog.messages
 
 
+def test_delete_object_log(s3_client: S3Client, caplog):
+    with caplog.at_level(logging.DEBUG):
+        s3_client.delete_object(TEST_BUCKET, TEST_KEY)
+    assert f"DeleteObject {S3_URI}" in caplog.messages
+
+
+def test_copy_object_log(s3_client: S3Client, caplog):
+    dst_bucket, dst_key = "dst_bucket", "dst_key"
+
+    with caplog.at_level(logging.DEBUG):
+        s3_client.copy_object(TEST_BUCKET, TEST_KEY, dst_bucket, dst_key)
+    assert f"CopyObject {S3_URI} to s3://{dst_bucket}/{dst_key}" in caplog.messages
+
+
 def test_s3_client_default_user_agent():
     s3_client = S3Client(region=TEST_REGION)
     expected_user_agent = f"s3torchconnector/{__version__}"

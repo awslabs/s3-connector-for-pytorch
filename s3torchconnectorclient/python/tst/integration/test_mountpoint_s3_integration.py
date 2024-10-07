@@ -404,6 +404,50 @@ def test_delete_object_invalid_bucket(
         )
 
 
+@pytest.fixture
+@pytest.mark.parametrize("force_path_style", [False, True])
+def fixture_for_copy(sample_directory: BucketPrefixFixture, force_path_style: bool):
+    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX, force_path_style=force_path_style)
+
+    src_key = f"{sample_directory.prefix}hello_world.txt"
+    dst_key = f"{sample_directory.prefix}hello_world_COPY.txt"
+    bucket = sample_directory.bucket
+
+    # set up
+    client.delete_object(bucket, dst_key)
+
+    yield client, bucket, src_key, dst_key
+
+    # tear down
+    client.delete_object(bucket, dst_key)
+
+
+def test_copy_object(fixture_for_copy):
+    (client, bucket, src_key, dst_key) = fixture_for_copy
+
+    client.copy_object(bucket, src_key, bucket, dst_key)
+
+    src_object = client.get_object(bucket, src_key)
+    dst_object = client.get_object(bucket, dst_key)
+
+    assert dst_object.key == dst_key
+    assert b''.join(dst_object) == b''.join(src_object)
+
+
+@pytest.mark.parametrize("force_path_style", [False, True])
+def test_copy_object_bucket_does_not_exist(sample_directory: BucketPrefixFixture, force_path_style: bool):
+    client = MountpointS3Client(sample_directory.region, TEST_USER_AGENT_PREFIX, force_path_style=force_path_style)
+
+    src_key = f"{sample_directory.prefix}hello_world.txt"
+    dst_key = f"{sample_directory.prefix}hello_world_COPY.txt"
+
+    with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
+        client.copy_object(sample_directory.bucket, src_key, "", dst_key)
+        # client.delete_object(
+        #     f"{empty_directory.bucket}-{uuid.uuid4()}", empty_directory.prefix
+        # )
+
+
 def _parse_list_result(stream: ListObjectStream, max_keys: int):
     object_infos = []
     i = 0
