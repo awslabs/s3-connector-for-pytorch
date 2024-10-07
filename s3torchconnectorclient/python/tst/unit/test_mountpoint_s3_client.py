@@ -3,10 +3,9 @@
 
 import logging
 import pickle
-import pytest
 from typing import Set, Optional
 
-from s3torchconnectorclient import __version__
+import pytest
 from s3torchconnectorclient._mountpoint_s3_client import (
     S3Exception,
     GetObjectStream,
@@ -15,6 +14,8 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     MockMountpointS3Client,
     MountpointS3Client,
 )
+
+from s3torchconnectorclient import __version__
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -374,7 +375,7 @@ def test_delete_object(force_path_style: bool):
 
 
 @pytest.mark.parametrize("force_path_style", [False, True])
-def test_delete_object_already_deleted(force_path_style: bool):
+def test_delete_object_noop_when_key_does_not_exist(force_path_style: bool):
     mock_client = MockMountpointS3Client(
         REGION, MOCK_BUCKET, force_path_style=force_path_style
     )
@@ -384,12 +385,77 @@ def test_delete_object_already_deleted(force_path_style: bool):
 
 
 @pytest.mark.parametrize("force_path_style", [False, True])
-def test_delete_object_non_existent_bucket(force_path_style: bool):
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, force_path_style)
+def test_delete_object_raises_when_bucket_does_not_exist(force_path_style: bool):
+    mock_client = MockMountpointS3Client(
+        REGION, MOCK_BUCKET, force_path_style=force_path_style
+    )
     client = mock_client.create_mocked_client()
 
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.delete_object("bucket2", "hello_world.txt")
+
+
+# NOTE[Oct. 2024]: `force_path_style` is an unsupported option.
+# (https://github.com/awslabs/aws-c-s3/blob/main/include/aws/s3/s3_client.h#L74-L86).
+def test_copy_object():
+    src_key, src_data = ("src.txt", b"Hello, World!\n")
+    dst_key = "dst.txt"
+
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object(src_key, src_data)
+
+    client = mock_client.create_mocked_client()
+    client.copy_object(MOCK_BUCKET, src_key, MOCK_BUCKET, dst_key)
+    dst_stream = client.get_object(MOCK_BUCKET, dst_key)
+
+    assert dst_stream.key == dst_key
+    assert b"".join(dst_stream) == src_data
+
+
+# NOTE[Oct. 2024]: `force_path_style` is an unsupported option.
+# (https://github.com/awslabs/aws-c-s3/blob/main/include/aws/s3/s3_client.h#L74-L86).
+@pytest.mark.skip(
+    reason="MockMountpointS3Client does not support cross-bucket `CopyObject`"
+)
+def test_copy_object_raises_when_source_bucket_does_not_exist():
+    src_key, src_data = ("src.txt", b"Hello, World!\n")
+    dst_key = "dst.txt"
+
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object(src_key, src_data)
+
+    client = mock_client.create_mocked_client()
+    with pytest.raises(S3Exception, match="Service error: The object was not found"):
+        client.copy_object("foobar", src_key, MOCK_BUCKET, dst_key)
+
+
+# NOTE[Oct. 2024]: `force_path_style` is an unsupported option.
+# (https://github.com/awslabs/aws-c-s3/blob/main/include/aws/s3/s3_client.h#L74-L86).
+@pytest.mark.skip(
+    reason="MockMountpointS3Client does not support cross-bucket `CopyObject`"
+)
+def test_copy_object_raises_when_destination_bucket_does_not_exist():
+    src_key, src_data = ("src.txt", b"Hello, World!\n")
+    dst_key = "dst.txt"
+
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object(src_key, src_data)
+
+    client = mock_client.create_mocked_client()
+    with pytest.raises(S3Exception, match="Service error: The object was not found"):
+        client.copy_object(MOCK_BUCKET, src_key, "foobar", dst_key)
+
+
+# NOTE[October 2024]: `force_path_style` is an unsupported option.
+# (https://github.com/awslabs/aws-c-s3/blob/main/include/aws/s3/s3_client.h#L74-L86).
+def test_copy_object_raises_when_source_key_does_not_exist():
+    dst_key = "dst.txt"
+
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+
+    client = mock_client.create_mocked_client()
+    with pytest.raises(S3Exception, match="Service error: The object was not found"):
+        client.copy_object(MOCK_BUCKET, "foobar", MOCK_BUCKET, dst_key)
 
 
 def _assert_isinstance(obj, expected: type):

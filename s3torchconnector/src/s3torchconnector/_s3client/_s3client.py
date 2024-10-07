@@ -130,3 +130,11 @@ class S3Client:
     def delete_object(self, bucket: str, key: str) -> None:
         log.debug(f"DeleteObject s3://{bucket}/{key}")
         self._client.delete_object(bucket, key)
+
+    def copy_object(
+        self, src_bucket: str, src_key: str, dst_bucket: str, dst_key: str
+    ) -> None:
+        log.debug(
+            f"CopyObject s3://{src_bucket}/{src_key} to s3://{dst_bucket}/{dst_key}"
+        )
+        return self._client.copy_object(src_bucket, src_key, dst_bucket, dst_key)
