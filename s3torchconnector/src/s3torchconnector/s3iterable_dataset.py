@@ -5,6 +5,7 @@ from typing import Iterator, Any, Union, Iterable, Callable, Optional
 import logging
 
 import torch.utils.data
+# import torch.distributed as dist
 
 from . import S3Reader
 from ._s3bucket_key_data import S3BucketKeyData
@@ -32,6 +33,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
+        rank: int = 0,
+        world_size: int = 1
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -39,6 +42,10 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         self._endpoint = endpoint
         self._s3client_config = s3client_config
         self._client = None
+        # self._shard_index = self._get_shard_index(self._get_rank())
+        self._shard_index = self._get_shard_index(rank)
+        # self._shard_count = self._get_shard_count(self._get_world_size())
+        self._shard_count = self._get_shard_count(world_size)
 
     @property
     def region(self):
@@ -57,6 +64,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
+        rank: int = 0,
+        world_size: int = 1
     ):
         """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
 
@@ -66,6 +75,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
+          rank: rank of the current process, default to 0 when it is not used for distributed training
+          world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -80,6 +91,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
+            rank=rank,
+            world_size=world_size
         )
 
     @classmethod
@@ -91,6 +104,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
+        rank: int = 0,
+        world_size: int = 1
     ):
         """Returns an instance of S3IterableDataset using the S3 URI provided.
 
@@ -100,6 +115,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
+          rank: rank of the current process, default to 0 when it is not used for distributed training
+          world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -114,7 +131,42 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
+            rank=rank,
+            world_size=world_size
         )
+
+    # def _using_dist(self):
+    #     return dist.is_available() and dist.is_initialized()
+    #
+    # def _get_world_size(self):
+    #     if not self._using_dist():
+    #         return 1
+    #     return dist.get_world_size()
+    #
+    # def _get_rank(self):
+    #     if not self._using_dist():
+    #         return 0
+    #     return dist.get_rank()
+
+    @staticmethod
+    def _get_worker_id() -> int:
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is not None:
+            return worker_info.id
+        return 0
+
+    @staticmethod
+    def _get_num_workers() -> int:
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is not None:
+            return worker_info.num_workers
+        return 1
+
+    def _get_shard_index(self, rank: int):
+        return self._get_num_workers() * rank + self._get_worker_id()
+
+    def _get_shard_count(self, world_size: int):
+        return self._get_num_workers() * world_size
 
     def _get_client(self):
         if self._client is None:
@@ -133,6 +185,15 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         )
 
     def __iter__(self) -> Iterator[Any]:
-        return map(
-            self._get_transformed_object, self._get_dataset_objects(self._get_client())
+        if self._shard_index == 0 and self._shard_count == 1:
+            return map(
+                self._get_transformed_object,
+                self._get_dataset_objects(self._get_client()),
+            )
+
+        sharded_objects = (
+            obj
+            for idx, obj in enumerate(self._get_dataset_objects(self._get_client()))
+            if idx % self._shard_count == self._shard_index
         )
+        return map(self._get_transformed_object, sharded_objects)
