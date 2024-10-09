@@ -4,6 +4,7 @@
 import logging
 from typing import Iterable, Union, Sequence
 
+from unittest.mock import patch, MagicMock
 import pytest
 
 from s3torchconnector import S3Exception
@@ -13,6 +14,8 @@ from s3torchconnector._s3dataset_common import (
     parse_s3_uri,
     get_objects_from_prefix,
     get_objects_from_uris,
+    get_shard_index,
+    get_shards_count,
 )
 
 logging.basicConfig(
@@ -119,6 +122,55 @@ def test_get_objects_from_uris_fail(uri, error_msg):
     with pytest.raises(ValueError, match=f"^{error_msg}$"):
         get_objects_from_uris(uri, mock_client)
 
+
+@pytest.mark.parametrize(
+    "rank, worker_id, num_workers, expected_shard_index",
+    [
+        (0, 0, 1, 0),
+        (0, 1, 2, 1),
+        (1, 0, 2, 2),
+        (2, 1, 3, 7),
+        (5, 1, 10, 51),
+    ],
+)
+@patch("torch.utils.data.get_worker_info")
+def test_get_shard_index(
+        get_worker_info_mock,
+        rank: int,
+        worker_id: int,
+        num_workers: int,
+        expected_shard_index: int
+):
+    worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
+    get_worker_info_mock.return_value = worker_info_mock
+
+    shard_index = get_shard_index(rank)
+    assert shard_index == expected_shard_index
+
+
+@pytest.mark.parametrize(
+    "world_size, worker_id, num_workers, expected_shards_count",
+    [
+        (1, 0, 1, 1),
+        (0, 1, 2, 2),
+        (1, 0, 2, 2),
+        (2, 1, 3, 6),
+        (5, 1, 10, 50),
+    ],
+)
+@patch("torch.utils.data.get_worker_info")
+def test_get_shards_count(
+        get_worker_info_mock,
+        world_size: int,
+        worker_id: int,
+        num_workers: int,
+        expected_shards_count: int
+):
+    worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
+    get_worker_info_mock.return_value = worker_info_mock
+
+    shards_count = get_shards_count(world_size)
+    assert shards_count == expected_shards_count
 
 def _create_mock_client_with_dummy_objects(
     bucket: str, keys: Union[str, Iterable[str]]
