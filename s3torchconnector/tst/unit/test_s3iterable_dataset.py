@@ -227,7 +227,14 @@ def test_from_prefix_seek_no_head():
         (["obj1"], ["obj1"], 0, 2, 0, 1),
         (["obj1"], [], 1, 2, 0, 1),
         (["obj1", "obj2", "obj3"], ["obj1", "obj3"], 0, 2, 0, 1),
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj3", "obj5"], 0, 2, 0, 1),
+        (
+            ["obj1", "obj2", "obj3", "obj4", "obj5"],
+            ["obj1", "obj3", "obj5"],
+            0,
+            2,
+            0,
+            1,
+        ),
         (["obj1", "obj2", "obj3", "test"], ["obj2", "test"], 1, 2, 0, 1),
         (["obj1", "obj2", "obj3"], ["obj2"], 1, 3, 0, 1),
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj4"], 0, 3, 0, 1),
@@ -240,10 +247,44 @@ def test_from_prefix_seek_no_head():
         (["obj1"], [], 1, 1, 1, 2),
         (["obj1", "obj2", "obj3"], ["obj3"], 0, 2, 1, 2),
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj5"], 0, 2, 0, 2),
-        (["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "test"], ["obj4", "test"], 1, 2, 1, 2),
+        (
+            ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "test"],
+            ["obj4", "test"],
+            1,
+            2,
+            1,
+            2,
+        ),
         (["obj1", "obj2", "obj3"], ["obj2"], 1, 3, 0, 2),
-        (["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7"], ["obj1", "obj7"], 0, 3, 0, 2),
-        (["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "obj8", "obj9", "obj10", "obj11", "obj12"], ["obj5", "obj11"], 1, 3, 1, 2),
+        (
+            ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7"],
+            ["obj1", "obj7"],
+            0,
+            3,
+            0,
+            2,
+        ),
+        (
+            [
+                "obj1",
+                "obj2",
+                "obj3",
+                "obj4",
+                "obj5",
+                "obj6",
+                "obj7",
+                "obj8",
+                "obj9",
+                "obj10",
+                "obj11",
+                "obj12",
+            ],
+            ["obj5", "obj11"],
+            1,
+            3,
+            1,
+            2,
+        ),
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj3"], 2, 3, 0, 2),
     ],
 )
@@ -255,13 +296,15 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     worker_id: int,
     num_workers: int,
     rank: int,
-    world_size: int
+    world_size: int,
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
 
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
-    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION, rank=rank, world_size=world_size)
+    dataset = S3IterableDataset.from_objects(
+        object_uris, region=TEST_REGION, rank=rank, world_size=world_size
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -289,7 +332,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
             0,
-            1
+            1,
         ),
         (["obj1", "obj2", "obj3", "test"], S3_PREFIX, ["obj2", "test"], 1, 2, 0, 1),
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj2"], 1, 3, 0, 1),
@@ -300,9 +343,17 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             3,
             0,
-            1
+            1,
         ),
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj2", "obj5"], 1, 3, 0, 1),
+        (
+            ["obj1", "obj2", "obj3", "obj4", "obj5"],
+            S3_PREFIX,
+            ["obj2", "obj5"],
+            1,
+            3,
+            0,
+            1,
+        ),
         (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj3"], 2, 3, 0, 1),
         (
             ["obj1", "test1", "obj2", "obj3", "test2", "obj4", "obj5", "test4"],
@@ -311,7 +362,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             3,
             0,
-            1
+            1,
         ),
         (
             [
@@ -332,14 +383,22 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             1,
             3,
             0,
-            1
+            1,
         ),
         # two nodes are in use
         ([], S3_PREFIX, [], 0, 4, 0, 2),
         ([], S3_PREFIX, [], 2, 3, 1, 2),
         (["obj1"], S3_PREFIX, ["obj1"], 0, 2, 0, 2),
         (["obj1"], f"{S3_PREFIX}/", [], 1, 2, 0, 2),
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj1", "obj5"], 0, 2, 0, 2),
+        (
+            ["obj1", "obj2", "obj3", "obj4", "obj5"],
+            S3_PREFIX,
+            ["obj1", "obj5"],
+            0,
+            2,
+            0,
+            2,
+        ),
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "obj8"],
             f"{S3_PREFIX}/",
@@ -347,9 +406,17 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
             1,
-            2
+            2,
         ),
-        (["obj1", "obj2", "obj3", "obj4", "obj5", "test"], S3_PREFIX, ["obj2", "test"], 1, 2, 0, 2),
+        (
+            ["obj1", "obj2", "obj3", "obj4", "obj5", "test"],
+            S3_PREFIX,
+            ["obj2", "test"],
+            1,
+            2,
+            0,
+            2,
+        ),
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj2"], 1, 3, 0, 2),
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
@@ -358,7 +425,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             3,
             0,
-            2
+            2,
         ),
         (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj5"], 1, 3, 1, 2),
         (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj3"], 0, 1, 2, 3),
@@ -369,7 +436,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
             0,
-            2
+            2,
         ),
         (
             [
@@ -390,7 +457,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             1,
             1,
-            3
+            3,
         ),
     ],
 )
@@ -403,12 +470,14 @@ def test_dataset_creation_from_prefix_against_multiple_workers(
     worker_id: int,
     num_workers: int,
     rank: int,
-    world_size: int
+    world_size: int,
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
 
-    dataset = S3IterableDataset.from_prefix(s3_uri=prefix, region=TEST_REGION, rank=rank, world_size=world_size)
+    dataset = S3IterableDataset.from_prefix(
+        s3_uri=prefix, region=TEST_REGION, rank=rank, world_size=world_size
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
