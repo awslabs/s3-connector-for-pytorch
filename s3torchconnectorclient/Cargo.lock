@@ -644,8 +644,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "mountpoint-s3-client"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b3cecabd371f8de97731e118e6fb2a8677bdcefe4e6e90f5a964a1c654b3ef7"
+source = "git+https://github.com/rajdchak/mountpoint-s3-fork.git?branch=copy-object-operation-TEST#9a6baf3152a91faaa92281c5e3f591e6b63fd872"
 dependencies = [
  "async-io",
  "async-lock",
@@ -679,8 +678,7 @@ dependencies = [
 [[package]]
 name = "mountpoint-s3-crt"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9f1a24ac11fee585a1b8c55cd30af4c611c920856cafffcf9564b9c9eca36d7"
+source = "git+https://github.com/rajdchak/mountpoint-s3-fork.git?branch=copy-object-operation-TEST#9a6baf3152a91faaa92281c5e3f591e6b63fd872"
 dependencies = [
  "async-channel",
  "futures",
@@ -695,8 +693,7 @@ dependencies = [
 [[package]]
 name = "mountpoint-s3-crt-sys"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb95240e96c865dc20798d2d1cbe895ee327ddf6400b3378d343c19c48699baa"
+source = "git+https://github.com/rajdchak/mountpoint-s3-fork.git?branch=copy-object-operation-TEST#9a6baf3152a91faaa92281c5e3f591e6b63fd872"
 dependencies = [
  "bindgen",
  "cc",
