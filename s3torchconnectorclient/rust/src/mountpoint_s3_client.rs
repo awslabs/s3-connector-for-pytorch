@@ -154,6 +154,10 @@ impl MountpointS3Client {
         slf.client.delete_object(slf.py(), bucket, key)
     }
 
+    pub fn copy_object(slf: PyRef<'_, Self>, source_bucket: String, source_key: String, destination_bucket: String, destination_key: String) -> PyResult<()> {
+        slf.client.copy_object(slf.py(), source_bucket, source_key, destination_bucket, destination_key)
+    }
+
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {
         let py = slf.py();
         let state = [

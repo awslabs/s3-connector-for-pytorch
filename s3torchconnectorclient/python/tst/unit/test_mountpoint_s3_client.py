@@ -3,6 +3,8 @@
 
 import logging
 import pickle
+from collections import namedtuple
+
 import pytest
 from typing import Set, Optional
 
@@ -19,7 +21,6 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
 )
-
 
 REGION = "us-east-1"
 MOCK_BUCKET = "mock-bucket"
@@ -385,11 +386,49 @@ def test_delete_object_already_deleted(force_path_style: bool):
 
 @pytest.mark.parametrize("force_path_style", [False, True])
 def test_delete_object_non_existent_bucket(force_path_style: bool):
-    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, force_path_style)
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET, force_path_style=force_path_style)
     client = mock_client.create_mocked_client()
 
     with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
         client.delete_object("bucket2", "hello_world.txt")
+
+
+# NOTE 1: `MockMountpointS3Client` only works on one bucket, so it cannot test
+# cross-bucket COPY operations.
+# NOTE 2: as of Oct'24, `force_path_style` is an unsupported option
+# (https://github.com/awslabs/aws-c-s3/blob/main/include/aws/s3/s3_client.h#L74-L86).
+def test_copy_object():
+    S3Object = namedtuple('S3Object', ['key', 'data'])
+    src = S3Object("src_key.txt", b"src_data")
+    dst = S3Object("dst_key.txt", None)
+
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object(src.key, src.data)
+
+    client = mock_client.create_mocked_client()
+    client.copy_object(MOCK_BUCKET, src.key, MOCK_BUCKET, dst.key)
+
+    dst_stream = client.get_object(MOCK_BUCKET, dst.key)
+    assert dst_stream.key == dst.key
+    assert b''.join(dst_stream) == src.data
+
+
+# NOTE 1: `MockMountpointS3Client` only works on one bucket, so it cannot test
+# cross-bucket COPY operations.
+# NOTE 2: as of Oct'24, `force_path_style` is an unsupported option
+# (https://github.com/awslabs/aws-c-s3/blob/main/include/aws/s3/s3_client.h#L74-L86).
+def test_copy_object_to_non_existent_bucket():
+    S3Object = namedtuple('S3Object', ['key', 'data'])
+    src = S3Object("src_key.txt", b"src_data")
+    dst = S3Object("dst_key.txt", None)
+
+    mock_client = MockMountpointS3Client(REGION, MOCK_BUCKET)
+    mock_client.add_object(src.key, src.data)
+
+    client = mock_client.create_mocked_client()
+
+    with pytest.raises(S3Exception, match="Service error: The bucket does not exist"):
+        client.copy_object(MOCK_BUCKET, src.key, "bucket2", dst.key)
 
 
 def _assert_isinstance(obj, expected: type):
