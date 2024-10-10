@@ -1,5 +1,5 @@
 ## Description
-<!-- Thank you for submitting a pull request! Find more information in our development guide at [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) -->
+<!-- Thank you for submitting a pull request! Find more information in our development guide at [DEVELOPMENT](DEVELOPMENT.md) -->
 <!-- Provide an overview of the PR for maintainers and reviewers. -->
 <!-- Please ensure your commit messages follow these [guidelines](https://chris.beams.io/posts/git-commit/). -->
 
