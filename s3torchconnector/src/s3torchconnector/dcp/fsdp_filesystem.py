@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 from contextlib import contextmanager
 from typing import Generator, Union
@@ -7,18 +8,18 @@ from torch.distributed.checkpoint.filesystem import FileSystemWriter
 from torch.distributed.checkpoint.filesystem import FileSystemReader
 from torch.distributed.checkpoint.filesystem import FileSystemBase
 
-import boto3
-from botocore.exceptions import ClientError
-
 from s3torchconnector import S3Checkpoint
+from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 
 class S3FS(FileSystemBase):
     def __init__(self, region: str) -> None:
         self.path = None
         self.region = region
-        self.s3 = boto3.client("s3", region_name=region)
+        self.client = S3Client(region)
         self.checkpoint = S3Checkpoint(region)
 
     @contextmanager
@@ -39,11 +40,11 @@ class S3FS(FileSystemBase):
             ValueError: If the mode is not 'rb' or 'wb'.
         """
         if mode == "wb":  # write mode
-            print(f"create_stream writable for {path}")
+            logger.debug("create_stream writable for %s", path)
             with self.checkpoint.writer(path) as stream:
                 yield stream
         elif mode == "rb":  # read mode
-            print(f"create_stream readable for {path}")
+            logger.debug("create_stream readable for %s", path)
             with self.checkpoint.reader(path) as stream:
                 yield stream
         else:
@@ -64,7 +65,7 @@ class S3FS(FileSystemBase):
         Returns:
             Union[str, os.PathLike]: The concatenated path.
         """
-        print(f"concat_path for {path} and {suffix}")
+        logger.debug("concat_path for %s and %s", path, suffix)
         path_str = os.fspath(path)
         result = os.path.join(path_str, suffix)
         return result
@@ -79,36 +80,34 @@ class S3FS(FileSystemBase):
         Returns:
             Union[str, os.PathLike]: The initialized path.
         """
-        print(f"init_path for {path}")
+        logger.debug("init_path for %s", path)
         self.path = path
         return self.path
 
     def rename(
-        self, path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]
+        self, old_path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]
     ) -> None:
         """
         Rename an object in S3 by copying it to a new path and deleting the old path.
 
         Args:
-            path (Union[str, os.PathLike]): The current path of the object.
+            old_path (Union[str, os.PathLike]): The current path of the object.
             new_path (Union[str, os.PathLike]): The new path for the object.
 
         Raises:
             ClientError: If there is an error with the S3 client.
         """
-        print(f"rename {path} to {new_path}")
-        bucket_name, old_key = parse_s3_uri(path)
+        logger.debug("rename %s to %s", old_path, new_path)
+        bucket_name, old_key = parse_s3_uri(old_path)
         _, new_key = parse_s3_uri(new_path)
 
-        copy_source = {"Bucket": bucket_name, "Key": old_key}
         try:
-            self.s3.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=new_key)
-            self.s3.delete_object(Bucket=bucket_name, Key=old_key)
-        except ClientError as e:
-            print(f"Error renaming object in S3: {e}")
-            raise e
+            self.client.copy_object(bucket_name, old_key, bucket_name, new_key)
+            self.client.delete_object(bucket_name, old_key)
+        except :
+            logger.exception("Error renaming object in S3")
 
-    def mkdir(self, path: [str, os.PathLike]) -> None:
+    def mkdir(self, path: Union[str, os.PathLike]) -> None:
         """
         No-op method for creating directories in S3 (not needed).
         """
@@ -131,7 +130,7 @@ class S3FS(FileSystemBase):
         Returns:
             bool: True if the checkpoint ID is valid, False otherwise.
         """
-        print(f"validate_checkpoint_id for {checkpoint_id}")
+        logger.debug("validate_checkpoint_id for %s", checkpoint_id)
         return FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
@@ -157,7 +156,7 @@ class S3DPWriter(FileSystemWriter):
         super().__init__(
             path, single_file_per_rank, False, thread_count, per_thread_copy_ahead
         )
-        self.fs = S3FS(region=region)
+        self.fs = S3FS(region)
         self.path = self.fs.init_path(path)
 
     @classmethod
@@ -175,7 +174,7 @@ class S3DPReader(FileSystemReader):
             path (Union[str, os.PathLike]): The S3 path to read checkpoints from.
         """
         super().__init__(path)
-        self.fs = S3FS(region=region)
+        self.fs = S3FS(region)
         self.path = self.fs.init_path(path)
         self.sync_files = False
 
