@@ -135,11 +135,11 @@ def test_get_objects_from_uris_fail(uri, error_msg):
 )
 @patch("torch.utils.data.get_worker_info")
 def test_get_shard_index(
-        get_worker_info_mock,
-        rank: int,
-        worker_id: int,
-        num_workers: int,
-        expected_shard_index: int
+    get_worker_info_mock,
+    rank: int,
+    worker_id: int,
+    num_workers: int,
+    expected_shard_index: int,
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
@@ -160,17 +160,18 @@ def test_get_shard_index(
 )
 @patch("torch.utils.data.get_worker_info")
 def test_get_shards_count(
-        get_worker_info_mock,
-        world_size: int,
-        worker_id: int,
-        num_workers: int,
-        expected_shards_count: int
+    get_worker_info_mock,
+    world_size: int,
+    worker_id: int,
+    num_workers: int,
+    expected_shards_count: int,
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
 
     shards_count = get_shards_count(world_size)
     assert shards_count == expected_shards_count
+
 
 def _create_mock_client_with_dummy_objects(
     bucket: str, keys: Union[str, Iterable[str]]
