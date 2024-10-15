@@ -18,7 +18,7 @@ def getenv(var: str, optional: bool = False) -> str:
     return v
 
 
-class BucketPrefixFixture(object):
+class BucketPrefixData(object):
     """An S3 bucket/prefix and its contents for use in a single unit test. The prefix will be unique
     to this instance, so other concurrent tests won't affect its state."""
 
@@ -26,21 +26,43 @@ class BucketPrefixFixture(object):
     bucket: str
     prefix: str
     storage_class: str = None
+    contents: dict
 
     def __init__(
-        self, region: str, bucket: str, prefix: str, storage_class: str = None
+        self,
+        region: str,
+        bucket: str,
+        prefix: str,
+        storage_class: str = None,
+        contents: dict = None,
     ):
         self.bucket = bucket
         self.prefix = prefix
         self.region = region
         self.storage_class = storage_class
-        self.contents = {}
-        session = boto3.Session(region_name=region)
-        self.s3 = session.client("s3")
+        self.contents = contents or {}
 
     @property
     def s3_uri(self):
         return f"s3://{self.bucket}/{self.prefix}"
+
+    def __getitem__(self, index):
+        return self.contents[index]
+
+    def __iter__(self):
+        return iter(self.contents)
+
+
+class BucketPrefixFixture(BucketPrefixData):
+    """An S3 bucket/prefix and its contents for use in a single unit test. The prefix will be unique
+    to this instance, so other concurrent tests won't affect its state."""
+
+    def __init__(
+        self, region: str, bucket: str, prefix: str, storage_class: str = None
+    ):
+        super().__init__(region, bucket, prefix, storage_class)
+        session = boto3.Session(region_name=region)
+        self.s3 = session.client("s3")
 
     def add(self, key: str, contents: bytes, **kwargs):
         """Upload an S3 object to this prefix of the bucket."""
@@ -48,11 +70,10 @@ class BucketPrefixFixture(object):
         self.s3.put_object(Bucket=self.bucket, Key=full_key, Body=contents, **kwargs)
         self.contents[full_key] = contents
 
-    def __getitem__(self, index):
-        return self.contents[index]
-
-    def __iter__(self):
-        return iter(self.contents)
+    def get_context_only(self):
+        return BucketPrefixData(
+            self.region, self.bucket, self.prefix, self.storage_class, self.contents
+        )
 
 
 def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
@@ -71,13 +92,24 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
 
 @pytest.fixture
 def image_directory(request) -> BucketPrefixFixture:
-    """Create a bucket/prefix fixture that contains a directory of random JPG image files."""
     NUM_IMAGES = 10
     IMAGE_SIZE = 100
-    fixture = get_test_bucket_prefix(f"{request.node.name}/image_directory")
-    for i in range(NUM_IMAGES):
-        data = np.random.randint(0, 256, IMAGE_SIZE * IMAGE_SIZE * 3, np.uint8)
-        data = data.reshape(IMAGE_SIZE, IMAGE_SIZE, 3)
+    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, request.node.name)
+
+
+@pytest.fixture
+def image_directory_for_dp(request) -> BucketPrefixFixture:
+    NUM_IMAGES = 20
+    IMAGE_SIZE = 100
+    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, request.node.name)
+
+
+def _create_image_directory_fixture(num_image: int, image_size: int, node_name: str):
+    """Create a bucket/prefix fixture that contains a directory of random JPG image files."""
+    fixture = get_test_bucket_prefix(f"{node_name}/image_directory")
+    for i in range(num_image):
+        data = np.random.randint(0, 256, image_size * image_size * 3, np.uint8)
+        data = data.reshape(image_size, image_size, 3)
         image = Image.fromarray(data, "RGB")
         image_bytes = io.BytesIO()
         image.save(image_bytes, "jpeg")

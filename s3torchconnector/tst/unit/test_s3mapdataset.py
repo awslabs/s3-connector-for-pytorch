@@ -289,7 +289,9 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     get_worker_info_mock.return_value = worker_info_mock
 
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
-    dataset = S3MapDataset.from_objects(object_uris, region=TEST_REGION, rank=rank, world_size=world_size)
+    dataset = S3MapDataset.from_objects(
+        object_uris, region=TEST_REGION, rank=rank, world_size=world_size
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -448,19 +450,21 @@ def test_dataset_creation_from_objects_against_multiple_workers(
 )
 @patch("torch.utils.data.get_worker_info")
 def test_dataset_creation_from_prefix_against_multiple_workers(
-        get_worker_info_mock,
-        keys: Iterable[str],
-        prefix: str,
-        expected_keys: Sequence[str],
-        worker_id: int,
-        num_workers: int,
-        rank: int,
-        world_size: int,
+    get_worker_info_mock,
+    keys: Iterable[str],
+    prefix: str,
+    expected_keys: Sequence[str],
+    worker_id: int,
+    num_workers: int,
+    rank: int,
+    world_size: int,
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
 
-    dataset = S3MapDataset.from_prefix(s3_uri=prefix, region=TEST_REGION, rank=rank, world_size=world_size)
+    dataset = S3MapDataset.from_prefix(
+        s3_uri=prefix, region=TEST_REGION, rank=rank, world_size=world_size
+    )
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     dataset._client = client
     assert isinstance(dataset, S3MapDataset)
