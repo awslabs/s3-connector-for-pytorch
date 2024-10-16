@@ -14,8 +14,6 @@ from ._s3dataset_common import (
     get_objects_from_uris,
     get_objects_from_prefix,
     identity,
-    get_shard_index,
-    get_shards_count,
 )
 
 log = logging.getLogger(__name__)
@@ -35,8 +33,6 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        rank: int = 0,
-        world_size: int = 1,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -45,8 +41,6 @@ class S3MapDataset(torch.utils.data.Dataset):
         self._s3client_config = s3client_config
         self._client = None
         self._bucket_key_pairs: Optional[List[S3BucketKeyData]] = None
-        self._shard_index = get_shard_index(rank)
-        self._shard_count = get_shards_count(world_size)
 
     @property
     def region(self):
@@ -59,19 +53,7 @@ class S3MapDataset(torch.utils.data.Dataset):
     @property
     def _dataset_bucket_key_pairs(self) -> List[S3BucketKeyData]:
         if self._bucket_key_pairs is None:
-            if self._shard_index == 0 and self._shard_count == 1:
-                self._bucket_key_pairs = list(
-                    self._get_dataset_objects(self._get_client())
-                )
-            else:
-                self._bucket_key_pairs = list(
-                    obj
-                    for idx, obj in enumerate(
-                        self._get_dataset_objects(self._get_client())
-                    )
-                    if idx % self._shard_count == self._shard_index
-                )
-
+            self._bucket_key_pairs = list(self._get_dataset_objects(self._get_client()))
         assert self._bucket_key_pairs is not None
         return self._bucket_key_pairs
 
@@ -84,8 +66,6 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        rank: int = 0,
-        world_size: int = 1,
     ):
         """Returns an instance of S3MapDataset using the S3 URI(s) provided.
 
@@ -95,8 +75,6 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          rank: rank of the current process, default to 0 when it is not used for distributed training
-          world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -111,8 +89,6 @@ class S3MapDataset(torch.utils.data.Dataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            rank=rank,
-            world_size=world_size,
         )
 
     @classmethod
@@ -124,8 +100,6 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        rank: int = 0,
-        world_size: int = 1,
     ):
         """Returns an instance of S3MapDataset using the S3 URI provided.
 
@@ -135,8 +109,6 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          rank: rank of the current process, default to 0 when it is not used for distributed training
-          world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -151,8 +123,6 @@ class S3MapDataset(torch.utils.data.Dataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            rank=rank,
-            world_size=world_size,
         )
 
     def _get_client(self):

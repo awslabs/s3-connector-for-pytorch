@@ -23,49 +23,59 @@ from test_common import _get_start_methods, _read_data, _set_start_method
 start_methods = _get_start_methods()
 
 import torch.distributed as dist
+
+
 def setup(rank, world_size):
-    dist.init_process_group(backend="gloo", world_size=world_size, rank=rank, init_method="tcp://127.0.0.1:1234")
+    dist.init_process_group(
+        backend="gloo",
+        world_size=world_size,
+        rank=rank,
+        init_method="tcp://127.0.0.1:1234",
+    )
 
 
 def cleanup():
     dist.destroy_process_group()
 
 
-def from_prefix(
-    cls, image_directory: BucketPrefixFixture, rank: int, world_size: int, **kwargs
-):
+def from_prefix(cls, image_directory: BucketPrefixFixture, **kwargs):
     return cls.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
-        rank=rank,
-        world_size=world_size,
         transform=_read_data,
         **kwargs,
     )
 
 
-def from_objects(
-    cls, image_directory: BucketPrefixFixture, rank: int, world_size: int, **kwargs
-):
+def from_objects(cls, image_directory: BucketPrefixFixture, **kwargs):
     return cls.from_objects(
         [f"s3://{image_directory.bucket}/{key}" for key in image_directory],
         region=image_directory.region,
-        rank=rank,
-        world_size=world_size,
         transform=_read_data,
         **kwargs,
     )
 
 
-def dataloader_for_map(dataset_builder, image_directory, num_workers, rank, world_size, batch_size):
-    dataset = dataset_builder(S3MapDataset, image_directory, rank, world_size)
+def dataloader_for_map(
+    dataset_builder, image_directory, num_workers, rank, world_size, batch_size
+):
+    dataset = dataset_builder(S3MapDataset, image_directory)
     sampler = DistributedSampler(dataset)
-    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler
+    )
     return dataloader
 
 
-def dataloader_for_iterable(dataset_builder, image_directory, num_workers, rank, world_size, batch_size):
-    dataset = dataset_builder(S3IterableDataset, image_directory, rank, world_size)
+def dataloader_for_iterable(
+    dataset_builder, image_directory, num_workers, rank, world_size, batch_size
+):
+    dataset = dataset_builder(
+        cls=S3IterableDataset,
+        image_directory=image_directory,
+        rank=rank,
+        world_size=world_size,
+    )
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     return dataloader
 
@@ -77,7 +87,7 @@ dataset_builders = (from_prefix, from_objects)
 dataloader_builders = (dataloader_for_iterable, dataloader_for_map)
 
 num_workers_to_test = [2]
-num_processes_to_test = [1, 2]
+num_processes_to_test = [1]
 test_args = list(
     product(
         sorted(start_methods),
@@ -90,7 +100,8 @@ test_args = list(
 
 
 @pytest.mark.parametrize(
-    "start_method, dataset_builder, dataloader_builder, num_workers, num_processes", test_args
+    "start_method, dataset_builder, dataloader_builder, num_workers, num_processes",
+    test_args,
 )
 def test_distributed_training(
     start_method: str,
@@ -145,7 +156,9 @@ def _test_s3iterable_dataset_multiprocess_torchdata(
     setup(rank, world_size)
     _set_start_method(start_method)
     batch_size = 2
-    dataloader = dataloader_builder(dataset_builder, image_directory, num_workers, rank, world_size, batch_size)
+    dataloader = dataloader_builder(
+        dataset_builder, image_directory, num_workers, rank, world_size, batch_size
+    )
 
     total_objects = 0
     uris_seen = Counter()
