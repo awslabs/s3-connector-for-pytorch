@@ -36,7 +36,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         s3client_config: Optional[S3ClientConfig] = None,
         rank: int = 0,
         world_size: int = 1,
-        share_dataset_within_process: bool = False
+        share_dataset_within_process: bool = False,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -80,6 +80,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           rank: rank of the current process, default to 0 when it is not used for distributed training
           world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
           share_dataset_within_process: share the dataset across workers within the same process, but use different datasets for different processes. Turned off by default.
+
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
 
@@ -122,6 +123,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           rank: rank of the current process, default to 0 when it is not used for distributed training
           world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
           share_dataset_within_process: share the dataset across workers within the same process, but use different datasets for different processes. Turned off by default.
+
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
 
@@ -157,12 +159,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         )
 
     def __iter__(self) -> Iterator[Any]:
-        if self._share_dataset_within_process:
-            self._shard_index = self._rank
-            self._shard_count = self._world_size
-        else:
-            self._shard_index = get_shard_index(self._rank)
-            self._shard_count = get_shards_count(self._world_size)
+        self._shard_index = get_shard_index(self._share_dataset_within_process, self._rank)
+        self._shard_count = get_shards_count(self._share_dataset_within_process, self._world_size)
 
         if self._shard_index == 0 and self._shard_count == 1:
             return map(
