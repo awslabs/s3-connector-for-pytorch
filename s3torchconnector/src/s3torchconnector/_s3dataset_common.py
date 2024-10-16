@@ -66,9 +66,13 @@ def _get_num_workers() -> int:
     return 1
 
 
-def get_shard_index(rank: int) -> int:
+def get_shard_index(share_dataset_within_process: bool, rank: int) -> int:
+    if share_dataset_within_process:
+        return rank
     return _get_num_workers() * rank + _get_worker_id()
 
 
-def get_shards_count(world_size: int) -> int:
+def get_shards_count(share_dataset_within_process, world_size: int) -> int:
+    if share_dataset_within_process:
+        return max(world_size, 1)
     return _get_num_workers() * max(world_size, 1)
