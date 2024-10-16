@@ -26,7 +26,6 @@ def from_prefix(cls, image_directory: BucketPrefixFixture, **kwargs):
     return cls.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
-        share_dataset_within_process=True,
         **kwargs,
     )
 
@@ -35,7 +34,6 @@ def from_objects(cls, image_directory: BucketPrefixFixture, **kwargs):
     return cls.from_objects(
         [f"s3://{image_directory.bucket}/{key}" for key in image_directory],
         region=image_directory.region,
-        share_dataset_within_process=True,
         **kwargs,
     )
 
@@ -53,7 +51,9 @@ def test_s3iterable_dataset_multiprocess_torchdata(
     image_directory: BucketPrefixFixture,
 ):
     _set_start_method(start_method)
-    dataset = dataset_builder(S3IterableDataset, image_directory)
+    dataset = dataset_builder(
+        S3IterableDataset, image_directory, share_dataset_within_process=True
+    )
 
     dataset = IterableWrapper(dataset, deepcopy=False).sharding_filter().map(_read_data)
 
@@ -90,6 +90,7 @@ def test_s3iterable_dataset_multiprocess(
         S3IterableDataset,
         image_directory,
         transform=_extract_object_data,
+        share_dataset_within_process=True,
     )
 
     num_workers = 3
