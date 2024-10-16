@@ -1,25 +1,26 @@
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
 import io
 import logging
 import os
 from contextlib import contextmanager
-from typing import Generator, Union
-from torch.distributed.checkpoint.filesystem import FileSystem
-from torch.distributed.checkpoint.filesystem import FileSystemWriter
-from torch.distributed.checkpoint.filesystem import FileSystemReader
-from torch.distributed.checkpoint.filesystem import FileSystemBase
+from typing import Generator, Union, override, Optional
+from torch.distributed.checkpoint.filesystem import FileSystem, FileSystemBase, FileSystemReader, FileSystemWriter
 
 from s3torchconnector import S3Checkpoint
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
+from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 
 logger = logging.getLogger(__name__)
 
 
 class S3FS(FileSystemBase):
-    def __init__(self, region: str) -> None:
+    def __init__(self, region: str, s3_client: Optional[S3Client] = None) -> None:
         self.path = None
         self.region = region
-        self.client = S3Client(region)
+        self.client = s3_client if s3_client is not None else S3Client(region)
         self.checkpoint = S3Checkpoint(region)
 
     @contextmanager
@@ -104,7 +105,7 @@ class S3FS(FileSystemBase):
         try:
             self.client.copy_object(bucket_name, old_key, bucket_name, new_key)
             self.client.delete_object(bucket_name, old_key)
-        except :
+        except S3Exception:
             logger.exception("Error renaming object in S3")
 
     def mkdir(self, path: Union[str, os.PathLike]) -> None:
@@ -113,8 +114,17 @@ class S3FS(FileSystemBase):
         """
         pass
 
+    @override
     def exists(self, path: Union[str, os.PathLike]) -> bool:
-        pass
+        logger.debug("check existence of %s", path)
+
+        bucket, key = parse_s3_uri(path)
+        try:
+            self.client.head_object(bucket, key)
+        except S3Exception:
+            return False
+        else:
+            return True
 
     def rm_file(self, path: Union[str, os.PathLike]) -> None:
         pass
@@ -142,6 +152,7 @@ class S3DPWriter(FileSystemWriter):
         single_file_per_rank: bool = True,
         thread_count: int = 1,
         per_thread_copy_ahead: int = 10_000_000,
+        overwrite: bool = False,
     ) -> None:
         """
         Initialize an S3 writer for distributed checkpointing.
@@ -152,9 +163,10 @@ class S3DPWriter(FileSystemWriter):
             single_file_per_rank (bool, optional): Whether to write a single file per rank. Defaults to True.
             thread_count (int, optional): The number of threads to use for writing. Defaults to 1.
             per_thread_copy_ahead (int, optional): The number of bytes to copy ahead per thread. Defaults to 10_000_000.
+            overwrite (bool, optional): Whether to overwrite existing checkpoints. Defaults to False.
         """
         super().__init__(
-            path, single_file_per_rank, False, thread_count, per_thread_copy_ahead
+            path, single_file_per_rank, False, thread_count, per_thread_copy_ahead, overwrite
         )
         self.fs = S3FS(region)
         self.path = self.fs.init_path(path)

@@ -22,6 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "lightning",
     "torch >= 2.0.1",
     "s3torchconnectorclient >= 1.2.4",
 ]

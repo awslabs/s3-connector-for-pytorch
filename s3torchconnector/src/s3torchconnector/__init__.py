@@ -25,7 +25,7 @@ __all__ = [
     "S3Writer",
     "S3Exception",
     "S3StorageWriter",
-    "StorageReader",
+    "S3StorageReader",
     "S3ClientConfig",
     "S3DPWriter",
     "S3DPReader",
