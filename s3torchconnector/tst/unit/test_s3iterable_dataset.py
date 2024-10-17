@@ -288,9 +288,15 @@ def test_from_prefix_seek_no_head():
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj3"], 2, 3, 0, 2),
     ],
 )
+@patch("torch.distributed.get_world_size")
+@patch("torch.distributed.get_rank")
+@patch("torch.distributed.is_initialized")
 @patch("torch.utils.data.get_worker_info")
 def test_dataset_creation_from_objects_against_multiple_workers(
     get_worker_info_mock,
+    is_initialized_mock,
+    get_rank_mock,
+    get_world_size_mock,
     keys: Iterable[str],
     expected_keys: Sequence[str],
     worker_id: int,
@@ -300,11 +306,13 @@ def test_dataset_creation_from_objects_against_multiple_workers(
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
+    # assume torch.distributed is always initialized
+    is_initialized_mock.return_value = True
+    get_rank_mock.return_value = rank
+    get_world_size_mock.return_value = world_size
 
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
-    dataset = S3IterableDataset.from_objects(
-        object_uris, region=TEST_REGION, rank=rank, world_size=world_size
-    )
+    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -461,9 +469,15 @@ def test_dataset_creation_from_objects_against_multiple_workers(
         ),
     ],
 )
+@patch("torch.distributed.get_world_size")
+@patch("torch.distributed.get_rank")
+@patch("torch.distributed.is_initialized")
 @patch("torch.utils.data.get_worker_info")
 def test_dataset_creation_from_prefix_against_multiple_workers(
     get_worker_info_mock,
+    is_initialized_mock,
+    get_rank_mock,
+    get_world_size_mock,
     keys: Iterable[str],
     prefix: str,
     expected_keys: Sequence[str],
@@ -474,9 +488,14 @@ def test_dataset_creation_from_prefix_against_multiple_workers(
 ):
     worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
     get_worker_info_mock.return_value = worker_info_mock
+    # assume torch.distributed is initialized, only when world size is bigger then 1
+    is_initialized_mock.return_value = world_size != 1
+    get_rank_mock.return_value = rank
+    get_world_size_mock.return_value = world_size
 
     dataset = S3IterableDataset.from_prefix(
-        s3_uri=prefix, region=TEST_REGION, rank=rank, world_size=world_size
+        s3_uri=prefix,
+        region=TEST_REGION,
     )
 
     # use mock client for unit testing

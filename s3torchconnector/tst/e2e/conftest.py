@@ -99,7 +99,12 @@ def image_directory(request) -> BucketPrefixFixture:
 
 @pytest.fixture
 def image_directory_for_dp(request) -> BucketPrefixFixture:
-    NUM_IMAGES = 20
+    # When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
+    # If the total number of images cannot be evenly divided by the number of workers,
+    # the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
+    # distribution of data among all processes. This duplication of images can potentially invalidate or
+    # compromise the results of the distributed training test.
+    NUM_IMAGES = 36
     IMAGE_SIZE = 100
     return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, request.node.name)
 

@@ -1,12 +1,12 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+
 from typing import Iterable, Union, Tuple
 
 from ._s3_bucket_iterable import S3BucketIterable
 from ._s3client import S3Client
 from . import S3Reader
 from ._s3bucket_key_data import S3BucketKeyData
-import torch
 
 """
 _s3dataset_common.py
@@ -50,29 +50,3 @@ def get_objects_from_uris(
 def get_objects_from_prefix(s3_uri: str, client: S3Client) -> Iterable[S3BucketKeyData]:
     bucket, prefix = parse_s3_uri(s3_uri)
     return iter(S3BucketIterable(client, bucket, prefix))
-
-
-def _get_worker_id() -> int:
-    worker_info = torch.utils.data.get_worker_info()
-    if worker_info is not None:
-        return worker_info.id
-    return 0
-
-
-def _get_num_workers() -> int:
-    worker_info = torch.utils.data.get_worker_info()
-    if worker_info is not None:
-        return worker_info.num_workers
-    return 1
-
-
-def get_shard_index(share_dataset_within_process: bool, rank: int) -> int:
-    if share_dataset_within_process:
-        return rank
-    return _get_num_workers() * rank + _get_worker_id()
-
-
-def get_shards_count(share_dataset_within_process, world_size: int) -> int:
-    if share_dataset_within_process:
-        return max(world_size, 1)
-    return _get_num_workers() * max(world_size, 1)

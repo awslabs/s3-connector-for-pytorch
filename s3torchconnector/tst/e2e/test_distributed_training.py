@@ -56,9 +56,7 @@ def from_objects(cls, image_directory: BucketPrefixFixture, **kwargs):
     )
 
 
-def dataloader_for_map(
-    dataset_builder, image_directory, num_workers, rank, world_size, batch_size
-):
+def dataloader_for_map(dataset_builder, image_directory, num_workers, batch_size):
     dataset = dataset_builder(S3MapDataset, image_directory)
     sampler = DistributedSampler(dataset)
     dataloader = DataLoader(
@@ -67,14 +65,10 @@ def dataloader_for_map(
     return dataloader
 
 
-def dataloader_for_iterable(
-    dataset_builder, image_directory, num_workers, rank, world_size, batch_size
-):
+def dataloader_for_iterable(dataset_builder, image_directory, num_workers, batch_size):
     dataset = dataset_builder(
         cls=S3IterableDataset,
         image_directory=image_directory,
-        rank=rank,
-        world_size=world_size,
     )
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     return dataloader
@@ -86,8 +80,8 @@ dataset_builders = (from_prefix, from_objects)
 # Allow us to construct dataloaders in test with either S3MapDataset or S3IterableDataset
 dataloader_builders = (dataloader_for_iterable, dataloader_for_map)
 
-num_workers_to_test = [2]
-num_processes_to_test = [1]
+num_workers_to_test = [1, 2, 3]
+num_processes_to_test = [1, 2, 3]
 test_args = list(
     product(
         sorted(start_methods),
@@ -140,6 +134,11 @@ def test_distributed_training(
     # Check if each item in image_directory was seen exactly once
     expected_uris = set(image_directory_for_dp.contents.keys())
     assert set(combined_uris_seen.keys()) == expected_uris
+    # When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
+    # If the total number of images cannot be evenly divided by the number of workers,
+    # the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
+    # distribution of data among all processes. This duplication of images can potentially invalidate or
+    # compromise the results of the distributed training test.
     assert all(count == 1 for count in combined_uris_seen.values())
 
 
@@ -157,7 +156,7 @@ def _test_s3iterable_dataset_multiprocess_torchdata(
     _set_start_method(start_method)
     batch_size = 2
     dataloader = dataloader_builder(
-        dataset_builder, image_directory, num_workers, rank, world_size, batch_size
+        dataset_builder, image_directory, num_workers, batch_size
     )
 
     total_objects = 0
