@@ -5,6 +5,7 @@ from typing import Iterator, Any, Union, Iterable, Callable, Optional
 import logging
 
 import torch.utils.data
+import torch
 
 from . import S3Reader
 from ._s3bucket_key_data import S3BucketKeyData
@@ -13,8 +14,6 @@ from ._s3dataset_common import (
     identity,
     get_objects_from_uris,
     get_objects_from_prefix,
-    get_shard_index,
-    get_shards_count,
 )
 
 log = logging.getLogger(__name__)
@@ -34,8 +33,6 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        rank: int = 0,
-        world_size: int = 1,
         share_dataset_within_process: bool = False,
     ):
         self._get_dataset_objects = get_dataset_objects
@@ -44,9 +41,13 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         self._endpoint = endpoint
         self._s3client_config = s3client_config
         self._client = None
-        self._rank = rank
-        self._world_size = world_size
         self._share_dataset_within_process = share_dataset_within_process
+
+        self._rank = 0
+        self._world_size = 1
+        if torch.distributed.is_initialized():
+            self._rank = torch.distributed.get_rank()
+            self._world_size = torch.distributed.get_world_size()
 
     @property
     def region(self):
@@ -65,8 +66,6 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        rank: int = 0,
-        world_size: int = 1,
         share_dataset_within_process: bool = False,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
@@ -77,8 +76,6 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          rank: rank of the current process, default to 0 when it is not used for distributed training
-          world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
           share_dataset_within_process: share the dataset across workers within the same process, but use different datasets for different processes. Turned off by default.
 
         Returns:
@@ -94,8 +91,6 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            rank=rank,
-            world_size=world_size,
             share_dataset_within_process=share_dataset_within_process,
         )
 
@@ -108,8 +103,6 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        rank: int = 0,
-        world_size: int = 1,
         share_dataset_within_process: bool = False,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI provided.
@@ -120,8 +113,6 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          rank: rank of the current process, default to 0 when it is not used for distributed training
-          world_size: number of processes used for distributed training, default to 1 when it is not used for distributed training
           share_dataset_within_process: share the dataset across workers within the same process, but use different datasets for different processes. Turned off by default.
 
         Returns:
@@ -137,9 +128,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            rank=rank,
-            world_size=world_size,
-            share_dataset_within_process=share_dataset_within_process
+            share_dataset_within_process=share_dataset_within_process,
         )
 
     def _get_client(self):
@@ -159,8 +148,16 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         )
 
     def __iter__(self) -> Iterator[Any]:
-        self._shard_index = get_shard_index(self._share_dataset_within_process, self._rank)
-        self._shard_count = get_shards_count(self._share_dataset_within_process, self._world_size)
+        worker_id = 0
+        num_workers = 1
+        if not self._share_dataset_within_process:
+            worker_info = torch.utils.data.get_worker_info()
+            if worker_info is not None:
+                worker_id = worker_info.id
+                num_workers = worker_info.num_workers
+
+        self._shard_index = num_workers * self._rank + worker_id
+        self._shard_count = num_workers * self._world_size
 
         if self._shard_index == 0 and self._shard_count == 1:
             return map(
