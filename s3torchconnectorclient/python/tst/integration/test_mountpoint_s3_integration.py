@@ -404,6 +404,33 @@ def test_delete_object_invalid_bucket(
         )
 
 
+def test_copy_object(copy_directory: tuple[BucketPrefixFixture, str, str]):
+    fixture, full_src_key, full_dst_key = copy_directory
+    bucket = fixture.bucket
+
+    client = MountpointS3Client(fixture.region, TEST_USER_AGENT_PREFIX)
+
+    client.copy_object(bucket, full_src_key, bucket, full_dst_key)
+
+    src_object = client.get_object(bucket, full_src_key)
+    dst_object = client.get_object(bucket, full_dst_key)
+
+    assert dst_object.key == full_dst_key
+    assert b''.join(dst_object) == b''.join(src_object)
+
+
+def test_copy_object_bucket_does_not_exist(copy_directory: tuple[BucketPrefixFixture, str, str]):
+    fixture, full_src_key, full_dst_key = copy_directory
+    bucket = fixture.bucket
+
+    client = MountpointS3Client(fixture.region, TEST_USER_AGENT_PREFIX)
+
+    # NOTE: `copy_object` and its underlying implementation does not
+    # differentiate between `NoSuchBucket` and `NoSuchKey` errors.
+    with pytest.raises(S3Exception, match="Service error: The object was not found"):
+        client.copy_object(bucket, full_src_key, str(uuid.uuid4()), full_dst_key)
+
+
 def _parse_list_result(stream: ListObjectStream, max_keys: int):
     object_infos = []
     i = 0
