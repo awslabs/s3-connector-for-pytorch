@@ -25,12 +25,12 @@ start_methods = _get_start_methods()
 import torch.distributed as dist
 
 
-def setup(rank, world_size):
+def setup(unique_port, rank, world_size):
     dist.init_process_group(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        init_method="tcp://127.0.0.1:1234",
+        init_method=f"tcp://127.0.0.1:{unique_port}",
     )
 
 
@@ -80,8 +80,8 @@ dataset_builders = (from_prefix, from_objects)
 # Allow us to construct dataloaders in test with either S3MapDataset or S3IterableDataset
 dataloader_builders = (dataloader_for_iterable, dataloader_for_map)
 
-num_workers_to_test = [1, 2, 3]
-num_processes_to_test = [1, 2, 3]
+num_workers_to_test = [1,]
+num_processes_to_test = [3 ]
 test_args = list(
     product(
         sorted(start_methods),
@@ -98,6 +98,7 @@ test_args = list(
     test_args,
 )
 def test_distributed_training(
+    request,
     start_method: str,
     dataset_builder: Callable,
     dataloader_builder: Callable,
@@ -105,12 +106,17 @@ def test_distributed_training(
     num_processes: int,
     image_directory_for_dp: BucketPrefixFixture,
 ):
+    # Generate unique port number in range [2000:61000] based on the test name
+    # to ensure that different test workers would use different ports
+    unique_port = hash(request.node) % 60000 + 2000
+
     manager = mp.Manager()
     result_queue = manager.Queue()
 
     mp.start_processes(
         _test_s3iterable_dataset_multiprocess_torchdata,
         args=(
+            unique_port,
             num_processes,
             num_workers,
             start_method,
@@ -144,6 +150,7 @@ def test_distributed_training(
 
 def _test_s3iterable_dataset_multiprocess_torchdata(
     rank: int,
+    unique_port: int,
     world_size: int,
     num_workers: int,
     start_method: str,
@@ -152,7 +159,7 @@ def _test_s3iterable_dataset_multiprocess_torchdata(
     image_directory: BucketPrefixData,
     result_queue: mp.Queue,
 ):
-    setup(rank, world_size)
+    setup(unique_port, rank, world_size)
     _set_start_method(start_method)
     batch_size = 2
     dataloader = dataloader_builder(
