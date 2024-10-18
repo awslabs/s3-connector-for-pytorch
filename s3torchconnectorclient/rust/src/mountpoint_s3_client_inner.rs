@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use futures::executor::block_on;
 use futures::TryStreamExt;
-use mountpoint_s3_client::types::{ListObjectsResult, PutObjectParams};
+use mountpoint_s3_client::types::{CopyObjectParams, ListObjectsResult, PutObjectParams};
 use mountpoint_s3_client::ObjectClient;
 use pyo3::{PyResult, Python};
 
@@ -42,6 +42,7 @@ pub(crate) trait MountpointS3ClientInner {
     ) -> PyResult<PutObjectStream>;
     fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo>;
     fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()>;
+    fn copy_object(&self, py: Python, source_bucket: String, source_key: String, destination_bucket: String, destination_key: String) -> PyResult<()>;
 }
 
 pub(crate) struct MountpointS3ClientInnerImpl<T: ObjectClient> {
@@ -114,6 +115,15 @@ where
         let request = self.client.delete_object(&bucket, &key);
 
         // TODO - Look at use of `block_on` and see if we can future this.
+        py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        Ok(())
+    }
+
+    fn copy_object(&self, py: Python, source_bucket: String, source_key: String, destination_bucket: String, destination_key: String) -> PyResult<()> {
+        // [Oct. 2024] `CopyObjectParams` is omitted from the function signature, as it anyway contains no fields.
+        let params = CopyObjectParams::new();
+        let request = self.client.copy_object(&source_bucket, &source_key, &destination_bucket, &destination_key, &params);
+
         py.allow_threads(|| block_on(request).map_err(python_exception))?;
         Ok(())
     }
