@@ -25,12 +25,14 @@ dependencies = []
 
 [project.optional-dependencies]
 test = [
+    "boto3",
     "pytest",
     "pytest-timeout",
     "hypothesis",
     "flake8",
     "black",
-    "mypy"
+    "mypy",
+    "Pillow"
 ]
 
 [tool.setuptools.packages]

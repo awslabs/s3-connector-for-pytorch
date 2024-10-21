@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
-use mountpoint_s3_crt::common::uri::Uri;
-use mountpoint_s3_crt::common::allocator::Allocator;
 use mountpoint_s3_client::config::{AddressingStyle, EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
+use mountpoint_s3_crt::common::allocator::Allocator;
+use mountpoint_s3_crt::common::uri::Uri;
 use nix::unistd::Pid;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pymethods, PyRef, PyResult, ToPyObject};
@@ -152,6 +152,10 @@ impl MountpointS3Client {
 
     pub fn delete_object(slf: PyRef<'_, Self>, bucket: String, key: String) -> PyResult<()> {
         slf.client.delete_object(slf.py(), bucket, key)
+    }
+
+    pub fn copy_object(slf: PyRef<'_, Self>, src_bucket: String, src_key: String, dst_bucket: String, dst_key: String) -> PyResult<()> {
+        slf.client.copy_object(slf.py(), src_bucket, src_key, dst_bucket, dst_key)
     }
 
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {
