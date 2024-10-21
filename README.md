@@ -28,7 +28,7 @@ Amazon S3, without first saving to local storage.
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports only Linux via Pip for now. For other platforms, see 
+Amazon S3 Connector for PyTorch supports only Linux and MacOS via Pip for now. For other platforms, see 
 [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) for build instructions.
 
 ### Configuration
@@ -115,6 +115,33 @@ For example, assuming the following directory bucket name `my-test-bucket--usw2-
 usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
+## Parallel/Distributed Training
+
+Amazon S3 Connector for PyTorch provides support for parallel and distributed training with PyTorch, 
+allowing you to leverage multiple processes and nodes for efficient data loading and training. 
+Both S3IterableDataset and S3MapDataset can be used for this purpose.
+
+### S3IterableDataset
+
+The S3IterableDataset can be directly passed to PyTorch's DataLoader for parallel and distributed training. 
+In this scenario, different workers will have access to unique portions of the dataset, enabling data parallelism. 
+To ensure backward compatibility with previous behavior, the share_dataset_within_process flag has been introduced. 
+When set to True, workers within the same process will share the same list of training objects.
+```
+dataset = S3IterableDataset.from_prefix(DATASET_URI, region=REGION, share_dataset_within_process=False)
+dataloader = DataLoader(dataset, num_workers=4)
+```
+
+### S3MapDataset
+
+For the S3MapDataset, you need to pass it to DataLoader along with a DistributedSampler wrapped around it. 
+The DistributedSampler ensures that each worker or node receives a unique subset of the dataset, 
+enabling efficient parallel and distributed training.
+```
+dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
+sampler = DistributedSampler(dataset)
+dataloader = DataLoader(dataset, sampler=sampler, num_workers=4)
+```
 
 ## Lightning Integration
 
