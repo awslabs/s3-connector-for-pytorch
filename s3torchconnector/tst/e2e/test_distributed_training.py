@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import Counter
 from itertools import product
 from typing import Callable, TYPE_CHECKING
+import hashlib
 
 import pytest
 import torch.multiprocessing as mp
@@ -17,10 +18,10 @@ if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture, BucketPrefixData
 
 
-from test_common import _get_start_methods, _read_data, _set_start_method
+from test_common import _get_fork_methods, _read_data, _set_start_method
 
 
-start_methods = _get_start_methods()
+start_methods = _get_fork_methods()
 
 import torch.distributed as dist
 
@@ -80,8 +81,8 @@ dataset_builders = (from_prefix, from_objects)
 # Allow us to construct dataloaders in test with either S3MapDataset or S3IterableDataset
 dataloader_builders = (dataloader_for_iterable, dataloader_for_map)
 
-num_workers_to_test = [1,]
-num_processes_to_test = [3 ]
+num_workers_to_test = [1, 2, 3]
+num_processes_to_test = [1, 2, 3]
 test_args = list(
     product(
         sorted(start_methods),
@@ -108,7 +109,9 @@ def test_distributed_training(
 ):
     # Generate unique port number in range [2000:61000] based on the test name
     # to ensure that different test workers would use different ports
-    unique_port = hash(request.node) % 60000 + 2000
+    test_name = str(request.node)
+    test_name_hash = hashlib.sha256(test_name.encode()).hexdigest()
+    unique_port = int(test_name_hash, 16) % 60000 + 2000
 
     manager = mp.Manager()
     result_queue = manager.Queue()
@@ -122,7 +125,7 @@ def test_distributed_training(
             start_method,
             dataset_builder,
             dataloader_builder,
-            image_directory_for_dp.get_context_only(),
+            image_directory_for_dp.get_data_snapshot(),
             result_queue,
         ),
         nprocs=num_processes,
@@ -137,14 +140,15 @@ def test_distributed_training(
     for uris_seen in results:
         combined_uris_seen.update(uris_seen)
 
-    # Check if each item in image_directory was seen exactly once
+    # Check all items in image_directory were seen
     expected_uris = set(image_directory_for_dp.contents.keys())
     assert set(combined_uris_seen.keys()) == expected_uris
+
     # When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
     # If the total number of images cannot be evenly divided by the number of workers,
     # the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
-    # distribution of data among all processes. This duplication of images can potentially invalidate or
-    # compromise the results of the distributed training test.
+    # distribution of data among all processes. This duplication of images will cause
+    # integration distributed training test to fail.
     assert all(count == 1 for count in combined_uris_seen.values())
 
 

@@ -156,6 +156,22 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
                 worker_id = worker_info.id
                 num_workers = worker_info.num_workers
 
+        # In a multi-process setting (e.g., distributed training), the dataset needs to be
+        # sharded across multiple processes. The following variables control this sharding:
+        #
+        # _rank: The rank (index) of the current process within the world (group of processes).
+        # _world_size: The total number of processes in the world (group).
+        #
+        # In addition, within each process, the dataset may be further sharded across multiple
+        # worker threads or processes (e.g., for data loading). The following variables control
+        # this intra-process sharding:
+        #
+        # worker_id: The ID of the current worker thread/process within the process.
+        # num_workers: The total number of worker threads/processes within the process.
+        #
+        # The _shard_index and _shard_count variables are computed based on the above values,
+        # and they determine which subset of the dataset objects should be processed by the
+        # current worker thread/process in the current process rank.
         self._shard_index = num_workers * self._rank + worker_id
         self._shard_count = num_workers * self._world_size
 
