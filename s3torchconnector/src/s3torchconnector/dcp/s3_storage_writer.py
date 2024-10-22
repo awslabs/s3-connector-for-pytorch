@@ -1,18 +1,19 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+
 import dataclasses
 import pickle
 import queue
 import threading
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 import logging
 
 
 from attr import dataclass
-from packaging.metadata import Metadata
-from torch.distributed.checkpoint import StorageWriter, SavePlan, SavePlanner
+from torch.distributed.checkpoint import Metadata, StorageWriter, SavePlan, SavePlanner
 from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
+from torch.distributed.checkpoint.metadata import MetadataIndex
 from torch.distributed.checkpoint.storage import WriteResult
 from torch.futures import Future
 
@@ -37,7 +38,7 @@ class S3StorageWriter(StorageWriter):
         # TODO: add implementation
         pass
 
-    def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
+    def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:  # type: ignore
         # TODO: add implementation
         pass
 
@@ -82,6 +83,7 @@ class S3StorageWriter(StorageWriter):
                 for i, plan in enumerate(plans)
             ]
             return new_plans
+        return plans
 
     def write_data(
         self, plan: SavePlan, planner: SavePlanner
@@ -138,7 +140,7 @@ class S3StorageWriter(StorageWriter):
     def finish(self, metadata: Metadata, results: List[List[WriteResult]]):
         if self.is_coordinator:
             # Save metadata from coordinator node
-            s3_storage_metadata = dict()
+            s3_storage_metadata: Dict[Union[str, MetadataIndex], Union[Any, str]] = {}
             for wr_list in results:
                 s3_storage_metadata.update(
                     {wr.index: wr.storage_data for wr in wr_list}

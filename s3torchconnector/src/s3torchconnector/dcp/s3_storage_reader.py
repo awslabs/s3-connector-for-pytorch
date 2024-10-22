@@ -1,5 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+
 import pickle
 from typing import List, Optional
 
@@ -54,6 +55,6 @@ class S3StorageReader(StorageReader):
     def prepare_global_plan(self, plans: List[LoadPlan]) -> List[LoadPlan]:
         return plans
 
-    def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future[None]:
+    def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future[None]:  # type: ignore
         # TODO: Check expected bucket, prefix etc. in metadata
         pass
