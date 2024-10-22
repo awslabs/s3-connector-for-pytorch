@@ -5,11 +5,10 @@ import io
 import logging
 import os
 from contextlib import contextmanager
-from typing import Generator, Union, override, Optional, Literal
+from typing import Generator, Union, Optional
 
 from torch.distributed.checkpoint.filesystem import (
     FileSystem,
-    FileSystemBase,
     FileSystemReader,
     FileSystemWriter,
 )
@@ -29,7 +28,6 @@ class S3FileSystem(FileSystem):
         self.client = s3_client if s3_client is not None else S3Client(region)
         self.checkpoint = S3Checkpoint(region)
 
-    @override
     @contextmanager
     def create_stream(
         self, path: Union[str, os.PathLike], mode: str
@@ -62,7 +60,6 @@ class S3FileSystem(FileSystem):
                 "Invalid mode argument, create_stream only supports rb (read mode) & wb (write mode)"
             )
 
-    @override
     def concat_path(self, path: Union[str, os.PathLike], suffix: str) -> str:
         """
         Concatenate a suffix to the given path.
@@ -79,7 +76,6 @@ class S3FileSystem(FileSystem):
         result = os.path.join(path_str, suffix)
         return result
 
-    @override
     def init_path(self, path: Union[str, os.PathLike]) -> Union[str, os.PathLike]:
         """
         Initialize the path for the filesystem.
@@ -94,7 +90,6 @@ class S3FileSystem(FileSystem):
         self.path = path
         return self.path
 
-    @override
     def rename(
         self, old_path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]
     ) -> None:
@@ -122,14 +117,12 @@ class S3FileSystem(FileSystem):
         except S3Exception:
             logger.exception("Error renaming object in S3")
 
-    @override
     def mkdir(self, path: Union[str, os.PathLike]) -> None:
         """
         No-op method for creating directories in S3 (not needed).
         """
         pass
 
-    @override
     def exists(self, path: Union[str, os.PathLike]) -> bool:
         logger.debug("exists %s", path)
 
@@ -142,7 +135,6 @@ class S3FileSystem(FileSystem):
         else:
             return True
 
-    @override
     def rm_file(self, path: Union[str, os.PathLike]) -> None:
         logger.debug("remove %s", path)
 
