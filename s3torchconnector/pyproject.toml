@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "torch >= 2.0.1",
+    "torch >= 2.0.1, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
     "s3torchconnectorclient >= 1.2.6",
 ]
 
