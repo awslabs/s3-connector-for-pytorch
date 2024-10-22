@@ -17,7 +17,7 @@ TEST_BUCKET = "test_bucket"
 def test_init():
     s3fs = S3FileSystem(TEST_REGION)
 
-    assert s3fs.path is ""
+    assert s3fs.path == ""
     assert s3fs.region == TEST_REGION
     assert s3fs.client is not None
     assert s3fs.checkpoint is not None
