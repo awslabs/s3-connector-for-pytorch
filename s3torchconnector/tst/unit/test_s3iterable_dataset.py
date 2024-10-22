@@ -218,15 +218,36 @@ def test_from_prefix_seek_no_head():
     head_object.assert_not_called()
 
 
+"""
+    This test validates the distribution of object keys across workers and processes
+    in a distributed data loading scenario, ensuring that each worker processes get
+    the expected subset of keys.
+    all_keys                  = List of object keys to be processed
+    expected_keys             = Expected list of keys to be processed by the active worker
+    worker_id                 = ID of the current worker thread/process within the process
+    num_workers               = Total number of worker threads/processes within the process
+    rank                      = Rank (index) of the current process within the world (group of processes)
+    world_size                = Total number of processes in the world
+
+    Legend:
+    r{rank}w{worker}          = Worker {worker} in Rank {rank}
+    [obj1, obj2]              = Objects assigned to the worker
+    [obj1, obj2]<-active      = Active worker (objects being tested)
+"""
 @pytest.mark.parametrize(
-    "keys, expected_keys, worker_id, num_workers, rank, world_size",
+    "all_keys, expected_keys, worker_id, num_workers, rank, world_size",
     [
         # only one node is used
         ([], [], 0, 4, 0, 1),
+        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]
         ([], [], 2, 3, 0, 1),
+        # r0w0[]  r0w1[]  r0w2[]<-active
         (["obj1"], ["obj1"], 0, 2, 0, 1),
+        # r0w0[obj1]<-active  r0w1[]
         (["obj1"], [], 1, 2, 0, 1),
+        # r0w0[obj1]  r0w1[]<-active
         (["obj1", "obj2", "obj3"], ["obj1", "obj3"], 0, 2, 0, 1),
+        # r0w0[obj1, obj3]<-active  r0w1[obj2]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
             ["obj1", "obj3", "obj5"],
@@ -235,18 +256,30 @@ def test_from_prefix_seek_no_head():
             0,
             1,
         ),
+        # r0w0[obj1, obj3, obj5]<-active  r0w1[obj2, obj4]
         (["obj1", "obj2", "obj3", "test"], ["obj2", "test"], 1, 2, 0, 1),
+        # r0w0[obj1, obj3, obj5]  r0w1[obj2, test]<-active
         (["obj1", "obj2", "obj3"], ["obj2"], 1, 3, 0, 1),
+        # r0w0[obj1]  r0w1[obj2]<-active  r0w2[obj3]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj4"], 0, 3, 0, 1),
+        # r0w0[obj1, obj4]<-active  r0w1[obj2, obj5]  r0w2[obj3]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj2", "obj5"], 1, 3, 0, 1),
+        # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj3"], 2, 3, 0, 1),
+        # r0w0[obj1, obj4]  r0w1[obj2, obj5]  r0w2[obj3]<-active
         # two nodes are in use
         ([], [], 0, 4, 0, 2),
+        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
         ([], [], 2, 3, 0, 2),
+        # r0w0[]  r0w1[]  r0w2[]<-active  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
         (["obj1"], ["obj1"], 0, 2, 0, 2),
-        (["obj1"], [], 1, 1, 1, 2),
+        # r0w0[obj1]<-active  r0w1[]                    r1w0[]  r1w1[]
+        (["obj1"], [], 0, 1, 1, 2),
+        # r0w0[obj1]  r1w0[]<-active
         (["obj1", "obj2", "obj3"], ["obj3"], 0, 2, 1, 2),
+        # r0w0[obj1]  r0w1[obj2]                        r1w0[obj3]<-active  r1w1[]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj5"], 0, 2, 0, 2),
+        # r0w0[obj1, obj5]<-active  r0w1[obj2]          r1w0[obj3]  r1w1[obj4]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "test"],
             ["obj4", "test"],
@@ -255,7 +288,9 @@ def test_from_prefix_seek_no_head():
             1,
             2,
         ),
+        # r0w0[obj1, obj5]  r0w1[obj2, obj6]            r1w0[obj3, obj7]  r1w1[obj4, test]<-active
         (["obj1", "obj2", "obj3"], ["obj2"], 1, 3, 0, 2),
+        # r0w0[obj1]  r0w1[obj2]<-active r0w2[obj3]     r1w0[]  r1w1[] r1w2[]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7"],
             ["obj1", "obj7"],
@@ -264,6 +299,7 @@ def test_from_prefix_seek_no_head():
             0,
             2,
         ),
+        # r0w0[obj1, obj7]<-active  r0w1[obj2] r0w2[obj3]       r1w0[obj4]  r1w1[obj5] r1w2[obj6]
         (
             [
                 "obj1",
@@ -285,7 +321,10 @@ def test_from_prefix_seek_no_head():
             1,
             2,
         ),
+        # r0w0[obj1, obj7]  r0w1[obj2, obj8] r0w2[obj3, obj9]
+        # r1w0[obj4, obj10]  r1w1[obj5, obj11]<-active r1w2[obj6, obj12]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj3"], 2, 3, 0, 2),
+        # r0w0[obj1]  r0w1[obj2] r0w2[obj3]<-active     r1w0[obj4]  r1w1[obj5] r1w2[]
     ],
 )
 @patch("torch.distributed.get_world_size")
@@ -297,7 +336,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     is_initialized_mock,
     get_rank_mock,
     get_world_size_mock,
-    keys: Iterable[str],
+    all_keys: Iterable[str],
     expected_keys: Sequence[str],
     worker_id: int,
     num_workers: int,
@@ -311,11 +350,11 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     get_rank_mock.return_value = rank
     get_world_size_mock.return_value = world_size
 
-    object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
+    object_uris = [f"{S3_PREFIX}/{key}" for key in all_keys]
     dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
 
     # use mock client for unit testing
-    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
     dataset._client = client
 
     assert isinstance(dataset, S3IterableDataset)
@@ -324,15 +363,37 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     )
 
 
+"""
+    This test validates the distribution of object keys across workers and processes
+    in a distributed data loading scenario, ensuring that each worker processes get
+    the expected subset of keys.
+    all_keys                  = List of object keys to be processed
+    prefix                     = Prefix for the object keys
+    expected_keys             = Expected list of keys to be processed by the active worker
+    worker_id                 = ID of the current worker thread/process within the process
+    num_workers               = Total number of worker threads/processes within the process
+    rank                      = Rank (index) of the current process within the world (group of processes)
+    world_size                = Total number of processes in the world
+
+    Legend:
+    r{rank}w{worker}          = Worker {worker} in Rank {rank}
+    [obj1, obj2]              = Objects assigned to the worker
+    [obj1, obj2]<-active      = Active worker (objects being tested)
+"""
 @pytest.mark.parametrize(
-    "keys, prefix, expected_keys, worker_id, num_workers, rank, world_size",
+    "all_keys, prefix, expected_keys, worker_id, num_workers, rank, world_size",
     [
         # only one node is used
         ([], S3_PREFIX, [], 0, 4, 0, 1),
+        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]
         ([], S3_PREFIX, [], 2, 3, 0, 1),
+        # r0w0[]  r0w1[]  r0w2[]<-active
         (["obj1"], S3_PREFIX, ["obj1"], 0, 2, 0, 1),
+        # r0w0[obj1]<-active  r0w1[]
         (["obj1"], f"{S3_PREFIX}/", [], 1, 2, 0, 1),
+        # r0w0[obj1]  r0w1[]<-active
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj1", "obj3"], 0, 2, 0, 1),
+        # r0w0[obj1, obj3]<-active  r0w1[obj2]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
             f"{S3_PREFIX}/",
@@ -342,8 +403,11 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             1,
         ),
+        # r0w0[obj1, obj3, obj5]<-active  r0w1[obj2, obj4]
         (["obj1", "obj2", "obj3", "test"], S3_PREFIX, ["obj2", "test"], 1, 2, 0, 1),
+        # r0w0[obj1, obj3, obj5]  r0w1[obj2, test]<-active
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj2"], 1, 3, 0, 1),
+        # r0w0[obj1]  r0w1[obj2]<-active  r0w2[obj3]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
             f"{S3_PREFIX}/",
@@ -353,6 +417,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             1,
         ),
+        # r0w0[obj1, obj4]<-active  r0w1[obj2, obj5]  r0w2[obj3]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
             S3_PREFIX,
@@ -362,7 +427,9 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             1,
         ),
+        # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj3"], 2, 3, 0, 1),
+        # r0w0[obj1, obj4]  r0w1[obj2, obj5]  r0w2[obj3]<-active
         (
             ["obj1", "test1", "obj2", "obj3", "test2", "obj4", "obj5", "test4"],
             f"{S3_PREFIX}/obj",
@@ -372,6 +439,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             1,
         ),
+        # r0w0[obj1, obj4]<-active  r0w1[obj2, obj5]  r0w2[obj3]
         (
             [
                 "test0",
@@ -393,11 +461,17 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             1,
         ),
+        # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
+
         # two nodes are in use
         ([], S3_PREFIX, [], 0, 4, 0, 2),
+        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
         ([], S3_PREFIX, [], 2, 3, 1, 2),
+        # r0w0[]  r0w1[]  r0w2[]                        r1w0[]  r1w1[]  r1w2[]<-active  r1w3[]
         (["obj1"], S3_PREFIX, ["obj1"], 0, 2, 0, 2),
+        # r0w0[obj1]<-active  r0w1[]                    r1w0[]  r1w1[]
         (["obj1"], f"{S3_PREFIX}/", [], 1, 2, 0, 2),
+        # r0w0[obj1]  r0w1[]<-active                    r1w0[]  r1w1[]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
             S3_PREFIX,
@@ -407,6 +481,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
         ),
+        # r0w0[obj1, obj5]<-active  r0w1[obj2]          r1w0[obj3]  r1w1[obj4]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "obj8"],
             f"{S3_PREFIX}/",
@@ -416,6 +491,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             1,
             2,
         ),
+        # r0w0[obj1, obj5]  r0w1[obj2, obj6]            r1w0[obj3, obj7]<-active  r1w1[obj4, obj8]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5", "test"],
             S3_PREFIX,
@@ -425,7 +501,9 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
         ),
+        # r0w0[obj1, obj5]  r0w1[obj2, test]<-active                r1w0[obj3]  r1w1[obj4]
         (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj2"], 1, 3, 0, 2),
+        # r0w0[obj1]  r0w1[obj2]<-active  r0w2[obj3]                r1w0[]  r1w1[]  r1w2[]
         (
             ["obj1", "obj2", "obj3", "obj4", "obj5"],
             f"{S3_PREFIX}/",
@@ -435,8 +513,11 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
         ),
+        # r0w0[obj1]<-active  r0w1[obj2]  r0w2[obj3]                r1w0[obj4]  r1w1[obj5]  r1w2[]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj5"], 1, 3, 1, 2),
+        # r0w0[obj1]  r0w1[obj2]  r0w2[obj3]                        r1w0[obj4]  r1w1[obj5]<-active  r1w2[]
         (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj3"], 0, 1, 2, 3),
+        # r0w0[obj1, obj4]          r1w0[obj2, obj5]                r2w0[obj3]<-active
         (
             ["obj1", "test1", "obj2", "obj3", "test2", "obj4", "obj5", "test4"],
             f"{S3_PREFIX}/obj",
@@ -446,6 +527,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             0,
             2,
         ),
+        # r0w0[obj1, obj5]<-active  r0w1[obj2]                      r1w0[obj3]  r1w1[obj4]
         (
             [
                 "test0",
@@ -467,6 +549,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             1,
             3,
         ),
+        # r0w0[obj1, obj4]          r1w0[obj2, obj5]<-active        r2w0[obj3]
     ],
 )
 @patch("torch.distributed.get_world_size")
@@ -478,7 +561,7 @@ def test_dataset_creation_from_prefix_against_multiple_workers(
     is_initialized_mock,
     get_rank_mock,
     get_world_size_mock,
-    keys: Iterable[str],
+    all_keys: Iterable[str],
     prefix: str,
     expected_keys: Sequence[str],
     worker_id: int,
@@ -499,7 +582,7 @@ def test_dataset_creation_from_prefix_against_multiple_workers(
     )
 
     # use mock client for unit testing
-    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
+    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
     dataset._client = client
 
     assert isinstance(dataset, S3IterableDataset)

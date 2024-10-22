@@ -16,10 +16,10 @@ from s3torchconnector import S3IterableDataset, S3MapDataset, S3Reader
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture
 
-from test_common import _get_start_methods, _read_data, _set_start_method
+from test_common import _get_fork_methods, _read_data, _set_start_method
 
 
-start_methods = _get_start_methods()
+start_methods = _get_fork_methods()
 
 
 def from_prefix(cls, image_directory: BucketPrefixFixture, **kwargs):

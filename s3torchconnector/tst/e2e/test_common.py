@@ -8,10 +8,15 @@ from s3torchconnector import S3Reader
 from typing import Tuple
 
 
-def _get_start_methods() -> set:
+def _get_fork_methods() -> set:
     """
+    Get a set of valid start methods for PyTorch's multiprocessing.
+    On macOS, the 'fork' and 'forkserver' start methods are known to crash,
+    despite being reported as usable by PyTorch. This function filters out
+    those methods for macOS systems.
 
-    :rtype: object
+    Returns:
+        set: A set of valid start methods for the current platform.
     """
     methods = set(torch.multiprocessing.get_all_start_methods())
 
