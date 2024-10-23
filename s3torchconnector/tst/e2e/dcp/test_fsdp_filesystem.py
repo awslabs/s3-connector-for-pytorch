@@ -6,7 +6,7 @@ import torch
 import torch.distributed.checkpoint as dcp
 from torch.distributed.checkpoint import CheckpointException
 
-from s3torchconnector.dcp import S3DPWriter, S3DPReader
+from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 
 
 def test_fsdp_filesystem_when_single_thread(checkpoint_directory):
@@ -27,20 +27,21 @@ def test_overwrite(checkpoint_directory):
 
     dcp.save(
         {"random": t1},
-        storage_writer=S3DPWriter(region, s3_uri, overwrite=False),
+        storage_writer=S3StorageWriter(region, s3_uri, overwrite=False),
     )
     dcp.save(
         {"random": t2},
-        storage_writer=S3DPWriter(region, s3_uri, overwrite=True),
+        storage_writer=S3StorageWriter(region, s3_uri, overwrite=True),
     )
 
     sd = {"random": torch.zeros(10)}
-    dcp.load(sd, checkpoint_id=s3_uri, storage_reader=S3DPReader(region, s3_uri))
+    dcp.load(sd, checkpoint_id=s3_uri, storage_reader=S3StorageReader(region, s3_uri))
     assert torch.allclose(sd["random"], t2) is True
 
     with pytest.raises(CheckpointException) as excinfo:
         dcp.save(
-            {"random": t2}, storage_writer=S3DPWriter(region, s3_uri, overwrite=False)
+            {"random": t2},
+            storage_writer=S3StorageWriter(region, s3_uri, overwrite=False),
         )
 
     assert "Checkpoint already exists" in str(excinfo.value)

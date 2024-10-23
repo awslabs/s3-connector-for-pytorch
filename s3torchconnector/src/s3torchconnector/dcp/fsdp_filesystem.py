@@ -160,7 +160,7 @@ class S3FileSystem(FileSystem):
         return FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
-class S3DPWriter(FileSystemWriter):
+class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
         region: str,
@@ -197,7 +197,7 @@ class S3DPWriter(FileSystemWriter):
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
-class S3DPReader(FileSystemReader):
+class S3StorageReader(FileSystemReader):
     def __init__(self, region: str, path: Union[str, os.PathLike]) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
