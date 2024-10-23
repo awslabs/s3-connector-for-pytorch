@@ -7,6 +7,14 @@ import os
 from contextlib import contextmanager
 from typing import Generator, Union, Optional
 
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_fixed,
+    wait_random,
+    retry_if_exception_type,
+)
 from torch.distributed.checkpoint.filesystem import (
     FileSystem,
     FileSystemReader,
@@ -15,7 +23,7 @@ from torch.distributed.checkpoint.filesystem import (
 
 from s3torchconnector import S3Checkpoint
 from s3torchconnector._s3client import S3Client
-from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
+from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 
 logger = logging.getLogger(__name__)
@@ -93,8 +101,10 @@ class S3FileSystem(FileSystem):
     def rename(
         self, old_path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]
     ) -> None:
-        """
-        Rename an object in S3 by copying it to a new path and deleting the old path.
+        """Rename an object in S3.
+
+        This is emulated by copying it to a new path and deleting the old path. The deletion part is retried (see also
+        :func:`S3FileSystem._delete_with_retry`.
 
         Args:
             old_path (Union[str, os.PathLike]): The current path of the object.
@@ -112,15 +122,18 @@ class S3FileSystem(FileSystem):
         _, new_key = parse_s3_uri(new_path)
 
         try:
-            self.client.copy_object(bucket_name, old_key, bucket_name, new_key)
-            self.client.delete_object(bucket_name, old_key)
+            self.client.copy_object(
+                src_bucket=bucket_name,
+                src_key=old_key,
+                dst_bucket=bucket_name,
+                dst_key=new_key,
+            )
+            self._delete_with_retry(bucket_name, old_key)
         except S3Exception:
             logger.exception("Error renaming object in S3")
 
     def mkdir(self, path: Union[str, os.PathLike]) -> None:
-        """
-        No-op method for creating directories in S3 (not needed).
-        """
+        """No-op method for creating directories in S3 (not needed)."""
         pass
 
     def exists(self, path: Union[str, os.PathLike]) -> bool:
@@ -158,6 +171,19 @@ class S3FileSystem(FileSystem):
         """
         logger.debug("validate_checkpoint_id for %s", checkpoint_id)
         return FileSystem.validate_checkpoint_id(checkpoint_id)
+
+    @retry(
+        retry=retry_if_exception_type(S3Exception),
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(3) + wait_random(0, 2),
+        reraise=True,
+    )
+    def _delete_with_retry(self, bucket_name: str, old_key: str):
+        """Wrapper around :func:`S3Client.delete_object` to retry the deletion.
+
+        Will retry maximum 3 times, only for `S3Exception`s, and wait between retries. It will reraise the caught
+        exception too."""
+        self.client.delete_object(bucket_name, old_key)
 
 
 class S3StorageWriter(FileSystemWriter):

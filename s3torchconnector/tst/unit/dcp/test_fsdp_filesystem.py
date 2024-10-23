@@ -65,7 +65,6 @@ def test_init_path(path: Union[str, os.PathLike]):
     assert s3fs.path == path
 
 
-@pytest.mark.skip(reason="method not implemented / underlying API not yet ready")
 def test_rename():
     src_key, src_data = ("src_key", b"src_data")
     dst_key = "dst_key"
@@ -109,7 +108,6 @@ def test_exists_false_when_key_does_not_exist():
     assert s3fs.exists(path) is False
 
 
-@pytest.mark.skip(reason="method not implemented")
 def test_rm_file():
     key, data = ("test_rm_file", b"test_data")
     path = _build_s3_uri(TEST_BUCKET, key)
