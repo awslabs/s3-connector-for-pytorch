@@ -16,12 +16,12 @@ jobs:
     strategy:
       matrix:
         checks:
-        # The advisories check is used to detect issues for crates by looking in an advisory database.
+          # The advisories check is used to detect issues for crates by looking in an advisory database.
           - advisories
-        # The bans check is used to deny (or allow) specific crates, as well as detect and handle multiple
-        # versions of the same crate.
-        # The licenses check is used to verify that every crate you use has license terms you find acceptable.
-        # The sources check ensures crates only come from sources you trust.
+          # The bans check is used to deny (or allow) specific crates, as well as detect and handle multiple
+          # versions of the same crate.
+          # The licenses check is used to verify that every crate you use has license terms you find acceptable.
+          # The sources check ensures crates only come from sources you trust.
           - bans licenses sources
     steps:
       - name: Checkout code
@@ -64,7 +64,7 @@ jobs:
     name: Rust tests
     strategy:
       matrix:
-        runner: [ubuntu-22.04, macos-13]
+        runner: [ ubuntu-22.04, macos-13-arm64 ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

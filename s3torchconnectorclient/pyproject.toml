@@ -32,7 +32,8 @@ test = [
     "flake8",
     "black",
     "mypy",
-    "Pillow"
+    "numpy",
+    "Pillow",
 ]
 
 [tool.setuptools.packages]

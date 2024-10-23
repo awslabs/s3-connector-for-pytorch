@@ -37,13 +37,13 @@ jobs:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
             kind: manylinux
             arch: aarch64
-#          - runner: ubuntu-20.04
-#            kind: manylinux
-#            arch: x86_64
-          - runner: macos-13
+          #          - runner: ubuntu-20.04
+          #            kind: manylinux
+          #            arch: x86_64
+          - runner: macos-13-arm64
             kind: macosx
             arch: x86_64
-          - runner: macos-14
+          - runner: macos-14-arm64
             kind: macosx
             arch: arm64
     permissions:
@@ -151,5 +151,5 @@ jobs:
       - name: Merge Artifacts
         uses: actions/upload-artifact/merge@v4
         with:
-           name: wheels
-           pattern: wheels-*
+          name: wheels
+          pattern: wheels-*
