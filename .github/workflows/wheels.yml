@@ -40,10 +40,10 @@ jobs:
           #          - runner: ubuntu-20.04
           #            kind: manylinux
           #            arch: x86_64
-          - runner: macos-13-arm64
+          - runner: macos-13-xlarge
             kind: macosx
             arch: x86_64
-          - runner: macos-14-arm64
+          - runner: macos-14-xlarge
             kind: macosx
             arch: arm64
     permissions:

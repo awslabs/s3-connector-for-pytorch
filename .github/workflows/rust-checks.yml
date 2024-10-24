@@ -64,7 +64,7 @@ jobs:
     name: Rust tests
     strategy:
       matrix:
-        runner: [ ubuntu-22.04, macos-13-arm64 ]
+        runner: [ ubuntu-22.04, macos-13-xlarge ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
