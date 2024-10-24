@@ -42,8 +42,9 @@ jobs:
           cache: 'pip'
       - name: Install Python dependencies
         run: |
-          pip install "./s3torchconnectorclient[test]"
-          pip install "./s3torchconnector[test]"
+          python -m pip install --upgrade pip
+          python -m pip install "./s3torchconnectorclient[test]"
+          python -m pip install "./s3torchconnector[test]"
 
       - name: Run s3torchconnectorclient unit tests
         run: pytest s3torchconnectorclient/python/tst/unit --hypothesis-profile ci --hypothesis-show-statistics -c ./
@@ -52,7 +53,7 @@ jobs:
 
       - name: Install Lightning dependency
         run: |
-          pip install "./s3torchconnector[lightning-tests]"
+          python -m pip install "./s3torchconnector[lightning-tests]"
       - name: Run s3torchconnector Lightning unit tests
         run: pytest s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics -c ./
 
@@ -79,9 +80,10 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install flake8 black mypy
-          pip install "./s3torchconnectorclient"
-          pip install "./s3torchconnector[lightning]"
+          python -m pip install --upgrade pip
+          python -m pip install flake8 black mypy
+          python -m pip install "./s3torchconnectorclient"
+          python -m pip install "./s3torchconnector[lightning]"
 
       - name: Lint with flake8
         run: |
@@ -108,7 +110,8 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install pipreqs safety
+          python -m pip install --upgrade pip
+          python -m pip install pipreqs safety
 
       - name: Generate requirements
         run: |

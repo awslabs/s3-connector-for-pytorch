@@ -19,8 +19,9 @@ jobs:
 
       - name: Install local packages to update versions
         run: |
-          pip install ./s3torchconnectorclient
-          pip install ./s3torchconnector
+          python -m pip install --upgrade pip
+          python -m pip install ./s3torchconnectorclient
+          python -m pip install ./s3torchconnector
 
       - name: Install dependencies
         run: |
