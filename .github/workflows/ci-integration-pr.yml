@@ -2,7 +2,7 @@ name: Integration tests (PR)
 
 on:
   pull_request_target:
-    branches: [ "main", "feature/*", "ci/*" ]
+    branches: [ "main", "feature/*" ]
 
 permissions:
   id-token: write

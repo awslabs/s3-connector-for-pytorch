@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main", "feature/*" ]
   pull_request:
-    branches: [ "main", "feature/*" ]
+    branches: [ "main", "feature/*", "ci/*" ]
   merge_group:
     types: [ "checks_requested" ]
 
@@ -16,4 +16,3 @@ jobs:
   python-checks:
     name: Python Checks
     uses: ./.github/workflows/python-checks.yml
-
