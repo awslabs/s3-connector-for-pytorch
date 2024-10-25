@@ -22,7 +22,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "tenacity",
     "torch >= 2.0.1, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
     "s3torchconnectorclient >= 1.2.6",
 ]
@@ -55,9 +54,18 @@ lightning-tests = [
     "s3fs"
 ]
 
+dcp = [
+    "tenacity",
+    "torch >= 2.3, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
+]
+
+dcp-test = [
+    "s3torchconnector[test,e2e,dcp]",
+]
+
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
 
 [tool.setuptools]
-license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
+license-files = ["LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
