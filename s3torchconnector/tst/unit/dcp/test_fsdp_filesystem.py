@@ -2,7 +2,6 @@
 #  // SPDX-License-Identifier: BSD
 
 import os
-import time
 from pathlib import Path
 from typing import Union
 

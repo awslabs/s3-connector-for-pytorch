@@ -148,8 +148,7 @@ class S3FileSystem(FileSystemBase):
             self._client.head_object(bucket, key)
         except S3Exception:
             return False
-        else:
-            return True
+        return True
 
     def rm_file(self, path: Union[str, os.PathLike]) -> None:
         logger.debug("remove %s", path)
