@@ -70,7 +70,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/unit/dcp -n auto
+          pytest s3torchconnector/tst/unit/dcp
 
   lint:
     name: Python lints
