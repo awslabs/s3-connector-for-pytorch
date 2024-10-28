@@ -12,11 +12,10 @@ from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
     retry,
     stop_after_attempt,
-    wait_fixed,
-    wait_random,
     retry_if_exception_type,
     before_sleep_log,
     after_log,
+    wait_random_exponential,
 )
 from torch.distributed.checkpoint.filesystem import (
     FileSystemReader,
@@ -52,15 +51,15 @@ class S3FileSystem(FileSystemBase):
         Raises:
             ValueError: If the mode is not 'rb' or 'wb'.
         """
-        path = _path_to_str(path)
-        bucket, key = parse_s3_uri(path)
+        path_str = _path_or_str_to_str(path)
+        bucket, key = parse_s3_uri(path_str)
 
         if mode == "wb":  # write mode
-            logger.debug("create_stream writable for %s", path)
+            logger.debug("create_stream writable for %s", path_str)
             with self._client.put_object(bucket, key) as stream:
                 yield stream
         elif mode == "rb":  # read mode
-            logger.debug("create_stream readable for %s", path)
+            logger.debug("create_stream readable for %s", path_str)
             with self._client.get_object(bucket, key) as stream:
                 yield stream
         else:
@@ -116,11 +115,11 @@ class S3FileSystem(FileSystemBase):
         """
         logger.debug("rename %s to %s", old_path, new_path)
 
-        old_path = _path_to_str(old_path)
-        new_path = _path_to_str(new_path)
+        old_path_str = _path_or_str_to_str(old_path)
+        new_path_str = _path_or_str_to_str(new_path)
 
-        old_bucket, old_key = parse_s3_uri(old_path)
-        new_bucket, new_key = parse_s3_uri(new_path)
+        old_bucket, old_key = parse_s3_uri(old_path_str)
+        new_bucket, new_key = parse_s3_uri(new_path_str)
 
         if old_bucket != new_bucket:
             raise ValueError(
@@ -133,7 +132,9 @@ class S3FileSystem(FileSystemBase):
             dst_bucket=new_bucket,
             dst_key=new_key,
         )
+        logger.debug("rename: copied %s to %s successfully", old_path_str, new_path_str)
         self._delete_with_retry(old_bucket, old_key)
+        logger.debug("rename: s3://%s/%s successfully", old_bucket, old_key)
 
     def mkdir(self, path: Union[str, os.PathLike]) -> None:
         """No-op method for creating directories in S3 (not needed)."""
@@ -142,19 +143,21 @@ class S3FileSystem(FileSystemBase):
     def exists(self, path: Union[str, os.PathLike]) -> bool:
         logger.debug("exists %s", path)
 
-        path = _path_to_str(path)
-        bucket, key = parse_s3_uri(path)
+        path_str = _path_or_str_to_str(path)
+        bucket, key = parse_s3_uri(path_str)
         try:
             self._client.head_object(bucket, key)
-        except S3Exception:
+        except S3Exception as e:
+            if str(e) != "Service error: The object was not found":
+                raise
             return False
         return True
 
     def rm_file(self, path: Union[str, os.PathLike]) -> None:
         logger.debug("remove %s", path)
 
-        path = _path_to_str(path)
-        bucket, key = parse_s3_uri(path)
+        path_str = _path_or_str_to_str(path)
+        bucket, key = parse_s3_uri(path_str)
         try:
             self._client.delete_object(bucket, key)
         except S3Exception:
@@ -168,7 +171,7 @@ class S3FileSystem(FileSystemBase):
             return True
 
         try:
-            parse_s3_uri(_path_to_str(checkpoint_id))
+            parse_s3_uri(_path_or_str_to_str(checkpoint_id))
         except ValueError:
             return False
         return True
@@ -176,7 +179,7 @@ class S3FileSystem(FileSystemBase):
     @retry(
         retry=retry_if_exception_type(S3Exception),
         stop=stop_after_attempt(3),
-        wait=wait_fixed(3) + wait_random(0, 2),
+        wait=wait_random_exponential(multiplier=1, max=5),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         after=after_log(logger, logging.ERROR),
         reraise=True,
@@ -245,5 +248,5 @@ class S3StorageReader(FileSystemReader):
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
-def _path_to_str(path: Union[str, os.PathLike]) -> str:
+def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
     return path if isinstance(path, str) else str(path)

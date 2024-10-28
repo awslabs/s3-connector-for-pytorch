@@ -60,7 +60,8 @@ dcp = [
 ]
 
 dcp-test = [
-    "s3torchconnector[test,e2e,dcp]",
+    "s3torchconnector[dcp]",
+    "pytest",
 ]
 
 [tool.setuptools.packages]

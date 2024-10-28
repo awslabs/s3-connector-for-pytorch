@@ -8,7 +8,7 @@ from typing import Union
 import pytest
 
 from s3torchconnector._s3client import MockS3Client
-from s3torchconnector.dcp.fsdp_filesystem import S3FileSystem
+from s3torchconnector.dcp.s3_file_system import S3FileSystem
 from s3torchconnectorclient import S3Exception
 
 TEST_REGION = "eu-east-1"
@@ -144,6 +144,27 @@ def test_exists_false_when_key_does_not_exist():
     s3fs = S3FileSystem(TEST_REGION, mock_client)
 
     assert s3fs.exists(path) is False
+
+
+@pytest.mark.parametrize(
+    "exception", [S3Exception("Some S3 exception"), ValueError("Some random error")]
+)
+def test_exists_raise_when_underlying_exception_is_unexpected(exception):
+    path = _build_s3_uri(TEST_BUCKET, "test_key_does_not_exist")
+
+    mock_client = MockS3Client(TEST_REGION, TEST_BUCKET)
+
+    def raise_s3_exception(bucket, key):
+        raise exception
+
+    mock_client.head_object = raise_s3_exception
+    s3fs = S3FileSystem(TEST_REGION, mock_client)
+
+    with pytest.raises(Exception) as excinfo:
+        s3fs.exists(path)
+
+    assert excinfo.type == type(exception)
+    assert str(excinfo.value) == str(exception)
 
 
 def test_rm_file():
