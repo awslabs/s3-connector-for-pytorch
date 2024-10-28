@@ -98,12 +98,12 @@ jobs:
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
           pytest s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
 
-      # DCP
       - name: Install DCP dependencies
+        if: matrix.runner != 'macos-13'
         run: |
           python -m pip install './s3torchconnector[dcp-test]'
       - name: Run s3torchconnector DCP e2e tests
-        if: ${{ matrix.runner != 'macos-13' }}
+        if: matrix.runner != 'macos-13'
         run: |
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
