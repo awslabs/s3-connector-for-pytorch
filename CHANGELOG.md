@@ -1,3 +1,9 @@
+## v1.2.7 (October 29, 2024)
+
+### New features
+* Add support for CRT retries (awslabs/mountpoint-s3#1069).
+* Add support for `CopyObject` API (#242).
+
 ## v1.2.6 (October 9, 2024)
 
 ### New features
