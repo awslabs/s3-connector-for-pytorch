@@ -24,8 +24,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-22.04, macos-13]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        runner: [ ubuntu-22.04, macos-13 ]
+        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
         test-run:
           - name: "S3"
             bucket: ${{ vars.S3_BUCKET }}
@@ -86,7 +86,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/e2e --ignore s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
+          pytest s3torchconnector/tst/e2e --ignore-glob '*/**/test_e2e_s3_lightning_checkpoint.py' --ignore-glob '*/**/dcp' -n auto
 
       - name: Install Lightning dependency
         run: |
@@ -97,6 +97,18 @@ jobs:
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
           pytest s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
+
+      - name: Install DCP dependencies
+        if: matrix.runner != 'macos-13'
+        run: |
+          python -m pip install './s3torchconnector[dcp-test]'
+      - name: Run s3torchconnector DCP e2e tests
+        if: matrix.runner != 'macos-13'
+        run: |
+          CI_REGION=${{ matrix.test-run.region }} \
+          CI_BUCKET=${{ matrix.test-run.bucket }} \
+          CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          pytest s3torchconnector/tst/e2e/dcp -n auto
 
       - name: s3torchconnectorclient ${{ matrix.test-run.name }} integration tests
         run: |

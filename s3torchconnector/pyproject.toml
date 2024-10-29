@@ -54,9 +54,19 @@ lightning-tests = [
     "s3fs"
 ]
 
+dcp = [
+    "tenacity",
+    "torch >= 2.3, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
+]
+
+dcp-test = [
+    "s3torchconnector[dcp]",
+    "pytest",
+]
+
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
 
 [tool.setuptools]
-license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
+license-files = ["LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
