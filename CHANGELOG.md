@@ -2,9 +2,7 @@
 * Add support of distributed training to S3IterableDataset
 
 ### Breaking changes
-* When using the S3IterableDataset with multiple workers, each worker will have access to a distinct subset 
-of the data by default. If you require all workers within the same process to have access to the entire dataset,
-you should set the `share_dataset_within_process` parameter to True during the creation of the S3IterableDataset.    
+* No breaking changes. 
 
 ## v1.2.7 (October 29, 2024)
 

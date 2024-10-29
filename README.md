@@ -115,7 +115,35 @@ For example, assuming the following directory bucket name `my-test-bucket--usw2-
 usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
+## Parallel/Distributed Training
 
+Amazon S3 Connector for PyTorch provides support for parallel and distributed training with PyTorch, 
+allowing you to leverage multiple processes and nodes for efficient data loading and training. 
+Both S3IterableDataset and S3MapDataset can be used for this purpose.
+
+### S3IterableDataset
+
+The S3IterableDataset can be directly passed to PyTorch's DataLoader for parallel and distributed training.
+By default, all worker processes will share the same list of training objects. However, 
+if you need each worker to have access to a unique portion of the dataset for better parallelization, 
+you can enable dataset sharding using the `enable_sharding` parameter. 
+```
+dataset = S3IterableDataset.from_prefix(DATASET_URI, region=REGION, enable_sharding=True)
+dataloader = DataLoader(dataset, num_workers=4)
+```
+When `enable_sharding` is set to True, the dataset will be automatically sharded across available number of workers. 
+This sharding mechanism supports both parallel training on a single host and distributed training across multiple hosts. 
+Each worker, regardless of its host, will load and process a distinct subset of the dataset.
+### S3MapDataset
+
+For the S3MapDataset, you need to pass it to DataLoader along with a DistributedSampler wrapped around it. 
+The DistributedSampler ensures that each worker or node receives a unique subset of the dataset, 
+enabling efficient parallel and distributed training.
+```
+dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
+sampler = DistributedSampler(dataset)
+dataloader = DataLoader(dataset, sampler=sampler, num_workers=4)
+```
 ## Lightning Integration
 
 Amazon S3 Connector for PyTorch includes an integration for PyTorch Lightning, featuring S3LightningCheckpoint, an 

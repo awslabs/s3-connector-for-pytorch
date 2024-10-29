@@ -33,7 +33,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        share_dataset_within_process: bool = False,
+        enable_sharding: bool = False,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -41,7 +41,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         self._endpoint = endpoint
         self._s3client_config = s3client_config
         self._client = None
-        self._share_dataset_within_process = share_dataset_within_process
+        self._enable_sharding = enable_sharding
 
         self._rank = 0
         self._world_size = 1
@@ -66,7 +66,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        share_dataset_within_process: bool = False,
+        enable_sharding: bool = False,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
 
@@ -76,7 +76,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          share_dataset_within_process: share the dataset across workers within the same process, but use different datasets for different processes. Turned off by default.
+          enable_sharding: If True, shard the dataset across multiple workers for parallel data loading. If False (default), each worker loads the entire dataset independently.
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -91,7 +91,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            share_dataset_within_process=share_dataset_within_process,
+            enable_sharding=enable_sharding,
         )
 
     @classmethod
@@ -103,7 +103,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        share_dataset_within_process: bool = False,
+        enable_sharding: bool = False,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI provided.
 
@@ -113,7 +113,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          share_dataset_within_process: share the dataset across workers within the same process, but use different datasets for different processes. Turned off by default.
+          enable_sharding: If True, shard the dataset across multiple workers for parallel data loading. If False (default), each worker loads the entire dataset independently.
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -128,7 +128,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            share_dataset_within_process=share_dataset_within_process,
+            enable_sharding=enable_sharding,
         )
 
     def _get_client(self):
@@ -150,7 +150,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
     def __iter__(self) -> Iterator[Any]:
         worker_id = 0
         num_workers = 1
-        if not self._share_dataset_within_process:
+        if self._enable_sharding:
             worker_info = torch.utils.data.get_worker_info()
             if worker_info is not None:
                 worker_id = worker_info.id

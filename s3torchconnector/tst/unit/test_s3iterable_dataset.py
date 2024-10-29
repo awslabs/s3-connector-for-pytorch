@@ -351,7 +351,7 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     get_world_size_mock.return_value = world_size
 
     object_uris = [f"{S3_PREFIX}/{key}" for key in all_keys]
-    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
+    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION, enable_sharding=True)
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
@@ -579,6 +579,7 @@ def test_dataset_creation_from_prefix_against_multiple_workers(
     dataset = S3IterableDataset.from_prefix(
         s3_uri=prefix,
         region=TEST_REGION,
+        enable_sharding=True,
     )
 
     # use mock client for unit testing

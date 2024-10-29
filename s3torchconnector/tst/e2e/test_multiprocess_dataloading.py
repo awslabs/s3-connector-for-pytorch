@@ -52,7 +52,7 @@ def test_s3iterable_dataset_multiprocess_torchdata(
 ):
     _set_start_method(start_method)
     dataset = dataset_builder(
-        S3IterableDataset, image_directory, share_dataset_within_process=True
+        S3IterableDataset, image_directory
     )
 
     dataset = IterableWrapper(dataset, deepcopy=False).sharding_filter().map(_read_data)
@@ -90,7 +90,6 @@ def test_s3iterable_dataset_multiprocess(
         S3IterableDataset,
         image_directory,
         transform=_extract_object_data,
-        share_dataset_within_process=True,
     )
 
     num_workers = 3

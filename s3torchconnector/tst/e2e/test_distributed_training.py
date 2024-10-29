@@ -70,6 +70,7 @@ def dataloader_for_iterable(dataset_builder, image_directory, num_workers, batch
     dataset = dataset_builder(
         cls=S3IterableDataset,
         image_directory=image_directory,
+        enable_sharding=True,
     )
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     return dataloader
