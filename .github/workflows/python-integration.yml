@@ -58,7 +58,7 @@ jobs:
 
       - name: Restore Cargo cache
         id: restore-cargo-cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry/index/
