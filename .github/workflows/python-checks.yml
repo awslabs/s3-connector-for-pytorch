@@ -62,6 +62,16 @@ jobs:
       - name: s3torchconnector lightning unit tests
         run: pytest s3torchconnector/tst/unit/lightning --hypothesis-profile ci --hypothesis-show-statistics -c ./
 
+      - name: Install DCP dependencies
+        run: |
+          python -m pip install './s3torchconnector[dcp-test]'
+      - name: Run s3torchconnector DCP unit tests
+        run: |
+          CI_REGION=${{ matrix.test-run.region }} \
+          CI_BUCKET=${{ matrix.test-run.bucket }} \
+          CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          pytest s3torchconnector/tst/unit/dcp
+
   lint:
     name: Python lints
     runs-on: ubuntu-22.04
@@ -89,7 +99,7 @@ jobs:
           python -m pip install flake8 black mypy
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
           python -m pip install ./s3torchconnectorclient
-          python -m pip install ./s3torchconnector[lightning]
+          python -m pip install ./s3torchconnector[lightning,dcp]
 
       - name: Lint with flake8
         run: |
