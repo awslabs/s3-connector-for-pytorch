@@ -51,9 +51,7 @@ def test_s3iterable_dataset_multiprocess_torchdata(
     image_directory: BucketPrefixFixture,
 ):
     _set_start_method(start_method)
-    dataset = dataset_builder(
-        S3IterableDataset, image_directory
-    )
+    dataset = dataset_builder(S3IterableDataset, image_directory)
 
     dataset = IterableWrapper(dataset, deepcopy=False).sharding_filter().map(_read_data)
 

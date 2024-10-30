@@ -110,7 +110,7 @@ def test_distributed_training(
 ):
     # Generate unique port number in range [2000:61000] based on the test name
     # to ensure that different test workers would use different ports
-    test_name = str(request.node)
+    test_name = str(request.node.name)
     test_name_hash = hashlib.sha256(test_name.encode()).hexdigest()
     unique_port = int(test_name_hash, 16) % 60000 + 2000
 

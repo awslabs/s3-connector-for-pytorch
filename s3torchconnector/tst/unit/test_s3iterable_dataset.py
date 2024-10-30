@@ -234,6 +234,8 @@ def test_from_prefix_seek_no_head():
     [obj1, obj2]              = Objects assigned to the worker
     [obj1, obj2]<-active      = Active worker (objects being tested)
 """
+
+
 @pytest.mark.parametrize(
     "all_keys, expected_keys, worker_id, num_workers, rank, world_size",
     [
@@ -351,7 +353,9 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     get_world_size_mock.return_value = world_size
 
     object_uris = [f"{S3_PREFIX}/{key}" for key in all_keys]
-    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION, enable_sharding=True)
+    dataset = S3IterableDataset.from_objects(
+        object_uris, region=TEST_REGION, enable_sharding=True
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
@@ -380,6 +384,8 @@ def test_dataset_creation_from_objects_against_multiple_workers(
     [obj1, obj2]              = Objects assigned to the worker
     [obj1, obj2]<-active      = Active worker (objects being tested)
 """
+
+
 @pytest.mark.parametrize(
     "all_keys, prefix, expected_keys, worker_id, num_workers, rank, world_size",
     [
@@ -462,7 +468,6 @@ def test_dataset_creation_from_objects_against_multiple_workers(
             1,
         ),
         # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
-
         # two nodes are in use
         ([], S3_PREFIX, [], 0, 4, 0, 2),
         # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
