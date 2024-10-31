@@ -58,7 +58,7 @@ jobs:
 
       - name: Restore Cargo cache
         id: restore-cargo-cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -107,7 +107,7 @@ jobs:
           pytest s3torchconnectorclient/python/tst/integration -n auto
 
       - name: Save Cargo cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         if: inputs.environment != 'integration-tests'
         with:
           path: |
