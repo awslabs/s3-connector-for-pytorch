@@ -5,7 +5,6 @@ import io
 import logging
 import os
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Generator, Union, Optional
 
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
@@ -42,44 +41,43 @@ class S3FileSystem(FileSystemBase):
         Create a stream for reading or writing to S3.
 
         Args:
-            path (Union[str, os.PathLike]): The S3 path to read or write.
-            mode (str): The mode for the stream. Supports 'rb' for read mode and 'wb' for write mode.
+            path (Union[str, os.PathLike]): The path (S3 URI) to read from or write to.
+            mode (str): The mode for the stream; supports "rb" for read mode and "wb" for write mode.
 
         Yields:
-            io.BufferedIOBase: A stream for reading or writing to S3.
+            io.IOBase: A stream for reading from or writing to S3.
 
         Raises:
-            ValueError: If the mode is not 'rb' or 'wb'.
+            ValueError: If the mode is neither "rb" nor "wb".
         """
-        path_str = _path_or_str_to_str(path)
-        bucket, key = parse_s3_uri(path_str)
+        bucket, key = parse_s3_uri(str(path))
 
-        if mode == "wb":  # write mode
-            logger.debug("create_stream writable for %s", path_str)
+        if mode == "wb":
+            logger.debug("create_stream: write to %s", path)
             with self._client.put_object(bucket, key) as stream:
                 yield stream
-        elif mode == "rb":  # read mode
-            logger.debug("create_stream readable for %s", path_str)
+        elif mode == "rb":
+            logger.debug("create_stream: read from %s", path)
             with self._client.get_object(bucket, key) as stream:
                 yield stream
         else:
             raise ValueError(
-                f"Invalid {mode=} mode argument: create_stream only supports rb (read mode) & wb (write mode)"
+                f'Invalid {mode=} argument: `create_stream` only supports "rb" (read) or "wb" (write) modes'
             )
 
     def concat_path(self, path: Union[str, os.PathLike], suffix: str) -> str:
         """
-        Concatenate a suffix to the given path.
+        Concatenate a suffix to the given path (S3 URI).
 
         Args:
             path (Union[str, os.PathLike]): The base path.
             suffix (str): The suffix to concatenate.
 
         Returns:
-            str: The concatenated path.
+            str: The concatenated path (S3 URI).
         """
-        logger.debug("concat paths %s and %s", path, suffix)
-        path_str = os.fspath(path)
+        logger.debug("concat_path: %s to %s", path, suffix)
+        path_str = os.fspath(path)  # FIXME: handle properly S3 URIs
         result = os.path.join(path_str, suffix)
         return result
 
@@ -93,58 +91,54 @@ class S3FileSystem(FileSystemBase):
         Returns:
             Union[str, os.PathLike]: The initialized path.
         """
-        logger.debug("init_path for %s", path)
+        logger.debug("init_path: %s", path)
         self._path = path
         return self._path
 
     def rename(
-        self, old_path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]
+        self, path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]
     ) -> None:
         """Rename an object in S3.
 
-        This is emulated by copying it to a new path and deleting the old path. The deletion part is retried (see also
+        This is emulated by copying it to a new path and deleting the old one. The deletion part is retried (see also
         :func:`S3FileSystem._delete_with_retry`).
 
         Args:
-            old_path (Union[str, os.PathLike]): The current path of the object.
-            new_path (Union[str, os.PathLike]): The new path for the object.
+            path (Union[str, os.PathLike]): The current path (URI) of the object.
+            new_path (Union[str, os.PathLike]): The new path (URI) for the object.
 
         Raises:
-            ValueError: If the old and new paths point to different buckets.
+            ValueError: If the old and new paths (URIs) point to different buckets.
             S3Exception: If there is an error with the S3 client.
         """
-        logger.debug("rename %s to %s", old_path, new_path)
+        logger.debug("rename: %s to %s", path, new_path)
 
-        old_path_str = _path_or_str_to_str(old_path)
-        new_path_str = _path_or_str_to_str(new_path)
+        bucket, key = parse_s3_uri(str(path))
+        new_bucket, new_key = parse_s3_uri(str(new_path))
 
-        old_bucket, old_key = parse_s3_uri(old_path_str)
-        new_bucket, new_key = parse_s3_uri(new_path_str)
-
-        if old_bucket != new_bucket:
+        if bucket != new_bucket:
             raise ValueError(
-                f"Source and destination buckets cannot be different (rename does not support cross-buckets operations)"
+                f"Source and destination buckets cannot be different (`rename` does not support cross-buckets operations)"
             )
 
         self._client.copy_object(
-            src_bucket=old_bucket,
-            src_key=old_key,
+            src_bucket=bucket,
+            src_key=key,
             dst_bucket=new_bucket,
             dst_key=new_key,
         )
-        logger.debug("rename: copied %s to %s successfully", old_path_str, new_path_str)
-        self._delete_with_retry(old_bucket, old_key)
-        logger.debug("rename: s3://%s/%s successfully", old_bucket, old_key)
+        logger.debug("rename: copied %s to %s successfully", path, new_path)
+        self._delete_with_retry(bucket, key)
+        logger.debug("rename: deleted %s successfully", path)
 
     def mkdir(self, path: Union[str, os.PathLike]) -> None:
         """No-op method for creating directories in S3 (not needed)."""
         pass
 
     def exists(self, path: Union[str, os.PathLike]) -> bool:
-        logger.debug("exists %s", path)
+        logger.debug("exists: %s", path)
 
-        path_str = _path_or_str_to_str(path)
-        bucket, key = parse_s3_uri(path_str)
+        bucket, key = parse_s3_uri(str(path))
         try:
             self._client.head_object(bucket, key)
         except S3Exception as e:
@@ -154,10 +148,9 @@ class S3FileSystem(FileSystemBase):
         return True
 
     def rm_file(self, path: Union[str, os.PathLike]) -> None:
-        logger.debug("remove %s", path)
+        logger.debug("rm_file: %s", path)
 
-        path_str = _path_or_str_to_str(path)
-        bucket, key = parse_s3_uri(path_str)
+        bucket, key = parse_s3_uri(str(path))
         try:
             self._client.delete_object(bucket, key)
         except S3Exception:
@@ -165,13 +158,10 @@ class S3FileSystem(FileSystemBase):
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
-        logger.debug("validate_checkpoint_id for %s", checkpoint_id)
-
-        if isinstance(checkpoint_id, Path):
-            return True
+        logger.debug("validate_checkpoint_id: %s", checkpoint_id)
 
         try:
-            parse_s3_uri(_path_or_str_to_str(checkpoint_id))
+            parse_s3_uri(str(checkpoint_id))
         except ValueError:
             return False
         return True
@@ -196,33 +186,24 @@ class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
         region: str,
-        path: Union[str, os.PathLike],
-        single_file_per_rank: bool = True,
-        thread_count: int = 1,
-        per_thread_copy_ahead: int = 10_000_000,
-        overwrite: bool = False,
+        uri: str,
+        **kwargs,
     ) -> None:
         """
         Initialize an S3 writer for distributed checkpointing.
 
         Args:
             region (str): The AWS region for S3.
-            path (Union[str, os.PathLike]): The S3 path to write checkpoints.
-            single_file_per_rank (bool, optional): Whether to write a single file per rank. Defaults to True.
-            thread_count (int, optional): The number of threads to use for writing. Defaults to 1.
-            per_thread_copy_ahead (int, optional): The number of bytes to copy ahead per thread. Defaults to 10_000_000.
-            overwrite (bool, optional): Whether to overwrite existing checkpoints. Defaults to False.
+            uri (str): The S3 URI to write checkpoints to.
+            kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
-            path=path,
-            single_file_per_rank=single_file_per_rank,
-            sync_files=False,
-            thread_count=thread_count,
-            per_thread_copy_ahead=per_thread_copy_ahead,
-            overwrite=overwrite,
+            path=uri,
+            sync_files=False,  # FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)
+            **kwargs,
         )
         self.fs = S3FileSystem(region)  # type: ignore
-        self.path = self.fs.init_path(path)
+        self.path = self.fs.init_path(uri)
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
@@ -230,23 +211,18 @@ class S3StorageWriter(FileSystemWriter):
 
 
 class S3StorageReader(FileSystemReader):
-    def __init__(self, region: str, path: Union[str, os.PathLike]) -> None:
+    def __init__(self, region: str, uri: str) -> None:
         """
-        Initialize an S3 reader for distributed checkpointing.
+        Initialize an S3 storage reader for distributed checkpointing.
 
         Args:
             region (str): The AWS region for S3.
-            path (Union[str, os.PathLike]): The S3 path to read checkpoints from.
+            uri (str): The S3 URI to read checkpoints from.
         """
-        super().__init__(path)
+        super().__init__(path=uri)
         self.fs = S3FileSystem(region)  # type: ignore
-        self.path = self.fs.init_path(path)
-        self.sync_files = False
+        self.path = self.fs.init_path(uri)
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
-
-
-def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
-    return path if isinstance(path, str) else str(path)
