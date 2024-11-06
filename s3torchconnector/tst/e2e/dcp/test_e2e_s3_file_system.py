@@ -67,7 +67,7 @@ def dcp_load(loaded_data, reader):
 def load_data(region, s3_path_s3storagewriter, s3_path_fsspec, test_data, world_size, thread_count):
     s3_client = S3Client(region=region)
     bucket, key = parse_s3_uri(s3_path_s3storagewriter)
-    list_result_s3storagewriter = list(s3_client.list_objects(bucket, key))
+    list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
 
     # Compare length
     assert list_result_s3storagewriter is not None
