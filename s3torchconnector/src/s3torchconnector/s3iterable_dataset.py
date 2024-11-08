@@ -156,7 +156,14 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
                 worker_id = worker_info.id
                 num_workers = worker_info.num_workers
 
-        """"
+        if not self._enable_sharding or (self._world_size == 1 and num_workers == 1):
+            # sharding disabled or only one shard is available, so return the entire dataset
+            return map(
+                self._get_transformed_object,
+                self._get_dataset_objects(self._get_client()),
+            )
+
+        """
         In a multi-process setting (e.g., distributed training), the dataset needs to be
         sharded across multiple processes. The following variables control this sharding:
 
@@ -169,26 +176,20 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
 
         worker_id: The ID of the current worker thread/process within the process.
         num_workers: The total number of worker threads/processes within the process.
-
-        The _shard_index and _shard_count variables are computed based on the above values,
-        and they determine which subset of the dataset objects should be processed by the
-        current worker thread/process in the current process rank.
         """
 
-        self._shard_index = num_workers * self._rank + worker_id
-        self._shard_count = num_workers * self._world_size
-
-        if self._shard_count > 1:
-            # we have more than one shard, so need to distribute dataset between shards
-            sharded_objects = (
-                obj
-                for idx, obj in enumerate(self._get_dataset_objects(self._get_client()))
-                if idx % self._shard_count == self._shard_index
-            )
-            return map(self._get_transformed_object, sharded_objects)
-
-        # only one shard, so return the entire dataset
-        return map(
-            self._get_transformed_object,
-            self._get_dataset_objects(self._get_client()),
+        # First, distribute objects across ranks
+        rank_sharded_objects = (
+            obj
+            for idx, obj in enumerate(self._get_dataset_objects(self._get_client()))
+            if idx % self._world_size == self._rank
         )
+
+        # Then, distribute objects within each rank across workers
+        worker_sharded_objects = (
+            obj
+            for idx, obj in enumerate(rank_sharded_objects)
+            if idx % num_workers == worker_id
+        )
+
+        return map(self._get_transformed_object, worker_sharded_objects)

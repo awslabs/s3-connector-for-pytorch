@@ -3,9 +3,11 @@
 import logging
 from io import SEEK_END
 from typing import Iterable, Callable, Sequence, Any
-from unittest.mock import patch, MagicMock
 
 import pytest
+import hypothesis.strategies as st
+from hypothesis import given, assume
+from unittest.mock import patch, MagicMock
 
 from s3torchconnector import S3IterableDataset, S3Reader
 from s3torchconnector._s3client import MockS3Client
@@ -218,385 +220,138 @@ def test_from_prefix_seek_no_head():
     head_object.assert_not_called()
 
 
-"""
-    This test validates the distribution of object keys across workers and processes
-    in a distributed data loading scenario, ensuring that each worker processes get
-    the expected subset of keys.
-    all_keys                  = List of object keys to be processed
-    expected_keys             = Expected list of keys to be processed by the active worker
-    worker_id                 = ID of the current worker thread/process within the process
-    num_workers               = Total number of worker threads/processes within the process
-    rank                      = Rank (index) of the current process within the world (group of processes)
-    world_size                = Total number of processes in the world
-
-    Legend:
-    r{rank}w{worker}          = Worker {worker} in Rank {rank}
-    [obj1, obj2]              = Objects assigned to the worker
-    [obj1, obj2]<-active      = Active worker (objects being tested)
-"""
+# Strategies for generating test cases
+keys_strategy = st.lists(st.text(), min_size=1, max_size=20, unique=True)
+create_from_prefix_strategy = st.booleans()
 
 
-@pytest.mark.parametrize(
-    "all_keys, expected_keys, worker_id, num_workers, rank, world_size",
-    [
-        # only one node is used
-        ([], [], 0, 4, 0, 1),
-        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]
-        ([], [], 2, 3, 0, 1),
-        # r0w0[]  r0w1[]  r0w2[]<-active
-        (["obj1"], ["obj1"], 0, 2, 0, 1),
-        # r0w0[obj1]<-active  r0w1[]
-        (["obj1"], [], 1, 2, 0, 1),
-        # r0w0[obj1]  r0w1[]<-active
-        (["obj1", "obj2", "obj3"], ["obj1", "obj3"], 0, 2, 0, 1),
-        # r0w0[obj1, obj3]<-active  r0w1[obj2]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5"],
-            ["obj1", "obj3", "obj5"],
-            0,
-            2,
-            0,
-            1,
-        ),
-        # r0w0[obj1, obj3, obj5]<-active  r0w1[obj2, obj4]
-        (["obj1", "obj2", "obj3", "test"], ["obj2", "test"], 1, 2, 0, 1),
-        # r0w0[obj1, obj3, obj5]  r0w1[obj2, test]<-active
-        (["obj1", "obj2", "obj3"], ["obj2"], 1, 3, 0, 1),
-        # r0w0[obj1]  r0w1[obj2]<-active  r0w2[obj3]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj4"], 0, 3, 0, 1),
-        # r0w0[obj1, obj4]<-active  r0w1[obj2, obj5]  r0w2[obj3]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj2", "obj5"], 1, 3, 0, 1),
-        # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj3"], 2, 3, 0, 1),
-        # r0w0[obj1, obj4]  r0w1[obj2, obj5]  r0w2[obj3]<-active
-        # two nodes are in use
-        ([], [], 0, 4, 0, 2),
-        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
-        ([], [], 2, 3, 0, 2),
-        # r0w0[]  r0w1[]  r0w2[]<-active  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
-        (["obj1"], ["obj1"], 0, 2, 0, 2),
-        # r0w0[obj1]<-active  r0w1[]                    r1w0[]  r1w1[]
-        (["obj1"], [], 0, 1, 1, 2),
-        # r0w0[obj1]  r1w0[]<-active
-        (["obj1", "obj2", "obj3"], ["obj3"], 0, 2, 1, 2),
-        # r0w0[obj1]  r0w1[obj2]                        r1w0[obj3]<-active  r1w1[]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj1", "obj5"], 0, 2, 0, 2),
-        # r0w0[obj1, obj5]<-active  r0w1[obj2]          r1w0[obj3]  r1w1[obj4]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "test"],
-            ["obj4", "test"],
-            1,
-            2,
-            1,
-            2,
-        ),
-        # r0w0[obj1, obj5]  r0w1[obj2, obj6]            r1w0[obj3, obj7]  r1w1[obj4, test]<-active
-        (["obj1", "obj2", "obj3"], ["obj2"], 1, 3, 0, 2),
-        # r0w0[obj1]  r0w1[obj2]<-active r0w2[obj3]     r1w0[]  r1w1[] r1w2[]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7"],
-            ["obj1", "obj7"],
-            0,
-            3,
-            0,
-            2,
-        ),
-        # r0w0[obj1, obj7]<-active  r0w1[obj2] r0w2[obj3]       r1w0[obj4]  r1w1[obj5] r1w2[obj6]
-        (
-            [
-                "obj1",
-                "obj2",
-                "obj3",
-                "obj4",
-                "obj5",
-                "obj6",
-                "obj7",
-                "obj8",
-                "obj9",
-                "obj10",
-                "obj11",
-                "obj12",
-            ],
-            ["obj5", "obj11"],
-            1,
-            3,
-            1,
-            2,
-        ),
-        # r0w0[obj1, obj7]  r0w1[obj2, obj8] r0w2[obj3, obj9]
-        # r1w0[obj4, obj10]  r1w1[obj5, obj11]<-active r1w2[obj6, obj12]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], ["obj3"], 2, 3, 0, 2),
-        # r0w0[obj1]  r0w1[obj2] r0w2[obj3]<-active     r1w0[obj4]  r1w1[obj5] r1w2[]
-    ],
+# Composite strategy for num_workers_per_rank, based on world_size
+@st.composite
+def _num_workers_per_rank_strategy(draw):
+    world_size = draw(st.integers(min_value=1, max_value=4))
+    num_workers_per_rank = draw(
+        st.lists(
+            st.integers(min_value=1, max_value=4),
+            min_size=world_size,
+            max_size=world_size,
+            unique=True,
+        )
+    )
+    return world_size, num_workers_per_rank
+
+
+@given(
+    keys_for_prefix1=keys_strategy,
+    keys_for_prefix2=keys_strategy,
+    create_from_prefix=create_from_prefix_strategy,
+    world_size_and_num_workers=_num_workers_per_rank_strategy(),
 )
 @patch("torch.distributed.get_world_size")
 @patch("torch.distributed.get_rank")
 @patch("torch.distributed.is_initialized")
 @patch("torch.utils.data.get_worker_info")
-def test_dataset_creation_from_objects_against_multiple_workers(
+def test_dataset_creation_against_multiple_workers(
     get_worker_info_mock,
     is_initialized_mock,
     get_rank_mock,
     get_world_size_mock,
-    all_keys: Iterable[str],
-    expected_keys: Sequence[str],
-    worker_id: int,
-    num_workers: int,
-    rank: int,
-    world_size: int,
+    keys_for_prefix1,
+    keys_for_prefix2,
+    create_from_prefix,
+    world_size_and_num_workers,
 ):
-    worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
-    get_worker_info_mock.return_value = worker_info_mock
-    # assume torch.distributed is always initialized
-    is_initialized_mock.return_value = True
-    get_rank_mock.return_value = rank
-    get_world_size_mock.return_value = world_size
+    """
+    Test the creation of S3IterableDataset with different configurations.
 
+    Args:
+        get_worker_info_mock (MagicMock): Mock for torch.utils.data.get_worker_info().
+        is_initialized_mock (MagicMock): Mock for torch.distributed.is_initialized().
+        get_rank_mock (MagicMock): Mock for torch.distributed.get_rank().
+        get_world_size_mock (MagicMock): Mock for torch.distributed.get_world_size().
+        keys_for_prefix1 (list): A list of strings representing keys for the first prefix.
+        keys_for_prefix2 (list): A list of strings representing keys for the second prefix, should be ignored with .from_prefix
+        create_from_prefix (bool): Whether to create the dataset from a prefix or a list of object URIs.
+        world_size_and_num_workers (tuple): A tuple containing world_size and num_workers for each rank.
+    """
+    prefix1 = "obj"
+    prefix2 = "test"
+    world_size, num_workers_per_rank = world_size_and_num_workers
+
+    # Assume valid input combinations
+    assume(keys_for_prefix1 and keys_for_prefix2)
+    assume(world_size >= 1 and world_size == len(num_workers_per_rank))
+
+    all_keys_for_prefix1 = [f"{prefix1}/{key}" for key in keys_for_prefix1]
+    all_keys = all_keys_for_prefix1 + [f"{prefix2}/{key}" for key in keys_for_prefix2]
     object_uris = [f"{S3_PREFIX}/{key}" for key in all_keys]
-    dataset = S3IterableDataset.from_objects(
-        object_uris, region=TEST_REGION, enable_sharding=True
-    )
 
-    # use mock client for unit testing
-    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
-    dataset._client = client
-
-    assert isinstance(dataset, S3IterableDataset)
-    _verify_dataset(
-        dataset, expected_keys, lambda data: data._get_object_info is not None
-    )
-
-
-"""
-    This test validates the distribution of object keys across workers and processes
-    in a distributed data loading scenario, ensuring that each worker processes get
-    the expected subset of keys.
-    all_keys                  = List of object keys to be processed
-    prefix                     = Prefix for the object keys
-    expected_keys             = Expected list of keys to be processed by the active worker
-    worker_id                 = ID of the current worker thread/process within the process
-    num_workers               = Total number of worker threads/processes within the process
-    rank                      = Rank (index) of the current process within the world (group of processes)
-    world_size                = Total number of processes in the world
-
-    Legend:
-    r{rank}w{worker}          = Worker {worker} in Rank {rank}
-    [obj1, obj2]              = Objects assigned to the worker
-    [obj1, obj2]<-active      = Active worker (objects being tested)
-"""
-
-
-@pytest.mark.parametrize(
-    "all_keys, prefix, expected_keys, worker_id, num_workers, rank, world_size",
-    [
-        # only one node is used
-        ([], S3_PREFIX, [], 0, 4, 0, 1),
-        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]
-        ([], S3_PREFIX, [], 2, 3, 0, 1),
-        # r0w0[]  r0w1[]  r0w2[]<-active
-        (["obj1"], S3_PREFIX, ["obj1"], 0, 2, 0, 1),
-        # r0w0[obj1]<-active  r0w1[]
-        (["obj1"], f"{S3_PREFIX}/", [], 1, 2, 0, 1),
-        # r0w0[obj1]  r0w1[]<-active
-        (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj1", "obj3"], 0, 2, 0, 1),
-        # r0w0[obj1, obj3]<-active  r0w1[obj2]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5"],
-            f"{S3_PREFIX}/",
-            ["obj1", "obj3", "obj5"],
-            0,
-            2,
-            0,
-            1,
-        ),
-        # r0w0[obj1, obj3, obj5]<-active  r0w1[obj2, obj4]
-        (["obj1", "obj2", "obj3", "test"], S3_PREFIX, ["obj2", "test"], 1, 2, 0, 1),
-        # r0w0[obj1, obj3, obj5]  r0w1[obj2, test]<-active
-        (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj2"], 1, 3, 0, 1),
-        # r0w0[obj1]  r0w1[obj2]<-active  r0w2[obj3]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5"],
-            f"{S3_PREFIX}/",
-            ["obj1", "obj4"],
-            0,
-            3,
-            0,
-            1,
-        ),
-        # r0w0[obj1, obj4]<-active  r0w1[obj2, obj5]  r0w2[obj3]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5"],
-            S3_PREFIX,
-            ["obj2", "obj5"],
-            1,
-            3,
-            0,
-            1,
-        ),
-        # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj3"], 2, 3, 0, 1),
-        # r0w0[obj1, obj4]  r0w1[obj2, obj5]  r0w2[obj3]<-active
-        (
-            ["obj1", "test1", "obj2", "obj3", "test2", "obj4", "obj5", "test4"],
-            f"{S3_PREFIX}/obj",
-            ["obj1", "obj4"],
-            0,
-            3,
-            0,
-            1,
-        ),
-        # r0w0[obj1, obj4]<-active  r0w1[obj2, obj5]  r0w2[obj3]
-        (
-            [
-                "test0",
-                "obj1",
-                "obj2",
-                "obj3",
-                "test1",
-                "test2",
-                "test3",
-                "obj4",
-                "obj5",
-                "test4",
-                "test5",
-            ],
-            f"{S3_PREFIX}/obj",
-            ["obj2", "obj5"],
-            1,
-            3,
-            0,
-            1,
-        ),
-        # r0w0[obj1, obj4]  r0w1[obj2, obj5]<-active  r0w2[obj3]
-        # two nodes are in use
-        ([], S3_PREFIX, [], 0, 4, 0, 2),
-        # r0w0[]<-active  r0w1[]  r0w2[]  r0w3[]        r1w0[]  r1w1[]  r1w2[]  r1w3[]
-        ([], S3_PREFIX, [], 2, 3, 1, 2),
-        # r0w0[]  r0w1[]  r0w2[]                        r1w0[]  r1w1[]  r1w2[]<-active  r1w3[]
-        (["obj1"], S3_PREFIX, ["obj1"], 0, 2, 0, 2),
-        # r0w0[obj1]<-active  r0w1[]                    r1w0[]  r1w1[]
-        (["obj1"], f"{S3_PREFIX}/", [], 1, 2, 0, 2),
-        # r0w0[obj1]  r0w1[]<-active                    r1w0[]  r1w1[]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5"],
-            S3_PREFIX,
-            ["obj1", "obj5"],
-            0,
-            2,
-            0,
-            2,
-        ),
-        # r0w0[obj1, obj5]<-active  r0w1[obj2]          r1w0[obj3]  r1w1[obj4]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5", "obj6", "obj7", "obj8"],
-            f"{S3_PREFIX}/",
-            ["obj3", "obj7"],
-            0,
-            2,
-            1,
-            2,
-        ),
-        # r0w0[obj1, obj5]  r0w1[obj2, obj6]            r1w0[obj3, obj7]<-active  r1w1[obj4, obj8]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5", "test"],
-            S3_PREFIX,
-            ["obj2", "test"],
-            1,
-            2,
-            0,
-            2,
-        ),
-        # r0w0[obj1, obj5]  r0w1[obj2, test]<-active                r1w0[obj3]  r1w1[obj4]
-        (["obj1", "obj2", "obj3"], S3_PREFIX, ["obj2"], 1, 3, 0, 2),
-        # r0w0[obj1]  r0w1[obj2]<-active  r0w2[obj3]                r1w0[]  r1w1[]  r1w2[]
-        (
-            ["obj1", "obj2", "obj3", "obj4", "obj5"],
-            f"{S3_PREFIX}/",
-            ["obj1"],
-            0,
-            3,
-            0,
-            2,
-        ),
-        # r0w0[obj1]<-active  r0w1[obj2]  r0w2[obj3]                r1w0[obj4]  r1w1[obj5]  r1w2[]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj5"], 1, 3, 1, 2),
-        # r0w0[obj1]  r0w1[obj2]  r0w2[obj3]                        r1w0[obj4]  r1w1[obj5]<-active  r1w2[]
-        (["obj1", "obj2", "obj3", "obj4", "obj5"], S3_PREFIX, ["obj3"], 0, 1, 2, 3),
-        # r0w0[obj1, obj4]          r1w0[obj2, obj5]                r2w0[obj3]<-active
-        (
-            ["obj1", "test1", "obj2", "obj3", "test2", "obj4", "obj5", "test4"],
-            f"{S3_PREFIX}/obj",
-            ["obj1", "obj5"],
-            0,
-            2,
-            0,
-            2,
-        ),
-        # r0w0[obj1, obj5]<-active  r0w1[obj2]                      r1w0[obj3]  r1w1[obj4]
-        (
-            [
-                "test0",
-                "obj1",
-                "obj2",
-                "obj3",
-                "test1",
-                "test2",
-                "test3",
-                "obj4",
-                "obj5",
-                "test4",
-                "test5",
-            ],
-            f"{S3_PREFIX}/obj",
-            ["obj2", "obj5"],
-            0,
-            1,
-            1,
-            3,
-        ),
-        # r0w0[obj1, obj4]          r1w0[obj2, obj5]<-active        r2w0[obj3]
-    ],
-)
-@patch("torch.distributed.get_world_size")
-@patch("torch.distributed.get_rank")
-@patch("torch.distributed.is_initialized")
-@patch("torch.utils.data.get_worker_info")
-def test_dataset_creation_from_prefix_against_multiple_workers(
-    get_worker_info_mock,
-    is_initialized_mock,
-    get_rank_mock,
-    get_world_size_mock,
-    all_keys: Iterable[str],
-    prefix: str,
-    expected_keys: Sequence[str],
-    worker_id: int,
-    num_workers: int,
-    rank: int,
-    world_size: int,
-):
-    worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
-    get_worker_info_mock.return_value = worker_info_mock
-    # assume torch.distributed is initialized, only when world size is bigger then 1
-    is_initialized_mock.return_value = world_size != 1
-    get_rank_mock.return_value = rank
+    is_initialized_mock.return_value = True
     get_world_size_mock.return_value = world_size
 
-    dataset = S3IterableDataset.from_prefix(
-        s3_uri=prefix,
-        region=TEST_REGION,
-        enable_sharding=True,
-    )
+    all_keys_from_workers = []
+    num_keys_per_rank = []
+    for rank in range(world_size):
+        get_rank_mock.return_value = rank
+        num_workers = num_workers_per_rank[rank]
+        # Gather all keys from all workers for a specific rank and them to all_keys_from_workers
+        # As ranks and world size initiated in the constructor of S3IterableDataset, we need to reset them
+        # for each rank
+        is_initialized_mock.return_value = True
+        num_keys = 0
+        for worker_id in range(num_workers):
+            worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
+            get_worker_info_mock.return_value = worker_info_mock
 
-    # use mock client for unit testing
-    client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
-    dataset._client = client
+            if create_from_prefix:
+                dataset = S3IterableDataset.from_prefix(
+                    s3_uri=f"{S3_PREFIX}/{prefix1}",
+                    region=TEST_REGION,
+                    enable_sharding=True,
+                )
+            else:
+                dataset = S3IterableDataset.from_objects(
+                    object_uris=object_uris,
+                    region=TEST_REGION,
+                    enable_sharding=True,
+                )
 
-    assert isinstance(dataset, S3IterableDataset)
-    _verify_dataset(
-        dataset,
-        expected_keys,
-        lambda data: data._object_info is not None,
-    )
+            client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
+            dataset._client = client
+
+            worker_keys = []
+            for data in dataset:
+                worker_keys.append(data.key)
+
+            all_keys_from_workers.append(worker_keys)
+            num_keys += len(worker_keys)
+        num_keys_per_rank.append(num_keys)
+
+    # Get list of all seen keys
+    flattened_keys_from_workers = [
+        key for nested_keys in all_keys_from_workers for key in nested_keys
+    ]
+    if create_from_prefix:
+        assert len(set(flattened_keys_from_workers)) == len(
+            all_keys_for_prefix1
+        ), "All keys under prefix1 should be processed"
+        assert set(flattened_keys_from_workers) == set(
+            all_keys_for_prefix1
+        ), "Union of keys under prefix1 should be the same"
+        assert all(
+            [key.startswith(prefix1) for key in flattened_keys_from_workers]
+        ), "All keys should start with prefix1"
+        expected_num_per_rank = len(keys_for_prefix1) // world_size
+    else:
+        assert len(set(flattened_keys_from_workers)) == len(
+            all_keys
+        ), "All keys should be processed"
+        assert set(flattened_keys_from_workers) == set(
+            all_keys
+        ), "Union of keys should be the same"
+        expected_num_per_rank = len(all_keys) // world_size
+    assert all(
+        [abs(num_keys - expected_num_per_rank) <= 1 for num_keys in num_keys_per_rank]
+    ), "The number of keys should be evenly distributed across ranks, with a difference of at most 1"
 
 
 def _verify_dataset(
