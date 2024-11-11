@@ -163,8 +163,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
                 self._get_dataset_objects(self._get_client()),
             )
 
-        """
-        In a multi-process setting (e.g., distributed training), the dataset needs to be
+        """In a multi-process setting (e.g., distributed training), the dataset needs to be
         sharded across multiple processes. The following variables control this sharding:
 
         _rank: The rank (index) of the current process within the world (group of processes).

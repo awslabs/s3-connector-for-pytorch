@@ -28,7 +28,7 @@ Amazon S3, without first saving to local storage.
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports only Linux and MacOS via Pip for now. For other platforms,
+Amazon S3 Connector for PyTorch supports pre-build wheels via Pip only for Linux and MacOS for now. For other platforms,
 see [DEVELOPMENT](DEVELOPMENT.md) for build instructions.
 
 ### Configuration

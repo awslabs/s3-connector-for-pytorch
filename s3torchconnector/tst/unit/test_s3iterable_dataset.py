@@ -260,8 +260,7 @@ def test_dataset_creation_against_multiple_workers(
     create_from_prefix,
     world_size_and_num_workers,
 ):
-    """
-    Test the creation of S3IterableDataset with different configurations.
+    """Test the iterating over S3IterableDataset with different numbers of ranks/workers when sharding is enabled.
 
     Args:
         get_worker_info_mock (MagicMock): Mock for torch.utils.data.get_worker_info().
@@ -293,9 +292,10 @@ def test_dataset_creation_against_multiple_workers(
     for rank in range(world_size):
         get_rank_mock.return_value = rank
         num_workers = num_workers_per_rank[rank]
-        # Gather all keys from all workers for a specific rank and them to all_keys_from_workers
-        # As ranks and world size initiated in the constructor of S3IterableDataset, we need to reset them
-        # for each rank
+        """Gather all keys from all workers for a specific rank and them to all_keys_from_workers
+        As ranks and world size initiated in the constructor of S3IterableDataset, we need to reset them
+        for each rank
+        """
         is_initialized_mock.return_value = True
         num_keys = 0
         for worker_id in range(num_workers):

@@ -108,8 +108,9 @@ def test_distributed_training(
     num_processes: int,
     image_directory_for_dp: BucketPrefixFixture,
 ):
-    # Generate unique port number in range [2000:61000] based on the test name
-    # to ensure that different test workers would use different ports
+    """Generate unique port number in range [2000:61000] based on the test name
+    to ensure that different test workers would use different ports
+    """
     test_name = str(request.node.name)
     test_name_hash = hashlib.sha256(test_name.encode()).hexdigest()
     unique_port = int(test_name_hash, 16) % 60000 + 2000
@@ -145,11 +146,12 @@ def test_distributed_training(
     expected_uris = set(image_directory_for_dp.contents.keys())
     assert set(combined_uris_seen.keys()) == expected_uris
 
-    # When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
-    # If the total number of images cannot be evenly divided by the number of workers,
-    # the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
-    # distribution of data among all processes. This duplication of images will cause
-    # integration distributed training test to fail.
+    """When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
+    If the total number of images cannot be evenly divided by the number of workers,
+    the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
+    distribution of data among all processes. This duplication of images will cause
+    integration distributed training test to fail.
+    """
     assert all(count == 1 for count in combined_uris_seen.values())
 
 

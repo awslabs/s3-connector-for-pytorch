@@ -71,8 +71,7 @@ class BucketPrefixFixture(BucketPrefixData):
         self.contents[full_key] = contents
 
     def get_data_snapshot(self):
-        """
-        Returns a read-only copy of the current instance's data.
+        """Returns a read-only copy of the current instance's data.
 
         The returned object cannot modify the actual S3 bucket.
         Useful when passing data to another process without serializing s3 client
@@ -105,11 +104,12 @@ def image_directory(request) -> BucketPrefixFixture:
 
 @pytest.fixture
 def image_directory_for_dp(request) -> BucketPrefixFixture:
-    # When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
-    # If the total number of images cannot be evenly divided by the number of workers,
-    # the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
-    # distribution of data among all processes. This duplication of images will cause
-    # integration distributed training test to fail.
+    """When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
+    If the total number of images cannot be evenly divided by the number of workers,
+    the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
+    distribution of data among all processes. This duplication of images will cause
+    integration distributed training test to fail.
+    """
     NUM_IMAGES = 36
     IMAGE_SIZE = 100
     return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, request.node.name)
