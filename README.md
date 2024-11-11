@@ -136,7 +136,7 @@ This sharding mechanism supports both parallel training on a single host and dis
 Each worker, regardless of its host, will load and process a distinct subset of the dataset.
 ### S3MapDataset
 
-For the S3MapDataset, you need to pass it to DataLoader along with a DistributedSampler wrapped around it. 
+For the S3MapDataset, you need to pass it to DataLoader along with a [DistributedSampler](https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler) wrapped around it. 
 The DistributedSampler ensures that each worker or node receives a unique subset of the dataset, 
 enabling efficient parallel and distributed training.
 ```
