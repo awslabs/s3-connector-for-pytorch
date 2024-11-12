@@ -33,7 +33,7 @@ class Metadata(TypedDict):
     hydra_version: str
     ec2_metadata: Union[EC2Metadata, None]
     model_name: str
-    model_size: float
+    model_size_mb: float  # "_mb" stands for MB
 
 
 class Data(TypedDict):
@@ -65,7 +65,7 @@ def save_results(
             "hydra_version": HydraConfig.get().runtime.version,
             "ec2_metadata": get_ec2_metadata(),
             "model_name": model.name,
-            "model_size": model.size,
+            "model_size_mb": model.size,
         },
         "config": OmegaConf.to_container(cfg),
         "data": {
@@ -93,9 +93,9 @@ def save_results(
     logger.info("Results saved successfully")
 
 
-def to_throughput(save_times: List, model_size: float) -> Distribution:
+def to_throughput(save_times: List[float], model_size: float) -> Distribution:
     """Compute throughput from save times, in MB/s."""
-    return Distribution(map(lambda x: model_size / (x * 1024**2), save_times))
+    return Distribution(map(lambda x: model_size / x, save_times))
 
 
 @lru_cache

@@ -64,6 +64,8 @@ def run_benchmark(cfg: DictConfig):
         end_time = perf_counter()
         processing_times.append(end_time - start_time)
 
+        # Dump the multiprocessing Queue's content into a list, and compute its "ptp" (peak to peak, i.e.,
+        # diff(max, min)) metric.
         collector: List[float] = []
         while not save_timestamps.empty():
             collector.append(save_timestamps.get())
@@ -143,12 +145,12 @@ def run(
 
     ddp_model = DistributedDataParallel(model, device_ids=[device_id])
 
+    start_time = perf_counter()
     for i in range(epochs):
-        start_time = perf_counter()
         dcp.save(ddp_model.state_dict(), storage_writer=storage_writer)
-        end_time = perf_counter()
+    end_time = perf_counter()
 
-        save_timestamps.put(start_time)
-        save_timestamps.put(end_time)
+    save_timestamps.put(start_time)
+    save_timestamps.put(end_time)
 
     dist.destroy_process_group()

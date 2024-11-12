@@ -25,7 +25,7 @@ class BenchmarkModel:
 
     @cached_property
     def size(self) -> float:
-        """Compute a model size (in bytes).
+        """Compute a model's size (in MB).
 
         Sourced from https://discuss.pytorch.org/t/finding-model-size/130275/2.
         """
@@ -35,7 +35,7 @@ class BenchmarkModel:
         buffer_size = 0
         for buffer in self.model.buffers():
             buffer_size += buffer.nelement() * buffer.element_size()
-        return param_size + buffer_size
+        return (param_size + buffer_size) / 1024**2
 
 
 SIZE_TO_MODEL = {
