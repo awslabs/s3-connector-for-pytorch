@@ -77,10 +77,10 @@ def dataloader_for_iterable(dataset_builder, image_directory, num_workers, batch
 
 
 # Allow us to construct our datasets in tests with either from_prefix or from_objects.
-dataset_builders = (from_prefix, from_objects)
+dataset_builders = [from_prefix, from_objects]
 
 # Allow us to construct dataloaders in test with either S3MapDataset or S3IterableDataset
-dataloader_builders = (dataloader_for_iterable, dataloader_for_map)
+dataloader_builders = [dataloader_for_iterable, dataloader_for_map]
 
 num_workers_to_test = [1, 2, 3]
 num_processes_to_test = [1, 2, 3]
@@ -108,12 +108,27 @@ def test_distributed_training(
     num_processes: int,
     image_directory_for_dp: BucketPrefixFixture,
 ):
-    """Generate unique port number in range [2000:61000] based on the test name
-    to ensure that different test workers would use different ports
+    """Calculate a unique port number based on the input parameters
+    This ensures that each test case runs on a different port
+    to avoid conflicts when running in parallel
     """
-    test_name = str(request.node.name)
-    test_name_hash = hashlib.sha256(test_name.encode()).hexdigest()
-    unique_port = int(test_name_hash, 16) % 60000 + 2000
+    start_method_index = start_methods.index(start_method)
+    dataset_builder_index = dataset_builders.index(dataset_builder)
+    dataloader_builder_index = dataloader_builders.index(dataloader_builder)
+    unique_port = (
+        start_method_index * 10000
+        + dataset_builder_index * 1000
+        + dataloader_builder_index * 100
+        + num_workers * 10
+        + num_processes
+    ) + 2000
+
+    print(
+        f"Testing {request.node.name} with start_method={start_method}, "
+        f"dataset_builder={dataset_builder.__name__}, dataloader_builder={dataloader_builder.__name__}, "
+        f"num_workers={num_workers}, num_processes={num_processes}, "
+        f"unique_port={unique_port}"
+    )
 
     manager = mp.Manager()
     result_queue = manager.Queue()
