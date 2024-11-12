@@ -69,8 +69,7 @@ This section allows for multiple benchmark configurations:
 - Available options include:
     - `+model`: Choose from pre-trained models listed in [`models.py`](models.py).
     - `+backend`: Select `nccl`, `gloo`, or both.
-    - `+world_size`: Defines the number of processes. Note: Values exceeding the node's capacity will be automatically
-      capped.
+    - `+world_size`: Defines the number of processes.
     - `+thread_count`: Defines the number of threads to use for saving the checkpoints.
     - `+checkpoint.storage`: Choose `s3`, `disk`, or both.
 

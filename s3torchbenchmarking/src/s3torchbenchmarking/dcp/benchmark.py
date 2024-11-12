@@ -11,7 +11,6 @@ from time import perf_counter
 from typing import List
 
 import hydra
-import numpy as np
 import torch
 import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
@@ -34,67 +33,39 @@ logger = logging.getLogger(__name__)
 def run_benchmark(cfg: DictConfig):
     """DCP benchmark entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
-    world_size = validate_world_size(cfg.world_size)
 
     # For every run, use a randomized suffix (for either local disk or S3).
     suffix = "".join(random.choices(string.ascii_letters, k=7))
     storage_writer = get_writer(cfg, suffix)
 
     manager = multiprocessing.Manager()
-    save_timestamps: Queue[float] = manager.Queue()
-
-    processing_times = Distribution()
-    ptp_save_times = Distribution()  # "ptp" == "peak to peak", or "diff(max, min)"
+    save_durations: Queue[float] = manager.Queue()
 
     with ResourceMonitor() as monitor:
         start_time = perf_counter()
         multiprocessing.spawn(
             run,
-            (
-                cfg.backend,
-                cfg.epochs,
-                benchmark_model.model,
-                world_size,
-                storage_writer,
-                save_timestamps,
-            ),
-            nprocs=world_size,
+            (cfg, benchmark_model.model, storage_writer, save_durations),
+            nprocs=cfg.world_size,
             join=True,
         )
         end_time = perf_counter()
-        processing_times.append(end_time - start_time)
 
-        # Dump the multiprocessing Queue's content into a list, and compute its "ptp" (peak to peak, i.e.,
-        # diff(max, min)) metric.
-        collector: List[float] = []
-        while not save_timestamps.empty():
-            collector.append(save_timestamps.get())
-        ptp_save_times.append(np.ptp(collector))
+    processing_durations = Distribution([end_time - start_time])
+
+    # Dump the multiprocessing Queue's content into a list.
+    collector: List[float] = []
+    while not save_durations.empty():
+        collector.append(save_durations.get())
+    save_durations_distribution = Distribution(collector)
 
     save_results(
         cfg,
         benchmark_model,
-        ptp_save_times=ptp_save_times,
-        processing_times=processing_times,
+        save_durations=save_durations_distribution,
+        processing_durations=processing_durations,
         monitor=monitor,
     )
-
-
-def validate_world_size(world_size: int) -> int:
-    """Enforce `world_size` to be within the current node's capacity.
-
-    FIXME: only works when the backend is "nccl"; what about "gloo" and CPUs?
-    """
-    device_count = torch.cuda.device_count()
-    if world_size > device_count:
-        logger.warning(
-            "Received a `world_size` of %i, while only %i are available: decreasing to %i",
-            world_size,
-            device_count,
-            device_count,
-        )
-        return device_count
-    return world_size
 
 
 def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
@@ -118,39 +89,38 @@ def build_checkpoint_uri(s3_uri: str, suffix: str) -> str:
 def setup(backend: str, world_size: int, rank: int) -> None:
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
-    dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
+    dist.init_process_group(backend, world_size=world_size, rank=rank)
 
 
+# FIXME: configure logging in subprocess accordingly
 def run(
     rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
-    backend: str,
-    epochs: int,
+    cfg: DictConfig,
     model: Module,
-    world_size: int,
     storage_writer: FileSystemWriter,
-    save_timestamps: Queue,
+    save_durations: Queue,
 ) -> None:
     """Execute the actual code for checkpoint saving.
 
     This function is meant to be executed in subprocesses."""
 
-    # FIXME: configure logging in subprocess accordingly
-
-    torch.cuda.set_device(rank)
-    setup(backend=backend, world_size=world_size, rank=rank)
+    setup(cfg.backend, world_size=cfg.world_size, rank=rank)
     rank = dist.get_rank()
+    if cfg.backend == "nccl":
+        device_id = rank % torch.cuda.device_count()
+        torch.cuda.set_device(device_id)
+    else:
+        device_id = rank % torch.cpu.device_count()
+        torch.cpu.set_device(device_id)
 
-    device_id = rank % torch.cuda.device_count()
     model.to(device_id)
-
     ddp_model = DistributedDataParallel(model, device_ids=[device_id])
 
     start_time = perf_counter()
-    for i in range(epochs):
+    for i in range(cfg.epochs):
         dcp.save(ddp_model.state_dict(), storage_writer=storage_writer)
     end_time = perf_counter()
 
-    save_timestamps.put(start_time)
-    save_timestamps.put(end_time)
+    save_durations.put(end_time - start_time)
 
     dist.destroy_process_group()

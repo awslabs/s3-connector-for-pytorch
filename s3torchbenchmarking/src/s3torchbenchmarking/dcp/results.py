@@ -10,7 +10,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict, Union, Any, List
 
-import numpy as np
 import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
@@ -33,13 +32,13 @@ class Metadata(TypedDict):
     hydra_version: str
     ec2_metadata: Union[EC2Metadata, None]
     model_name: str
-    model_size_mb: float  # "_mb" stands for MB
+    model_size_mib: float  # "_mib" stands for MiB
 
 
 class Data(TypedDict):
     throughput: Statistics
-    ptp_save_times: Statistics
-    processing_times: Statistics
+    save_durations: Statistics
+    processing_durations: Statistics
     utilization: dict
 
 
@@ -52,8 +51,8 @@ class Results(TypedDict):
 def save_results(
     cfg: DictConfig,
     model: BenchmarkModel,
-    ptp_save_times: Distribution,
-    processing_times: Distribution,
+    save_durations: Distribution,
+    processing_durations: Distribution,
     monitor: ResourceMonitor,
 ):
     """Save a Hydra job's results to a local JSON file."""
@@ -65,13 +64,13 @@ def save_results(
             "hydra_version": HydraConfig.get().runtime.version,
             "ec2_metadata": get_ec2_metadata(),
             "model_name": model.name,
-            "model_size_mb": model.size,
+            "model_size_mib": model.size,
         },
         "config": OmegaConf.to_container(cfg),
         "data": {
-            "throughput": to_throughput(ptp_save_times, model.size).dump(unit="MB/s"),
-            "ptp_save_times": ptp_save_times.dump(unit="s"),
-            "processing_times": processing_times.dump(unit="s"),
+            "throughput": to_throughput(save_durations, model.size).dump(unit="MiB/s"),
+            "save_durations": save_durations.dump(unit="s"),
+            "processing_durations": processing_durations.dump(unit="s"),
             "utilization": {k: v.summarize() for k, v in monitor.resource_data.items()},
         },
     }
@@ -94,7 +93,7 @@ def save_results(
 
 
 def to_throughput(save_times: List[float], model_size: float) -> Distribution:
-    """Compute throughput from save times, in MB/s."""
+    """Compute throughput from save times, in MiB/s."""
     return Distribution(map(lambda x: model_size / x, save_times))
 
 

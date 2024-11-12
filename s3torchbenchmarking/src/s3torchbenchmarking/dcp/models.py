@@ -25,7 +25,7 @@ class BenchmarkModel:
 
     @cached_property
     def size(self) -> float:
-        """Compute a model's size (in MB).
+        """Compute a model's size (in MiB).
 
         Sourced from https://discuss.pytorch.org/t/finding-model-size/130275/2.
         """
