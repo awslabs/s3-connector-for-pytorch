@@ -234,7 +234,6 @@ def _num_workers_per_rank_strategy(draw):
             st.integers(min_value=1, max_value=4),
             min_size=world_size,
             max_size=world_size,
-            unique=True,
         )
     )
     return world_size, num_workers_per_rank
@@ -350,7 +349,7 @@ def test_dataset_creation_against_multiple_workers(
         ), "Union of keys should be the same"
         expected_num_per_rank = len(all_keys) // world_size
     assert all(
-        [abs(num_keys - expected_num_per_rank) <= 1 for num_keys in num_keys_per_rank]
+        [(num_keys - expected_num_per_rank) <= 1 for num_keys in num_keys_per_rank]
     ), "The number of keys should be evenly distributed across ranks, with a difference of at most 1"
 
 
