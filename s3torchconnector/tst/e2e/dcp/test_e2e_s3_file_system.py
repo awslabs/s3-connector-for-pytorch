@@ -49,10 +49,7 @@ def run(
 
     cleanup()
 
-@pytest.mark.parametrize(
-    "tensor_dimensions",
-    [[3, 2], [10, 1024, 1024]],
-)
+
 def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory, tensor_dimensions):
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
@@ -130,13 +127,20 @@ def load_data(
         "Test passed: Saved and loaded data correctly."
     )
 
+@pytest.mark.parametrize(
+    "tensor_dimensions",
+    [[3, 2], [10, 1024, 1024]],
+)
+def test_dcp_when_multi_process_single_thread(checkpoint_directory, tensor_dimensions):
+    multi_process_dcp_save_load(6, 1, checkpoint_directory, tensor_dimensions)
 
-def test_dcp_when_multi_process_single_thread(checkpoint_directory):
-    multi_process_dcp_save_load(6, 1, checkpoint_directory)
 
-
-def test_dcp_when_multi_process_multiple_threads(checkpoint_directory):
-    multi_process_dcp_save_load(6, 4, checkpoint_directory)
+@pytest.mark.parametrize(
+    "tensor_dimensions",
+    [[3, 2], [10, 1024, 1024]],
+)
+def test_dcp_when_multi_process_multiple_threads(checkpoint_directory, tensor_dimensions):
+    multi_process_dcp_save_load(6, 4, checkpoint_directory, tensor_dimensions)
 
 
 def test_dcp_save_non_existing_s3_uri(checkpoint_directory):
