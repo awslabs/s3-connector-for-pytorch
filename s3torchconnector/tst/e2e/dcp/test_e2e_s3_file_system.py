@@ -7,10 +7,6 @@ import torch.distributed.checkpoint as dcp
 
 import torch.distributed as dist
 from torch.distributed.checkpoint import CheckpointException
-from torch.distributed.checkpoint._fsspec_filesystem import (
-    FsspecWriter,
-    FsspecReader,
-)
 import torch.multiprocessing as mp
 
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
@@ -35,7 +31,6 @@ def run(
     threads,
     region,
     s3_path_s3storagewriter,
-    s3_path_fsspec,
     test_data,
 ):
     print(f"Running on rank {rank}.")
@@ -51,24 +46,19 @@ def run(
             overwrite=True,
         ),
     )
-    # Save using FsspecWriter
-    dcp_save(
-        test_data,
-        FsspecWriter(
-            path=s3_path_fsspec,
-            overwrite=True,
-            sync_files=False,
-        ),
-    )
+
     cleanup()
 
-
-def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory):
+@pytest.mark.parametrize(
+    "tensor_dimensions",
+    [[3, 2], [10, 1024, 1024]],
+)
+def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory, tensor_dimensions):
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
-    s3_path_fsspec = f"{checkpoint_directory.s3_uri}checkpoint_fsspec"
+
     test_data = {
-        "tensor1": torch.randn(10, 10),
+        "tensor1": torch.rand(tensor_dimensions),
         "tensor2": torch.randn(5, 5),
         "scalar": torch.tensor(3.14),
     }
@@ -79,7 +69,6 @@ def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory):
             thread_count,
             region,
             s3_path_s3storagewriter,
-            s3_path_fsspec,
             test_data,
         ),
         nprocs=world_size,
@@ -89,7 +78,6 @@ def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory):
     load_data(
         region,
         s3_path_s3storagewriter,
-        s3_path_fsspec,
         test_data,
         world_size,
         thread_count,
@@ -111,7 +99,7 @@ def dcp_load(loaded_data, reader):
 
 
 def load_data(
-    region, s3_path_s3storagewriter, s3_path_fsspec, test_data, world_size, thread_count
+    region, s3_path_s3storagewriter, test_data, world_size, thread_count
 ):
     s3_client = S3Client(region=region)
     bucket, key = parse_s3_uri(s3_path_s3storagewriter)
@@ -133,33 +121,13 @@ def load_data(
         ),
     )
 
-    # Load using FsspecReader
-    loaded_data_fsspec = {}
-    dcp_load(
-        loaded_data_fsspec,
-        FsspecReader(
-            s3_path_fsspec,
-        ),
-    )
-
-    # Compare loaded data
-    assert set(loaded_data_s3storagereader.keys()) == set(
-        loaded_data_fsspec.keys()
-    ), "Loaded data keys do not match"
-
     for key in loaded_data_s3storagereader.keys():
-        assert torch.allclose(
-            loaded_data_s3storagereader[key], loaded_data_fsspec[key]
-        ), f"Loaded tensors for key '{key}' do not match"
         assert torch.allclose(
             loaded_data_s3storagereader[key], test_data[key]
         ), f"S3StorageReader: Loaded tensor for key '{key}' does not match original"
-        assert torch.allclose(
-            loaded_data_fsspec[key], test_data[key]
-        ), f"FsspecReader: Loaded tensor for key '{key}' does not match original"
 
     print(
-        "Test passed: Both implementations saved and loaded data correctly, and the contents match."
+        "Test passed: Saved and loaded data correctly."
     )
 
 
@@ -186,26 +154,13 @@ def test_dcp_save_non_existing_s3_uri(checkpoint_directory):
             ),
         )
 
-    with pytest.raises(CheckpointException) as fsspec_excinfo:
-        dcp_save(
-            {"random": t1},
-            FsspecWriter(
-                non_existing_s3_uri,
-                overwrite=True,
-                sync_files=False,
-            ),
-        )
-
     # Assert that both exceptions are instances of CheckpointException
     assert isinstance(
         s3_excinfo.value, CheckpointException
     ), "Using S3StorageWriter DCP should raise a CheckpointException"
-    assert isinstance(
-        fsspec_excinfo.value, CheckpointException
-    ), "Using FsspecWriter DCP should raise a CheckpointException"
 
     print(
-        "Test passed: Both S3StorageWriter and FsspecWriter implementations raised the same CheckpointException."
+        "Test passed: Raised CheckpointException."
     )
 
 
@@ -222,24 +177,13 @@ def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
             ),
         )
 
-    with pytest.raises(CheckpointException) as fsspec_excinfo:
-        dcp_load(
-            {},
-            FsspecReader(
-                non_existing_s3_uri,
-            ),
-        )
-
     # Assert that both exceptions are instances of CheckpointException
     assert isinstance(
         s3_excinfo.value, CheckpointException
     ), "Using S3StorageReader DCP should raise a CheckpointException"
-    assert isinstance(
-        fsspec_excinfo.value, CheckpointException
-    ), "Using FsspecReader DCP should raise a CheckpointException"
 
     print(
-        "Test passed: Both S3StorageReader and FsspecReader implementations raised the same CheckpointException."
+        "Test passed: Raised CheckpointException."
     )
 
 
@@ -262,20 +206,8 @@ def test_successful_rename(checkpoint_directory):
 
     s3_writer.fs.rm_file(f"{src_path}/.metadata2")
 
-    # Test FsspecWriter
-    fsspec_writer = FsspecWriter(
-        src_path,
-        overwrite=True,
-        sync_files=False,
-    )
-    dcp_save(test_data, fsspec_writer)
-    fsspec_writer.fs.rename(f"{src_path}/.metadata", f"{src_path}/.metadata2")
-
-    assert not fsspec_writer.fs.exists(f"{src_path}/.metadata")
-    assert fsspec_writer.fs.exists(f"{src_path}/.metadata2")
-
     print(
-        "Test passed: Rename behavior is same for both S3StorageWriter and FsspecWriter implementations."
+        "Test passed: Rename was successful."
     )
 
 
@@ -283,20 +215,14 @@ def test_rename_non_existing_s3_uri(checkpoint_directory):
     region = checkpoint_directory.region
     non_existing_s3_uri = f"{checkpoint_directory.s3_uri}non-existing-object"
     storage_writer = S3StorageWriter(region, non_existing_s3_uri, overwrite=True)
-    storage_writer_fsspec = FsspecWriter(
-        non_existing_s3_uri, overwrite=True, sync_files=False
-    )
+
     with pytest.raises(Exception, match="Service error: The object was not found"):
         storage_writer.fs.rename(
             f"{non_existing_s3_uri}/.metadata", f"{non_existing_s3_uri}/.metadata2"
         )
-    with pytest.raises(FileNotFoundError):
-        storage_writer_fsspec.fs.rename(
-            f"{non_existing_s3_uri}/.metadata", f"{non_existing_s3_uri}/.metadata2"
-        )
 
     print(
-        "Test passed: Both S3StorageWriter and FsspecWriter implementations raised similar kind of exception."
+        "Test passed: Raised object not found error."
     )
 
 
@@ -304,14 +230,10 @@ def test_rm_file_non_existing_s3_uri(checkpoint_directory):
     region = checkpoint_directory.region
     non_existing_s3_uri = f"{checkpoint_directory.s3_uri}non-existing-object-hooo"
     storage_writer = S3StorageWriter(region, non_existing_s3_uri, overwrite=True)
-    storage_writer_fsspec = FsspecWriter(
-        non_existing_s3_uri, overwrite=True, sync_files=False
-    )
     storage_writer.fs.rm_file(non_existing_s3_uri)
-    storage_writer_fsspec.fs.rm_file(non_existing_s3_uri)
 
     print(
-        "Test passed: Both S3StorageWriter and FsspecWriter implementations in case of delete do not throw error if the object was not found."
+        "Test passed: In case of delete did not throw error if the object was not found."
     )
 
 
