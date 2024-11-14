@@ -15,16 +15,16 @@ import torch
 import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
-from torch import multiprocessing
+from torch import multiprocessing as mp
 from torch.distributed.checkpoint import FileSystemWriter
+from torch.distributed.fsdp import FullyShardedDataParallel, StateDictType
 from torch.nn import Module
-from torch.nn.parallel import DistributedDataParallel
 
-from s3torchbenchmarking.benchmark_utils import ResourceMonitor
-from s3torchbenchmarking.dcp.distribution import Distribution
-from s3torchbenchmarking.dcp.models import get_benchmark_model
-from s3torchbenchmarking.dcp.results import save_results
 from s3torchconnector.dcp import S3StorageWriter
+from .constants import Timestamps
+from .models import get_benchmark_model
+from .results import save_results
+from ..benchmark_utils import ResourceMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -38,33 +38,32 @@ def run_benchmark(cfg: DictConfig):
     suffix = "".join(random.choices(string.ascii_letters, k=7))
     storage_writer = get_writer(cfg, suffix)
 
-    manager = multiprocessing.Manager()
-    save_durations: Queue[float] = manager.Queue()
+    manager = mp.Manager()
+    corrected_save_timestamps: Queue[Timestamps] = manager.Queue()
+    processing_timestamps: List[Timestamps] = []
 
     with ResourceMonitor() as monitor:
-        start_time = perf_counter()
-        multiprocessing.spawn(
-            run,
-            (cfg, benchmark_model.model, storage_writer, save_durations),
-            nprocs=cfg.world_size,
-            join=True,
-        )
-        end_time = perf_counter()
-
-    processing_durations = Distribution([end_time - start_time])
+        for epoch in range(cfg.epochs):
+            begin_mp = perf_counter()
+            mp.spawn(
+                run,
+                (cfg, benchmark_model.model, storage_writer, corrected_save_timestamps),
+                nprocs=cfg.world_size,
+                join=True,
+            )
+            end_mp = perf_counter()
+            processing_timestamps.append((begin_mp, end_mp))
 
     # Dump the multiprocessing Queue's content into a list.
-    collector: List[float] = []
-    while not save_durations.empty():
-        collector.append(save_durations.get())
-    save_durations_distribution = Distribution(collector)
+    collector: List[Timestamps] = []
+    while not corrected_save_timestamps.empty():
+        collector.append(corrected_save_timestamps.get())
 
     save_results(
         cfg,
         benchmark_model,
-        save_durations=save_durations_distribution,
-        processing_durations=processing_durations,
-        monitor=monitor,
+        corrected_save_timestamps=collector,
+        processing_timestamps=processing_timestamps,
     )
 
 
@@ -98,14 +97,14 @@ def run(
     cfg: DictConfig,
     model: Module,
     storage_writer: FileSystemWriter,
-    save_durations: Queue,
+    save_timestamps: Queue,
 ) -> None:
     """Execute the actual code for checkpoint saving.
 
     This function is meant to be executed in subprocesses."""
+    begin_process = perf_counter()
 
     setup(cfg.backend, world_size=cfg.world_size, rank=rank)
-    rank = dist.get_rank()
     if cfg.backend == "nccl":
         device_id = rank % torch.cuda.device_count()
         torch.cuda.set_device(device_id)
@@ -113,14 +112,16 @@ def run(
         device_id = rank % torch.cpu.device_count()
         torch.cpu.set_device(device_id)
 
-    model.to(device_id)
-    ddp_model = DistributedDataParallel(model, device_ids=[device_id])
+    FullyShardedDataParallel.set_state_dict_type(
+        model, StateDictType.SHARDED_STATE_DICT
+    )
+    fsdp_model = FullyShardedDataParallel(model, device_id=torch.cuda.current_device())
 
-    start_time = perf_counter()
-    for i in range(cfg.epochs):
-        dcp.save(ddp_model.state_dict(), storage_writer=storage_writer)
-    end_time = perf_counter()
+    begin_save = perf_counter()
+    dcp.save(fsdp_model.state_dict(), storage_writer=storage_writer)
+    end_save = perf_counter()
 
-    save_durations.put(end_time - start_time)
+    # Record the save times excluding the influence of the process setup and model loading to device.
+    save_timestamps.put((begin_process, end_save - (begin_save - begin_process)))
 
     dist.destroy_process_group()

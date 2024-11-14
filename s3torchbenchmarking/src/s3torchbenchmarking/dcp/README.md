@@ -5,9 +5,11 @@ feature against the `s3torchconnector` library.
 
 ### Purpose
 
-The benchmarks are designed to test the "save" and "load" mechanisms of PyTorch
-(`torch.distributed.checkpoint[save,load]`), and compare the s3torchconnector library performance vs. other libraries,
-like fsspec.
+These benchmarks are designed to:
+
+1. Test the "save" mechanism of PyTorch DCP (`torch.distributed.checkpoint.save`);
+2. Compare the performance of the s3torchconnector library against other libraries and local storage;
+3. Measure throughput (in MiB/s) and save times (in seconds).
 
 ### Usage
 
@@ -18,21 +20,25 @@ Install the `s3torchbenchmarking` package with `pip` (see the [root README](../.
 installed, the DCP benchmarks can be run with:
 
 ```shell
-$ s3torch-benchmark-dcp
+$ s3torch-benchmark-dcp -cd conf -cn dcp
 ```
 
-The command can be executed from any directory; it will create a `./multirun/` directory (at the location of execution),
-and store all benchmark results there.
+The command must be executed from the package's root, where it can read from the `config/` directory; it will create a
+`./multirun/` directory (at the location of execution), and store all benchmark results there.
+
+> [!WARNING]
+> When saving on local disk, consider clearing the `path` specified in your config between runs to prevent disk space
+> issues.
 
 #### Potential caveats
 
-While installing the package, one may run into an error like:
+If you encounter the following error during installation:
 
 ```
 TypeError: canonicalize_version() got an unexpected keyword argument 'strip_trailing_zero'
 ```
 
-This error can be addressed by running:
+Run this command to resolve it:
 
 ```shell
 $ pip install "setuptools<71"
@@ -40,18 +46,18 @@ $ pip install "setuptools<71"
 
 ### Configuration
 
-The benchmark runs can be customized using the [`config.yaml`](config.yaml) file. This section outlines the key
+The benchmark runs can be customized using the [`dcp.yaml`](../../../conf/dcp.yaml) file. This section outlines the key
 configuration options and their impacts.
 
 #### Configuration Requirements
 
-All keys in the `config.yaml` file must be defined for a run to execute successfully.
+All keys in the `dcp.yaml` file must be defined for a run to execute successfully.
 
 #### Key Configuration Options
 
 `epochs`
 
-- Specifies the number of iterations for the "save" and "load" operations.
+- Specifies the number of iterations for "saving" a model's checkpoint.
 - Note: This does not affect model training, as no actual training occurs in these benchmarks.
 
 `path`
@@ -69,7 +75,7 @@ This section allows for multiple benchmark configurations:
 - Available options include:
     - `+model`: Choose from pre-trained models listed in [`models.py`](models.py).
     - `+backend`: Select `nccl`, `gloo`, or both.
-    - `+world_size`: Defines the number of processes.
+    - `+world_size`: Defines the number of workers.
     - `+thread_count`: Defines the number of threads to use for saving the checkpoints.
     - `+checkpoint.storage`: Choose `s3`, `disk`, or both.
 
@@ -78,15 +84,15 @@ This section allows for multiple benchmark configurations:
 ```yaml
 s3:
   region: eu-west-1
-  uri: s3://my-benchmark-bucket
+  uri: s3://my-bucket
 epochs: 3
-path: nvme
+path: ./nvme/
 
 hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      +model: small,medium
+      +model: vit-base,T0_3B
       +backend: nccl,gloo
       +world_size: 2,4
       +thread_count: 1
@@ -101,12 +107,11 @@ options, totaling 16 (2×2×2×1×2) different benchmark scenarios.
 - The benchmarks may take some time to complete, depending on the hardware and network configuration.
 - For optimal results, it is recommended to run the benchmarks on a dedicated EC2 instance without other
   resource-intensive processes.
-- When specifying an S3 bucket in the `config.yaml` file, make sure that 1/ the bucket already exists in the specified
-  region, and 2/ the EC2 user/role used has write-permissions to it.
+- Ensure the specified S3 bucket exists in the given region and the EC2 user/role has read+write permissions.
 
 ### Results
 
-The benchmark results are organized in the following structure:
+Benchmark results are organized as follows:
 
 ```shell
 multirun/
@@ -127,8 +132,24 @@ multirun/
         └── multirun.yaml
 ```
 
-Each run creates a new subdirectory with a timestamp (e.g., `2024-11-11/10-21-16`). The `./multirun/` directory
-structure is managed by [Hydra](https://hydra.cc/), the underlying configuration framework.
+Each run creates a timestamped subdirectory. The `./multirun/` directory is managed by [Hydra](https://hydra.cc/).
 
+Result file names reflect the parameter combinations, e.g.,
+
+```
++model: vit-base
++backend: nccl
++world_size: 2
++thread_count: 1
++checkpoint.storage: s3
+```
+
+will produce the file `results_vit-base_nccl_2_1_s3.json` (respecting parameters declaration order).
+
+### References
+
+- https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html
+- https://pytorch.org/docs/stable/elastic/run.html
+- https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
 [DCP]: https://pytorch.org/docs/stable/distributed.checkpoint.html

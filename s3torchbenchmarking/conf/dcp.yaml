@@ -1,0 +1,16 @@
+s3:
+  region: ???
+  uri: ???
+epochs: 4
+path: ./nvme/ # only used when `checkpoint.storage` contains `disk`, ignored for `s3`
+
+# https://hydra.cc/docs/tutorials/basic/running_your_app/multi-run/#sweeper
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      +model: vit-base,T0_3B
+      +backend: nccl,gloo # nccl == GPU, gloo == CPU
+      +world_size: 1,2,4,8 # == total number of workers to use
+      +thread_count: 1,2,4,8
+      +checkpoint.storage: disk,s3

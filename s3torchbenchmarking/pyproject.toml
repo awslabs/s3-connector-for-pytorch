@@ -27,7 +27,7 @@ dependencies = [
     "click",
     "omegaconf",
     "accelerate",
-    "jinja2",
+    "pandas",
 ]
 
 [project.optional-dependencies]

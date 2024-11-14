@@ -10,13 +10,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict, Union, Any, List
 
+import pandas as pd
 import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 
-from s3torchbenchmarking.benchmark_utils import ResourceMonitor
-from s3torchbenchmarking.dcp.distribution import Distribution, Statistics
-from s3torchbenchmarking.dcp.models import BenchmarkModel
+from .constants import Timestamps
+from .models import BenchmarkModel
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +32,41 @@ class Metadata(TypedDict):
     hydra_version: str
     ec2_metadata: Union[EC2Metadata, None]
     model_name: str
-    model_size_mib: float  # "_mib" stands for MiB
+    model_size_mib: float  # "_mib" == MiB
 
 
 class Data(TypedDict):
-    throughput: Statistics
-    save_durations: Statistics
-    processing_durations: Statistics
-    utilization: dict
+    throughput_mibs: Any
+    corrected_save_durations_s: Any
+    processing_durations_s: Any
 
 
 class Results(TypedDict):
     metadata: Metadata
     config: Any
-    data: Data
+    results: Data
+
+
+# DataFrame column names
+BEGIN_SAVE = "begin_save"
+END_SAVE = "end_save"
+BEGIN_PROCESS = "begin_process"
+END_PROCESS = "end_process"
 
 
 def save_results(
     cfg: DictConfig,
     model: BenchmarkModel,
-    save_durations: Distribution,
-    processing_durations: Distribution,
-    monitor: ResourceMonitor,
+    corrected_save_timestamps: List[Timestamps],
+    processing_timestamps: List[Timestamps],
 ):
     """Save a Hydra job's results to a local JSON file."""
+
+    cst = pd.DataFrame(corrected_save_timestamps, columns=[BEGIN_SAVE, END_SAVE])
+    pt = pd.DataFrame(processing_timestamps, columns=[BEGIN_PROCESS, END_PROCESS])
+    corrected_save_durations_s = cst[END_SAVE] - cst[BEGIN_SAVE]
+    processing_durations_s = pt[END_PROCESS] - pt[BEGIN_PROCESS]
+    throughput_mibs = model.size / corrected_save_durations_s
 
     results: Results = {
         "metadata": {
@@ -67,17 +78,14 @@ def save_results(
             "model_size_mib": model.size,
         },
         "config": OmegaConf.to_container(cfg),
-        "data": {
-            "throughput": to_throughput(save_durations, model.size).dump(unit="MiB/s"),
-            "save_durations": save_durations.dump(unit="s"),
-            "processing_durations": processing_durations.dump(unit="s"),
-            "utilization": {k: v.summarize() for k, v in monitor.resource_data.items()},
+        "results": {
+            "throughput_mibs": throughput_mibs.describe().to_dict(),
+            "corrected_save_durations_s": corrected_save_durations_s.describe().to_dict(),
+            "processing_durations_s": processing_durations_s.describe().to_dict(),
         },
     }
 
-    # `tasks` will contain the list of Hydra overrides (defined in the config.yaml file) in the form `"param=value"`;
-    # this helps identify result files uniquely just by their filenames.
-    # E.g.: `["foo=4", "bar=small", "baz=1"]` -> `suffix == "4_small_1"`.
+    # ["foo=4", "bar=small", "baz=1"] -> "4_small_1"
     tasks = HydraConfig.get().overrides.task
     suffix = "_".join([task.split("=")[-1] for task in tasks])
 
@@ -90,11 +98,6 @@ def save_results(
     with open(results_path, "w") as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logger.info("Results saved successfully")
-
-
-def to_throughput(save_times: List[float], model_size: float) -> Distribution:
-    """Compute throughput from save times, in MiB/s."""
-    return Distribution(map(lambda x: model_size / x, save_times))
 
 
 @lru_cache

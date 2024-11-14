@@ -38,24 +38,26 @@ class BenchmarkModel:
         return (param_size + buffer_size) / 1024**2
 
 
+# NOTE: keys below are later used to construct a filename, so make sure they do not contain characters that will not
+# play well with filesystems (e.g., '/').
 SIZE_TO_MODEL = {
     # ~350 MB model
-    "small": BenchmarkModel(
+    "vit-base": BenchmarkModel(
         ViTModel.from_pretrained, "google/vit-base-patch16-224-in21k"
     ),
     # ~1.7 GB model
-    "small-2": BenchmarkModel(
+    "clip-vit": BenchmarkModel(
         CLIPModel.from_pretrained, "openai/clip-vit-large-patch14"
     ),
     # ~12 GB model
-    "medium": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0_3B"),
+    "T0_3B": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0_3B"),
     # ~45 GB model
-    "large": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0pp"),
+    "T0pp": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0pp"),
 }
 
 
-def get_benchmark_model(size: str) -> BenchmarkModel:
+def get_benchmark_model(name: str) -> BenchmarkModel:
     """Select a model for benchmarking."""
-    if size not in SIZE_TO_MODEL:
-        raise ValueError(f'Size "{size}" for model mapping is unexpected')
-    return SIZE_TO_MODEL[size]
+    if name not in SIZE_TO_MODEL:
+        raise ValueError(f'Name "{name}" is unexpected')
+    return SIZE_TO_MODEL[name]
