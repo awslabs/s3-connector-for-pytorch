@@ -13,11 +13,18 @@ from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 import os
+import socket
+
+
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
 
 
 def setup(rank, world_size):
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
+    os.environ["MASTER_PORT"] = str(find_free_port())
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
 
