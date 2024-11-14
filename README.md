@@ -45,8 +45,7 @@ on Unix or macOS.
 ### Examples
 
 [API docs](http://awslabs.github.io/s3-connector-for-pytorch) are showing API of the public components. 
-End to end example of how to use `s3torchconnector` can be found under the 
-[examples](https://github.com/awslabs/s3-connector-for-pytorch/tree/main/examples) directory.
+End to end example of how to use `s3torchconnector` can be found under the [examples](examples) directory.
 
 #### Sample Examples
 
@@ -160,8 +159,8 @@ pip install s3torchconnector[lightning]
 
 ### Examples
 
-End to end examples for the Pytorch Lightning integration can be found in the 
-[examples/lightning](https://github.com/awslabs/s3-connector-for-pytorch/tree/main/examples/lightning) directory
+End to end examples for the Pytorch Lightning integration can be found in the [examples/lightning](examples/lightning)
+directory.
 
 ```py
 from lightning import Trainer
@@ -187,13 +186,12 @@ To enable versioning on an S3 bucket, see [Enabling versioning on buckets](https
 S3 Versioning and S3 Lifecycle are not supported by S3 Express One Zone.
 
 ## Contributing
-We welcome contributions to Amazon S3 Connector for PyTorch. Please 
-see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CONTRIBUTING.md) 
-For more information on how to report bugs or submit pull requests.
+
+We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](CONTRIBUTING.md) for more
+information on how to report bugs or submit pull requests.
 
 ### Development
-See [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/DEVELOPMENT.md) for information 
-about code style, development process, and guidelines.
+See [DEVELOPMENT](DEVELOPMENT.md) for information about code style, development process, and guidelines.
 
 ### Compatibility with other storage services
 S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in Amazon S3. 
@@ -208,11 +206,9 @@ If you discover a potential security issue in this project we ask that you notif
 ### Code of conduct
 
 This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
-See [CODE_OF_CONDUCT.md](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/doc/CODE_OF_CONDUCT.md) for 
-more details.
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for more details.
 
 ## License
 
-Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the 
-[LICENSE](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/LICENSE) file.
+Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](LICENSE) file.
 
