@@ -13,18 +13,16 @@ from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 import os
-import socket
+import random
 
 
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        return s.getsockname()[1]
+def generate_random_port():
+    return random.randint(10000, 65535)
 
 
 def setup(rank, world_size):
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(find_free_port())
+    os.environ["MASTER_PORT"] = str(generate_random_port())
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
 
@@ -62,7 +60,7 @@ def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory, 
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
 
     test_data = {
-        "tensor1": torch.rand(tensor_dimensions),
+        "tensor1": torch.randn(tensor_dimensions),
         "tensor2": torch.randn(5, 5),
         "scalar": torch.tensor(3.14),
     }
