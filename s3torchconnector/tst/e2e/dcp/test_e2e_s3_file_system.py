@@ -20,9 +20,9 @@ def generate_random_port():
     return random.randint(10000, 65535)
 
 
-def setup(rank, world_size):
+def setup(rank, world_size, port):
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(generate_random_port())
+    os.environ["MASTER_PORT"] = port
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
 
@@ -37,10 +37,11 @@ def run(
     region,
     s3_path_s3storagewriter,
     test_data,
+    port,
 ):
     print(f"Running on rank {rank}.")
 
-    setup(rank, world_size)
+    setup(rank, world_size, port)
     # Save using S3StorageWriter
     dcp_save(
         test_data,
@@ -64,6 +65,8 @@ def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory, 
         "tensor2": torch.randn(5, 5),
         "scalar": torch.tensor(3.14),
     }
+
+    port = str(generate_random_port())
     mp.spawn(
         run,
         args=(
@@ -72,6 +75,7 @@ def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory, 
             region,
             s3_path_s3storagewriter,
             test_data,
+            port,
         ),
         nprocs=world_size,
         join=True,
