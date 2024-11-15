@@ -3,9 +3,11 @@
 import logging
 from io import SEEK_END
 from typing import Iterable, Callable, Sequence, Any
-from unittest.mock import patch
 
 import pytest
+import hypothesis.strategies as st
+from hypothesis import given, assume
+from unittest.mock import patch, MagicMock
 
 from s3torchconnector import S3IterableDataset, S3Reader
 from s3torchconnector._s3client import MockS3Client
@@ -216,6 +218,139 @@ def test_from_prefix_seek_no_head():
         s3_object = next(iter(dataset))
         s3_object.seek(0, SEEK_END)
     head_object.assert_not_called()
+
+
+# Strategies for generating test cases
+keys_strategy = st.lists(st.text(), min_size=1, max_size=20, unique=True)
+create_from_prefix_strategy = st.booleans()
+
+
+# Composite strategy for num_workers_per_rank, based on world_size
+@st.composite
+def _num_workers_per_rank_strategy(draw):
+    world_size = draw(st.integers(min_value=1, max_value=4))
+    num_workers_per_rank = draw(
+        st.lists(
+            st.integers(min_value=1, max_value=4),
+            min_size=world_size,
+            max_size=world_size,
+        )
+    )
+    return world_size, num_workers_per_rank
+
+
+@given(
+    keys_for_prefix1=keys_strategy,
+    keys_for_prefix2=keys_strategy,
+    create_from_prefix=create_from_prefix_strategy,
+    world_size_and_num_workers=_num_workers_per_rank_strategy(),
+)
+@patch("torch.distributed.get_world_size")
+@patch("torch.distributed.get_rank")
+@patch("torch.distributed.is_initialized")
+@patch("torch.utils.data.get_worker_info")
+def test_dataset_creation_against_multiple_workers(
+    get_worker_info_mock,
+    is_initialized_mock,
+    get_rank_mock,
+    get_world_size_mock,
+    keys_for_prefix1,
+    keys_for_prefix2,
+    create_from_prefix,
+    world_size_and_num_workers,
+):
+    """Test the iterating over S3IterableDataset with different numbers of ranks/workers when sharding is enabled.
+
+    Args:
+        get_worker_info_mock (MagicMock): Mock for torch.utils.data.get_worker_info().
+        is_initialized_mock (MagicMock): Mock for torch.distributed.is_initialized().
+        get_rank_mock (MagicMock): Mock for torch.distributed.get_rank().
+        get_world_size_mock (MagicMock): Mock for torch.distributed.get_world_size().
+        keys_for_prefix1 (list): A list of strings representing keys for the first prefix.
+        keys_for_prefix2 (list): A list of strings representing keys for the second prefix, should be ignored with .from_prefix
+        create_from_prefix (bool): Whether to create the dataset from a prefix or a list of object URIs.
+        world_size_and_num_workers (tuple): A tuple containing world_size and num_workers for each rank.
+    """
+    prefix1 = "obj"
+    prefix2 = "test"
+    world_size, num_workers_per_rank = world_size_and_num_workers
+
+    # Assume valid input combinations
+    assume(keys_for_prefix1 and keys_for_prefix2)
+    assume(world_size >= 1 and world_size == len(num_workers_per_rank))
+
+    all_keys_for_prefix1 = [f"{prefix1}/{key}" for key in keys_for_prefix1]
+    all_keys = all_keys_for_prefix1 + [f"{prefix2}/{key}" for key in keys_for_prefix2]
+    object_uris = [f"{S3_PREFIX}/{key}" for key in all_keys]
+
+    is_initialized_mock.return_value = True
+    get_world_size_mock.return_value = world_size
+
+    all_keys_from_workers = []
+    num_keys_per_rank = []
+    for rank in range(world_size):
+        get_rank_mock.return_value = rank
+        num_workers = num_workers_per_rank[rank]
+        """Gather all keys from all workers for a specific rank and them to all_keys_from_workers
+        As ranks and world size initiated in the constructor of S3IterableDataset, we need to reset them
+        for each rank
+        """
+        is_initialized_mock.return_value = True
+        num_keys = 0
+        for worker_id in range(num_workers):
+            worker_info_mock = MagicMock(id=worker_id, num_workers=num_workers)
+            get_worker_info_mock.return_value = worker_info_mock
+
+            if create_from_prefix:
+                dataset = S3IterableDataset.from_prefix(
+                    s3_uri=f"{S3_PREFIX}/{prefix1}",
+                    region=TEST_REGION,
+                    enable_sharding=True,
+                )
+            else:
+                dataset = S3IterableDataset.from_objects(
+                    object_uris=object_uris,
+                    region=TEST_REGION,
+                    enable_sharding=True,
+                )
+
+            client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
+            dataset._client = client
+
+            worker_keys = []
+            for data in dataset:
+                worker_keys.append(data.key)
+
+            all_keys_from_workers.append(worker_keys)
+            num_keys += len(worker_keys)
+        num_keys_per_rank.append(num_keys)
+
+    # Get list of all seen keys
+    flattened_keys_from_workers = [
+        key for nested_keys in all_keys_from_workers for key in nested_keys
+    ]
+    if create_from_prefix:
+        assert len(set(flattened_keys_from_workers)) == len(
+            all_keys_for_prefix1
+        ), "All keys under prefix1 should be processed"
+        assert set(flattened_keys_from_workers) == set(
+            all_keys_for_prefix1
+        ), "Union of keys under prefix1 should be the same"
+        assert all(
+            [key.startswith(prefix1) for key in flattened_keys_from_workers]
+        ), "All keys should start with prefix1"
+        expected_num_per_rank = len(keys_for_prefix1) // world_size
+    else:
+        assert len(set(flattened_keys_from_workers)) == len(
+            all_keys
+        ), "All keys should be processed"
+        assert set(flattened_keys_from_workers) == set(
+            all_keys
+        ), "Union of keys should be the same"
+        expected_num_per_rank = len(all_keys) // world_size
+    assert all(
+        [(num_keys - expected_num_per_rank) <= 1 for num_keys in num_keys_per_rank]
+    ), "The number of keys should be evenly distributed across ranks, with a difference of at most 1"
 
 
 def _verify_dataset(
