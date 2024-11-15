@@ -17,7 +17,7 @@ import random
 
 
 def generate_random_port():
-    return random.randint(10000, 65535)
+    return random.randint(20000, 50000)
 
 
 def setup(rank, world_size, port):
@@ -57,7 +57,7 @@ def run(
 
 
 def multi_process_dcp_save_load(
-    world_size, thread_count, checkpoint_directory, tensor_dimensions
+    world_size, thread_count, checkpoint_directory, tensor_dimensions, port_offset
 ):
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
@@ -71,7 +71,7 @@ def multi_process_dcp_save_load(
         "scalar": torch.tensor(3.14),
     }
 
-    port = str(generate_random_port())
+    port = str(generate_random_port() + port_offset)
     mp.spawn(
         run,
         args=(
@@ -139,8 +139,13 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
 
 
 @pytest.mark.parametrize(
-    "tensor_dimensions, thread_count",
-    [([3, 2], 1), ([10, 1024, 1024], 1), ([3, 2], 4), ([10, 1024, 1024], 4)],
+    "tensor_dimensions, thread_count, port_offset",
+    [
+        ([3, 2], 1, 1000),
+        ([10, 1024, 1024], 1, 2000),
+        ([3, 2], 4, 3000),
+        ([10, 1024, 1024], 4, 4000),
+    ],
     ids=[
         "small_tensor_single_thread",
         "large_tensor_single_thread",
@@ -148,9 +153,11 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
         "large_tensor_multi_thread",
     ],
 )
-def test_dcp_when_multi_process(checkpoint_directory, tensor_dimensions, thread_count):
+def test_dcp_when_multi_process(
+    checkpoint_directory, tensor_dimensions, thread_count, port_offset
+):
     multi_process_dcp_save_load(
-        6, thread_count, checkpoint_directory, tensor_dimensions
+        6, thread_count, checkpoint_directory, tensor_dimensions, port_offset
     )
 
 
