@@ -3,13 +3,11 @@
 
 from __future__ import annotations
 
-import platform
 from collections import Counter
 from itertools import product
-from typing import Tuple, Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 import pytest
-import torch
 from torch.utils.data import DataLoader, get_worker_info
 from torchdata.datapipes.iter import IterableWrapper
 
@@ -18,14 +16,10 @@ from s3torchconnector import S3IterableDataset, S3MapDataset, S3Reader
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture
 
+from test_common import _get_fork_methods, _read_data, _set_start_method
 
-start_methods = set(torch.multiprocessing.get_all_start_methods())
 
-if platform.system() == "Darwin":
-    # fork and forkserver crash on MacOS, even though it's reported as usable.
-    # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-    # https://bugs.python.org/issue?@action=redirect&bpo=33725
-    start_methods -= {"fork", "forkserver"}
+start_methods = _get_fork_methods()
 
 
 def from_prefix(cls, image_directory: BucketPrefixFixture, **kwargs):
@@ -151,10 +145,6 @@ def test_s3mapdataset_multiprocess(
     assert len(dataloader) == num_images
 
 
-def _set_start_method(start_method: str):
-    torch.multiprocessing.set_start_method(start_method, force=True)
-
-
 def _extract_object_data(s3reader: S3Reader) -> ((str, bytes), (int, int)):
     assert s3reader._stream is None
     return _read_data(s3reader), _get_worker_info()
@@ -164,7 +154,3 @@ def _get_worker_info() -> (int, int):
     worker_info = get_worker_info()
     assert worker_info is not None
     return worker_info.id, worker_info.num_workers
-
-
-def _read_data(s3reader: S3Reader) -> Tuple[str, bytes]:
-    return s3reader.key, s3reader.read()
