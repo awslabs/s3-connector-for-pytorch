@@ -17,7 +17,7 @@ import random
 
 
 def generate_random_port():
-    return random.randint(20000, 50000)
+    return random.randint(1, 500)
 
 
 def setup(rank, world_size, port):
@@ -141,10 +141,10 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
 @pytest.mark.parametrize(
     "tensor_dimensions, thread_count, port_offset",
     [
-        ([3, 2], 1, 1000),
-        ([10, 1024, 1024], 1, 2000),
-        ([3, 2], 4, 3000),
-        ([10, 1024, 1024], 4, 4000),
+        ([3, 2], 1, 20000),
+        ([10, 1024, 1024], 1, 30000),
+        ([3, 2], 4, 40000),
+        ([10, 1024, 1024], 4, 50000),
     ],
     ids=[
         "small_tensor_single_thread",
