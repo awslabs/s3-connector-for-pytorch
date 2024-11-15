@@ -56,9 +56,14 @@ def run(
     cleanup()
 
 
-def multi_process_dcp_save_load(world_size, thread_count, checkpoint_directory, tensor_dimensions):
+def multi_process_dcp_save_load(
+    world_size, thread_count, checkpoint_directory, tensor_dimensions
+):
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
+    s3_path_s3storagewriter = s3_path_s3storagewriter.replace("[", "_").replace(
+        "]", "_"
+    )
 
     test_data = {
         "tensor1": torch.randn(tensor_dimensions),
@@ -104,9 +109,7 @@ def dcp_load(loaded_data, reader):
     )
 
 
-def load_data(
-    region, s3_path_s3storagewriter, test_data, world_size, thread_count
-):
+def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_count):
     s3_client = S3Client(region=region)
     bucket, key = parse_s3_uri(s3_path_s3storagewriter)
     list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
@@ -132,24 +135,23 @@ def load_data(
             loaded_data_s3storagereader[key], test_data[key]
         ), f"S3StorageReader: Loaded tensor for key '{key}' does not match original"
 
-    print(
-        "Test passed: Saved and loaded data correctly."
+    print("Test passed: Saved and loaded data correctly.")
+
+
+@pytest.mark.parametrize(
+    "tensor_dimensions, thread_count",
+    [([3, 2], 1), ([10, 1024, 1024], 1), ([3, 2], 4), ([10, 1024, 1024], 4)],
+    ids=[
+        "small_tensor_single_thread",
+        "large_tensor_single_thread",
+        "small_tensor_multi_thread",
+        "large_tensor_multi_thread",
+    ],
+)
+def test_dcp_when_multi_process(checkpoint_directory, tensor_dimensions, thread_count):
+    multi_process_dcp_save_load(
+        6, thread_count, checkpoint_directory, tensor_dimensions
     )
-
-@pytest.mark.parametrize(
-    "tensor_dimensions",
-    [[3, 2], [10, 1024, 1024]],
-)
-def test_dcp_when_multi_process_single_thread(checkpoint_directory, tensor_dimensions):
-    multi_process_dcp_save_load(6, 1, checkpoint_directory, tensor_dimensions)
-
-
-@pytest.mark.parametrize(
-    "tensor_dimensions",
-    [[3, 2], [10, 1024, 1024]],
-)
-def test_dcp_when_multi_process_multiple_threads(checkpoint_directory, tensor_dimensions):
-    multi_process_dcp_save_load(6, 4, checkpoint_directory, tensor_dimensions)
 
 
 def test_dcp_save_non_existing_s3_uri(checkpoint_directory):
@@ -167,14 +169,11 @@ def test_dcp_save_non_existing_s3_uri(checkpoint_directory):
             ),
         )
 
-    # Assert that both exceptions are instances of CheckpointException
     assert isinstance(
         s3_excinfo.value, CheckpointException
     ), "Using S3StorageWriter DCP should raise a CheckpointException"
 
-    print(
-        "Test passed: Raised CheckpointException."
-    )
+    print("Test passed: Raised CheckpointException.")
 
 
 def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
@@ -190,14 +189,11 @@ def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
             ),
         )
 
-    # Assert that both exceptions are instances of CheckpointException
     assert isinstance(
         s3_excinfo.value, CheckpointException
     ), "Using S3StorageReader DCP should raise a CheckpointException"
 
-    print(
-        "Test passed: Raised CheckpointException."
-    )
+    print("Test passed: Raised CheckpointException.")
 
 
 def test_successful_rename(checkpoint_directory):
@@ -217,11 +213,7 @@ def test_successful_rename(checkpoint_directory):
     assert not s3_writer.fs.exists(f"{src_path}/.metadata")
     assert s3_writer.fs.exists(f"{src_path}/.metadata2")
 
-    s3_writer.fs.rm_file(f"{src_path}/.metadata2")
-
-    print(
-        "Test passed: Rename was successful."
-    )
+    print("Test passed: Rename was successful.")
 
 
 def test_rename_non_existing_s3_uri(checkpoint_directory):
@@ -234,9 +226,7 @@ def test_rename_non_existing_s3_uri(checkpoint_directory):
             f"{non_existing_s3_uri}/.metadata", f"{non_existing_s3_uri}/.metadata2"
         )
 
-    print(
-        "Test passed: Raised object not found error."
-    )
+    print("Test passed: Raised object not found error.")
 
 
 def test_rm_file_non_existing_s3_uri(checkpoint_directory):
