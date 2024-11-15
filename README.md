@@ -114,6 +114,64 @@ For example, assuming the following directory bucket name `my-test-bucket--usw2-
 usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
+## Distributed checkpoints
+
+### Overview
+
+Amazon S3 Connector for PyTorch provides robust support for PyTorch distributed checkpoints. This feature includes:
+
+- `S3StorageWriter` and `S3StorageReader`: Implementations of PyTorch's StorageWriter and StorageReader interfaces.
+- `S3FileSystem`: An implementation of PyTorch's FileSystemBase.
+
+These tools enable seamless integration of Amazon S3 with 
+[PyTorch Distributed Checkpoints](https://pytorch.org/docs/stable/distributed.checkpoint.html), 
+allowing efficient storage and retrieval of distributed model checkpoints.
+
+### Prerequisites and Installation
+
+PyTorch 2.3 or newer is required.
+To use the distributed checkpoints feature, install S3 Connector for PyTorch with the `dcp` extra:
+
+```sh
+pip install s3torchconnector[dcp]
+```
+
+### Sample Example
+
+End to end examples for using distributed checkpoints with S3 Connector for PyTorch 
+can be found in the [examples/dcp](examples/dcp) directory.
+
+```py
+from s3torchconnector import S3StorageWriter, S3StorageReader
+
+import torchvision
+import torch.distributed.checkpoint as DCP
+
+# Configuration
+CHECKPOINT_URI="s3://<BUCKET>/<KEY>/"
+REGION = "us-east-1"
+
+model = torchvision.models.resnet18()
+
+# Save distributed checkpoint to S3
+s3_storage_writer = S3StorageWriter(region=REGION, path=CHECKPOINT_URI)
+DCP.save(
+    state_dict=model.state_dict,
+    storage_writer=s3_storage_writer,
+)
+
+# Load distributed checkpoint from S3
+
+model = torchvision.models.resnet18()
+model_state_dict = model.state_dict()
+s3_storage_reader = S3StorageReader(region=REGION, path=CHECKPOINT_URI)
+DCP.load(
+    state_dict=model_state_dict,
+    storage_reader=s3_storage_reader,
+)
+model.load_state_dict(model_state_dict)
+```
+
 ## Parallel/Distributed Training
 
 Amazon S3 Connector for PyTorch provides support for parallel and distributed training with PyTorch, 
