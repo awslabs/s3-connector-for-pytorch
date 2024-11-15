@@ -17,8 +17,8 @@ import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 from torch import multiprocessing as mp
 from torch.distributed.checkpoint import FileSystemWriter
-from torch.distributed.fsdp import FullyShardedDataParallel, StateDictType
 from torch.nn import Module
+from torch.nn.parallel import DistributedDataParallel
 
 from s3torchconnector.dcp import S3StorageWriter
 from .constants import Timestamps
@@ -44,6 +44,7 @@ def run_benchmark(cfg: DictConfig):
 
     with ResourceMonitor() as monitor:
         for epoch in range(cfg.epochs):
+            logger.info("Executing epoch #%i / %i...", epoch + 1, cfg.epochs)
             begin_mp = perf_counter()
             mp.spawn(
                 run,
@@ -112,13 +113,12 @@ def run(
         device_id = rank % torch.cpu.device_count()
         torch.cpu.set_device(device_id)
 
-    FullyShardedDataParallel.set_state_dict_type(
-        model, StateDictType.SHARDED_STATE_DICT
-    )
-    fsdp_model = FullyShardedDataParallel(model, device_id=torch.cuda.current_device())
+    model.to(device_id)
+    model = DistributedDataParallel(model, device_ids=[device_id])
+    state_dict = model.state_dict()
 
     begin_save = perf_counter()
-    dcp.save(fsdp_model.state_dict(), storage_writer=storage_writer)
+    dcp.save(state_dict, storage_writer=storage_writer)
     end_save = perf_counter()
 
     # Record the save times excluding the influence of the process setup and model loading to device.
