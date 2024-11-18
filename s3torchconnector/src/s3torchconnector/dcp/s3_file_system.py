@@ -196,33 +196,24 @@ class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
         region: str,
-        path: Union[str, os.PathLike],
-        single_file_per_rank: bool = True,
-        thread_count: int = 1,
-        per_thread_copy_ahead: int = 10_000_000,
-        overwrite: bool = False,
+        uri: str,
+        **kwargs,
     ) -> None:
         """
         Initialize an S3 writer for distributed checkpointing.
 
         Args:
             region (str): The AWS region for S3.
-            path (Union[str, os.PathLike]): The S3 path to write checkpoints.
-            single_file_per_rank (bool, optional): Whether to write a single file per rank. Defaults to True.
-            thread_count (int, optional): The number of threads to use for writing. Defaults to 1.
-            per_thread_copy_ahead (int, optional): The number of bytes to copy ahead per thread. Defaults to 10_000_000.
-            overwrite (bool, optional): Whether to overwrite existing checkpoints. Defaults to False.
+            uri (str): The S3 URI to write checkpoints to.
+            kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
-            path=path,
-            single_file_per_rank=single_file_per_rank,
-            sync_files=False,
-            thread_count=thread_count,
-            per_thread_copy_ahead=per_thread_copy_ahead,
-            overwrite=overwrite,
+            path=uri,
+            sync_files=False,  # FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)
+            **kwargs,
         )
         self.fs = S3FileSystem(region)  # type: ignore
-        self.path = self.fs.init_path(path)
+        self.path = self.fs.init_path(uri)
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
