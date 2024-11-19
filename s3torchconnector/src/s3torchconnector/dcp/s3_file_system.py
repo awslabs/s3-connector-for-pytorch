@@ -196,7 +196,7 @@ class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
         region: str,
-        uri: str,
+        path: str,
         **kwargs,
     ) -> None:
         """
@@ -204,16 +204,16 @@ class S3StorageWriter(FileSystemWriter):
 
         Args:
             region (str): The AWS region for S3.
-            uri (str): The S3 URI to write checkpoints to.
+            path (str): The S3 URI to write checkpoints to.
             kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
-            path=uri,
+            path=path,
             sync_files=False,  # FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)
             **kwargs,
         )
         self.fs = S3FileSystem(region)  # type: ignore
-        self.path = self.fs.init_path(uri)
+        self.path = self.fs.init_path(path)
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
