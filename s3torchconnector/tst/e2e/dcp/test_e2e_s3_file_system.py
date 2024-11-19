@@ -157,7 +157,7 @@ def test_dcp_when_multi_process(
     checkpoint_directory, tensor_dimensions, thread_count, port_offset
 ):
     multi_process_dcp_save_load(
-        6, thread_count, checkpoint_directory, tensor_dimensions, port_offset
+        3, thread_count, checkpoint_directory, tensor_dimensions, port_offset
     )
 
 
