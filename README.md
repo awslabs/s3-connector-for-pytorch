@@ -138,7 +138,7 @@ pip install s3torchconnector[dcp]
 
 ### Sample Example
 
-End to end examples for using distributed checkpoints with S3 Connector for PyTorch 
+End-to-end examples for using distributed checkpoints with S3 Connector for PyTorch 
 can be found in the [examples/dcp](examples/dcp) directory.
 
 ```py
@@ -148,7 +148,7 @@ import torchvision
 import torch.distributed.checkpoint as DCP
 
 # Configuration
-CHECKPOINT_URI="s3://<BUCKET>/<KEY>/"
+CHECKPOINT_URI = "s3://<BUCKET>/<KEY>/"
 REGION = "us-east-1"
 
 model = torchvision.models.resnet18()
@@ -161,7 +161,6 @@ DCP.save(
 )
 
 # Load distributed checkpoint from S3
-
 model = torchvision.models.resnet18()
 model_state_dict = model.state_dict()
 s3_storage_reader = S3StorageReader(region=REGION, path=CHECKPOINT_URI)

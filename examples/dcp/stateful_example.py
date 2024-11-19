@@ -1,4 +1,7 @@
-# based on PyTorch sample https://github.com/pytorch/pytorch/blob/main/torch/distributed/checkpoint/examples/stateful_example.py
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  // SPDX-License-Identifier: BSD
+
+# inspired by https://github.com/pytorch/pytorch/blob/main/torch/distributed/checkpoint/examples/stateful_example.py
 
 import os
 
@@ -63,26 +66,32 @@ def _init_model(device, world_size):
 
     return model, optim
 
+
 def _compare_models(model1, model2, rank, rtol=1e-5, atol=1e-8):
     model1.eval()
     model2.eval()
 
     with FSDP.summon_full_params(model1), FSDP.summon_full_params(model2):
-        for (name1, param1), (name2, param2) in zip(model1.named_parameters(), model2.named_parameters()):
+        for (name1, param1), (name2, param2) in zip(
+            model1.named_parameters(), model2.named_parameters()
+        ):
             if name1 != name2:
                 print(f"Parameter names don't match: {name1} vs {name2}. Rank:{rank}")
                 return False
 
             if not torch.allclose(param1, param2, rtol=rtol, atol=atol):
                 print(f"Parameters don't match for {name1}. Rank:{rank}")
-                print(f"Max difference: {(param1 - param2).abs().max().item()}. Rank:{rank}")
+                print(
+                    f"Max difference: {(param1 - param2).abs().max().item()}. Rank:{rank}"
+                )
                 return False
 
-    print("All parameters match within the specified tolerance. Rank:{rank}")
+    print(f"All parameters match within the specified tolerance. Rank:{rank}")
     return True
 
-def run(rank, world_size, device="cuda"):
-    # Set up world pg
+
+def run(rank, world_size, region, s3_uri, device="cuda"):
+    # Set up world process group
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
 
@@ -92,9 +101,6 @@ def run(rank, world_size, device="cuda"):
     print(f"Train initial model on rank:{rank}")
     model, optim = _init_model(device, world_size)
     _train(model, optim, train_steps=2)
-
-    region = "us-east-1"
-    s3_uri = f"s3://PLEASE-PROVIDE-ACTUAL-BUCKET-NAME/"
 
     print(f"Saving checkpoint on rank:{rank}")
     # initialize S3StorageWriter with region and bucket name, before passing to dcp.save as writer
@@ -110,14 +116,14 @@ def run(rank, world_size, device="cuda"):
     _train(loaded_model, loaded_optim, train_steps=4)
 
     print(f"Check that models are different on rank:{rank}")
-    assert _compare_models(model, loaded_model, rank) is False
+    assert not _compare_models(model, loaded_model, rank)
 
     print(f"Load checkpoint on rank:{rank}")
     #  initialize S3StorageReader with region and bucket name, before passing to dcp.load as reader
     storage_reader = S3StorageReader(region, s3_uri)
     dcp.load(
         state_dict={"model": loaded_model, "optimizer": loaded_optim},
-        storage_reader=storage_reader
+        storage_reader=storage_reader,
     )
     print(f"Check that loaded model and original model are the same on rank:{rank}")
     assert _compare_models(model, loaded_model, rank)
@@ -127,12 +133,15 @@ def run(rank, world_size, device="cuda"):
 
     print(f"Quiting on rank:{rank}")
 
+
 if __name__ == "__main__":
     world_size = torch.cuda.device_count()
+    region = os.getenv("REGION")
+    s3_uri = os.getenv("CHECKPOINT_PATH")
     print(f"Running stateful checkpoint example on {world_size} devices.")
     mp.spawn(
         run,
-        args=(world_size,),
+        args=(world_size, region, s3_uri),
         nprocs=world_size,
         join=True,
     )
