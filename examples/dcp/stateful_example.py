@@ -97,11 +97,13 @@ def _setup(rank, world_size):
     dist.init_process_group("cpu:gloo,cuda:nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
+
 def _train_initial_model(device, rank, world_size):
     print(f"Train initial model on rank:{rank}")
     model, optim = _init_model(device, world_size)
     _train(model, optim, train_steps=2)
     return model, optim
+
 
 def _train_model_to_different_state(device, model, rank, world_size):
     print(f"Train another model on rank:{rank}")
@@ -111,11 +113,13 @@ def _train_model_to_different_state(device, model, rank, world_size):
     assert not _compare_models(model, loaded_model, rank)
     return loaded_model, loaded_optim
 
+
 def _continue_training_loaded_model(loaded_model, loaded_optim, model, rank):
     print(f"Check that loaded model and original model are the same on rank:{rank}")
     assert _compare_models(model, loaded_model, rank)
     print(f"Train loaded model on rank:{rank}")
     _train(loaded_model, loaded_optim, train_steps=2)
+
 
 def run(rank, world_size, region, s3_uri, device="cuda"):
     _setup(rank, world_size)
@@ -130,7 +134,9 @@ def run(rank, world_size, region, s3_uri, device="cuda"):
     )
 
     # presumably do something else and decided to return to previous version of model
-    modified_model, modified_optim = _train_model_to_different_state(device, model, rank, world_size)
+    modified_model, modified_optim = _train_model_to_different_state(
+        device, model, rank, world_size
+    )
     print(f"Load previously saved checkpoint on rank:{rank}")
     # initialize S3StorageReader with region and bucket name, before passing to dcp.load as reader
     storage_reader = S3StorageReader(region, s3_uri)
