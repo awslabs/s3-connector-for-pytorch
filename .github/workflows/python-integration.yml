@@ -52,6 +52,8 @@ jobs:
         with:
           role-to-assume: ${{ vars.ACTIONS_IAM_ROLE }}
           aws-region: ${{ vars.S3_REGION }}
+          # extend role time out to 2 hours
+          role-duration-seconds: 7200
 
       - name: Set up stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -86,7 +88,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/e2e --ignore s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
+          pytest s3torchconnector/tst/e2e --ignore-glob '*/**/test_e2e_s3_lightning_checkpoint.py' --ignore-glob '*/**/dcp' -n auto
 
       - name: Install Lightning dependency
         run: |
