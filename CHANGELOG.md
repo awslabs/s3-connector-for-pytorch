@@ -1,5 +1,9 @@
-## v1.x.x (TBD)
-* Add support of distributed training to S3IterableDataset
+## v1.3.0 (November 21, 2024)
+
+### New features
+* Add support of PyTorch distributed checkpoints (#268)
+* Extend benchmark framework to support distributed checkpoints (#268)
+* Add support of distributed training to S3IterableDataset (#268)
 
 ### Breaking changes
 * No breaking changes. 
