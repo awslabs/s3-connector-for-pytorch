@@ -109,12 +109,14 @@ def run(
     if cfg.backend == "nccl":
         device_id = rank % torch.cuda.device_count()
         torch.cuda.set_device(device_id)
+        model.to(device_id)
+        model = DistributedDataParallel(model, device_ids=[device_id])
     else:
         device_id = rank % torch.cpu.device_count()
         torch.cpu.set_device(device_id)
+        model.to(device=torch.device("cpu"))
+        model = DistributedDataParallel(model)
 
-    model.to(device_id)
-    model = DistributedDataParallel(model, device_ids=[device_id])
     state_dict = model.state_dict()
 
     begin_save = perf_counter()
