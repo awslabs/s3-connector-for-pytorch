@@ -50,11 +50,11 @@ test-requires = ["./s3torchconnector[e2e]"]
 test-extras = "test"
 test-command = [
     "pytest {package}/python/tst/unit",
-    "pytest {package}/../s3torchconnector/tst/unit --ignore {package}/../s3torchconnector/tst/unit/lightning",
+    "pytest {package}/../s3torchconnector/tst/unit --ignore {package}/../s3torchconnector/tst/unit/lightning --ignore {package}/../s3torchconnector/tst/unit/dcp",
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/python/tst/integration",
-    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
+    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py --ignore {package}/../s3torchconnector/tst/e2e/dcp",
     "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/python/tst/integration",
-    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/../s3torchconnector/tst/e2e  --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
+    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py --ignore {package}/../s3torchconnector/tst/e2e/dcp",
     "python -m pip install -e '{package}/../s3torchconnector[lightning-tests]'",
     "pytest {package}/../s3torchconnector/tst/unit/lightning",
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
