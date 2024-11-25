@@ -11,12 +11,11 @@ jobs:
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v2.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_ISSUE_COMMENT }}
+          webhook-type: INCOMING_WEBHOOK
           payload: |
             {
               "action": "${{ github.event.action }}",
               "comment_url": "${{ github.event.comment.html_url }}",
               "content": ${{ toJSON(github.event.comment.body) }}
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ISSUE_COMMENT }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
