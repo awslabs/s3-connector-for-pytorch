@@ -12,7 +12,7 @@ jobs:
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_PR }}
-          webhook-type: INCOMING_WEBHOOK
+          webhook-type: incoming-webhook
           payload: |
             {
               "action": "${{ github.event.action }}",
