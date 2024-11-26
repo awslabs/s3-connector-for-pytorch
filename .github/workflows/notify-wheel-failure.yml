@@ -14,6 +14,8 @@ jobs:
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v2.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_WORKFLOW_FAILURE }}
+          webhook-type: INCOMING_WEBHOOK
           payload: |
             {
               "action": "${{ github.event.action }}",
@@ -21,6 +23,3 @@ jobs:
               "workflow_name": "${{ github.event.workflow.name }}",
               "workflow_run_url": "${{ github.event.workflow_run.html_url }}"
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_WORKFLOW_FAILURE }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
