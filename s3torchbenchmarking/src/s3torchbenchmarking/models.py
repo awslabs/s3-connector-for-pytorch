@@ -6,30 +6,95 @@ import random
 import time
 from functools import cached_property
 from io import IOBase
-from typing import Optional, Any, Tuple, Union
+from typing import Optional, Any, Tuple, Union, Callable
 
 import lightning as L
 import torch
 import torch.nn as nn
-import torchdata  # type: ignore
 from PIL import Image
 from lightning.pytorch import callbacks
 from lightning.pytorch.strategies import SingleDeviceStrategy
 from omegaconf import DictConfig
-from s3torchconnector import S3Reader, S3Checkpoint, S3IterableDataset
+from torch.nn import Module
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2  # type: ignore
-from transformers import ViTForImageClassification  # type: ignore
-
-from .benchmark_utils import (
-    ExperimentResult,
-    ResourceMonitor,
-    Distribution,
-    Transforms,
+from transformers import (  # type: ignore
+    ViTForImageClassification,
+    ViTModel,
+    CLIPModel,
+    AutoModelForSeq2SeqLM,
+    AutoModelForSpeechSeq2Seq,
 )
-from .lightning_utils.checkpoint_profiler import CheckpointProfiler
-from .lightning_utils.sample_counter import SampleCounter
-from s3torchconnector.lightning import S3LightningCheckpoint  # type: ignore
+
+from s3torchconnector import S3Reader, S3Checkpoint
+from s3torchconnector.lightning import S3LightningCheckpoint
+from .benchmark_utils import ExperimentResult, Distribution, ResourceMonitor
+from .lightning_checkpointing.checkpoint_profiler import CheckpointProfiler
+from .lightning_checkpointing.sample_counter import SampleCounter
+
+
+class BenchmarkModel:
+    """Utility class around a :class:`torch.nn.Module`, with an additional metadata layer."""
+
+    def __init__(self, loader: Callable, name: str, **kwargs):
+        self._loader = loader
+        self._name = name
+        self._kwargs = kwargs
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @cached_property
+    def model(self) -> Module:
+        return self._loader(self._name, **self._kwargs)
+
+    @cached_property
+    def size(self) -> float:
+        """Compute a model's size (in MiB).
+
+        Sourced from https://discuss.pytorch.org/t/finding-model-size/130275/2.
+        """
+        param_size = 0
+        for param in self.model.parameters():
+            param_size += param.nelement() * param.element_size()
+        buffer_size = 0
+        for buffer in self.model.buffers():
+            buffer_size += buffer.nelement() * buffer.element_size()
+        return (param_size + buffer_size) / 1024**2
+
+
+# NOTE: keys below are later used to construct a filename, so make sure they do not contain characters that will not
+# play well with filesystems (e.g., '/').
+_MODELS = {
+    # ~350 MB model
+    "vit-base": BenchmarkModel(
+        ViTModel.from_pretrained, "google/vit-base-patch16-224-in21k"
+    ),
+    # ~1.7 GB model
+    "clip-vit": BenchmarkModel(
+        CLIPModel.from_pretrained, "openai/clip-vit-large-patch14"
+    ),
+    # ?
+    "whisper": BenchmarkModel(
+        AutoModelForSpeechSeq2Seq.from_pretrained,
+        "openai/whisper-large-v3",
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+        low_cpu_mem_usage=True,
+        use_safetensors=True,
+    ),
+    # ~12 GB model
+    "T0_3B": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0_3B"),
+    # ~45 GB model
+    "T0pp": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0pp"),
+}
+
+
+def get_benchmark_model(name: str) -> BenchmarkModel:
+    """Select a model for benchmarking."""
+    if name not in _MODELS:
+        raise ValueError(f'Name "{name}" is unexpected')
+    return _MODELS[name]
 
 
 class ModelInterface(metaclass=abc.ABCMeta):

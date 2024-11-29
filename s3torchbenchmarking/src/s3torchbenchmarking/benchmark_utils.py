@@ -1,14 +1,16 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import json
+import random
+import string
 import threading
 import time
 from collections import defaultdict
-from dataclasses import dataclass
-from functools import cached_property
-from json import JSONEncoder
-from typing import Dict, Any, Optional
 from collections import deque
+from dataclasses import dataclass
+from json import JSONEncoder
+from pathlib import Path
+from typing import Dict, Any, Optional
 
 import numpy as np
 import psutil
@@ -179,3 +181,16 @@ class Transforms:
     def transform_image(data):
         img = Image.open(data)
         return Transforms.IMG_TRANSFORMS(img)
+
+
+def build_random_suffix() -> str:
+    """Build a random suffix for use in filepaths or S3 URIs."""
+    return "".join(random.choices(string.ascii_letters, k=7))
+
+
+def build_checkpoint_path(path: str, suffix: str) -> str:
+    return str(Path(path) / suffix)
+
+
+def build_checkpoint_uri(uri: str, suffix: str) -> str:
+    return uri.removesuffix("/") + "/" + suffix.removeprefix("/")

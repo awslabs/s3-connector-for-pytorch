@@ -1,3 +1,3 @@
-from .hydra_callbacks import ResultCollatingCallback
+from .hydra_callback import ResultCollatingCallback
 
 __all__ = ["ResultCollatingCallback"]
