@@ -8,22 +8,16 @@ before committing to a setup.
 
 By managing complex configuration space with [Hydra](https://hydra.cc/) we are able to define modular configuration pieces mapped to various
 stages of the training pipeline. This approach allows one to mix and match configurations and measure the performance 
-impact to the end-to-end training process. To achieve this, we split configuration to 4 pieces. Namely:
+impact to the end-to-end training process.
 
-**dataset**: The `dataset` configuration keeps information about where the data resides. While we support sharded objects, only loading
-from TAR objects is supported currently.
+There are **three scenarios** available:
 
-**dataloader**: Used to configure the [PyTorch DataLoader](https://pytorch.org/tutorials/beginner/basics/data_tutorial.html). Parameters like
-`batch_size` and `num_workers` are self-explanatory. `kind` is used to specify which PyTorch dataset to use(`s3iterabledataset`, `s3mapdataset`, `fsspec`).
-
-**training**: Specify what model to learn and how many epochs to execute the training for. Currently, we implemented two
-models `Entitlement` and [ViT](https://huggingface.co/docs/transformers/model_doc/vit). To make it easier to add new models, and abstract the learning-sample processing logic from configuration, this module
-defines a Model interface where each model expected to implement `load_sample`, `train`, and `save` methods.
-
-**checkpoint**: Defines where(`disk`, `s3`) and how frequently checkpoints are to be saved.
-
-Once the sub-configurations are defined, one can easily create an experimental configuration that will use the Hydra Sweeper
-to launch multiple experiments sequentially.
+- **Data loading benchmarks**: measure our connector against other Dataset classes (i.e., classes used to fetch and
+  index actual datasets); all save to S3.
+- **PyTorch Lightning Checkpointing benchmarks**: measure our connector, using the PyTorch Lightning framework, against
+  the latter default implementation of checkpointing.
+- **PyTorch’s Distributed Checkpointing (DCP) benchmarks**: measure our connector against PyTorch default distributed
+  checkpointing mechanism — learn more in [this dedicated README](src/s3torchbenchmarking/dcp/README.md).
 
 For example, the `dataloading` experiment stored at `./conf/dataloading.yaml` has the following
 content:
@@ -35,10 +29,8 @@ defaults:
   - training: entitlement
   - checkpoint: none
 
-
 hydra:
   mode: MULTIRUN
-
   sweeper:
     params:
       dataloader: s3iterabledataset, fsspec
@@ -52,17 +44,18 @@ experiment is helpful to see upper-limit of dataloader throughput without being 
 
 ## Getting Started
 
-The benchmarking code is available within the `s3torchbenchmarking`. First navigate into the directory:
+The benchmarking code is available within the `src/s3torchbenchmarking` module. First, from here, navigate into the
+directory:
 
-    cd s3torchbenchmkaring
+    cd src/s3torchbenchmarking
 
-The tests can be run locally, or you can launch an EC2 instance with a GPU(we used a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)), choosing 
+The tests can be run locally, or you can launch an EC2 instance with a GPU (we used a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)), choosing 
 the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/) as your AMI. Activate the venv within this machine
 by running:
 
     source activate pytorch
 
-If running locally you can optionally configure a Python virtualenv:
+If running locally you can optionally configure a Python venv:
 
     python -m venv <ENV-NAME>
     source <PATH-TO-VENV>/bin/activate
@@ -72,12 +65,13 @@ Then from this directory, install the dependencies:
 
     python -m pip install .
 
-This would make the `s3torch-benchmark` and `s3torch-datagen` commands available to you. Note: the installation would
-recommend $PATH modifications if necessary, allowing you to use the commands directly.
+This would make some commands available to you, which you can find under the [pyproject.toml](pyproject.toml) file.
+Note: the installation would recommend `$PATH` modifications if necessary, allowing you to use the commands directly.
 
 **(Optional) Install Mountpoint**
 
-Required only if you're running benchmarks using PyTorch with Mountpoint for S3.
+Required only if you're running benchmarks using PyTorch
+with [Mountpoint for Amazon S3](https://github.com/awslabs/mountpoint-s3).
 
     wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.rpm
     sudo yum install ./mount-s3.rpm # For an RHEL system
@@ -88,7 +82,7 @@ _Note: Mountpoint benchmarks are currently only supported on *nix-based systems 
 
 ### (Pre-requisite) Configure AWS Credentials
 
-The commands provided below(`datagen.py`, `benchmark.py`) rely on the standard [AWS credential discovery mechanism](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). 
+The commands provided below (`datagen.py`, `benchmark.py`) rely on the standard [AWS credential discovery mechanism](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). 
 Supplement the command as necessary to ensure the AWS credentials are made available to the process. For eg: by setting
 the `AWS_PROFILE` environment variable.
 
@@ -175,30 +169,26 @@ Alternatively, you can run specify it on the cmd-line when running the benchmark
 
 Finally, once the dataset and other configuration modules have been defined, you can kick off the benchmark by running:
 
-    $ cd s3torchbenchmarking/
+```shell
+# For data loading benchmarks:
+$ . utils/prepare_and_run_benchmark.sh s3iterabledataset "./dataset" my-bucket eu-west-1 my-bucket-results "" my-prefix
 
-    $ s3torch-benchmark -cd conf -m -cn YOUR-TEST-CONFIGURATION 
-    
-    # Example-1:
-    $ s3torch-benchmark -cd conf -m -cn dataloading 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
+# For PyTorch Lightning Checkpointing benchmarks:
+$ . utils/run_lighning_benchmarks.sh
 
-    # Example-2:
-    $ s3torch-benchmark -cd conf -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2'
-
-    # Example with suppressed warnings (*nix only) - makes logs less noisy.
-    $ s3torch-benchmark -cd conf -m -cn checkpointing 'dataset.prefix_uri=<S3-PREFIX>' 'dataset.region=eu-west-2' 2>/dev/null
+# For PyTorch’s Distributed Checkpointing (DCP) benchmarks:
+$ . utils/run_dcp_benchmarks.sh
+```
 
 _Note: For overriding any other benchmark parameters,
 see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/). You can also run `s3torch-benchmark --hydra-help` to learn more._
 
-
 Experiments will report total training time, number of training samples as well as host-level metrics like CPU
 Utilisation, GPU Utilisation (if available) etc. The results for individual jobs will be written out to dedicated
 `result.json` files within their corresponding [output dirs](https://hydra.cc/docs/configure_hydra/intro/#hydraruntime).
-When using Multirun mode, a `collated_results.json` will be written out to the [common sweep dir](https://hydra.cc/docs/configure_hydra/intro/#hydrasweep). 
+When using MULTIRUN mode, a `collated_results.json` will be written out to the [common sweep dir](https://hydra.cc/docs/configure_hydra/intro/#hydrasweep). 
 
 ## Next Steps
 
-- Use [Hydra Callbacks](https://hydra.cc/docs/experimental/callbacks/) to aggregate and plot benchmark results.
 - Add more models (LLMs?) to monitor training performance.
 - Support plugging in user-defined models and automatic discovery of the same.

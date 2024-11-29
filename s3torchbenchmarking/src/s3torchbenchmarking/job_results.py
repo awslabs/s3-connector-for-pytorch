@@ -30,10 +30,11 @@ def save_job_results(
         "metrics": metrics,
     }
 
-    # ["foo=4", "bar=small", "baz=1"] -> "4_small_1"
     tasks = HydraConfig.get().overrides.task
+
     # extract only sweeper values (i.e., ones starting with '+')
     tasks = [task for task in tasks if task.startswith("+")]
+    # turn ["foo=4", "bar=small", "baz=1"] into "4_small_1"
     suffix = "_".join([task.split("=")[-1] for task in tasks]) if tasks else ""
 
     # Save the results in the corresponding Hydra job directory (e.g., multirun/2024-11-08/15-47-08/0/<filename>.json).
