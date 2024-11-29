@@ -3,14 +3,13 @@
 
 import logging
 import os
-import random
-import string
 from multiprocessing.queues import Queue
 from pathlib import Path
 from time import perf_counter
-from typing import List
+from typing import List, Tuple
 
 import hydra
+import pandas as pd
 import torch
 import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
@@ -21,69 +20,72 @@ from torch.nn import Module
 from torch.nn.parallel import DistributedDataParallel
 
 from s3torchconnector.dcp import S3StorageWriter
-from .constants import Timestamps
-from .models import get_benchmark_model
-from .results import save_results
-from ..benchmark_utils import ResourceMonitor
+from ..benchmark_utils import build_random_suffix, build_checkpoint_uri
+from ..job_results import save_job_results
+from ..models import get_benchmark_model
 
+Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
-def run_benchmark(cfg: DictConfig):
+@hydra.main(version_base=None)
+def run_benchmark(cfg: DictConfig) -> None:
     """DCP benchmark entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
 
-    # For every run, use a randomized suffix (for either local disk or S3).
-    suffix = "".join(random.choices(string.ascii_letters, k=7))
-    storage_writer = get_writer(cfg, suffix)
+    storage_writer = get_writer(cfg)
 
     manager = mp.Manager()
     corrected_save_timestamps: Queue[Timestamps] = manager.Queue()
     processing_timestamps: List[Timestamps] = []
 
-    with ResourceMonitor() as monitor:
-        for epoch in range(cfg.epochs):
-            logger.info("Executing epoch #%i / %i...", epoch + 1, cfg.epochs)
-            begin_mp = perf_counter()
-            mp.spawn(
-                run,
-                (cfg, benchmark_model.model, storage_writer, corrected_save_timestamps),
-                nprocs=cfg.world_size,
-                join=True,
-            )
-            end_mp = perf_counter()
-            processing_timestamps.append((begin_mp, end_mp))
+    for epoch in range(cfg.epochs):
+        logger.info("Executing epoch #%i / %i...", epoch + 1, cfg.epochs)
+        begin_mp = perf_counter()
+        mp.spawn(
+            run,
+            (cfg, benchmark_model.model, storage_writer, corrected_save_timestamps),
+            nprocs=cfg.world_size,
+            join=True,
+        )
+        end_mp = perf_counter()
+        processing_timestamps.append((begin_mp, end_mp))
 
     # Dump the multiprocessing Queue's content into a list.
     collector: List[Timestamps] = []
     while not corrected_save_timestamps.empty():
         collector.append(corrected_save_timestamps.get())
 
-    save_results(
-        cfg,
-        benchmark_model,
-        corrected_save_timestamps=collector,
-        processing_timestamps=processing_timestamps,
-    )
+    # Collect all data in Pandas DataFrame, and dump them (through `describe()`) in a Python dict.
+    cst = pd.DataFrame(collector, columns=["begin", "end"])
+    pt = pd.DataFrame(processing_timestamps, columns=["begin", "end"])
+
+    corrected_save_durations_s = cst["end"] - cst["begin"]
+    processing_durations_s = pt["end"] - pt["begin"]
+    throughput_mibs = benchmark_model.size / corrected_save_durations_s
+
+    metrics = {
+        "throughput_mibs": throughput_mibs.describe().to_dict(),
+        "corrected_save_durations_s": corrected_save_durations_s.describe().to_dict(),
+        "processing_durations_s": processing_durations_s.describe().to_dict(),
+    }
+
+    save_job_results(cfg, benchmark_model, metrics)
 
 
-def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
+def get_writer(cfg: DictConfig) -> FileSystemWriter:
     """Instantiate a checkpoint writer based on the input config."""
+    suffix = build_random_suffix()
+
     if cfg.checkpoint.storage == "disk":
         local_path = Path(cfg.path) / suffix
-        logger.info("Saving checkpoint to %s (local disk)...", local_path)
+        logger.info("Saving checkpoint to %s (disk)...", local_path)
         return dcp.FileSystemWriter(local_path, thread_count=cfg.thread_count)
     elif cfg.checkpoint.storage == "s3":
         uri = build_checkpoint_uri(cfg.s3.uri, suffix)
         logger.info("Saving checkpoint to %s (S3)...", uri)
         return S3StorageWriter(cfg.s3.region, uri, thread_count=cfg.thread_count)
     raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
-
-
-def build_checkpoint_uri(s3_uri: str, suffix: str) -> str:
-    suffix = suffix.lstrip("/")
-    return s3_uri + suffix if s3_uri.endswith("/") else s3_uri + "/" + suffix
 
 
 def setup(backend: str, world_size: int, rank: int) -> None:
@@ -119,7 +121,7 @@ def run(
 
     state_dict = model.state_dict()
 
-    begin_save = perf_counter()
+    begin_save = perf_counter()  # also "end_process"
     dcp.save(state_dict, storage_writer=storage_writer)
     end_save = perf_counter()
 
