@@ -5,13 +5,16 @@
 
 use mountpoint_s3_client::types::RestoreStatus;
 use pyo3::types::PyTuple;
-use pyo3::PyResult;
 use pyo3::ToPyObject;
 use pyo3::{pyclass, pymethods};
+use pyo3::{Bound, PyResult};
 
 use crate::PyRef;
 
-#[pyclass(name = "RestoreStatus", module = "s3torchconnectorclient._mountpoint_s3_client")]
+#[pyclass(
+    name = "RestoreStatus",
+    module = "s3torchconnectorclient._mountpoint_s3_client"
+)]
 #[derive(Debug, Clone)]
 pub struct PyRestoreStatus {
     #[pyo3(get)]
@@ -38,6 +41,7 @@ impl PyRestoreStatus {
 #[pymethods]
 impl PyRestoreStatus {
     #[new]
+    #[pyo3(signature = (in_progress, expiry=None))]
     pub fn new(in_progress: bool, expiry: Option<u128>) -> Self {
         Self {
             in_progress,
@@ -45,10 +49,10 @@ impl PyRestoreStatus {
         }
     }
 
-    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {
+    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [slf.in_progress.to_object(py), slf.expiry.to_object(py)];
-        Ok(PyTuple::new(py, state))
+        Ok(PyTuple::new_bound(py, state))
     }
 
     fn __repr__(&self) -> String {

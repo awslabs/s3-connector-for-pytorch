@@ -46,7 +46,12 @@ impl PyMockClient {
         force_path_style: bool,
     ) -> PyMockClient {
         let unordered_list_seed: Option<u64> = None;
-        let config = MockClientConfig { bucket, part_size, unordered_list_seed, ..Default::default() };
+        let config = MockClientConfig {
+            bucket,
+            part_size,
+            unordered_list_seed,
+            ..Default::default()
+        };
         let mock_client = Arc::new(MockClient::new(config));
 
         PyMockClient {
@@ -56,7 +61,7 @@ impl PyMockClient {
             part_size,
             user_agent_prefix,
             unsigned,
-            force_path_style
+            force_path_style,
         }
     }
 

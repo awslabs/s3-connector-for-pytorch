@@ -13,7 +13,10 @@ use crate::mountpoint_s3_client_inner::MountpointS3ClientInner;
 use crate::python_structs::py_list_object_result::PyListObjectResult;
 use crate::python_structs::py_object_info::PyObjectInfo;
 
-#[pyclass(name = "ListObjectStream", module = "s3torchconnectorclient._mountpoint_s3_client")]
+#[pyclass(
+    name = "ListObjectStream",
+    module = "s3torchconnectorclient._mountpoint_s3_client"
+)]
 pub struct ListObjectStream {
     client: Arc<dyn MountpointS3ClientInner + Send + Sync + 'static>,
     #[pyo3(get)]
@@ -135,13 +138,19 @@ mod tests {
 
         Python::with_gil(|py| {
             let locals = [
-                ("MountpointS3Client", py.get_type::<MountpointS3Client>()),
-                ("MockMountpointS3Client", py.get_type::<PyMockClient>()),
+                (
+                    "MountpointS3Client",
+                    py.get_type_bound::<MountpointS3Client>(),
+                ),
+                (
+                    "MockMountpointS3Client",
+                    py.get_type_bound::<PyMockClient>(),
+                ),
             ];
 
             py_run!(
                 py,
-                *locals.into_py_dict(py),
+                *locals.into_py_dict_bound(py),
                 r#"
                 expected_keys = {"test"}
                 

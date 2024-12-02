@@ -7,7 +7,10 @@ use pyo3::{pyclass, pymethods};
 
 use crate::python_structs::py_object_info::PyObjectInfo;
 
-#[pyclass(name = "ListObjectResult", module = "s3torchconnectorclient._mountpoint_s3_client")]
+#[pyclass(
+    name = "ListObjectResult",
+    module = "s3torchconnectorclient._mountpoint_s3_client"
+)]
 #[derive(Debug)]
 pub struct PyListObjectResult {
     #[pyo3(get)]

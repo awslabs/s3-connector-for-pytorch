@@ -3,9 +3,9 @@
  * // SPDX-License-Identifier: BSD
  */
 
-use std::sync::Arc;
-
-use mountpoint_s3_client::config::{AddressingStyle, EndpointConfig, S3ClientAuthConfig, S3ClientConfig};
+use mountpoint_s3_client::config::{
+    AddressingStyle, EndpointConfig, S3ClientAuthConfig, S3ClientConfig,
+};
 use mountpoint_s3_client::types::PutObjectParams;
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
@@ -13,7 +13,8 @@ use mountpoint_s3_crt::common::allocator::Allocator;
 use mountpoint_s3_crt::common::uri::Uri;
 use nix::unistd::Pid;
 use pyo3::types::PyTuple;
-use pyo3::{pyclass, pymethods, PyRef, PyResult, ToPyObject};
+use pyo3::{pyclass, pymethods, Bound, PyRef, PyResult, ToPyObject};
+use std::sync::Arc;
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
@@ -74,7 +75,8 @@ impl MountpointS3Client {
         let mut endpoint_config = if endpoint_str.is_empty() {
             EndpointConfig::new(&region)
         } else {
-            EndpointConfig::new(&region).endpoint(Uri::new_from_str(&Allocator::default(), endpoint_str).unwrap())
+            EndpointConfig::new(&region)
+                .endpoint(Uri::new_from_str(&Allocator::default(), endpoint_str).unwrap())
         };
         if force_path_style {
             endpoint_config = endpoint_config.addressing_style(AddressingStyle::Path);
@@ -154,11 +156,18 @@ impl MountpointS3Client {
         slf.client.delete_object(slf.py(), bucket, key)
     }
 
-    pub fn copy_object(slf: PyRef<'_, Self>, src_bucket: String, src_key: String, dst_bucket: String, dst_key: String) -> PyResult<()> {
-        slf.client.copy_object(slf.py(), src_bucket, src_key, dst_bucket, dst_key)
+    pub fn copy_object(
+        slf: PyRef<'_, Self>,
+        src_bucket: String,
+        src_key: String,
+        dst_bucket: String,
+        dst_key: String,
+    ) -> PyResult<()> {
+        slf.client
+            .copy_object(slf.py(), src_bucket, src_key, dst_bucket, dst_key)
     }
 
-    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {
+    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [
             slf.region.to_object(py),
@@ -170,7 +179,7 @@ impl MountpointS3Client {
             slf.endpoint.to_object(py),
             slf.force_path_style.to_object(py),
         ];
-        Ok(PyTuple::new(py, state))
+        Ok(PyTuple::new_bound(py, state))
     }
 }
 

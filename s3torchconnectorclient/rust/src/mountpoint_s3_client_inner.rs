@@ -42,7 +42,14 @@ pub(crate) trait MountpointS3ClientInner {
     ) -> PyResult<PutObjectStream>;
     fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo>;
     fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()>;
-    fn copy_object(&self, py: Python, source_bucket: String, source_key: String, destination_bucket: String, destination_key: String) -> PyResult<()>;
+    fn copy_object(
+        &self,
+        py: Python,
+        source_bucket: String,
+        source_key: String,
+        destination_bucket: String,
+        destination_key: String,
+    ) -> PyResult<()>;
 }
 
 pub(crate) struct MountpointS3ClientInnerImpl<T: ObjectClient> {
@@ -119,10 +126,23 @@ where
         Ok(())
     }
 
-    fn copy_object(&self, py: Python, source_bucket: String, source_key: String, destination_bucket: String, destination_key: String) -> PyResult<()> {
+    fn copy_object(
+        &self,
+        py: Python,
+        source_bucket: String,
+        source_key: String,
+        destination_bucket: String,
+        destination_key: String,
+    ) -> PyResult<()> {
         // [Oct. 2024] `CopyObjectParams` is omitted from the function signature, as it anyway contains no fields.
         let params = CopyObjectParams::new();
-        let request = self.client.copy_object(&source_bucket, &source_key, &destination_bucket, &destination_key, &params);
+        let request = self.client.copy_object(
+            &source_bucket,
+            &source_key,
+            &destination_bucket,
+            &destination_key,
+            &params,
+        );
 
         py.allow_threads(|| block_on(request).map_err(python_exception))?;
         Ok(())

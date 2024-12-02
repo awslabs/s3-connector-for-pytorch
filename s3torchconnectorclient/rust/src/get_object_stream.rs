@@ -4,12 +4,15 @@
  */
 
 use pyo3::types::PyBytes;
-use pyo3::{pyclass, pymethods, PyErr, PyRef, PyRefMut, PyResult};
+use pyo3::{pyclass, pymethods, Bound, PyRef, PyRefMut, PyResult};
 
 use crate::exception::S3Exception;
 use crate::mountpoint_s3_client_inner::MPGetObjectClosure;
 
-#[pyclass(name = "GetObjectStream", module = "s3torchconnectorclient._mountpoint_s3_client")]
+#[pyclass(
+    name = "GetObjectStream",
+    module = "s3torchconnectorclient._mountpoint_s3_client"
+)]
 pub struct GetObjectStream {
     next_part: MPGetObjectClosure,
     offset: u64,
@@ -36,7 +39,7 @@ impl GetObjectStream {
         slf
     }
 
-    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<&PyBytes>> {
+    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<Bound<'_, PyBytes>>> {
         let py = slf.py();
 
         let body_part = (slf.next_part)(py)?;
@@ -49,8 +52,8 @@ impl GetObjectStream {
                     ));
                 }
                 slf.offset += data.len() as u64;
-                let data = PyBytes::new(slf.py(), data.as_ref());
-                Ok::<Option<&PyBytes>, PyErr>(Some(data))
+                let data = PyBytes::new_bound(py, data.as_ref());
+                Ok(Some(data))
             }
         }
     }
@@ -80,19 +83,26 @@ mod tests {
 
         Python::with_gil(|py| {
             let locals = [
-                ("MountpointS3Client", py.get_type::<MountpointS3Client>()),
-                ("MockMountpointS3Client", py.get_type::<PyMockClient>()),
+                (
+                    "MountpointS3Client",
+                    py.get_type_bound::<MountpointS3Client>(),
+                ),
+                (
+                    "MockMountpointS3Client",
+                    py.get_type_bound::<PyMockClient>(),
+                ),
             ];
+
             py_run!(
                 py,
-                *locals.into_py_dict(py),
+                *locals.into_py_dict_bound(py),
                 r#"
                 mock_client = MockMountpointS3Client("us-east-1", "mock-bucket")
                 client = mock_client.create_mocked_client()
-                
+
                 mock_client.add_object("key", b"data")
                 stream = client.get_object("mock-bucket", "key")
-                
+
                 returned_data = b''.join(stream)
                 assert returned_data == b"data"
                 "#
