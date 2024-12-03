@@ -2,12 +2,12 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * // SPDX-License-Identifier: BSD
  */
-use std::{env};
-use mountpoint_s3_crt::common::rust_log_adapter::RustLogAdapter;
-use pyo3::{PyResult};
-use tracing_subscriber::{filter::EnvFilter};
-use tracing_subscriber::util::{SubscriberInitExt};
 use crate::exception::python_exception;
+use mountpoint_s3_crt::common::rust_log_adapter::RustLogAdapter;
+use pyo3::PyResult;
+use std::env;
+use tracing_subscriber::filter::EnvFilter;
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub const S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR: &str = "S3_TORCH_CONNECTOR_DEBUG_LOGS";
 pub const S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR: &str = "S3_TORCH_CONNECTOR_LOGS_DIR_PATH";
@@ -42,7 +42,10 @@ fn enable_file_logging(filter: EnvFilter, logs_path: String) -> PyResult<()> {
         .with_writer(logfile)
         .with_env_filter(filter)
         .with_ansi(false);
-    subscriber_builder.finish().try_init().map_err(python_exception)?;
+    subscriber_builder
+        .finish()
+        .try_init()
+        .map_err(python_exception)?;
 
     Ok(())
 }
@@ -51,18 +54,23 @@ fn enable_default_logging(filter: EnvFilter) -> PyResult<()> {
     let subscriber_builder = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_ansi(false);
-    subscriber_builder.finish().try_init().map_err(python_exception)?;
+    subscriber_builder
+        .finish()
+        .try_init()
+        .map_err(python_exception)?;
 
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use rusty_fork::rusty_fork_test;
-    use std::{env};
+    use crate::logger_setup::{
+        setup_logging, S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR,
+        S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR,
+    };
     use pyo3::PyResult;
-    use crate::logger_setup::{S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR,
-                              S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR, setup_logging};
+    use rusty_fork::rusty_fork_test;
+    use std::env;
 
     fn check_valid_log_level(log_level: &str) {
         pyo3::prepare_freethreaded_python();

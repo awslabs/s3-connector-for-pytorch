@@ -5,14 +5,18 @@
 
 use mountpoint_s3_client::types::ObjectInfo;
 use pyo3::types::PyTuple;
-use pyo3::ToPyObject;
 use pyo3::{pyclass, pymethods};
+use pyo3::{Bound, ToPyObject};
 use pyo3::{IntoPy, PyResult};
 
 use crate::python_structs::py_restore_status::PyRestoreStatus;
 use crate::PyRef;
 
-#[pyclass(name = "ObjectInfo", module = "s3torchconnectorclient._mountpoint_s3_client", frozen)]
+#[pyclass(
+    name = "ObjectInfo",
+    module = "s3torchconnectorclient._mountpoint_s3_client",
+    frozen
+)]
 #[derive(Debug, Clone)]
 pub struct PyObjectInfo {
     #[pyo3(get)]
@@ -47,6 +51,7 @@ impl PyObjectInfo {
 #[pymethods]
 impl PyObjectInfo {
     #[new]
+    #[pyo3(signature = (key, etag, size, last_modified, storage_class=None, restore_status=None))]
     pub fn new(
         key: String,
         etag: String,
@@ -65,7 +70,7 @@ impl PyObjectInfo {
         }
     }
 
-    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<&PyTuple> {
+    pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [
             slf.key.to_object(py),
@@ -75,7 +80,7 @@ impl PyObjectInfo {
             slf.storage_class.to_object(py),
             slf.restore_status.clone().into_py(py),
         ];
-        Ok(PyTuple::new(py, state))
+        Ok(PyTuple::new_bound(py, state))
     }
 
     fn __repr__(&self) -> String {

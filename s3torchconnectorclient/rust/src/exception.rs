@@ -3,9 +3,9 @@
  * // SPDX-License-Identifier: BSD
  */
 
+use log::error;
 use std::error::Error;
 use std::fmt::Write;
-use log::error;
 
 use pyo3::exceptions::PyException;
 use pyo3::PyErr;

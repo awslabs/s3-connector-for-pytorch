@@ -9,7 +9,10 @@ use pyo3::{pyclass, pymethods, PyRefMut, PyResult, Python};
 
 use crate::exception::{python_exception, S3Exception};
 
-#[pyclass(name = "PutObjectStream", module = "s3torchconnectorclient._mountpoint_s3_client")]
+#[pyclass(
+    name = "PutObjectStream",
+    module = "s3torchconnectorclient._mountpoint_s3_client"
+)]
 pub struct PutObjectStream {
     request: Box<dyn PutObjectRequestWrapper + Send>,
     #[pyo3(get)]
@@ -77,9 +80,7 @@ impl<T: PutObjectRequest + Sync> PutObjectRequestWrapper for PutObjectRequestWra
             py.allow_threads(|| block_on(request.complete()).map_err(python_exception))?;
             Ok(())
         } else {
-            Err(S3Exception::new_err(
-                "Cannot close object more than once",
-            ))
+            Err(S3Exception::new_err("Cannot close object more than once"))
         }
     }
 }
@@ -104,13 +105,19 @@ mod tests {
 
         Python::with_gil(|py| {
             let locals = [
-                ("MountpointS3Client", py.get_type::<MountpointS3Client>()),
-                ("MockMountpointS3Client", py.get_type::<PyMockClient>()),
+                (
+                    "MountpointS3Client",
+                    py.get_type_bound::<MountpointS3Client>(),
+                ),
+                (
+                    "MockMountpointS3Client",
+                    py.get_type_bound::<PyMockClient>(),
+                ),
             ];
 
             py_run!(
                 py,
-                *locals.into_py_dict(py),
+                *locals.into_py_dict_bound(py),
                 r#"
                 data_to_write = b"Hello!"
                 
