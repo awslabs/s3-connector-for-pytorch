@@ -92,6 +92,8 @@ before-all = [
 ]
 environment = { PATH="/opt/rh/llvm-toolset-7.0/root/usr/bin:/opt/rh/devtoolset-10/root/usr/bin:$HOME/.cargo/bin:$PATH", LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7.0/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib", CC="/opt/rh/devtoolset-10/root/usr/bin/gcc", CXX="/opt/rh/devtoolset-10/root/usr/bin/g++" }
 
+[tool.cibuildwheel.macos]
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.12" }
 
 [[tool.cibuildwheel.overrides]]
 # We want to run DCP's tests only on Linux and macOS ARM64 platforms because
