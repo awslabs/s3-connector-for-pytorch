@@ -9,9 +9,11 @@ import torch.distributed as dist
 from torch.distributed.checkpoint import CheckpointException
 import torch.multiprocessing as mp
 
-from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
+from s3torchconnector.dcp import S3StorageWriter, S3StorageReader, S3FileSystem
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
+from s3torchconnectorclient import __version__
+
 import os
 import random
 
@@ -96,6 +98,7 @@ def multi_process_dcp_save_load(
 
 
 def dcp_save(data, writer):
+    _verify_user_agent(writer.fs)
     dcp.save(
         data,
         storage_writer=writer,
@@ -103,6 +106,7 @@ def dcp_save(data, writer):
 
 
 def dcp_load(loaded_data, reader):
+    _verify_user_agent(reader.fs)
     dcp.load(
         loaded_data,
         storage_reader=reader,
@@ -273,3 +277,8 @@ def test_overwrite(checkpoint_directory):
         )
 
     assert "Checkpoint already exists" in str(excinfo.value)
+
+
+def _verify_user_agent(s3fs: S3FileSystem):
+    expected_user_agent = f"s3torchconnector/{__version__} (dcp; {torch.__version__})"
+    assert s3fs._client.user_agent_prefix == expected_user_agent

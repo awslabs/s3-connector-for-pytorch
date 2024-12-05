@@ -22,9 +22,11 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemWriter,
     FileSystemBase,
 )
+import torch
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
+from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,12 @@ logger = logging.getLogger(__name__)
 class S3FileSystem(FileSystemBase):
     def __init__(self, region: str, s3_client: Optional[S3Client] = None) -> None:
         self._path: Union[str, os.PathLike] = ""
-        self._client = s3_client if s3_client is not None else S3Client(region)
+        user_agent = UserAgent(["dcp", torch.__version__])
+        self._client = (
+            s3_client
+            if s3_client is not None
+            else S3Client(region=region, user_agent=user_agent)
+        )
 
     @contextmanager
     def create_stream(
