@@ -1,15 +1,19 @@
 defaults:
+  - hydra/callbacks:
+      - collate_results
   - _self_
-  - training: lightning
-  - checkpoint: ???
-  - /hydra/callbacks:
-    - collate_results
+
+s3:
+  region: ???
+  uri: ???
+path: ???
+
+epochs: 5
+save_one_in: 1
 
 hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      training.model: vit, whisper, clip, t0_3b, t0pp
-      checkpoint: disk, s3
-      checkpoint.save_one_in: 1
-      training.max_epochs: 10
+      +model: vit-base, whisper, clip-vit, T0_3B, T0pp
+      +checkpoint.storage: disk, s3

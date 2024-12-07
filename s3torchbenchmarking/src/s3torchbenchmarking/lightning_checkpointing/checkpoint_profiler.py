@@ -4,14 +4,12 @@ from typing import Dict, Any, Optional
 from lightning.fabric.plugins import CheckpointIO
 from lightning.fabric.utilities.types import _PATH
 
-from s3torchbenchmarking.benchmark_utils import Distribution
-
 
 class CheckpointProfiler(CheckpointIO):
     def __init__(self, delegate: CheckpointIO) -> None:
         super().__init__()
         self.delegate = delegate
-        self.save_times = Distribution(initial_capacity=1024)
+        self.save_times = []
 
     def load_checkpoint(
         self, path: _PATH, map_location: Optional[Any] = None
@@ -31,4 +29,4 @@ class CheckpointProfiler(CheckpointIO):
         start_time = perf_counter()
         self.delegate.save_checkpoint(checkpoint, path, storage_options)
         elapsed_time = perf_counter() - start_time
-        self.save_times.add(elapsed_time)
+        self.save_times.append(elapsed_time)
