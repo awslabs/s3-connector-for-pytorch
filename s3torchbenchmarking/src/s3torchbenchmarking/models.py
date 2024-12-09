@@ -64,8 +64,6 @@ class BenchmarkModel:
         return (param_size + buffer_size) / 1024**2
 
 
-# NOTE: keys below are later used to construct a filename, so make sure they do not contain characters that will not
-# play well with filesystems (e.g., '/').
 _MODELS = {
     # ~350 MB model
     "vit-base": BenchmarkModel(

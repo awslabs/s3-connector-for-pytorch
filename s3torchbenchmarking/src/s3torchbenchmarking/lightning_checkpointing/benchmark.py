@@ -13,15 +13,17 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 from torchdata.datapipes.iter import IterableWrapper  # type: ignore
 
-from s3torchconnector.lightning import S3LightningCheckpoint
-from .checkpoint_profiler import CheckpointProfiler
-from ..benchmark_utils import (
+from s3torchbenchmarking.benchmark_utils import (
     ResourceMonitor,
     build_checkpoint_uri,
     build_random_suffix,
 )
-from ..job_results import save_job_results
-from ..models import get_benchmark_model, LightningAdapter
+from s3torchbenchmarking.job_results import save_job_results
+from s3torchbenchmarking.lightning_checkpointing.checkpoint_profiler import (
+    CheckpointProfiler,
+)
+from s3torchbenchmarking.models import get_benchmark_model, LightningAdapter
+from s3torchconnector.lightning import S3LightningCheckpoint
 
 logger = logging.getLogger(__name__)
 
@@ -70,3 +72,7 @@ def run_benchmark(config: DictConfig):
     }
 
     save_job_results(config, benchmark_model, metrics)
+
+
+if __name__ == "__main__":
+    run_benchmark()

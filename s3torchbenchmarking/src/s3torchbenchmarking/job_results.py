@@ -9,18 +9,14 @@ from typing import Any
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 
-from .models import BenchmarkModel
+from s3torchbenchmarking.constants import JOB_RESULTS_FILENAME
+from s3torchbenchmarking.models import BenchmarkModel
 
 logger = logging.getLogger(__name__)
 
 
-def save_job_results(
-    cfg: DictConfig,
-    model: BenchmarkModel,
-    metrics: Any,
-):
-    """Save a Hydra job results to a local JSON file."""
-
+def save_job_results(cfg: DictConfig, model: BenchmarkModel, metrics: Any) -> None:
+    """Save a single Hydra job results to a JSON file."""
     results = {
         "model": {
             "name": model.name,
@@ -30,19 +26,10 @@ def save_job_results(
         "metrics": metrics,
     }
 
-    tasks = HydraConfig.get().overrides.task
-
-    # extract only sweeper values (i.e., ones starting with '+')
-    tasks = [task for task in tasks if task.startswith("+")]
-    # turn ["foo=4", "bar=small", "baz=1"] into "4_small_1"
-    suffix = "_".join([task.split("=")[-1] for task in tasks]) if tasks else ""
-
-    # Save the results in the corresponding Hydra job directory (e.g., multirun/2024-11-08/15-47-08/0/<filename>.json).
-    results_filename = f"results{'_' + suffix if suffix else ''}.json"
     results_dir = HydraConfig.get().runtime.output_dir
-    results_path = Path(results_dir, results_filename)
+    results_path = Path(results_dir, JOB_RESULTS_FILENAME)
 
     logger.info("Saving job results to: %s", results_path)
     with open(results_path, "w") as f:
-        json.dump(results, f, ensure_ascii=False, indent=4)
+        json.dump(results, f, ensure_ascii=False, indent=2)
     logger.info("Job results saved successfully")
