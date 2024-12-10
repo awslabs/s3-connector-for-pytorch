@@ -38,6 +38,7 @@ test = [
 [project.scripts]
 s3torch-benchmark = "s3torchbenchmarking.benchmark:run_experiment"
 s3torch-datagen = "s3torchbenchmarking.datagen:synthesize_dataset"
+s3torch-benchmark-lightning = "s3torchbenchmarking.lightning_checkpointing.benchmark:run_benchmark"
 s3torch-benchmark-dcp = "s3torchbenchmarking.dcp.benchmark:run_benchmark"
 
 [tool.setuptools.packages]

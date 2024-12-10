@@ -1,7 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-import json
 import atexit
+import json
 import shutil
 import subprocess
 import tempfile
@@ -16,38 +16,34 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
 
-from .lightning_benchmark import run_lightning_experiment
+from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
+from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
+from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
 from .models import (
     Entitlement,
     ViT,
     ModelInterface,
 )
-from s3torchconnector import S3IterableDataset, S3Reader, S3MapDataset
-from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
-from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
 
 
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig):
-    if config.training.get("kind") and config.training.kind == "lightning":
-        result = run_lightning_experiment(config)
-    else:
-        model = make_model(config)
-        dataset = make_dataset(
-            kind=config.dataloader.kind,
-            sharding=DatasetSharding.from_conf(config.dataset),
-            prefix_uri=config.dataset.get("prefix_uri"),
-            region=config.dataset.get("region"),
-            load_sample=model.load_sample,
-            num_workers=config.dataloader.num_workers,
-        )
-        dataloader = make_dataloader(
-            dataset=dataset,
-            num_workers=config.dataloader.num_workers,
-            batch_size=config.dataloader.batch_size,
-        )
+    model = make_model(config)
+    dataset = make_dataset(
+        kind=config.dataloader.kind,
+        sharding=DatasetSharding.from_conf(config.dataset),
+        prefix_uri=config.dataset.get("prefix_uri"),
+        region=config.dataset.get("region"),
+        load_sample=model.load_sample,
+        num_workers=config.dataloader.num_workers,
+    )
+    dataloader = make_dataloader(
+        dataset=dataset,
+        num_workers=config.dataloader.num_workers,
+        batch_size=config.dataloader.batch_size,
+    )
 
-        result = model.train(dataloader, config.training.max_epochs)
+    result = model.train(dataloader, config.training.max_epochs)
     root_config = HydraConfig.get()
     output_dir = root_config.runtime.output_dir
     job_result_path = write_result(result, Path(output_dir))
