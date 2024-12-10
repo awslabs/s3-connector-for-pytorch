@@ -1,6 +1,5 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-import json
 import random
 import string
 import threading
@@ -8,9 +7,8 @@ import time
 from collections import defaultdict
 from collections import deque
 from dataclasses import dataclass
-from json import JSONEncoder
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Optional, List
 
 import numpy as np
 import psutil
@@ -53,61 +51,13 @@ class Distribution:
             "max": round(np.percentile(window, 100), self.precision),
         }
 
-    def __str__(self):
-        summary_str = json.dumps(self.summarize(), indent=2)
-        return "Distribution({0})".format(summary_str)
 
-
-@dataclass(repr=False)
+@dataclass
 class ExperimentResult:
     elapsed_time: float
     volume: int
-    checkpoint_times: Optional[Distribution] = None
+    checkpoint_times: Optional[List[float]] = None
     utilization: Optional[Dict[str, Distribution]] = None
-
-    def throughput(self):
-        return self.volume / self.elapsed_time
-
-    def summarized_utilization(self):
-        summary = {k: v.summarize() for k, v in self.utilization.items()}
-        return json.dumps(summary, indent=2)
-
-    def __str__(self):
-        return (
-            "ExperimentResult["
-            "\n\ttraining_time: {0:.4f} seconds"
-            "\n\tthroughput: {1:.4f} samples/second"
-            "\n\tutilization:"
-            "\n\t\t{2}"
-            "\n\tcheckpoint_times:"
-            "\n\t\t{3}"
-            "\n]".format(
-                self.elapsed_time,
-                self.throughput(),
-                self.summarized_utilization(),
-                self.checkpoint_times,
-            )
-        )
-
-
-class ExperimentResultJsonEncoder(JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, ExperimentResult):
-            result: ExperimentResult = o
-            utilization: Optional[Dict[str, Distribution]] = result.utilization
-            if utilization is not None:
-                summarized_utilization = {
-                    k: v.summarize() for k, v in utilization.items()
-                }
-            else:
-                summarized_utilization = {}
-            return {
-                "volume": result.volume,
-                "elapsed_time": result.elapsed_time,
-                "throughput": result.throughput(),
-                "utilization": summarized_utilization,
-            }
-        return super().default(o)
 
 
 class ResourceMonitor:

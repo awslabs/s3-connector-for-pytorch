@@ -1,9 +1,10 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-import abc
+import logging
 import os
 import random
 import time
+from abc import ABC, abstractmethod
 from functools import cached_property
 from io import IOBase
 from typing import Optional, Any, Tuple, Union, Callable
@@ -28,13 +29,21 @@ from transformers import (  # type: ignore
 
 from s3torchconnector import S3Reader, S3Checkpoint
 from s3torchconnector.lightning import S3LightningCheckpoint
-from .benchmark_utils import ExperimentResult, Distribution, ResourceMonitor
+from .benchmark_utils import ExperimentResult, ResourceMonitor
 from .lightning_checkpointing.checkpoint_profiler import CheckpointProfiler
 from .lightning_checkpointing.sample_counter import SampleCounter
 
+logger = logging.getLogger(__name__)
+
 
 class BenchmarkModel:
-    """Utility class around a :class:`torch.nn.Module`, with an additional metadata layer."""
+    """Utility class around a :class:`torch.nn.Module`, with an additional metadata layer.
+
+    Args:
+        loader (Callable): Function to load a pretrained Hugging Face model.
+        name (str): Name of the pretrained Hugging Face model.
+        **kwargs: Additional keyword arguments to pass to the :class:`torch.nn.Module`.
+    """
 
     def __init__(self, loader: Callable, name: str, **kwargs):
         self._loader = loader
@@ -47,13 +56,15 @@ class BenchmarkModel:
 
     @cached_property
     def model(self) -> Module:
+        """Instantiate the pretrained model."""
         return self._loader(self._name, **self._kwargs)
 
     @cached_property
     def size(self) -> float:
         """Compute a model's size (in MiB).
 
-        Sourced from https://discuss.pytorch.org/t/finding-model-size/130275/2.
+        Note:
+            Sourced from https://discuss.pytorch.org/t/finding-model-size/130275/2.
         """
         param_size = 0
         for param in self.model.parameters():
@@ -88,16 +99,13 @@ _MODELS = {
 }
 
 
-def get_benchmark_model(name: str) -> BenchmarkModel:
+def get_benchmark_model(short_name: str) -> BenchmarkModel:
     """Select a model for benchmarking."""
-    if name not in _MODELS:
-        raise ValueError(f'Name "{name}" is unexpected')
-    return _MODELS[name]
+    return _MODELS[short_name]
 
 
-class ModelInterface(metaclass=abc.ABCMeta):
-    def __init__(self):
-        self.name = self.__class__.__name__
+class ModelInterface(ABC):
+    """Abstract interface for model interface."""
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         """Transform given sample (a file-like Object) to a model's input"""
@@ -108,7 +116,7 @@ class ModelInterface(metaclass=abc.ABCMeta):
 
         return key, data
 
-    @abc.abstractmethod
+    @abstractmethod
     def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
         raise NotImplementedError
 
@@ -116,16 +124,17 @@ class ModelInterface(metaclass=abc.ABCMeta):
         """Train the model using given dataloader for number of epochs"""
         with ResourceMonitor() as monitor:
             num_samples = 0
+            checkpoint_times = []
             start_time = time.perf_counter()
-            checkpoint_times = Distribution(initial_capacity=1024)
-            for epoch in range(0, epochs):
+            for epoch in range(epochs):
+                logger.info("Epoch #%s/%s", epoch, epochs - 1)
                 for batch_idx, (data, target) in enumerate(dataloader):
+                    logger.debug("Batch #%s", batch_idx)
                     result = self.train_batch(batch_idx, data, target)
                     num_samples += len(data)
                     if result:
-                        checkpoint_times.add(result)
-            end_time = time.perf_counter()
-            training_time = end_time - start_time
+                        checkpoint_times.append(result)
+            training_time = time.perf_counter() - start_time
 
         return ExperimentResult(
             elapsed_time=training_time,
@@ -134,7 +143,7 @@ class ModelInterface(metaclass=abc.ABCMeta):
             utilization=monitor.resource_data,
         )
 
-    @abc.abstractmethod
+    @abstractmethod
     def save(self, **kwargs):
         """Save checkpoint"""
         raise NotImplementedError
@@ -147,7 +156,6 @@ class Entitlement(ModelInterface):
     """
 
     def __init__(self, num_labels: Optional[int] = None):
-        super().__init__()
         self.num_labels = num_labels
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
@@ -169,7 +177,6 @@ class ViT(ModelInterface):
     """
 
     def __init__(self, num_labels: int, checkpoint: DictConfig):
-        super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_labels = num_labels
         self.loss_fn = nn.CrossEntropyLoss()
@@ -258,7 +265,6 @@ class LightningAdapter(ModelInterface):
             return torch.optim.Adam(self.model.parameters(), lr=0.001)
 
     def __init__(self, model, sample_transformer, config: DictConfig):
-        super().__init__()
         self.config = config
         self.sample_transformer = sample_transformer
         self.lightning_model = LightningAdapter.DelegateModule(model)
@@ -320,9 +326,8 @@ class LightningAdapter(ModelInterface):
         )
 
 
-def save_checkpoint_to_s3(model: nn.Module, region: str, uri: str, batch_idx: int):
+def save_checkpoint_to_s3(model: Module, region: str, uri: str, batch_idx: int):
     checkpoint = S3Checkpoint(region=region)
-    # Save checkpoint to S3
     start_time = time.perf_counter()
     with checkpoint.writer(uri + f"batch{batch_idx}.ckpt") as writer:
         torch.save(model.state_dict(), writer)
@@ -332,7 +337,7 @@ def save_checkpoint_to_s3(model: nn.Module, region: str, uri: str, batch_idx: in
     return save_time
 
 
-def save_checkpoint_to_disk(model: nn.Module, uri: str, batch_idx: int):
+def save_checkpoint_to_disk(model: Module, uri: str, batch_idx: int):
     if not os.path.exists(uri):
         os.makedirs(uri)
     path = os.path.join(uri, f"batch{batch_idx}.ckpt")

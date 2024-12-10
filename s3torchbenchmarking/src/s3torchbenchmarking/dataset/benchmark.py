@@ -1,39 +1,36 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import atexit
-import json
 import shutil
 import subprocess
 import tempfile
-from enum import Enum
 from pathlib import Path
 from typing import Optional, List
 
 import hydra
 import torchdata  # type: ignore
-from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
 
-from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
-from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
-from .benchmark_utils import ExperimentResult, ExperimentResultJsonEncoder
-from .models import (
+from s3torchbenchmarking.models import (
     Entitlement,
     ViT,
     ModelInterface,
 )
+from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
+from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 
 
+# TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
-def run_experiment(config: DictConfig):
+def run_experiment(config: DictConfig) -> dict:
     model = make_model(config)
     dataset = make_dataset(
         kind=config.dataloader.kind,
-        sharding=DatasetSharding.from_conf(config.dataset),
-        prefix_uri=config.dataset.get("prefix_uri"),
-        region=config.dataset.get("region"),
+        sharding=config.sharding,
+        prefix_uri=config.prefix_uri,
+        region=config.region,
         load_sample=model.load_sample,
         num_workers=config.dataloader.num_workers,
     )
@@ -43,38 +40,23 @@ def run_experiment(config: DictConfig):
         batch_size=config.dataloader.batch_size,
     )
 
-    result = model.train(dataloader, config.training.max_epochs)
-    root_config = HydraConfig.get()
-    output_dir = root_config.runtime.output_dir
-    job_result_path = write_result(result, Path(output_dir))
-    print(f"{root_config.job.name} results written to: {job_result_path}")
+    result = model.train(dataloader, config.epochs)
 
-
-def write_result(result: ExperimentResult, out_dir: Path) -> Path:
-    result_path = out_dir / "result.json"
-    with open(result_path, "w") as outfile:
-        json.dump(result, outfile, cls=ExperimentResultJsonEncoder)
-
-    return result_path
+    metrics = {
+        "throughput_mibs": [result.volume / result.elapsed_time],
+        "utilization": {k: v.summarize() for k, v in result.utilization.items()},
+    }
+    return {"metrics": metrics}
 
 
 def make_model(config: DictConfig) -> ModelInterface:
-    if config.training.model == "entitlement":
+    if config.model == "entitlement":
         return Entitlement()
-    elif config.training.model == "vit":
-        num_labels = int(config.training.get("num_labels", 1000))
+    elif config.model == "vit":
+        num_labels = int(config.get("num_labels", 1000))
         return ViT(num_labels, config.checkpoint)
     else:
-        raise Exception(f"unknown model {config.training.model}")
-
-
-class DatasetSharding(Enum):
-    TAR = 1
-
-    @staticmethod
-    def from_conf(dataset_config: DictConfig):
-        if dataset_config.get("sharding"):
-            return DatasetSharding[dataset_config.sharding]
+        raise Exception(f"Unknown model {config.model}")
 
 
 def make_mountpoint(
@@ -100,7 +82,7 @@ def make_mountpoint(
 
 def make_dataset(
     kind: str,
-    sharding: Optional[DatasetSharding],
+    sharding: bool,
     prefix_uri: str,
     region: Optional[str],
     load_sample,
@@ -112,45 +94,39 @@ def make_dataset(
         return create_s3_iterable_dataset(
             sharding, prefix_uri, region, load_sample, num_workers
         )
-    elif kind == "s3mapdataset":
+    if kind == "s3mapdataset":
         if not region:
             raise ValueError("Must provide region for s3mapdataset")
         return create_s3_map_dataset(sharding, prefix_uri, region, load_sample)
-    elif kind == "fsspec":
+    if kind == "fsspec":
         return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
-    elif kind == "mountpoint":
+    if kind == "mountpoint":
         return create_mountpoint_dataset(
             sharding, prefix_uri, load_sample, num_workers, False
         )
-    elif kind == "mountpointcache":
+    if kind == "mountpointcache":
         return create_mountpoint_dataset(
             sharding, prefix_uri, load_sample, num_workers, True
         )
-    else:
-        raise Exception(f"unknown dataset kind {kind}")
+    raise Exception(f"Unknown dataset kind {kind}")
 
 
 def create_s3_iterable_dataset(
-    sharding: Optional[DatasetSharding],
-    prefix_uri: str,
-    region: str,
-    load_sample,
-    num_workers: int,
+    sharding: bool, prefix_uri: str, region: str, load_sample, num_workers: int
 ):
     dataset = S3IterableDataset.from_prefix(prefix_uri, region=region)
     dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
+
     if num_workers > 0:
         dataset = dataset.sharding_filter()
-    if sharding == DatasetSharding.TAR:
+    if sharding:
         dataset = dataset.map(tar_to_tuple)
         dataset = dataset.load_from_tar()
 
     return dataset.map(load_sample)
 
 
-def create_s3_map_dataset(
-    sharding: Optional[DatasetSharding], prefix_uri: str, region: str, load_sample
-):
+def create_s3_map_dataset(sharding: bool, prefix_uri: str, region: str, load_sample):
     if sharding:
         raise ValueError("Sharding is not supported for s3mapdataset")
     else:
@@ -161,13 +137,8 @@ def create_s3_map_dataset(
 
 
 def create_mountpoint_dataset(
-    sharding: Optional[DatasetSharding],
-    prefix_uri: str,
-    load_sample,
-    num_workers: int,
-    use_cache: bool,
+    sharding: bool, prefix_uri: str, load_sample, num_workers: int, use_cache: bool
 ):
-    arguments = []
     if use_cache:
         cache_dir = tempfile.mkdtemp(dir="./nvme/", prefix="s3mp_cache_")
         arguments = ["--cache", cache_dir, "--metadata-ttl", "indefinite"]
@@ -180,16 +151,13 @@ def create_mountpoint_dataset(
 
 
 def create_fsspec_dataset(
-    sharding: Optional[DatasetSharding],
-    prefix_uri: str,
-    load_sample: object,
-    num_workers: int,
+    sharding: bool, prefix_uri: str, load_sample, num_workers: int
 ):
     lister = torchdata.datapipes.iter.FSSpecFileLister(prefix_uri)
     dataset = torchdata.datapipes.iter.FSSpecFileOpener(lister, mode="rb")
     if num_workers > 0:
         dataset = dataset.sharding_filter()
-    if sharding == DatasetSharding.TAR:
+    if sharding:
         dataset = dataset.load_from_tar()
 
     return dataset.map(load_sample)

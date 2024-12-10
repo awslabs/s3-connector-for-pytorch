@@ -19,24 +19,6 @@ There are **three scenarios** available:
 - **PyTorch’s Distributed Checkpointing (DCP) benchmarks**: measure our connector against PyTorch default distributed
   checkpointing mechanism — learn more in [this dedicated README](src/s3torchbenchmarking/dcp/README.md).
 
-For example, the `dataloading` experiment stored at `./conf/dataloading.yaml` has the following
-content:
-
-```
-defaults:
-  - dataloader: ???
-  - dataset: unsharded_dataset
-  - training: entitlement
-  - checkpoint: none
-
-hydra:
-  mode: MULTIRUN
-  sweeper:
-    params:
-      dataloader: s3iterabledataset, fsspec
-      dataloader.num_workers: 2,4,8,16
-```
-
 This configuration pins the `dataset` and `training` model while overriding the `dataloader` to change `kind`
 and `num_workers`. Running this benchmark will result in sequentially running 8 different scenarios,
 each with the different combinations of swept parameters. As `Entitlement` is not really performing any training, this
@@ -44,54 +26,51 @@ experiment is helpful to see upper-limit of dataloader throughput without being 
 
 ## Getting Started
 
-The benchmarking code is available within the `src/s3torchbenchmarking` module. First, from here, navigate into the
-directory:
+The benchmarking code is available within the `src/s3torchbenchmarking` module.
 
-    cd src/s3torchbenchmarking
+The tests can be run locally, or you can launch an EC2 instance with a GPU (we used a [g5.2xlarge][g5.2xlarge]),
+choosing the [AWS Deep Learning AMI GPU PyTorch 2.5 (Ubuntu 22.04)][dl-ami] as your AMI.
 
-The tests can be run locally, or you can launch an EC2 instance with a GPU (we used a [g5.2xlarge](https://aws.amazon.com/ec2/instance-types/g5/)), choosing 
-the [AWS Deep Learning AMI GPU PyTorch 2.0.1 (Amazon Linux 2)](https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-0-amazon-linux-2/) as your AMI. Activate the venv within this machine
-by running:
+First, activate the Conda env within this machine by running:
 
-    source activate pytorch
+```shell
+source activate pytorch
+```
 
 If running locally you can optionally configure a Python venv:
 
-    python -m venv <ENV-NAME>
-    source <PATH-TO-VENV>/bin/activate
+```shell
+python -m venv <ENV-NAME>
+source <PATH-TO-VENV>/bin/activate
+```
 
+> [!NOTE]
+> Some errors may arise while trying to run the benchmarks; below are some workarounds to execute in such cases.
 
-Then from this directory, install the dependencies:
+- Error `RuntimeError: operator torchvision::nms does not exist` while trying the run the benchmarks:
+  ```shell
+  conda install -y pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
+  ```
+- Error `TypeError: canonicalize_version() got an unexpected keyword argument 'strip_trailing_zero'` while trying to
+  install `s3torchbenchmarking` package:
+  ```shell
+  pip install "setuptools<71"
+  ```
 
-    python -m pip install .
-
-This would make some commands available to you, which you can find under the [pyproject.toml](pyproject.toml) file.
-Note: the installation would recommend `$PATH` modifications if necessary, allowing you to use the commands directly.
-
-**(Optional) Install Mountpoint**
-
-Required only if you're running benchmarks using PyTorch
-with [Mountpoint for Amazon S3](https://github.com/awslabs/mountpoint-s3).
-
-    wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.rpm
-    sudo yum install ./mount-s3.rpm # For an RHEL system
-
-For other distros see [Installing Mountpoint for Amazon S3](https://github.com/awslabs/mountpoint-s3/blob/main/doc/INSTALL.md).
-
-_Note: Mountpoint benchmarks are currently only supported on *nix-based systems and rely on `sudo` capabilities._  
+Then, `cd` to the `s3torchbenchmarking` directory, and run the `utils/prepare_ec2_instance.sh` script.
 
 ### (Pre-requisite) Configure AWS Credentials
 
-The commands provided below (`datagen.py`, `benchmark.py`) rely on the standard [AWS credential discovery mechanism](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). 
-Supplement the command as necessary to ensure the AWS credentials are made available to the process. For eg: by setting
-the `AWS_PROFILE` environment variable.
+The commands provided below (`datagen.py`, `benchmark.py`) rely on the
+standard [AWS credential discovery mechanism][credentials]. Supplement the command as necessary to ensure the AWS
+credentials are made available to the process, e.g., by setting the `AWS_PROFILE` environment variable.
 
 ### Configuring the dataset
 
 _Note: This is a one-time setup for each dataset configuration. The dataset configuration files, once created locally
 and can be used in subsequent benchmarks, as long as the dataset on the S3 bucket is intact._
 
-If you already have a dataset, you only need upload it to an S3 bucket and setup a YAML file under
+If you already have a dataset, you only need upload it to an S3 bucket and set up a YAML file under
 `./conf/dataset/` in the following format:
 
 ```yaml
@@ -171,7 +150,7 @@ Finally, once the dataset and other configuration modules have been defined, you
 
 ```shell
 # For data loading benchmarks:
-$ . utils/prepare_and_run_benchmark.sh s3iterabledataset "./dataset" my-bucket eu-west-1 my-bucket-results "" my-prefix
+$ . utils/run_dataset_benchmarks.sh 
 
 # For PyTorch Lightning Checkpointing benchmarks:
 $ . utils/run_lighning_benchmarks.sh
@@ -180,15 +159,22 @@ $ . utils/run_lighning_benchmarks.sh
 $ . utils/run_dcp_benchmarks.sh
 ```
 
-_Note: For overriding any other benchmark parameters,
-see [Hydra Overrides](https://hydra.cc/docs/advanced/override_grammar/basic/). You can also run `s3torch-benchmark --hydra-help` to learn more._
+_Note: For overriding any other benchmark parameters, see [Hydra Overrides][hydra-overrides]. You can also run 
+`s3torch-benchmark --hydra-help` to learn more._
 
-Experiments will report total training time, number of training samples as well as host-level metrics like CPU
-Utilisation, GPU Utilisation (if available) etc. The results for individual jobs will be written out to dedicated
-`result.json` files within their corresponding [output dirs](https://hydra.cc/docs/configure_hydra/intro/#hydraruntime).
-When using MULTIRUN mode, a `collated_results.json` will be written out to the [common sweep dir](https://hydra.cc/docs/configure_hydra/intro/#hydrasweep). 
+Experiments will report various metrics, like throughput, processed time, etc. The results for individual jobs and runs 
+(one run will contain 1 to N jobs) will be written out to dedicated files, respectively `job_results.json` and
+`run_results.json`, within their corresponding output directory (see the YAML config files).
 
 ## Next Steps
 
 - Add more models (LLMs?) to monitor training performance.
 - Support plugging in user-defined models and automatic discovery of the same.
+
+[g5.2xlarge]: https://aws.amazon.com/ec2/instance-types/g5/
+
+[dl-ami]: https://docs.aws.amazon.com/dlami/latest/devguide/appendix-ami-release-notes.html
+
+[credentials]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
+
+[hydra-overrides]: https://hydra.cc/docs/advanced/override_grammar/basic/

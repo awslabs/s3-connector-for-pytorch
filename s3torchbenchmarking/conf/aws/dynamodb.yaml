@@ -1,0 +1,5 @@
+# @package _global_
+# DynamoDB config; used to save run results
+dynamodb:
+  region: ???
+  table: ???

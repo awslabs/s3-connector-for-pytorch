@@ -3,8 +3,7 @@ defaults:
   - dataloader: ???
   - dataset: ???
   - training: vit
-  - checkpoint: none
-  - /hydra/callbacks:
+  - hydra/callbacks:
     - collate_results
 
 hydra:

@@ -23,7 +23,6 @@ from s3torchbenchmarking.benchmark_utils import (
     build_random_suffix,
     build_checkpoint_uri,
 )
-from s3torchbenchmarking.job_results import save_job_results
 from s3torchbenchmarking.models import get_benchmark_model
 from s3torchconnector.dcp import S3StorageWriter
 
@@ -31,9 +30,10 @@ Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
 
 
+# TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
-def run_benchmark(cfg: DictConfig) -> None:
-    """DCP benchmark entry point."""
+def run_benchmark(cfg: DictConfig) -> dict:
+    """DCP benchmarks entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
 
     storage_writer = get_writer(cfg)
@@ -68,12 +68,11 @@ def run_benchmark(cfg: DictConfig) -> None:
     throughput_mibs = benchmark_model.size / corrected_save_durations_s
 
     metrics = {
-        "throughput_mibs": throughput_mibs.describe().to_dict(),
-        "corrected_save_durations_s": corrected_save_durations_s.describe().to_dict(),
-        "processing_durations_s": processing_durations_s.describe().to_dict(),
+        "throughput_mibs": throughput_mibs.dropna().to_list(),
+        "corrected_save_durations_s": corrected_save_durations_s.dropna().to_list(),
+        "processing_durations_s": processing_durations_s.dropna().to_list(),
     }
-
-    save_job_results(cfg, benchmark_model, metrics)
+    return {"metrics": metrics}
 
 
 def get_writer(cfg: DictConfig) -> FileSystemWriter:

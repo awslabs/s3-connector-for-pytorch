@@ -36,5 +36,4 @@ test = [
 ]
 
 [project.scripts]
-s3torch-benchmark = "s3torchbenchmarking.benchmark:run_experiment"
 s3torch-datagen = "s3torchbenchmarking.datagen:synthesize_dataset"
