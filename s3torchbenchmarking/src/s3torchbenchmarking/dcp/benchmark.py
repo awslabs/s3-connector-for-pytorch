@@ -19,10 +19,13 @@ from torch.distributed.checkpoint import FileSystemWriter
 from torch.nn import Module
 from torch.nn.parallel import DistributedDataParallel
 
+from s3torchbenchmarking.benchmark_utils import (
+    build_random_suffix,
+    build_checkpoint_uri,
+)
+from s3torchbenchmarking.job_results import save_job_results
+from s3torchbenchmarking.models import get_benchmark_model
 from s3torchconnector.dcp import S3StorageWriter
-from ..benchmark_utils import build_random_suffix, build_checkpoint_uri
-from ..job_results import save_job_results
-from ..models import get_benchmark_model
 
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
@@ -129,3 +132,7 @@ def run(
     save_timestamps.put((begin_process, end_save - (begin_save - begin_process)))
 
     dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    run_benchmark()

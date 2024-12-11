@@ -11,7 +11,11 @@ path: ???
 epochs: 4
 
 hydra:
+  job:
+    name: dcp
   mode: MULTIRUN
+  sweep:
+    dir: multirun/dcp/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
       +model: vit-base, T0_3B

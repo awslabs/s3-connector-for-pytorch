@@ -12,7 +12,11 @@ epochs: 5
 save_one_in: 1
 
 hydra:
+  job:
+    name: lightning_checkpointing
   mode: MULTIRUN
+  sweep:
+    dir: multirun/lightning/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
       +model: vit-base, whisper, clip-vit, T0_3B, T0pp
