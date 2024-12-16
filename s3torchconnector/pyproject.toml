@@ -41,7 +41,7 @@ e2e = [
     "torchvision",
     "Pillow>=10.3.0",
     "boto3",
-    "numpy < 2",
+    "numpy < 3",
     "pytest-xdist"
 ]
 
@@ -56,7 +56,7 @@ lightning-tests = [
 
 dcp = [
     "tenacity",
-    "torch >= 2.3, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
+    "torch >= 2.3, < 2.6", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
 ]
 
 dcp-test = [
