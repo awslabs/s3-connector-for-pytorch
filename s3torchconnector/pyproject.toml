@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "torch >= 2.0.1, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
+    "torch >= 2.0.1, != 2.5.0",
     "s3torchconnectorclient >= 1.3.0",
 ]
 
@@ -37,7 +37,7 @@ test = [
 ]
 
 e2e = [
-    "torchdata",
+    "torchdata<=0.9.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
     "torchvision",
     "Pillow>=10.3.0",
     "boto3",
@@ -56,7 +56,7 @@ lightning-tests = [
 
 dcp = [
     "tenacity",
-    "torch >= 2.3, < 2.5", # TODO: remove "< 2.5" restriction once https://github.com/pytorch/pytorch/issues/138333 is fixed
+    "torch >= 2.3, != 2.5.0",
 ]
 
 dcp-test = [
