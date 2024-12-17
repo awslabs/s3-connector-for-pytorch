@@ -19,11 +19,6 @@ There are **three scenarios** available:
 - **PyTorch’s Distributed Checkpointing (DCP) benchmarks**: measure our connector against PyTorch default distributed
   checkpointing mechanism — learn more in [this dedicated README](src/s3torchbenchmarking/dcp/README.md).
 
-This configuration pins the `dataset` and `training` model while overriding the `dataloader` to change `kind`
-and `num_workers`. Running this benchmark will result in sequentially running 8 different scenarios,
-each with the different combinations of swept parameters. As `Entitlement` is not really performing any training, this
-experiment is helpful to see upper-limit of dataloader throughput without being susceptible to GPU backpressure.
-
 ## Getting Started
 
 The benchmarking code is available within the `src/s3torchbenchmarking` module.
@@ -44,6 +39,10 @@ python -m venv <ENV-NAME>
 source <PATH-TO-VENV>/bin/activate
 ```
 
+Then, `cd` to the `s3torchbenchmarking` directory, and run the `utils/prepare_ec2_instance.sh` script: the latter will
+take care of updating the instance's packages (through either `yum` or `apt`), install Mountpoint for Amazon S3, and 
+install the required Python packages.
+
 > [!NOTE]
 > Some errors may arise while trying to run the benchmarks; below are some workarounds to execute in such cases.
 
@@ -56,8 +55,6 @@ source <PATH-TO-VENV>/bin/activate
   ```shell
   pip install "setuptools<71"
   ```
-
-Then, `cd` to the `s3torchbenchmarking` directory, and run the `utils/prepare_ec2_instance.sh` script.
 
 ### (Pre-requisite) Configure AWS Credentials
 

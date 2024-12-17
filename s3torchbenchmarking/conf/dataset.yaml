@@ -6,7 +6,7 @@ defaults:
       - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
   - _self_
 
-prefix_uri: ???
+prefix_uri: ??? # where the dataset are stored in S3
 region: ???
 sharding: False
 epochs: 1

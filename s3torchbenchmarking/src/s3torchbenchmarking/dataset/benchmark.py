@@ -44,6 +44,7 @@ def run_experiment(config: DictConfig) -> dict:
 
     metrics = {
         "throughput_mibs": [result.volume / result.elapsed_time],
+        "elapsed_time_s": [result.elapsed_time],
         "utilization": {k: v.summarize() for k, v in result.utilization.items()},
     }
     return {"metrics": metrics}

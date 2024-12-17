@@ -127,9 +127,9 @@ class ModelInterface(ABC):
             checkpoint_times = []
             start_time = time.perf_counter()
             for epoch in range(epochs):
-                logger.info("Epoch #%s/%s", epoch, epochs - 1)
+                logger.info("Epoch #%i/%i", epoch, epochs - 1)
                 for batch_idx, (data, target) in enumerate(dataloader):
-                    logger.debug("Batch #%s", batch_idx)
+                    logger.debug("Batch #%i", batch_idx)
                     result = self.train_batch(batch_idx, data, target)
                     num_samples += len(data)
                     if result:
