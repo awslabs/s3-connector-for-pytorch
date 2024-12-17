@@ -6,7 +6,15 @@ defaults:
       - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
   - _self_
 
-epochs: 4
+prefix_uri: ??? # where the dataset are stored in S3
+region: ???
+sharding: False
+epochs: 1
+checkpoint:
+  save_one_in: 25
+  destination: disk
+  uri: ./nvme/checkpoints/
+  region: eu-west-2
 
 hydra:
   mode: MULTIRUN
@@ -14,8 +22,5 @@ hydra:
     dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
-      +model: vit-base, T0_3B
-      +backend: nccl, gloo # nccl == GPU, gloo == CPU
-      +world_size: 1, 2, 4, 8 # == total number of workers to use
-      +thread_count: 1, 2, 4, 8
-      +checkpoint.storage: disk, s3
+      +model: entitlement, vit
+      +dataloader: s3iterabledataset, s3mapdataset, fsspec, mountpoint, mountpointcache

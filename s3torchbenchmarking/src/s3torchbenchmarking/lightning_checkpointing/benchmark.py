@@ -18,7 +18,6 @@ from s3torchbenchmarking.benchmark_utils import (
     build_checkpoint_uri,
     build_random_suffix,
 )
-from s3torchbenchmarking.job_results import save_job_results
 from s3torchbenchmarking.lightning_checkpointing.checkpoint_profiler import (
     CheckpointProfiler,
 )
@@ -28,8 +27,9 @@ from s3torchconnector.lightning import S3LightningCheckpoint
 logger = logging.getLogger(__name__)
 
 
+# TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
-def run_benchmark(config: DictConfig):
+def run_benchmark(config: DictConfig) -> dict:
     """Lightning benchmarks entry point."""
     benchmark_model = get_benchmark_model(config.model)
 
@@ -66,12 +66,11 @@ def run_benchmark(config: DictConfig):
     throughput_mibs = benchmark_model.size / save_times_s
 
     metrics = {
-        "throughput_mibs": throughput_mibs.describe().to_dict(),
-        "save_times_s": save_times_s.describe().to_dict(),
+        "throughput_mibs": throughput_mibs.dropna().to_list(),
+        "save_times_s": save_times_s.dropna().to_list(),
         "utilization": {k: v.summarize() for k, v in monitor.resource_data.items()},
     }
-
-    save_job_results(config, benchmark_model, metrics)
+    return {"metrics": metrics}
 
 
 if __name__ == "__main__":

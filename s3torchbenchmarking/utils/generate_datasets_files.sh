@@ -24,7 +24,7 @@ do
     else
         sharding="null"
     fi
-    
+
     echo "prefix_uri: s3://${BUCKET_NAME}/${dataset}/" > "${PATH_TO_STORE_DATASETS}/${file_name}"
     echo "region: ${REGION_NAME}" >> "${PATH_TO_STORE_DATASETS}/${file_name}"
     echo "sharding: ${sharding}" >> "${PATH_TO_STORE_DATASETS}/${file_name}"

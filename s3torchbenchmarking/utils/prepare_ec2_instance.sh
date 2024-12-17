@@ -1,31 +1,23 @@
 #!/usr/bin/env bash
 #
-# Script to prepare an EC2 instance for PyTorch benchmarks.
+# Script to prepare an EC2 instance for PyTorch benchmarks. Like other scripts within this directory, it is assumed
+# that this is run from within the "s3-connector-for-pytorch/s3torchbenchmarking" directory.
 
-set -euo pipefail
+set -eou pipefail
 
-# Sanity check
-sudo yum -y upgrade # OR, `sudo apt -y upgrade`
+# Sanity check + install Mountpoint for Amazon S3
+if [[ -n $(which yum) ]]; then
+  sudo yum -y upgrade
 
-# Activate the default PyTorch env
-#
-# This command only works on specific AMI (DL-AMI): make sure to check the compatibility between the latter and the EC2
-# instance type currently in use (if incompatible, the command will either fail or generate a warning).
-source activate pytorch
+  wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.rpm
+  sudo yum install -y ./mount-s3.rpm && rm ./mount-s3.rpm
+elif [[ -n $(which apt) ]]; then
+  sudo apt -y upgrade
 
-# Install Rust (https://www.rust-lang.org/learn/get-started)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-. "$HOME/.cargo/env"
+  wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+  sudo apt install -y ./mount-s3.deb && rm ./mount-s3.deb
+fi
 
-# Addresses error "RuntimeError: operator torchvision::nms does not exist" while trying the run the benchmarks
-conda install -y pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
-
-# Addresses error "TypeError: canonicalize_version() got an unexpected keyword argument 'strip_trailing_zero'" while
-# trying to install s3torchbenchmarking
-pip install "setuptools<71"
-
-# Required to build s3torchconnectorclient (see its README)
-sudo yum -y install cmake3 clang
-
+# Install s3torchconnector and s3torchbenchmarking
 pip install 's3torchconnector[lightning,dcp]'
-cd s3torchbenchmarking && pip install -e .
+pip install -e .
