@@ -33,5 +33,8 @@ multirun/
 # Unit test / coverage reports
 .hypothesis/
 
+# Jupyter Notebook
+.ipynb_checkpoints
+
 # Prevent publishing file with third party licenses
 THIRD-PARTY-LICENSES
