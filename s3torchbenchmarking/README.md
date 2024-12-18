@@ -1,66 +1,84 @@
-# Benchmarking the S3 Connector for PyTorch
+# s3torchbenchmarking
 
-This directory contains a modular component for the experimental evaluation of the performance of the Amazon S3 Connector for
-PyTorch.
-The goal of this component is to be able to run performance benchmarks for PyTorch connectors in an easy-to-reproduce and
-extensible fashion. This way, users can experiment with different settings and arrive at the optimal configuration for their workloads,
-before committing to a setup.
+This Python package houses a set of benchmarks for experimentally evaluating the performance of the Amazon S3 Connector
+for PyTorch.
 
-By managing complex configuration space with [Hydra](https://hydra.cc/) we are able to define modular configuration pieces mapped to various
-stages of the training pipeline. This approach allows one to mix and match configurations and measure the performance 
-impact to the end-to-end training process.
+Our primary objective is to facilitate reproducible and extensible performance benchmarks for PyTorch connectors. This
+empowers users to experiment with various configurations and identify optimal settings for their specific workloads
+before finalizing their setup.
 
-There are **three scenarios** available:
+By managing complex configuration space with [Hydra](https://hydra.cc/), we are able to define modular configuration
+pieces mapped to various stages of the training pipeline. This approach allows one to mix and match configurations and
+measure the performance impact to the end-to-end training process.
 
-- **Data loading benchmarks**: measure our connector against other Dataset classes (i.e., classes used to fetch and
-  index actual datasets); all save to S3.
-- **PyTorch Lightning Checkpointing benchmarks**: measure our connector, using the PyTorch Lightning framework, against
-  the latter default implementation of checkpointing.
-- **PyTorch’s Distributed Checkpointing (DCP) benchmarks**: measure our connector against PyTorch default distributed
-  checkpointing mechanism — learn more in [this dedicated README](src/s3torchbenchmarking/dcp/README.md).
+**Three scenarios** are available:
 
-## Getting Started
+1. **Dataset Benchmarks**
+    - Compare our connector against other Dataset classes
+    - All scenarios save data to S3
+    - Measure performance in data fetching and indexing
+2. **PyTorch Lightning Checkpointing Benchmarks**
+    - Evaluate our connector within the PyTorch Lightning framework
+    - Compare against PyTorch Lightning's default checkpointing implementation
+3. **PyTorch's Distributed Checkpointing (DCP) Benchmarks**
+    - Assess our connector's performance versus PyTorch's default distributed checkpointing mechanism
+    - For detailed information, refer to the [dedicated DCP `README`](src/s3torchbenchmarking/dcp/README.md)
 
-The benchmarking code is available within the `src/s3torchbenchmarking` module.
+## Getting started
 
-The tests can be run locally, or you can launch an EC2 instance with a GPU (we used a [g5.2xlarge][g5.2xlarge]),
-choosing the [AWS Deep Learning AMI GPU PyTorch 2.5 (Ubuntu 22.04)][dl-ami] as your AMI.
+The benchmarking code is located in the `src/s3torchbenchmarking` module. You can run the tests either locally or on an
+EC2 instance with one (or many) GPU(s).
 
-First, activate the Conda env within this machine by running:
+### EC2 instance setup (recommended)
 
-```shell
-source activate pytorch
-```
-
-If running locally you can optionally configure a Python venv:
-
-```shell
-python -m venv <ENV-NAME>
-source <PATH-TO-VENV>/bin/activate
-```
-
-Then, `cd` to the `s3torchbenchmarking` directory, and run the `utils/prepare_ec2_instance.sh` script: the latter will
-take care of updating the instance's packages (through either `yum` or `apt`), install Mountpoint for Amazon S3, and 
-install the required Python packages.
+From your EC2 AWS Console, launch an instance with one (or many) GPU(s) (e.g., G5 instance type); we recommend using
+an [AWS Deep Learning AMI (DLAMI)](https://docs.aws.amazon.com/dlami/), such as
+the [AWS Deep Learning AMI GPU PyTorch 2.5 (Amazon Linux 2023)][dlami-pytorch]. This simplifies the PyTorch and
+environment setup.
 
 > [!NOTE]
-> Some errors may arise while trying to run the benchmarks; below are some workarounds to execute in such cases.
+> Some benchmarks can be long-running. We recommend attaching a role to your EC2 instance with:
+>
+> - Full access to S3
+> - (Optional) Full access to DynamoDB for writing run results
+>
+> See the [Running the benchmarks](#running-the-benchmarks) section for more details.
 
-- Error `RuntimeError: operator torchvision::nms does not exist` while trying the run the benchmarks:
-  ```shell
-  conda install -y pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
-  ```
-- Error `TypeError: canonicalize_version() got an unexpected keyword argument 'strip_trailing_zero'` while trying to
-  install `s3torchbenchmarking` package:
-  ```shell
-  pip install "setuptools<71"
-  ```
+### Creating a new Conda environment (env)
 
-### (Pre-requisite) Configure AWS Credentials
+> [!WARNING]
+> While some DLAMIs provide a pre-configured Conda env (`source activate pytorch`), we've observed compatibility issues
+> with the latest PyTorch versions (2.5.X) at the time of writing. We recommend creating a new one from scratch as
+> detailed below.
 
-The commands provided below (`datagen.py`, `benchmark.py`) rely on the
-standard [AWS credential discovery mechanism][credentials]. Supplement the command as necessary to ensure the AWS
-credentials are made available to the process, e.g., by setting the `AWS_PROFILE` environment variable.
+Once your instance is running, `ssh` into it, and create a new Conda env:
+
+```shell
+conda create -n pytorch-benchmarks python=3.12
+conda init
+```
+
+Then, activate it (_you may need to log out and log in again in the meantime, as signaled by `conda init`_):
+
+```shell
+source activate pytorch-benchmarks
+```
+
+Finally, from within this directory, install the `s3torchbenchmarking` module:
+
+```shell
+pip install .
+```
+
+> [!NOTE]
+> For some scenarios, you may be required to install the [Mountpoint for Amazon S3][mountpoint-s3] file client: please
+> refer to their README for installation instructions.
+
+### Configure AWS credentials
+
+Some parts of the benchmarks rely on the standard [AWS credential discovery mechanism][credentials]. Supplement the
+command as necessary to ensure the AWS credentials are made available to the process, e.g., by setting the `AWS_PROFILE`
+environment variable.
 
 ### Configuring the dataset
 
@@ -78,14 +96,14 @@ region: <AWS_REGION>
 sharding: TAR|null # if the samples have been packed into TAR archives.
 ```
 
-This dataset can then be referenced in an experiment with an entry like `dataset: custom_dataset` (note that we're 
-omitting the *.yaml extension). This will result in running the benchmarks against this dataset. Some experiments have 
+This dataset can then be referenced in an experiment with an entry like `dataset: custom_dataset` (note that we're
+omitting the *.yaml extension). This will result in running the benchmarks against this dataset. Some experiments have
 already been defined for reference - see `./conf/dataloading.yaml` or `./conf/sharding.yaml`.
 
 _Note: Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your
 measurements._
 
-Alternatively, you can use the `s3torch-datagen` command to procedurally generate an image dataset and upload it to 
+Alternatively, you can use the `s3torch-datagen` command to procedurally generate an image dataset and upload it to
 Amazon S3. The script also creates a Hydra configuration file at the appropriate path.
 
 ```
@@ -114,7 +132,6 @@ Options:
   --region TEXT            Region where the S3 bucket is hosted.  [default:
                            us-east-1]
   --help                   Show this message and exit.
-
 ```
 
 Here are some sample dataset configurations that we ran our benchmarks against:
@@ -141,36 +158,43 @@ Alternatively, you can run specify it on the cmd-line when running the benchmark
     s3torch-benchmark -cd conf  -m -cn <CONFIG-NAME> 'dataset=20k_496x387_images_4MB_shards'
 ```
 
----
+## Running the benchmarks
 
-Finally, once the dataset and other configuration modules have been defined, you can kick off the benchmark by running:
+You can run the different benchmarks by running one of those shell script:
 
 ```shell
-# For data loading benchmarks:
-$ . utils/run_dataset_benchmarks.sh 
+# For "dataset" benchmarks":
+./utils/run_dataset_benchmarks.sh 
 
-# For PyTorch Lightning Checkpointing benchmarks:
-$ . utils/run_lighning_benchmarks.sh
+# For "PyTorch Lightning Checkpointing benchmarks":
+./utils/run_lighning_benchmarks.sh
 
-# For PyTorch’s Distributed Checkpointing (DCP) benchmarks:
-$ . utils/run_dcp_benchmarks.sh
+# For "PyTorch’s Distributed Checkpointing (DCP) benchmarks":
+./utils/run_dcp_benchmarks.sh
 ```
 
-_Note: For overriding any other benchmark parameters, see [Hydra Overrides][hydra-overrides]. You can also run 
-`s3torch-benchmark --hydra-help` to learn more._
+Each of those scripts rely on Hydra config files, located under the [`conf`](conf) directory. You may edit those as you
+see fit to configure the runs: in particular, parameters under the `hydra.sweeper.params` path will create as many jobs
+as the cartesian product of those.
 
-Experiments will report various metrics, like throughput, processed time, etc. The results for individual jobs and runs 
+Also, as the scripts pass the inline parameters you give them to Hydra, so you may override their behaviors this way:
+
+```shell
+./utils/run_dataset_benchmarks.sh +disambiguator=some_key
+```
+
+## Getting the results
+
+Experiments will report various metrics, like throughput, processed time, etc. The results for individual jobs and runs
 (one run will contain 1 to N jobs) will be written out to dedicated files, respectively `job_results.json` and
 `run_results.json`, within their corresponding output directory (see the YAML config files).
 
-## Next Steps
+If a DynamoDB table was defined in the respective config file ([`conf/aws/dynamodb.yaml`](conf/aws/dynamodb.yaml)), the
+results will be written in such table.
 
-- Add more models (LLMs?) to monitor training performance.
-- Support plugging in user-defined models and automatic discovery of the same.
+[dlami-pytorch]: https://aws.amazon.com/releasenotes/aws-deep-learning-ami-gpu-pytorch-2-5-amazon-linux-2023/
 
-[g5.2xlarge]: https://aws.amazon.com/ec2/instance-types/g5/
-
-[dl-ami]: https://docs.aws.amazon.com/dlami/latest/devguide/appendix-ami-release-notes.html
+[mountpoint-s3]: https://github.com/awslabs/mountpoint-s3/tree/main
 
 [credentials]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 

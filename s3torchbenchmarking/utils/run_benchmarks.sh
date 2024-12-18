@@ -4,10 +4,10 @@
 
 set -euo pipefail
 
-scenario=$1        # name of the scenario
-nvme_dir="./nvme/" # local path for saving checkpoints
+scenario=$1 # name of the scenario
+nvme_dir=$2 # mount point for saving checkpoints (will use NVMe drive)
 
-shift
+shift 2
 
 # Prepare NVMe drive mount
 ./utils/prepare_nvme.sh "$nvme_dir"

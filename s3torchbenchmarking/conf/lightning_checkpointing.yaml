@@ -1,11 +1,11 @@
 defaults:
-  - hydra/callbacks:
-      - collate_results
-  - aws:
-      - s3
-      - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
   - _self_
 
+s3: # used for checkpoint saving
+  region: ???
+  uri: ???
 epochs: 5
 save_one_in: 1
 
@@ -15,5 +15,5 @@ hydra:
     dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
-      +model: vit-base, whisper, clip-vit, T0_3B, T0pp
+      +model: clip-vit, T0_3B, T0pp
       +checkpoint.storage: disk, s3

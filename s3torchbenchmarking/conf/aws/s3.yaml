@@ -1,5 +1,0 @@
-# @package _global_
-# S3 config; used for checkpoint storage
-s3:
-  region: ???
-  uri: ???

@@ -29,8 +29,8 @@ def run_experiment(config: DictConfig) -> dict:
     dataset = make_dataset(
         kind=config.dataloader.kind,
         sharding=config.sharding,
-        prefix_uri=config.prefix_uri,
-        region=config.region,
+        prefix_uri=config.s3.uri,
+        region=config.s3.region,
         load_sample=model.load_sample,
         num_workers=config.dataloader.num_workers,
     )
