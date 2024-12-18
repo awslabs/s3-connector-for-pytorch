@@ -6,14 +6,12 @@ import threading
 import time
 from collections import defaultdict
 from collections import deque
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, TypedDict
 
 import numpy as np
 import psutil
 import torch.cuda
-from PIL import Image
 from pynvml import (  # type: ignore
     nvmlInit,
     nvmlDeviceGetUtilizationRates,
@@ -52,12 +50,12 @@ class Distribution:
         }
 
 
-@dataclass
-class ExperimentResult:
-    elapsed_time: float
+class ExperimentResult(TypedDict, total=False):
+    training_duration_s: float
+    epoch_durations_s: List[float]
     volume: int
-    checkpoint_times: Optional[List[float]] = None
-    utilization: Optional[Dict[str, Distribution]] = None
+    checkpoint_times: Optional[List[float]]
+    utilization: Dict[str, Distribution]
 
 
 class ResourceMonitor:
@@ -114,23 +112,6 @@ class ResourceMonitor:
     def stop(self):
         self.stop_event.set()
         self.monitor_thread.join()
-
-
-class Transforms:
-    IMG_TRANSFORMS = v2.Compose(
-        [
-            v2.ToImage(),
-            v2.ToDtype(torch.uint8, scale=True),
-            v2.RandomResizedCrop((224, 224), antialias=True),
-            v2.ToDtype(torch.float32, scale=True),
-            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-
-    @staticmethod
-    def transform_image(data):
-        img = Image.open(data)
-        return Transforms.IMG_TRANSFORMS(img)
 
 
 def build_random_suffix() -> str:

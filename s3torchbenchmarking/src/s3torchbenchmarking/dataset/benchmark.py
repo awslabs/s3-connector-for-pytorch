@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
 
+from s3torchbenchmarking.benchmark_utils import ExperimentResult
 from s3torchbenchmarking.models import (
     Entitlement,
     ViT,
@@ -29,8 +30,8 @@ def run_experiment(config: DictConfig) -> dict:
     dataset = make_dataset(
         kind=config.dataloader.kind,
         sharding=config.sharding,
-        prefix_uri=config.prefix_uri,
-        region=config.region,
+        prefix_uri=config.s3.uri,
+        region=config.s3.region,
         load_sample=model.load_sample,
         num_workers=config.dataloader.num_workers,
     )
@@ -40,12 +41,13 @@ def run_experiment(config: DictConfig) -> dict:
         batch_size=config.dataloader.batch_size,
     )
 
-    result = model.train(dataloader, config.epochs)
+    result: ExperimentResult = model.train(dataloader, config.epochs)
 
     metrics = {
-        "throughput_mibs": [result.volume / result.elapsed_time],
-        "elapsed_time_s": [result.elapsed_time],
-        "utilization": {k: v.summarize() for k, v in result.utilization.items()},
+        "throughput_mibs": result["volume"] / result["training_duration_s"],
+        "training_duration_s": result["training_duration_s"],
+        "epoch_durations_s": result["epoch_durations_s"],
+        "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
     }
     return {"metrics": metrics}
 

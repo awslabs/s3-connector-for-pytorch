@@ -1,12 +1,16 @@
 defaults:
-  - hydra/callbacks:
-      - collate_results
-  - aws:
-      - s3
-      - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
   - _self_
 
+# S3 bucket to use to save checkpoints.
+# NOTE: a non-existing bucket will fail the benchmarks.
+s3:
+  region: ???
+  uri: ???
+# Number of iterations for "saving" a model's checkpoint.
 epochs: 5
+# Number of training steps between checkpoints.
 save_one_in: 1
 
 hydra:
@@ -15,5 +19,7 @@ hydra:
     dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
-      +model: vit-base, whisper, clip-vit, T0_3B, T0pp
+      # Short name of a pre-trained model (from Hugging Face), listed in `models.py`.
+      +model: clip-vit, T0_3B, T0pp
+      # Checkpoint storage location (valid options: "disk", "s3").
       +checkpoint.storage: disk, s3

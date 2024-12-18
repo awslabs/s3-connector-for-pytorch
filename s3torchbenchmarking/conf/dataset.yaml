@@ -1,19 +1,25 @@
 defaults:
-  - hydra/callbacks:
-      - collate_results
-  - aws:
-      - s3
-      - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
   - _self_
 
-prefix_uri: ??? # where the dataset are stored in S3
-region: ???
-sharding: False
-epochs: 1
+# S3 bucket where the dataset is stored.
+# NOTE: a non-existing bucket will fail the benchmarks.
+s3:
+  region: ???
+  uri: ???
+# Boolean flag to tell whether the dataset is sharded or not.
+sharding: True
+# Number of iterations for training a model.
+epochs: 10
 checkpoint:
-  save_one_in: 25
+  # Number of training steps between checkpoints.
+  save_one_in: 0
+  # Checkpoint storage location.
   destination: disk
+  # Path for checkpoint saving (local disk or S3 URI).
   uri: ./nvme/checkpoints/
+  # S3 region.
   region: eu-west-2
 
 hydra:
@@ -22,5 +28,7 @@ hydra:
     dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
-      +model: entitlement, vit
-      +dataloader: s3iterabledataset, s3mapdataset, fsspec, mountpoint, mountpointcache
+      # Name of a model (valid options: "entitlement", "vit").
+      +model: entitlement
+      # Kind of the dataloader.
+      +dataloader: fsspec, s3iterabledataset, mountpoint, mountpointcache
