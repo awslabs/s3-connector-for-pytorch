@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #
-# Mount an NVMe drive (by default, at `./nvme/`, relative to where this script is run). If a drive is already mounted at
-# the specified location, clear its content.
+# Mount an NVMe drive (by default, at `./nvme/`).
 
 nvme_dir=${1:-"./nvme/"} # default value
 
