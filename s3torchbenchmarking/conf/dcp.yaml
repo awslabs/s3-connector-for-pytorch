@@ -1,11 +1,11 @@
 defaults:
-  - hydra/callbacks:
-      - collate_results
-  - aws:
-      - s3
-      - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
   - _self_
 
+s3: # used for checkpoint saving
+  region: ???
+  uri: ???
 epochs: 4
 
 hydra:
@@ -15,7 +15,7 @@ hydra:
   sweeper:
     params:
       +model: vit-base, T0_3B
-      +backend: nccl, gloo # nccl == GPU, gloo == CPU
-      +world_size: 1, 2, 4, 8 # == total number of workers to use
-      +thread_count: 1, 2, 4, 8
+      +backend: nccl # nccl == GPU, gloo == CPU
+      +world_size: 4 # == total number of workers to use
+      +thread_count: 4
       +checkpoint.storage: disk, s3

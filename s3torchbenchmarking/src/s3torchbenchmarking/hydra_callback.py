@@ -154,4 +154,4 @@ def _write_to_dynamodb(region: str, table_name: str, run: RunResults) -> None:
         table.put_item(Item=run_json)
         logger.info("✅ Put item into table successfully")
     except ClientError:
-        logger.error("Couldn't put item into table %s", table, exc_info=True)
+        logger.error("❌ Couldn't put item into table %s", table, exc_info=True)

@@ -1,17 +1,15 @@
 defaults:
-  - hydra/callbacks:
-      - collate_results
-  - aws:
-      - s3
-      - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
   - _self_
 
-prefix_uri: ??? # where the dataset are stored in S3
-region: ???
-sharding: False
-epochs: 1
+s3: # where the dataset is stored in S3
+  uri: ???
+  region: ???
+sharding: True
+epochs: 10
 checkpoint:
-  save_one_in: 25
+  save_one_in: 0
   destination: disk
   uri: ./nvme/checkpoints/
   region: eu-west-2
@@ -22,5 +20,5 @@ hydra:
     dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
-      +model: entitlement, vit
-      +dataloader: s3iterabledataset, s3mapdataset, fsspec, mountpoint, mountpointcache
+      +model: entitlement
+      +dataloader: s3iterabledataset
