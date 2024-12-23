@@ -37,11 +37,11 @@ test = [
 ]
 
 e2e = [
-    "torchdata<=0.9.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
+    "torchdata<=0.10.1", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
     "torchvision",
     "Pillow>=10.3.0",
     "boto3",
-    "numpy < 2",
+    "numpy < 3",
     "pytest-xdist"
 ]
 
