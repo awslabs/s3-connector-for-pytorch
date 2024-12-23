@@ -149,6 +149,9 @@ Finally, once the dataset and other configuration modules have been defined, you
 # For data loading benchmarks:
 $ . utils/run_dataset_benchmarks.sh 
 
+# For PyTorch Checkpointing benchmarks:
+$ . utils/run_checkpoints_benchmarks.sh
+
 # For PyTorch Lightning Checkpointing benchmarks:
 $ . utils/run_lighning_benchmarks.sh
 
