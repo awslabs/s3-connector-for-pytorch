@@ -29,7 +29,7 @@ def run_experiment(config: DictConfig) -> dict:
     model = make_model(config)
 
     fully_qualified_uri = (
-        config.s3.uri.removesuffix("/") + "/" + config.dataset.removeprefix("/")
+        "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/")
     )
 
     dataset = make_dataset(

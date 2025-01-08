@@ -6,8 +6,8 @@ defaults:
 # S3 bucket where the dataset is stored.
 # NOTE: a non-existing bucket will fail the benchmarks.
 s3:
-  region: ???
-  uri: ???
+  region: ??? # e.g., eu-west-1
+  bucket: ??? # e.g., my-bucket (*not* an S3 URI)
 # Boolean flag to tell whether the dataset is sharded or not.
 sharding: True
 # Number of iterations for training a model.
@@ -32,5 +32,5 @@ hydra:
       +model: entitlement
       # Kind of the dataloader (valid options: "fsspec", "s3iterabledataset", "mountpoint", "mountpointcache").
       +dataloader: fsspec, s3iterabledataset, mountpoint, mountpointcache
-      # Dataset name (corresponds to the name of a folder in S3); will be concatenated with `s3.uri` above
+      # Dataset name (corresponds to the name of a folder in S3); will be used to build an S3 URI
       +dataset: 100k_496x387_images
