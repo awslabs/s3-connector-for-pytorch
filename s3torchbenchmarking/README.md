@@ -24,8 +24,8 @@ performance impact to the end-to-end training process.
 
 ## Getting started
 
-The benchmarking code is located in the `src/s3torchbenchmarking` module. You can run the tests either locally or on an
-EC2 instance with one (or many) GPU(s).
+The benchmarking code is located in the `src/s3torchbenchmarking` module. The scenarios are designed to be run on an EC2
+instance with one (or many) GPU(s).
 
 ### EC2 instance setup (recommended)
 

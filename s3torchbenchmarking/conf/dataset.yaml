@@ -30,5 +30,7 @@ hydra:
     params:
       # Name of a model (valid options: "entitlement", "vit").
       +model: entitlement
-      # Kind of the dataloader.
+      # Kind of the dataloader (valid options: "fsspec", "s3iterabledataset", "mountpoint", "mountpointcache").
       +dataloader: fsspec, s3iterabledataset, mountpoint, mountpointcache
+      # Dataset name (corresponds to the name of a folder in S3); will be concatenated with `s3.uri` above
+      +dataset: 100k_496x387_images

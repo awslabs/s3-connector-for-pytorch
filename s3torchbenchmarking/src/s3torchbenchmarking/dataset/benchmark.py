@@ -27,10 +27,15 @@ from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
     model = make_model(config)
+
+    fully_qualified_uri = (
+        config.s3.uri.removesuffix("/") + "/" + config.dataset.removeprefix("/")
+    )
+
     dataset = make_dataset(
         kind=config.dataloader.kind,
         sharding=config.sharding,
-        prefix_uri=config.s3.uri,
+        prefix_uri=fully_qualified_uri,
         region=config.s3.region,
         load_sample=model.load_sample,
         num_workers=config.dataloader.num_workers,
