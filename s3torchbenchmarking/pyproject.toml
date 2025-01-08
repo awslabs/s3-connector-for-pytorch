@@ -24,3 +24,8 @@ dependencies = [
     "torchvision",
     "transformers",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest"
+]
