@@ -29,3 +29,6 @@ dependencies = [
 test = [
     "pytest"
 ]
+
+[project.scripts]
+s3torch-datagen = "s3torchbenchmarking.datagen:synthesize_dataset"

@@ -76,45 +76,48 @@ pip install -e .
 > For some scenarios, you may be required to install the [Mountpoint for Amazon S3][mountpoint-s3] file client: please
 > refer to their README for instructions.
 
-### Creating a dataset (for "Dataset benchmarks")
+### (Pre-requisite) Configure AWS Credentials
 
-This is a one-time setup for each dataset configuration. The dataset configuration files, once created locally and can
-be used in subsequent benchmarks, as long as the dataset on the S3 bucket is intact.
+The benchmarks and other commands provided below rely on the standard [AWS credential discovery mechanism][credentials].
+Supplement the command as necessary to ensure the AWS credentials are made available to the process, e.g., by setting
+the `AWS_PROFILE` environment variable.
 
-> [!NOTE]
-> Ensure the bucket is in the same region as the EC2 instance to eliminate network latency effects in your measurements.
+### Creating a dataset (optional; for "dataset" benchmarks only)
 
-You can use the `s3torch-datagen` command to procedurally generate an image dataset and upload it to Amazon S3. The
-script also creates a Hydra configuration file at the appropriate path.
+You can use your own dataset for the benchmarks, or you can generate one on-the-fly using the `s3torch-datagen` command.
 
 Here are some sample dataset configurations that we ran our benchmarks against:
 
-- `-n 20k --resolution 496x387`
-- `-n 20k --resolution 496x387 --shard-size {4, 8, 16, 32, 64}MiB`
-
-Example:
-
 ```shell
-s3torch-datagen -n 20k --shard-size 4MB --s3-bucket swift-benchmark-dataset --region eu-west-2
+s3torch-datagen -n 100k --shard-size 128MiB --s3-bucket my-bucket --region us-east-1
 ```
 
 ## Running the benchmarks
 
-You can run the different benchmarks by running one of those shell script:
+You can run the different benchmarks by editing their corresponding config files, then running one of those shell
+script (specifically, you must provide a value for all keys marked with `???`):
 
 ```shell
-# For dataset benchmarks:
-./utils/run_dataset_benchmarks.sh
+# Dataset benchmarks
+vim ./conf/dataset.yaml           # 1. edit config
+./utils/run_dataset_benchmarks.sh # 2. run scenario
 
-# For PyTorch Checkpointing benchmarks:
-./utils/run_checkpoints_benchmarks.sh
+# PyTorch Checkpointing benchmarks
+vim ./conf/pytorch_checkpointing.yaml # 1. edit config
+./utils/run_checkpoints_benchmarks.sh # 2. run scenario
 
-# For PyTorch Lightning Checkpointing benchmarks:
-./utils/run_lighning_benchmarks.sh
+# PyTorch Lightning Checkpointing benchmarks
+vim ./conf/lightning_checkpointing.yaml # 1. edit config
+./utils/run_lighning_benchmarks.sh      # 2. run scenario
 
-# For PyTorch’s Distributed Checkpointing (DCP) benchmarks:
-./utils/run_dcp_benchmarks.sh
+# PyTorch’s Distributed Checkpointing (DCP) benchmarks
+vim ./conf/dcp.yaml           # 1. edit config
+./utils/run_dcp_benchmarks.sh # 2. run scenario
 ```
+
+> [!NOTE]
+> Ensure the bucket is in the same region as the EC2 instance, to eliminate network latency effects in your
+> measurements.
 
 Each of those scripts rely on Hydra config files, located under the [`conf`](conf) directory. You may edit those as you
 see fit to configure the runs: in particular, parameters under the `hydra.sweeper.params` path will create as many jobs
