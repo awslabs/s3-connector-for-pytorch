@@ -1,3 +1,16 @@
+## v1.3.1 (January 10, 2025)
+
+### New features
+* Fix Rust build (#275)
+* Update user agent for DCP (#276)
+* Address Rust security issue (#279)
+* Refactor(benchmarks): Overhaul Lightning Checkpointing, DCP, dataset scenarios; add DynamoDB writes and results exploitation notebook (#274, #280, #285, #286)
+* Add single rank PyTorch checkpoint benchmark (#289)
+* Update torch version restriction (<2.5.0) and bind torchdata to last version with DataPipes (#283)
+
+### Breaking changes
+* No breaking changes.
+
 ## v1.3.0 (November 21, 2024)
 
 ### New features
