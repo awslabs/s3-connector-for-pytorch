@@ -7,7 +7,8 @@ import time
 from abc import ABC, abstractmethod
 from functools import cached_property
 from io import IOBase
-from typing import Optional, Any, Tuple, Union, Callable
+from time import perf_counter
+from typing import Optional, Any, Tuple, Union, Callable, List
 
 import lightning as L
 import torch
@@ -122,11 +123,15 @@ class ModelInterface(ABC):
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
+
+        epoch_durations_s: List[float] = []
+
         with ResourceMonitor() as monitor:
             num_samples = 0
             checkpoint_times = []
-            start_time = time.perf_counter()
+            begin_training = perf_counter()
             for epoch in range(epochs):
+                begin_epoch = time.perf_counter()
                 logger.info("Epoch #%i/%i", epoch, epochs - 1)
                 for batch_idx, (data, target) in enumerate(dataloader):
                     logger.debug("Batch #%i", batch_idx)
@@ -134,14 +139,16 @@ class ModelInterface(ABC):
                     num_samples += len(data)
                     if result:
                         checkpoint_times.append(result)
-            training_time = time.perf_counter() - start_time
+                epoch_durations_s.append(time.perf_counter() - begin_epoch)
+            training_duration_s = time.perf_counter() - begin_training
 
-        return ExperimentResult(
-            elapsed_time=training_time,
-            volume=num_samples,
-            checkpoint_times=checkpoint_times,
-            utilization=monitor.resource_data,
-        )
+        return {
+            "training_duration_s": training_duration_s,
+            "epoch_durations_s": epoch_durations_s,
+            "volume": num_samples,
+            "checkpoint_times": checkpoint_times,
+            "utilization": monitor.resource_data,
+        }
 
     @abstractmethod
     def save(self, **kwargs):
@@ -313,12 +320,12 @@ class LightningAdapter(ModelInterface):
             end_time = time.perf_counter()
             training_time = end_time - start_time
 
-        return ExperimentResult(
-            elapsed_time=training_time,
-            volume=sample_counting_cb.count,
-            checkpoint_times=profiling_checkpointer.save_times,
-            utilization=monitor.resource_data,
-        )
+        return {
+            "training_duration_s": training_time,
+            "volume": sample_counting_cb.count,
+            "checkpoint_times": profiling_checkpointer.save_times,
+            "utilization": monitor.resource_data,
+        }
 
     def save(self, **kwargs):
         raise NotImplementedError(

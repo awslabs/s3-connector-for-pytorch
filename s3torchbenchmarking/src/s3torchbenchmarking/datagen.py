@@ -1,22 +1,24 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-import abc
+
 import io
+import logging
 import os
 import tarfile
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from multiprocessing import Queue
-from pathlib import Path
 from threading import Thread, Lock, Barrier
-from typing import Any, Callable, Iterator, TypeVar, Tuple, Dict, List, Optional, Union
+from typing import Callable, Iterator, TypeVar, Tuple, List, Optional, Union
 
 import boto3  # type: ignore
 import click
 import numpy as np
 import prefixed as pr  # type: ignore
-import yaml
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -29,8 +31,8 @@ class Sentinel:
     pass
 
 
-class DataGenerator(abc.ABC):
-    @abc.abstractmethod
+class DataGenerator(ABC):
+    @abstractmethod
     def create(self, idx_gen: Iterator[int]) -> Iterator[LabelledSample]:
         pass
 
@@ -127,14 +129,6 @@ class Utils:
     ) -> Optional[float]:
         if value is not None:
             return pr.Float(value.rstrip("b").rstrip("B"))
-
-    @staticmethod
-    def write_dataset_config(disambiguator: str, dataset_cfg: Dict[str, Any]):
-        current_dir = os.getcwd()
-        cfg_path = Path(current_dir) / "conf" / "dataset" / f"{disambiguator}.yaml"
-        with open(cfg_path, "w") as outfile:
-            yaml.dump(dataset_cfg, outfile, default_flow_style=False)
-            click.echo(f"Dataset Configuration created at: {cfg_path}")
 
     @staticmethod
     def validate_image_format(ctx: click.Context, param: str, value: str):
@@ -242,13 +236,8 @@ def producer(generator: Iterator, barrier: Barrier, queue: Queue, identifier: in
         queue.put(Sentinel)
 
 
-def consumer(
-    queue: Queue,
-    activity: Callable[[Union[LabelledSample, Sentinel]], None],
-    identifier: int,
-):
+def consumer(queue: Queue, activity: Callable[[Union[LabelledSample, Sentinel]], None]):
     while True:
-        # click.echo(f"Consumer running on thread {threading.current_thread().ident}")
         item: Union[LabelledSample, Sentinel] = queue.get()
         if item is Sentinel:
             # add signal back for other consumers
@@ -314,9 +303,7 @@ def synthesize_dataset(
     s3_prefix: str,
     region: str,
 ):
-    """
-    Synthesizes a dataset that will be used for s3torchbenchmarking and uploads it to an S3 bucket.
-    """
+    """Synthesizes a dataset that will be used for s3torchbenchmarking and uploads it to an S3 bucket."""
     num_workers = os.cpu_count() or 1
     task_queue: Queue = Queue(num_workers)
 
@@ -348,6 +335,7 @@ def synthesize_dataset(
     # kick off consumers and producers
     for worker in [*consumers, *producers]:
         worker.start()
+
     # wait for all threads to finish. Note: order is important since we wait to drain all pending messages from
     # producers first.
     for worker in [*producers, *consumers]:
@@ -355,16 +343,6 @@ def synthesize_dataset(
 
     fq_key = f"s3://{s3_bucket}/{disambiguator}/"
     click.echo(f"Dataset uploaded to: {fq_key}")
-    # generate hydra dataset config file
-    Utils.write_dataset_config(
-        disambiguator=disambiguator,
-        dataset_cfg={
-            "prefix_uri": fq_key,
-            "region": region,
-            # TODO: extend this when introduce other sharding types
-            "sharding": "TAR" if shard_size else None,
-        },
-    )
 
     click.echo(
         f"Configure your experiment by setting the entry:\n\tdataset: {disambiguator}"

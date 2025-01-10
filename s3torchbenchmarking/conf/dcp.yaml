@@ -1,11 +1,15 @@
 defaults:
-  - hydra/callbacks:
-      - collate_results
-  - aws:
-      - s3
-      - dynamodb # save run results to DynamoDB (see also conf/aws/dynamodb.yaml) -- comment me if not required
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
   - _self_
 
+# S3 bucket to use to save checkpoints.
+# NOTE: a non-existing bucket will fail the benchmarks.
+s3:
+  region: ??? # e.g., eu-west-1
+  uri: ???    # e.g., s3://my-bucket/
+# Number of iterations for "saving" a model's checkpoint.
+# NOTE: this does not affect model training, as no actual training occurs in these benchmarks.
 epochs: 4
 
 hydra:
@@ -14,8 +18,13 @@ hydra:
     dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
   sweeper:
     params:
+      # Short name of a pre-trained model (from Hugging Face), listed in `models.py`.
       +model: vit-base, T0_3B
-      +backend: nccl, gloo # nccl == GPU, gloo == CPU
-      +world_size: 1, 2, 4, 8 # == total number of workers to use
-      +thread_count: 1, 2, 4, 8
+      # Type of Torch distributed backend (valid options: "nccl", "gloo").
+      +backend: nccl
+      # Number of workers.
+      +world_size: 4
+      # Number of threads to use for saving the checkpoints.
+      +thread_count: 4
+      # Checkpoint storage location (valid options: "disk", "s3").
       +checkpoint.storage: disk, s3

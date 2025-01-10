@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
 
+from s3torchbenchmarking.benchmark_utils import ExperimentResult
 from s3torchbenchmarking.models import (
     Entitlement,
     ViT,
@@ -26,11 +27,16 @@ from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
     model = make_model(config)
+
+    fully_qualified_uri = (
+        "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/")
+    )
+
     dataset = make_dataset(
         kind=config.dataloader.kind,
         sharding=config.sharding,
-        prefix_uri=config.prefix_uri,
-        region=config.region,
+        prefix_uri=fully_qualified_uri,
+        region=config.s3.region,
         load_sample=model.load_sample,
         num_workers=config.dataloader.num_workers,
     )
@@ -40,12 +46,13 @@ def run_experiment(config: DictConfig) -> dict:
         batch_size=config.dataloader.batch_size,
     )
 
-    result = model.train(dataloader, config.epochs)
+    result: ExperimentResult = model.train(dataloader, config.epochs)
 
     metrics = {
-        "throughput_mibs": [result.volume / result.elapsed_time],
-        "elapsed_time_s": [result.elapsed_time],
-        "utilization": {k: v.summarize() for k, v in result.utilization.items()},
+        "throughput_mibs": result["volume"] / result["training_duration_s"],
+        "training_duration_s": result["training_duration_s"],
+        "epoch_durations_s": result["epoch_durations_s"],
+        "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
     }
     return {"metrics": metrics}
 

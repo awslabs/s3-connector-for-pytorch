@@ -60,8 +60,10 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# Hydra (https://hydra.cc/)
-multirun/
+# PyTorch benchmarks: Hydra, NVMe directory, and CSV results
+s3torchbenchmarking/**/multirun/
+s3torchbenchmarking/**/nvme/
+s3torchbenchmarking/**/*.csv
 
 # Rust .gitignore (https://github.com/github/gitignore/blob/main/Rust.gitignore) -- cherry-picked ######################
 

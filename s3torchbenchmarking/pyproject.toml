@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "build"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,23 +9,20 @@ description = "Tools to run and compare benchmarks against various PyTorch conne
 requires-python = ">=3.8,<3.13"
 readme = "README.md"
 dependencies = [
-    "torch >= 2.0.1, != 2.3.0, != 2.5.0",
-    "lightning >= 2.0",
-    "s3torchconnector",
+    "s3torchconnector[lightning,dcp]",
+    "boto3",
+    "click",
     "hydra-core",
-    "torchdata>=0.6.1, <=0.9.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
-    "torchvision",
-    "s3fs>=2024.6.1",
-    "transformers",
-    "numpy",
+    "pandas",
+    "pillow",
+    "prefixed",
     "psutil",
     "pynvml",
-    "boto3",
-    "prefixed",
-    "click",
-    "accelerate",
-    "pandas",
     "requests",
+    "s3fs>=2024", # prevents "UserWarning: Your installed version of s3fs is very old" type of warnings
+    "torchdata<0.10.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
+    "torchvision",
+    "transformers",
 ]
 
 [project.optional-dependencies]
