@@ -21,9 +21,9 @@ use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
 use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
 use crate::put_object_stream::PutObjectStream;
-use crate::python_structs::py_object_info::PyObjectInfo;
 
 use crate::build_info;
+use crate::python_structs::py_head_object_result::PyHeadObjectResult;
 
 #[pyclass(
     name = "MountpointS3Client",
@@ -149,7 +149,7 @@ impl MountpointS3Client {
         slf: PyRef<'_, Self>,
         bucket: String,
         key: String
-    ) -> PyResult<PyObjectInfo> {
+    ) -> PyResult<PyHeadObjectResult> {
         let params = HeadObjectParams::default();
         slf.client.head_object(slf.py(), bucket, key, params)
     }

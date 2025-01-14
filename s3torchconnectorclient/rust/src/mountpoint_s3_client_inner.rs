@@ -14,7 +14,7 @@ use pyo3::{PyResult, Python};
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
 use crate::put_object_stream::PutObjectStream;
-use crate::python_structs::py_object_info::PyObjectInfo;
+use crate::python_structs::py_head_object_result::PyHeadObjectResult;
 
 pub type MPGetObjectClosure =
     Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>;
@@ -40,7 +40,7 @@ pub(crate) trait MountpointS3ClientInner {
         key: String,
         params: PutObjectParams,
     ) -> PyResult<PutObjectStream>;
-    fn head_object(&self, py: Python, bucket: String, key: String, params: HeadObjectParams) -> PyResult<PyObjectInfo>;
+    fn head_object(&self, py: Python, bucket: String, key: String, params: HeadObjectParams) -> PyResult<PyHeadObjectResult>;
     fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()>;
     fn copy_object(
         &self,
@@ -110,12 +110,12 @@ where
         Ok(PutObjectStream::new(request, bucket, key))
     }
 
-    fn head_object(&self, py: Python, bucket: String, key: String, params: HeadObjectParams) -> PyResult<PyObjectInfo> {
+    fn head_object(&self, py: Python, bucket: String, key: String, params: HeadObjectParams) -> PyResult<PyHeadObjectResult> {
         let request = self.client.head_object(&bucket, &key, &params);
 
         // TODO - Look at use of `block_on` and see if we can future this.
         let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
-        Ok(PyObjectInfo::from_object_info(request.object))
+        Ok(PyHeadObjectResult::from_head_object_result(request))
     }
 
     fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()> {
