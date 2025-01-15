@@ -1,3 +1,11 @@
+## TBD
+
+### New features
+* Escape special characters in rename operation (#297)
+
+### Breaking changes
+* No breaking changes.
+
 ## v1.3.1 (January 10, 2025)
 
 ### New features

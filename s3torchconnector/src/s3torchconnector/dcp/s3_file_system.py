@@ -4,6 +4,7 @@
 import io
 import logging
 import os
+import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Union, Optional
@@ -126,6 +127,8 @@ class S3FileSystem(FileSystemBase):
         new_path_str = _path_or_str_to_str(new_path)
 
         old_bucket, old_key = parse_s3_uri(old_path_str)
+        escaped_old_key = self._uri_escape_path(old_key)
+        logger.debug("rename: escaped version of the source key: %s", escaped_old_key)
         new_bucket, new_key = parse_s3_uri(new_path_str)
 
         if old_bucket != new_bucket:
@@ -135,7 +138,7 @@ class S3FileSystem(FileSystemBase):
 
         self._client.copy_object(
             src_bucket=old_bucket,
-            src_key=old_key,
+            src_key=escaped_old_key,
             dst_bucket=new_bucket,
             dst_key=new_key,
         )
@@ -197,6 +200,23 @@ class S3FileSystem(FileSystemBase):
         Will retry a maximum of 3 times, only for `S3Exception`s, and wait between retries. It will reraise the caught
         exception too, and logs retries and final error, if any."""
         self._client.delete_object(bucket_name, old_key)
+
+    @staticmethod
+    def _uri_escape_path(string):
+        """Return a version of the string with special characters escaped.
+
+        Args:
+            string (str): The string to escape.
+
+        Returns:
+            str: The escaped string.
+        """
+        if not string:
+            return string
+        parts = []
+        for part in string.split("/"):
+            parts.append(urllib.parse.quote(part, safe=""))
+        return "/".join(parts)
 
 
 class S3StorageWriter(FileSystemWriter):
