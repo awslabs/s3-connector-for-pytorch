@@ -127,7 +127,7 @@ class S3FileSystem(FileSystemBase):
         new_path_str = _path_or_str_to_str(new_path)
 
         old_bucket, old_key = parse_s3_uri(old_path_str)
-        escaped_old_key = self._uri_escape_path(old_key)
+        escaped_old_key = self._escape_path(old_key)
         logger.debug("rename: escaped version of the source key: %s", escaped_old_key)
         new_bucket, new_key = parse_s3_uri(new_path_str)
 
@@ -202,14 +202,14 @@ class S3FileSystem(FileSystemBase):
         self._client.delete_object(bucket_name, old_key)
 
     @staticmethod
-    def _uri_escape_path(string):
-        """Return a version of the string with special characters escaped.
+    def _escape_path(string):
+        """URL-encodes path segments while preserving '/' separators using urllib.parse.quote().
 
         Args:
-            string (str): The string to escape.
+            string (str): URL path string to escape
 
         Returns:
-            str: The escaped string.
+            str: Path string with each segment percent-encoded, separators preserved
         """
         if not string:
             return string

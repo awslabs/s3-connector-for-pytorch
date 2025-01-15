@@ -124,6 +124,34 @@ def test_rename_raises_when_retries_fail(caplog):
     assert "this was the 3rd time calling it" in caplog.text
 
 
+@pytest.mark.parametrize(
+    "source_path,expected_path",
+    [
+        # Basic cases
+        ("simple/path", "simple/path"),
+        ("", ""),
+        (None, None),
+        # Special characters
+        ("path with spaces/file.txt", "path%20with%20spaces/file.txt"),
+        ("special&?=chars", "special%26%3F%3Dchars"),
+        # Unicode characters
+        ("path/測試/файл", "path/%E6%B8%AC%E8%A9%A6/%D1%84%D0%B0%D0%B9%D0%BB"),
+        # Multiple segments with special chars
+        (
+            "path with spaces/file name?/special&.txt",
+            "path%20with%20spaces/file%20name%3F/special%26.txt",
+        ),
+        # Reserved characters
+        ("path+plus/hash#tag", "path%2Bplus/hash%23tag"),
+        ("path@email/dollar$", "path%40email/dollar%24"),
+        # Multiple consecutive slashes (if handled)
+        ("path//double/slash", "path//double/slash"),
+    ],
+)
+def test_escape_path(source_path, expected_path):
+    assert S3FileSystem._escape_path(source_path) == expected_path
+
+
 @pytest.mark.skip(reason="method not implemented (no-op)")
 def test_mkdir():
     pass

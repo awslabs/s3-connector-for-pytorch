@@ -207,7 +207,7 @@ def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
     print("Test passed: Raised CheckpointException.")
 
 
-@pytest.mark.parametrize("path", ["test_rename_src", "test_[+rename]!@£$%^&*_(src)"])
+@pytest.mark.parametrize("path", ["test_rename_src", "test_[+re.name]!@£$%^&*_(src)"])
 def test_successful_rename(checkpoint_directory, path):
     src_path = f"{checkpoint_directory.s3_uri}{path}"
     test_data = {
