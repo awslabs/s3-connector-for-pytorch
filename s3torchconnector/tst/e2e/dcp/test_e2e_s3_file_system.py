@@ -207,8 +207,9 @@ def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
     print("Test passed: Raised CheckpointException.")
 
 
-def test_successful_rename(checkpoint_directory):
-    src_path = f"{checkpoint_directory.s3_uri}test_rename_src"
+@pytest.mark.parametrize("path", ["test_rename_src", "test_[+re.name]!@£$%^&*_(src)"])
+def test_successful_rename(checkpoint_directory, path):
+    src_path = f"{checkpoint_directory.s3_uri}{path}"
     test_data = {
         "tensor1": torch.randn(10, 10),
         "tensor2": torch.randn(5, 5),
