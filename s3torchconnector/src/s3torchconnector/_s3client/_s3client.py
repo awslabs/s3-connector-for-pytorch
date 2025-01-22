@@ -13,6 +13,7 @@ from .s3client_config import S3ClientConfig
 from s3torchconnectorclient._mountpoint_s3_client import (
     MountpointS3Client,
     ObjectInfo,
+    HeadObjectResult,
     ListObjectStream,
     GetObjectStream,
 )
@@ -123,7 +124,7 @@ class S3Client:
         return self._client.list_objects(bucket, prefix, delimiter, max_keys)
 
     # TODO: We need ObjectInfo on dataset side
-    def head_object(self, bucket: str, key: str) -> ObjectInfo:
+    def head_object(self, bucket: str, key: str) -> HeadObjectResult:
         log.debug(f"HeadObject s3://{bucket}/{key}")
         return self._client.head_object(bucket, key)
 

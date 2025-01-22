@@ -33,7 +33,7 @@ class MountpointS3Client:
     def list_objects(
         self, bucket: str, prefix: str = "", delimiter: str = "", max_keys: int = 1000
     ) -> ListObjectStream: ...
-    def head_object(self, bucket: str, key: str) -> ObjectInfo: ...
+    def head_object(self, bucket: str, key: str) -> HeadObjectResult: ...
     def delete_object(self, bucket: str, key: str) -> None: ...
     def copy_object(
         self, src_bucket: str, src_key: str, dst_bucket: str, dst_key: str
@@ -93,6 +93,22 @@ class ObjectInfo:
     def __init__(
         self,
         key: str,
+        etag: str,
+        size: int,
+        last_modified: int,
+        storage_class: Optional[str],
+        restore_status: Optional[RestoreStatus],
+    ): ...
+
+class HeadObjectResult:
+    etag: str
+    size: int
+    last_modified: int
+    storage_class: Optional[str]
+    restore_status: Optional[RestoreStatus]
+
+    def __init__(
+        self,
         etag: str,
         size: int,
         last_modified: int,

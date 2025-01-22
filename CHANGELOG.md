@@ -1,10 +1,11 @@
 ## TBD
 
 ### New features
+* Consume mountpoint-s3-client changes with support for dots in bucket name for COPY operation introduced in CRT (#300)
 * Escape special characters in rename operation (#297)
 
 ### Breaking changes
-* No breaking changes.
+* Internal S3Client now returns `HeadObjectResult` instead of `ObjectInfo`. The only difference is that `HeadObjectResult` doesn't have `key` field. 
 
 ## v1.3.1 (January 10, 2025)
 

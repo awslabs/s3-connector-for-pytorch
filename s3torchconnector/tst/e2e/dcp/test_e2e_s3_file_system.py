@@ -210,21 +210,27 @@ def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
 @pytest.mark.parametrize("path", ["test_rename_src", "test_[+re.name]!@£$%^&*_(src)"])
 def test_successful_rename(checkpoint_directory, path):
     src_path = f"{checkpoint_directory.s3_uri}{path}"
+    _test_rename_internal(checkpoint_directory, src_path)
+    if not checkpoint_directory.is_express_storage():
+        # special case to test against buckets with dot in the name
+        # S3 Express doesn't support such buckets names
+        src_path.replace("cibucket", "cibucket.test")
+        _test_rename_internal(checkpoint_directory, src_path)
+
+
+def _test_rename_internal(checkpoint_directory, src_path):
     test_data = {
         "tensor1": torch.randn(10, 10),
         "tensor2": torch.randn(5, 5),
         "scalar": torch.tensor(3.14),
     }
     region = checkpoint_directory.region
-
     # Test S3StorageWriter
     s3_writer = S3StorageWriter(region, src_path, overwrite=False)
     dcp_save(test_data, s3_writer)
     s3_writer.fs.rename(f"{src_path}/.metadata", f"{src_path}/.metadata2")
-
     assert not s3_writer.fs.exists(f"{src_path}/.metadata")
     assert s3_writer.fs.exists(f"{src_path}/.metadata2")
-
     print("Test passed: Rename was successful.")
 
 

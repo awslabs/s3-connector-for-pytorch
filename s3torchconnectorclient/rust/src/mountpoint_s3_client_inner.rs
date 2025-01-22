@@ -7,14 +7,14 @@ use std::sync::Arc;
 
 use futures::executor::block_on;
 use futures::TryStreamExt;
-use mountpoint_s3_client::types::{CopyObjectParams, ListObjectsResult, PutObjectParams};
+use mountpoint_s3_client::types::{CopyObjectParams, GetObjectParams, HeadObjectParams, ListObjectsResult, PutObjectParams};
 use mountpoint_s3_client::ObjectClient;
 use pyo3::{PyResult, Python};
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
 use crate::put_object_stream::PutObjectStream;
-use crate::python_structs::py_object_info::PyObjectInfo;
+use crate::python_structs::py_head_object_result::PyHeadObjectResult;
 
 pub type MPGetObjectClosure =
     Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>;
@@ -24,7 +24,7 @@ pub type MPGetObjectClosure =
 /// us to specify the additional types (GetObjectResult, PutObjectResult, ClientError), which
 /// we don't want to do.
 pub(crate) trait MountpointS3ClientInner {
-    fn get_object(&self, py: Python, bucket: String, key: String) -> PyResult<GetObjectStream>;
+    fn get_object(&self, py: Python, bucket: String, key: String, params: GetObjectParams) -> PyResult<GetObjectStream>;
     fn list_objects(
         &self,
         bucket: &str,
@@ -40,7 +40,7 @@ pub(crate) trait MountpointS3ClientInner {
         key: String,
         params: PutObjectParams,
     ) -> PyResult<PutObjectStream>;
-    fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo>;
+    fn head_object(&self, py: Python, bucket: String, key: String, params: HeadObjectParams) -> PyResult<PyHeadObjectResult>;
     fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()>;
     fn copy_object(
         &self,
@@ -65,11 +65,11 @@ impl<T: ObjectClient> MountpointS3ClientInnerImpl<T> {
 impl<Client> MountpointS3ClientInner for MountpointS3ClientInnerImpl<Client>
 where
     Client: ObjectClient,
-    <Client as ObjectClient>::GetObjectRequest: Sync + Unpin + 'static,
+    <Client as ObjectClient>::GetObjectResponse: Sync + Unpin + 'static,
     <Client as ObjectClient>::PutObjectRequest: Sync + 'static,
 {
-    fn get_object(&self, py: Python, bucket: String, key: String) -> PyResult<GetObjectStream> {
-        let request = self.client.get_object(&bucket, &key, None, None);
+    fn get_object(&self, py: Python, bucket: String, key: String, params: GetObjectParams) -> PyResult<GetObjectStream> {
+        let request = self.client.get_object(&bucket, &key, &params);
 
         // TODO - Look at use of `block_on` and see if we can future this.
         let mut request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
@@ -110,12 +110,12 @@ where
         Ok(PutObjectStream::new(request, bucket, key))
     }
 
-    fn head_object(&self, py: Python, bucket: String, key: String) -> PyResult<PyObjectInfo> {
-        let request = self.client.head_object(&bucket, &key);
+    fn head_object(&self, py: Python, bucket: String, key: String, params: HeadObjectParams) -> PyResult<PyHeadObjectResult> {
+        let request = self.client.head_object(&bucket, &key, &params);
 
         // TODO - Look at use of `block_on` and see if we can future this.
         let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
-        Ok(PyObjectInfo::from_object_info(request.object))
+        Ok(PyHeadObjectResult::from_head_object_result(request))
     }
 
     fn delete_object(&self, py: Python, bucket: String, key: String) -> PyResult<()> {

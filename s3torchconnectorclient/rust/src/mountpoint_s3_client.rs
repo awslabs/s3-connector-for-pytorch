@@ -6,7 +6,7 @@
 use mountpoint_s3_client::config::{
     AddressingStyle, EndpointConfig, S3ClientAuthConfig, S3ClientConfig,
 };
-use mountpoint_s3_client::types::PutObjectParams;
+use mountpoint_s3_client::types::{GetObjectParams, HeadObjectParams, PutObjectParams};
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use mountpoint_s3_crt::common::allocator::Allocator;
@@ -21,9 +21,9 @@ use crate::get_object_stream::GetObjectStream;
 use crate::list_object_stream::ListObjectStream;
 use crate::mountpoint_s3_client_inner::{MountpointS3ClientInner, MountpointS3ClientInnerImpl};
 use crate::put_object_stream::PutObjectStream;
-use crate::python_structs::py_object_info::PyObjectInfo;
 
 use crate::build_info;
+use crate::python_structs::py_head_object_result::PyHeadObjectResult;
 
 #[pyclass(
     name = "MountpointS3Client",
@@ -117,7 +117,8 @@ impl MountpointS3Client {
         bucket: String,
         key: String,
     ) -> PyResult<GetObjectStream> {
-        slf.client.get_object(slf.py(), bucket, key)
+        let params = GetObjectParams::default();
+        slf.client.get_object(slf.py(), bucket, key, params)
     }
 
     #[pyo3(signature = (bucket, prefix=String::from(""), delimiter=String::from(""), max_keys=1000))]
@@ -147,9 +148,10 @@ impl MountpointS3Client {
     pub fn head_object(
         slf: PyRef<'_, Self>,
         bucket: String,
-        key: String,
-    ) -> PyResult<PyObjectInfo> {
-        slf.client.head_object(slf.py(), bucket, key)
+        key: String
+    ) -> PyResult<PyHeadObjectResult> {
+        let params = HeadObjectParams::default();
+        slf.client.head_object(slf.py(), bucket, key, params)
     }
 
     pub fn delete_object(slf: PyRef<'_, Self>, bucket: String, key: String) -> PyResult<()> {
@@ -199,7 +201,7 @@ impl MountpointS3Client {
     ) -> Self
     where
         Client: ObjectClient + Sync + Send + 'static,
-        <Client as ObjectClient>::GetObjectRequest: Unpin + Sync,
+        <Client as ObjectClient>::GetObjectResponse: Unpin + Sync,
         <Client as ObjectClient>::PutObjectRequest: Sync,
     {
         Self {
