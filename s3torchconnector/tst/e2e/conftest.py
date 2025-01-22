@@ -46,8 +46,8 @@ class BucketPrefixData(object):
     def s3_uri(self):
         return f"s3://{self.bucket}/{self.prefix}"
 
-    def is_standard_storage(self):
-        return self.storage_class != "EXPRESS_ONEZONE"
+    def is_express_storage(self):
+        return self.storage_class == "EXPRESS_ONEZONE"
 
     def __getitem__(self, index):
         return self.contents[index]

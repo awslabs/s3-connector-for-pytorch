@@ -211,7 +211,7 @@ def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
 def test_successful_rename(checkpoint_directory, path):
     src_path = f"{checkpoint_directory.s3_uri}{path}"
     _test_rename_internal(checkpoint_directory, src_path)
-    if checkpoint_directory.is_standard_storage():
+    if not checkpoint_directory.is_express_storage():
         # special case to test against buckets with dot in the name
         # S3 Express doesn't support such buckets names
         src_path.replace("cibucket", "cibucket.test")
