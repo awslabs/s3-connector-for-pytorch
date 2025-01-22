@@ -4,9 +4,13 @@
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
-from typing import Callable, Optional, Iterator
+from typing import Callable, Optional, Iterator, Union
 
-from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
+from s3torchconnectorclient._mountpoint_s3_client import (
+    ObjectInfo,
+    GetObjectStream,
+    HeadObjectResult,
+)
 
 
 class S3Reader(io.BufferedIOBase):
@@ -16,7 +20,7 @@ class S3Reader(io.BufferedIOBase):
         self,
         bucket: str,
         key: str,
-        get_object_info: Callable[[], ObjectInfo],
+        get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[], GetObjectStream],
     ):
         if not bucket:
