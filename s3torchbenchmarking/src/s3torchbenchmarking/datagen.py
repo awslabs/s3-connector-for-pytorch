@@ -212,7 +212,6 @@ def build_consumers(
             target=consumer,
             name=f"Uploader-{i}",
             kwargs={
-                "identifier": i,
                 "queue": queue,
                 "activity": lambda sample: Utils.upload_to_s3(
                     region=region,
