@@ -142,7 +142,7 @@ End-to-end examples for using distributed checkpoints with S3 Connector for PyTo
 can be found in the [examples/dcp](examples/dcp) directory.
 
 ```py
-from s3torchconnector import S3StorageWriter, S3StorageReader
+from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 
 import torchvision
 import torch.distributed.checkpoint as DCP
@@ -156,7 +156,7 @@ model = torchvision.models.resnet18()
 # Save distributed checkpoint to S3
 s3_storage_writer = S3StorageWriter(region=REGION, path=CHECKPOINT_URI)
 DCP.save(
-    state_dict=model.state_dict,
+    state_dict=model.state_dict(),
     storage_writer=s3_storage_writer,
 )
 
