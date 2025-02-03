@@ -1,4 +1,4 @@
-## TBD
+## v1.3.2 (February 3, 2025)
 
 ### New features
 * Consume mountpoint-s3-client changes with support for dots in bucket name for COPY operation introduced in CRT (#300)
