@@ -73,7 +73,10 @@ class S3LightningCheckpoint(CheckpointIO):
         s3reader = self._client.get_object(bucket, key)
         # FIXME - io.BufferedIOBase and typing.IO aren't compatible
         #  See https://github.com/python/typeshed/issues/6077
-        return torch.load(s3reader, map_location)  # type: ignore
+        # Explicitly provide weights_only to preserve deprecated default torch.load behavior
+        # PyTorch Lightning implemented the same approach:
+        # https://github.com/Lightning-AI/pytorch-lightning/blob/a944e7744e57a5a2c13f3c73b9735edf2f71e329/src/lightning/fabric/utilities/cloud_io.py#L36
+        return torch.load(s3reader, map_location, weights_only=False)  # type: ignore
 
     def remove_checkpoint(
         self,
