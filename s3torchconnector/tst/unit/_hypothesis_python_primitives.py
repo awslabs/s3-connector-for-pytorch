@@ -22,9 +22,7 @@ scalars = (
     | text(max_size=10)
 )
 
-hashable = deferred(
-    lambda: (scalars | tuples(hashable))
-)
+hashable = deferred(lambda: (scalars | tuples(hashable)))
 
 python_primitives = deferred(
     lambda: (
