@@ -20,7 +20,7 @@ def test_general_checkpointing(checkpoint_directory, tensor_dimensions):
     with checkpoint.writer(s3_uri) as writer:
         torch.save(tensor, writer)
 
-    loaded = torch.load(checkpoint.reader(s3_uri))
+    loaded = torch.load(checkpoint.reader(s3_uri), weights_only=True)
 
     assert torch.equal(tensor, loaded)
 
@@ -49,7 +49,7 @@ def test_nn_checkpointing(checkpoint_directory):
     # assert models are not equal before loading from checkpoint
     assert not nn_model.equals(loaded_nn_model)
 
-    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri))
+    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri), weights_only=True)
     loaded_nn_model.load_state_dict(loaded_checkpoint["model_state_dict"])
     assert nn_model.equals(loaded_nn_model)
 
