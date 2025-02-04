@@ -57,7 +57,7 @@ def test_save_compatibility_with_s3_checkpoint(checkpoint_directory):
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
     s3_lightning_checkpoint.save_checkpoint(tensor, s3_uri)
     checkpoint = S3Checkpoint(region=checkpoint_directory.region)
-    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri))
+    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri), weights_only=False)
     assert torch.equal(tensor, loaded_checkpoint)
 
 

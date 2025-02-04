@@ -23,4 +23,4 @@ def save_with_byteorder(data, fobj, byteorder: str, use_modern_pytorch_format: b
 
 def load_with_byteorder(fobj, byteorder):
     with _patch_byteorder(byteorder):
-        return torch.load(fobj)
+        return torch.load(fobj, weights_only=True)
