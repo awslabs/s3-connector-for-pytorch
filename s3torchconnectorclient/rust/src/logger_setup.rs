@@ -3,7 +3,7 @@
  * // SPDX-License-Identifier: BSD
  */
 use crate::exception::python_exception;
-use mountpoint_s3_crt::common::rust_log_adapter::RustLogAdapter;
+use mountpoint_s3_client::config::RustLogAdapter;
 use pyo3::PyResult;
 use std::env;
 use tracing_subscriber::filter::EnvFilter;

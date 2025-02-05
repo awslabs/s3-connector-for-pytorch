@@ -9,8 +9,7 @@ use mountpoint_s3_client::config::{
 use mountpoint_s3_client::types::{GetObjectParams, HeadObjectParams, PutObjectParams};
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
-use mountpoint_s3_crt::common::allocator::Allocator;
-use mountpoint_s3_crt::common::uri::Uri;
+use mountpoint_s3_client::config::{Allocator, Uri};
 use nix::unistd::Pid;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pymethods, Bound, PyRef, PyResult, ToPyObject};

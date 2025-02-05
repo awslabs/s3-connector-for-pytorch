@@ -1,8 +1,10 @@
-## TBD
+## ## v1.3.2 (February 5, 2025)
 
 ### New features
 * Consume mountpoint-s3-client changes with support for dots in bucket name for COPY operation introduced in CRT (#300)
 * Escape special characters in rename operation (#297)
+* Handle torch.load changes in PyTorch 2.6 (#306)
+* Remove dependency on mountpoint-s3-crt (#307)
 
 ### Breaking changes
 * Internal S3Client now returns `HeadObjectResult` instead of `ObjectInfo`. The only difference is that `HeadObjectResult` doesn't have `key` field. 
