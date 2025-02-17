@@ -35,7 +35,7 @@ jobs:
       - name: Generate NOTICE_DEFAULT file
         id: ort-action
         # https://github.com/oss-review-toolkit/ort-ci-github-action/issues/28
-        uses: oss-review-toolkit/ort-ci-github-action@81698a977ebcf51bb3d6ef5c6a04220cf60d3bde
+        uses: oss-review-toolkit/ort-ci-github-action@2cda885c8eefaf92bab9f3e979b5d5a42970dfa4
         with:
           ort-cli-report-args: -f PlainTextTemplate
           run: >
