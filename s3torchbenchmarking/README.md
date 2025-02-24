@@ -15,7 +15,8 @@ performance impact to the end-to-end training process.
     - Measure performance in data fetching and indexing
 2. **PyTorch's Distributed Checkpointing (DCP) benchmarks**
     - Assess our connector's performance versus PyTorch's default distributed checkpointing mechanism
-    - For detailed information, refer to the [dedicated DCP `README`](src/s3torchbenchmarking/dcp/README.md)
+    - For detailed information, refer to the one of dedicated [DCP using DDP `README`](src/s3torchbenchmarking/dcp_ddp/README.md)
+or [DCP using FSDP `README`](src/s3torchbenchmarking/dcp_fsdp/README.md)
 3. **PyTorch Lightning Checkpointing benchmarks**
     - Evaluate our connector within the PyTorch Lightning framework
     - Compare against PyTorch Lightning's default checkpointing implementation
@@ -112,7 +113,7 @@ vim ./conf/lightning_checkpointing.yaml # 1. edit config
 
 # PyTorch’s Distributed Checkpointing (DCP) benchmarks
 vim ./conf/dcp.yaml           # 1. edit config
-./utils/run_dcp_benchmarks.sh # 2. run scenario
+./utils/run_dcp_ddp_benchmarks.sh # 2. run scenario
 ```
 
 > [!NOTE]

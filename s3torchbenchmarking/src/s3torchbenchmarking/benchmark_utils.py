@@ -6,6 +6,7 @@ import threading
 import time
 from collections import defaultdict
 from collections import deque
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List, TypedDict
 
@@ -116,7 +117,8 @@ class ResourceMonitor:
 
 def build_random_suffix() -> str:
     """Build a random suffix for use in filepaths or S3 URIs."""
-    return "".join(random.choices(string.ascii_letters, k=7))
+    prefix = datetime.now().strftime("%Y-%m-%d-%H-%M")
+    return prefix + "".join(random.choices(string.ascii_letters, k=4))
 
 
 def build_checkpoint_path(path: str, suffix: str) -> str:
