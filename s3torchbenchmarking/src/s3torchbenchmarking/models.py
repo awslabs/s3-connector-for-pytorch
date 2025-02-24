@@ -26,11 +26,14 @@ from transformers import (  # type: ignore
     CLIPModel,
     AutoModelForSeq2SeqLM,
     AutoModelForSpeechSeq2Seq,
+    AutoModelForCausalLM,
 )
+import torch.distributed as dist
 
 from s3torchconnector import S3Reader, S3Checkpoint
 from s3torchconnector.lightning import S3LightningCheckpoint
 from .benchmark_utils import ExperimentResult, ResourceMonitor
+from .dcp_fsdp.llama_model_config import get_llama_model
 from .lightning_checkpointing.checkpoint_profiler import CheckpointProfiler
 from .lightning_checkpointing.sample_counter import SampleCounter
 
@@ -58,7 +61,15 @@ class BenchmarkModel:
     @cached_property
     def model(self) -> Module:
         """Instantiate the pretrained model."""
-        return self._loader(self._name, **self._kwargs)
+        model_load_start = perf_counter()
+        model = self._loader(self._name, **self._kwargs)
+        model_load_end = perf_counter()
+        rank = dist.get_rank() if dist.is_initialized() else 0
+        if rank == 0:
+            logger.info(
+                f"Rank:{rank}. Time taken to load model {self._name}: {model_load_end - model_load_start} seconds"
+            )
+        return model
 
     @cached_property
     def size(self) -> float:
@@ -97,6 +108,16 @@ _MODELS = {
     "T0_3B": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0_3B"),
     # ~45 GB model
     "T0pp": BenchmarkModel(AutoModelForSeq2SeqLM.from_pretrained, "bigscience/T0pp"),
+    # ~25.6 GB model
+    "L7b": BenchmarkModel(get_llama_model, "L7b"),
+    # ~
+    "L13b": BenchmarkModel(get_llama_model, "L13b"),
+    # ~125 GB model
+    "L30b": BenchmarkModel(get_llama_model, "L30b"),
+    # ~
+    "L65b": BenchmarkModel(get_llama_model, "L65b"),
+    # ~
+    "L70b": BenchmarkModel(get_llama_model, "L70b"),
 }
 
 
