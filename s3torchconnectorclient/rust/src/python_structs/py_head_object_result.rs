@@ -65,6 +65,7 @@ impl PyHeadObjectResult {
         }
     }
 
+    #[allow(clippy::useless_conversion)]
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [
