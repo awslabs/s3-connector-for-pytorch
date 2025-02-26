@@ -119,7 +119,7 @@ mod tests {
 
             py_run!(
                 py,
-                *locals.into_py_dict_bound(py),
+                *locals.into_py_dict(py).unwrap(),
                 r#"
                 data_to_write = b"Hello!"
                 

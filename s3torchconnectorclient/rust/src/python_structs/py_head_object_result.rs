@@ -77,7 +77,7 @@ impl PyHeadObjectResult {
             slf.restore_status.clone().into_pyobject(py)?.into_any(),
         ];
 
-        Ok(PyTuple::new(py, &state)?)
+        PyTuple::new(py, &state)
     }
 
     fn __repr__(&self) -> String {

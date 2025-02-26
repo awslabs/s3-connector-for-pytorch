@@ -95,7 +95,7 @@ mod tests {
 
             py_run!(
                 py,
-                *locals.into_py_dict_bound(py),
+                *locals.into_py_dict(py).unwrap(),
                 r#"
                 mock_client = MockMountpointS3Client("us-east-1", "mock-bucket")
                 client = mock_client.create_mocked_client()
