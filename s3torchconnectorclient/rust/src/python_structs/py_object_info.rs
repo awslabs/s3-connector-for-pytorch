@@ -6,8 +6,8 @@
 use mountpoint_s3_client::types::ObjectInfo;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pymethods};
-use pyo3::{Bound, ToPyObject};
-use pyo3::{IntoPy, PyResult};
+use pyo3::{Bound};
+use pyo3::{IntoPyObject, PyResult};
 
 use crate::python_structs::py_restore_status::PyRestoreStatus;
 use crate::PyRef;
@@ -74,14 +74,14 @@ impl PyObjectInfo {
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [
-            slf.key.to_object(py),
-            slf.etag.to_object(py),
-            slf.size.to_object(py),
-            slf.last_modified.to_object(py),
-            slf.storage_class.to_object(py),
-            slf.restore_status.clone().into_py(py),
+            slf.key.clone().into_pyobject(py)?.into_any(),
+            slf.etag.clone().into_pyobject(py)?.into_any(),
+            slf.size.into_pyobject(py)?.into_any(),
+            slf.last_modified.into_pyobject(py)?.into_any(),
+            slf.storage_class.clone().into_pyobject(py)?.into_any(),
+            slf.restore_status.clone().into_pyobject(py)?.into_any(),
         ];
-        Ok(PyTuple::new_bound(py, state))
+        Ok(PyTuple::new(py, state)?)
     }
 
     fn __repr__(&self) -> String {

@@ -16,7 +16,7 @@ path = "rust/src/lib.rs"
 built = "0.7"
 
 [dependencies]
-pyo3 = "0.22.4"
+pyo3 = "0.23.5"
 futures = "0.3.28"
 mountpoint-s3-client = { version = "0.13.0", features = ["mock"] }
 mountpoint-s3-crt-sys = { version = "0.12.1" }
@@ -30,4 +30,3 @@ tracing-appender = "0.2.3"
 [features]
 default = ["extension-module"]
 extension-module = ["pyo3/extension-module"]
-gil-refs = ["pyo3/gil-refs"]

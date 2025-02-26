@@ -40,7 +40,7 @@ fn make_lib(py: Python, mountpoint_s3_client: &Bound<'_, PyModule>) -> PyResult<
     mountpoint_s3_client.add_class::<PyObjectInfo>()?;
     mountpoint_s3_client.add_class::<PyHeadObjectResult>()?;
     mountpoint_s3_client.add_class::<PyRestoreStatus>()?;
-    mountpoint_s3_client.add("S3Exception", py.get_type_bound::<S3Exception>())?;
+    mountpoint_s3_client.add("S3Exception", py.get_type::<S3Exception>())?;
     mountpoint_s3_client.add("__version__", build_info::FULL_VERSION)?;
     mountpoint_s3_client.add_function(wrap_pyfunction!(
         join_all_managed_threads,
