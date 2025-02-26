@@ -111,6 +111,7 @@ impl MountpointS3Client {
         ))
     }
 
+    #[allow(clippy::useless_conversion)]
     pub fn get_object(
         slf: PyRef<'_, Self>,
         bucket: String,
@@ -131,6 +132,7 @@ impl MountpointS3Client {
         ListObjectStream::new(self.client.clone(), bucket, prefix, delimiter, max_keys)
     }
 
+    #[allow(clippy::useless_conversion)]
     #[pyo3(signature = (bucket, key, storage_class=None))]
     pub fn put_object(
         slf: PyRef<'_, Self>,
@@ -144,6 +146,7 @@ impl MountpointS3Client {
         slf.client.put_object(slf.py(), bucket, key, params)
     }
 
+    #[allow(clippy::useless_conversion)]
     pub fn head_object(
         slf: PyRef<'_, Self>,
         bucket: String,
@@ -153,10 +156,12 @@ impl MountpointS3Client {
         slf.client.head_object(slf.py(), bucket, key, params)
     }
 
+    #[allow(clippy::useless_conversion)]
     pub fn delete_object(slf: PyRef<'_, Self>, bucket: String, key: String) -> PyResult<()> {
         slf.client.delete_object(slf.py(), bucket, key)
     }
 
+    #[allow(clippy::useless_conversion)]
     pub fn copy_object(
         slf: PyRef<'_, Self>,
         src_bucket: String,
@@ -168,6 +173,7 @@ impl MountpointS3Client {
             .copy_object(slf.py(), src_bucket, src_key, dst_bucket, dst_key)
     }
 
+    #[allow(clippy::useless_conversion)]
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [
