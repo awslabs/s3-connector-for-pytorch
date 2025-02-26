@@ -81,7 +81,7 @@ impl PyObjectInfo {
             slf.storage_class.clone().into_pyobject(py)?.into_any(),
             slf.restore_status.clone().into_pyobject(py)?.into_any(),
         ];
-        Ok(PyTuple::new(py, state)?)
+        PyTuple::new(py, state)
     }
 
     fn __repr__(&self) -> String {

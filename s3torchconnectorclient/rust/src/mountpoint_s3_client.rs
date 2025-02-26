@@ -226,7 +226,7 @@ impl MountpointS3Client {
             slf.endpoint.clone().into_pyobject(py)?.into_any(),
             slf.force_path_style.into_py_any(py)?.bind(py).to_owned(),
         ];
-        Ok(PyTuple::new(py, state)?)
+        PyTuple::new(py, state)
     }
 }
 
