@@ -12,7 +12,7 @@ use mountpoint_s3_client::{ObjectClient, S3CrtClient};
 use mountpoint_s3_client::config::{Allocator, Uri};
 use nix::unistd::Pid;
 use pyo3::types::PyTuple;
-use pyo3::{pyclass, pymethods, Bound, PyRef, PyResult, ToPyObject};
+use pyo3::{pyclass, pymethods, Bound, PyRef, PyResult, IntoPyObject, IntoPyObjectExt};
 use std::sync::Arc;
 
 use crate::exception::python_exception;
@@ -173,20 +173,19 @@ impl MountpointS3Client {
             .copy_object(slf.py(), src_bucket, src_key, dst_bucket, dst_key)
     }
 
-    #[allow(clippy::useless_conversion)]
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
         let state = [
-            slf.region.to_object(py),
-            slf.user_agent_prefix.to_object(py),
-            slf.throughput_target_gbps.to_object(py),
-            slf.part_size.to_object(py),
-            slf.profile.to_object(py),
-            slf.unsigned.to_object(py),
-            slf.endpoint.to_object(py),
-            slf.force_path_style.to_object(py),
+            slf.region.clone().into_pyobject(py)?.into_any(),
+            slf.user_agent_prefix.clone().into_pyobject(py)?.into_any(),
+            slf.throughput_target_gbps.into_pyobject(py)?.into_any(),
+            slf.part_size.into_pyobject(py)?.into_any(),
+            slf.profile.clone().into_pyobject(py)?.into_any(),
+            slf.unsigned.into_py_any(py)?.bind(py).to_owned(),
+            slf.endpoint.clone().into_pyobject(py)?.into_any(),
+            slf.force_path_style.into_py_any(py)?.bind(py).to_owned(),
         ];
-        Ok(PyTuple::new_bound(py, state))
+        Ok(PyTuple::new(py, state)?)
     }
 }
 

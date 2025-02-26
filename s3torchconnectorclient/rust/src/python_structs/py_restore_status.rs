@@ -5,7 +5,7 @@
 
 use mountpoint_s3_client::types::RestoreStatus;
 use pyo3::types::PyTuple;
-use pyo3::ToPyObject;
+use pyo3::{IntoPyObject, IntoPyObjectExt};
 use pyo3::{pyclass, pymethods};
 use pyo3::{Bound, PyResult};
 
@@ -52,8 +52,11 @@ impl PyRestoreStatus {
     #[allow(clippy::useless_conversion)]
     pub fn __getnewargs__(slf: PyRef<'_, Self>) -> PyResult<Bound<'_, PyTuple>> {
         let py = slf.py();
-        let state = [slf.in_progress.to_object(py), slf.expiry.to_object(py)];
-        Ok(PyTuple::new_bound(py, state))
+        let state = [
+            slf.in_progress.into_py_any(py)?.bind(py).to_owned(),
+            slf.expiry.into_pyobject(py)?.into_any()
+        ];
+        Ok(PyTuple::new(py, state)?)
     }
 
     fn __repr__(&self) -> String {
