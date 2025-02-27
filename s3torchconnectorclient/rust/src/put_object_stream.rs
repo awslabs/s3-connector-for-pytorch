@@ -14,7 +14,7 @@ use crate::exception::{python_exception, S3Exception};
     module = "s3torchconnectorclient._mountpoint_s3_client"
 )]
 pub struct PutObjectStream {
-    request: Box<dyn PutObjectRequestWrapper + Send>,
+    request: Box<dyn PutObjectRequestWrapper + Send + Sync>,
     #[pyo3(get)]
     bucket: String,
     #[pyo3(get)]
@@ -22,7 +22,7 @@ pub struct PutObjectStream {
 }
 
 impl PutObjectStream {
-    pub(crate) fn new<T: PutObjectRequest + Sync + 'static>(
+    pub(crate) fn new<T: PutObjectRequest + Sync + Sync + 'static>(
         request: T,
         bucket: String,
         key: String,
@@ -66,7 +66,7 @@ impl<T: PutObjectRequest> PutObjectRequestWrapperImpl<T> {
     }
 }
 
-impl<T: PutObjectRequest + Sync> PutObjectRequestWrapper for PutObjectRequestWrapperImpl<T> {
+impl<T: PutObjectRequest + Send + Sync> PutObjectRequestWrapper for PutObjectRequestWrapperImpl<T> {
     fn write(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
         if let Some(request) = self.request.as_mut() {
             py.allow_threads(|| block_on(request.write(data)).map_err(python_exception))
@@ -107,17 +107,17 @@ mod tests {
             let locals = [
                 (
                     "MountpointS3Client",
-                    py.get_type_bound::<MountpointS3Client>(),
+                    py.get_type::<MountpointS3Client>(),
                 ),
                 (
                     "MockMountpointS3Client",
-                    py.get_type_bound::<PyMockClient>(),
+                    py.get_type::<PyMockClient>(),
                 ),
             ];
 
             py_run!(
                 py,
-                *locals.into_py_dict_bound(py),
+                *locals.into_py_dict(py).unwrap(),
                 r#"
                 data_to_write = b"Hello!"
                 
