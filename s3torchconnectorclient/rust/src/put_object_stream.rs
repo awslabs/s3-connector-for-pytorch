@@ -38,13 +38,11 @@ impl PutObjectStream {
 
 #[pymethods]
 impl PutObjectStream {
-    #[allow(clippy::useless_conversion)]
     pub fn write(mut slf: PyRefMut<'_, Self>, data: &[u8]) -> PyResult<()> {
         let py = slf.py();
         slf.request.write(py, data)
     }
 
-    #[allow(clippy::useless_conversion)]
     pub fn close(mut slf: PyRefMut<'_, Self>) -> PyResult<()> {
         let py = slf.py();
         slf.request.complete(py)
