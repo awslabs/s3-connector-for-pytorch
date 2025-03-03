@@ -1,4 +1,12 @@
-## ## v1.3.2 (February 5, 2025)
+## TBD
+
+### New features
+* Introducing support of FSDP in DCP benchmark (#313)
+
+### Breaking changes
+* No breaking changes. 
+
+## v1.3.2 (February 5, 2025)
 
 ### New features
 * Consume mountpoint-s3-client changes with support for dots in bucket name for COPY operation introduced in CRT (#300)
