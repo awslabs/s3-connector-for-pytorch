@@ -2,29 +2,19 @@
 #  // SPDX-License-Identifier: BSD
 
 import logging
-import os
 from multiprocessing.queues import Queue
-from pathlib import Path
 from time import perf_counter
-from typing import List, Tuple
+from typing import Tuple
 
 import hydra
-import pandas as pd
 import torch
 import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
-from torch import multiprocessing as mp
-from torch.distributed.checkpoint import FileSystemWriter
-from torch.nn import Module
 from torch.nn.parallel import DistributedDataParallel
 
-from s3torchbenchmarking.benchmark_utils import (
-    build_random_suffix,
-    build_checkpoint_uri,
-)
-from s3torchbenchmarking.models import get_benchmark_model
-from s3torchconnector.dcp import S3StorageWriter
+from s3torchbenchmarking.dcp_common import setup, get_writer, run_benchmark_common
+from s3torchbenchmarking.models import get_benchmark_model, BenchmarkModel
 
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
@@ -36,78 +26,24 @@ def run_benchmark(cfg: DictConfig) -> dict:
     """DCP benchmarks entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
 
-    storage_writer = get_writer(cfg)
-
-    manager = mp.Manager()
-    corrected_save_timestamps: Queue[Timestamps] = manager.Queue()
-    processing_timestamps: List[Timestamps] = []
-
-    for epoch in range(cfg.epochs):
-        logger.info("Executing epoch #%i / %i...", epoch + 1, cfg.epochs)
-        begin_mp = perf_counter()
-        mp.spawn(
-            run,
-            (cfg, benchmark_model.model, storage_writer, corrected_save_timestamps),
-            nprocs=cfg.world_size,
-            join=True,
-        )
-        end_mp = perf_counter()
-        processing_timestamps.append((begin_mp, end_mp))
-
-    # Dump the multiprocessing Queue's content into a list.
-    collector: List[Timestamps] = []
-    while not corrected_save_timestamps.empty():
-        collector.append(corrected_save_timestamps.get())
-
-    # Collect all data in Pandas DataFrame, and dump them (through `describe()`) in a Python dict.
-    cst = pd.DataFrame(collector, columns=["begin", "end"])
-    pt = pd.DataFrame(processing_timestamps, columns=["begin", "end"])
-
-    corrected_save_durations_s = cst["end"] - cst["begin"]
-    processing_durations_s = pt["end"] - pt["begin"]
-    throughput_mibs = benchmark_model.size / corrected_save_durations_s
-
-    metrics = {
-        "throughput_mibs": throughput_mibs.dropna().to_list(),
-        "corrected_save_durations_s": corrected_save_durations_s.dropna().to_list(),
-        "processing_durations_s": processing_durations_s.dropna().to_list(),
-    }
-    return {"metrics": metrics}
+    return run_benchmark_common(cfg, run_ddp, (cfg, benchmark_model))
 
 
-def get_writer(cfg: DictConfig) -> FileSystemWriter:
-    """Instantiate a checkpoint writer based on the input config."""
-    suffix = build_random_suffix()
-
-    if cfg.checkpoint.storage == "disk":
-        local_path = Path(cfg.path) / suffix
-        logger.info("Saving checkpoint to %s (disk)...", local_path)
-        return dcp.FileSystemWriter(local_path, thread_count=cfg.thread_count)
-    elif cfg.checkpoint.storage == "s3":
-        uri = build_checkpoint_uri(cfg.s3.uri, suffix)
-        logger.info("Saving checkpoint to %s (S3)...", uri)
-        return S3StorageWriter(cfg.s3.region, uri, thread_count=cfg.thread_count)
-    raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
-
-
-def setup(backend: str, world_size: int, rank: int) -> None:
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
-    dist.init_process_group(backend, world_size=world_size, rank=rank)
-
-
-# FIXME: configure logging in subprocess accordingly
-def run(
+def run_ddp(
     rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
     cfg: DictConfig,
-    model: Module,
-    storage_writer: FileSystemWriter,
+    proxy_model: BenchmarkModel,
+    suffix: str,
     save_timestamps: Queue,
 ) -> None:
     """Execute the actual code for checkpoint saving.
 
     This function is meant to be executed in subprocesses."""
     begin_process = perf_counter()
+
+    storage_writer = get_writer(cfg, suffix)
+    model_size = proxy_model.size
+    model = proxy_model.model
 
     setup(cfg.backend, world_size=cfg.world_size, rank=rank)
     if cfg.backend == "nccl":
@@ -128,7 +64,9 @@ def run(
     end_save = perf_counter()
 
     # Record the save times excluding the influence of the process setup and model loading to device.
-    save_timestamps.put((begin_process, end_save - (begin_save - begin_process)))
+    save_timestamps.put(
+        (begin_process, end_save - (begin_save - begin_process), model_size)
+    )
 
     dist.destroy_process_group()
 
