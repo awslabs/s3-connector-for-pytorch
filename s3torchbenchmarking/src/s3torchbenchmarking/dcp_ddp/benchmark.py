@@ -13,7 +13,7 @@ import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 from torch.nn.parallel import DistributedDataParallel
 
-from s3torchbenchmarking.dcp_common import setup, get_writer, run_benchmark_common
+from s3torchbenchmarking.dcp_common import setup, get_writer, benchmark_common_runner
 from s3torchbenchmarking.models import get_benchmark_model, BenchmarkModel
 
 Timestamps = Tuple[float, float]
@@ -26,7 +26,7 @@ def run_benchmark(cfg: DictConfig) -> dict:
     """DCP benchmarks entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
 
-    return run_benchmark_common(cfg, run_ddp, (cfg, benchmark_model))
+    return benchmark_common_runner(cfg, run_ddp, (cfg, benchmark_model))
 
 
 def run_ddp(

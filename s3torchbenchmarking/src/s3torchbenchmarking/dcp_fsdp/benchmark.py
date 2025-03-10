@@ -20,7 +20,7 @@ from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 
-from s3torchbenchmarking.dcp_common import setup, run_benchmark_common, get_writer
+from s3torchbenchmarking.dcp_common import setup, benchmark_common_runner, get_writer
 from s3torchbenchmarking.models import get_benchmark_model
 
 Timestamps = Tuple[float, float]
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
     """DCP benchmarks entry point."""
-    return run_benchmark_common(cfg, run_fsdp, (cfg,))
+    return benchmark_common_runner(cfg, run_fsdp, (cfg,))
 
 
 def run_fsdp(

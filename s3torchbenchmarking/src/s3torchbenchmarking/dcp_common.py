@@ -49,7 +49,7 @@ def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
     raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
 
 
-def run_benchmark_common(
+def benchmark_common_runner(
     cfg: DictConfig,
     run_fn,
     run_args: tuple,

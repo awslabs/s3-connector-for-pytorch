@@ -116,9 +116,10 @@ class ResourceMonitor:
 
 
 def build_random_suffix() -> str:
-    """Build a random suffix for use in filepaths or S3 URIs."""
-    prefix = datetime.now().strftime("%Y-%m-%d-%H-%M")
-    return prefix + "".join(random.choices(string.ascii_letters, k=4))
+    """Generates a unique suffix combining timestamp with random characters for use in filepaths or S3 URIs."""
+    timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
+    random_suffix = "".join(random.choices(string.ascii_letters, k=4))
+    return f"{timestamp}-{random_suffix}"
 
 
 def build_checkpoint_path(path: str, suffix: str) -> str:
