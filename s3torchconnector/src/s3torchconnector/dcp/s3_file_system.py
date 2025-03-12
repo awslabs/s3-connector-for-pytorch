@@ -28,6 +28,7 @@ import torch
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from .. import S3ClientConfig
+from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
@@ -227,12 +228,25 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
+from torch.distributed.checkpoint.planner import SavePlan
+import dataclasses
+from dataclasses import dataclass
+
+
+@dataclass
+class StorageMetadata:
+    """Metadata for S3 storage prefix."""
+
+    prefix: str
+
+
 class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
         region: str,
         path: str,
         s3client_config: Optional[S3ClientConfig] = None,
+        prefix_strategy: S3PrefixStrategyBase = None,
         **kwargs,
     ) -> None:
         """
@@ -241,6 +255,7 @@ class S3StorageWriter(FileSystemWriter):
         Args:
             region (str): The AWS region for S3.
             path (str): The S3 URI to write checkpoints to.
+            prefix_strategy: Strategy for generating S3 prefixes.
             kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
@@ -250,6 +265,24 @@ class S3StorageWriter(FileSystemWriter):
         )
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
+        self.prefix_strategy = prefix_strategy or DefaultPrefixStrategy()
+
+    def prepare_global_plan(self, plans: list[SavePlan]) -> list[SavePlan]:
+        """
+        Prepare save plans with S3-specific storage metadata.
+
+        Args:
+            plans: List of save plans to be processed.
+
+        Returns:
+            Modified save plans with S3 storage metadata.
+        """
+        return [
+            dataclasses.replace(
+                plan, storage_data=StorageMetadata(self.prefix_strategy(idx))
+            )
+            for idx, plan in enumerate(plans)
+        ]
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
