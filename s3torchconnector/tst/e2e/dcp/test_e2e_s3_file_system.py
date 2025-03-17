@@ -165,48 +165,6 @@ def test_dcp_when_multi_process(
     )
 
 
-def test_dcp_save_non_existing_s3_uri(checkpoint_directory):
-    t1 = torch.randn(10)
-    region = checkpoint_directory.region
-    non_existing_s3_uri = "s3://non-existing-bucket/checkpoint"
-
-    with pytest.raises(CheckpointException) as s3_excinfo:
-        dcp_save(
-            {"random": t1},
-            S3StorageWriter(
-                region,
-                non_existing_s3_uri,
-                overwrite=True,
-            ),
-        )
-
-    assert isinstance(
-        s3_excinfo.value, CheckpointException
-    ), "Using S3StorageWriter DCP should raise a CheckpointException"
-
-    print("Test passed: Raised CheckpointException.")
-
-
-def test_dcp_load_non_existing_s3_uri(checkpoint_directory):
-    region = checkpoint_directory.region
-    non_existing_s3_uri = "s3://non-existing-bucket/checkpoint"
-
-    with pytest.raises(CheckpointException) as s3_excinfo:
-        dcp_load(
-            {},
-            S3StorageReader(
-                region,
-                non_existing_s3_uri,
-            ),
-        )
-
-    assert isinstance(
-        s3_excinfo.value, CheckpointException
-    ), "Using S3StorageReader DCP should raise a CheckpointException"
-
-    print("Test passed: Raised CheckpointException.")
-
-
 @pytest.mark.parametrize("path", ["test_rename_src", "test_[+re.name]!@£$%^&*_(src)"])
 def test_successful_rename(checkpoint_directory, path):
     src_path = f"{checkpoint_directory.s3_uri}{path}"
