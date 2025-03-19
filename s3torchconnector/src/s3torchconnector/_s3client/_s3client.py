@@ -16,13 +16,14 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
     ListObjectStream,
     GetObjectStream,
+    join_all_managed_threads
 )
 
 from s3torchconnector._user_agent import UserAgent
 
 """
 _s3client.py
-    Internal client wrapper class on top of S3 client implementation 
+    Internal client wrapper class on top of S3 client implementation
     with multi-process support.
 """
 
@@ -56,6 +57,7 @@ class S3Client:
 
     @property
     def _client(self) -> MountpointS3Client:
+        global CRT_S3_CLIENT
         # This is a fast check to avoid acquiring the lock unnecessarily.
         if self._client_pid is None or self._client_pid != os.getpid():
             # Acquire the lock to ensure thread-safety when creating the client.
@@ -63,10 +65,29 @@ class S3Client:
                 # This double-check ensures that the client is only created once.
                 if self._client_pid is None or self._client_pid != os.getpid():
                     # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
-                    self._real_client = self._client_builder()
+                    CRT_S3_CLIENT = self._client_builder()
                     self._client_pid = os.getpid()
-        assert self._real_client is not None
-        return self._real_client
+        import gc
+
+        def before_fork():
+            global CRT_S3_CLIENT
+            try:
+                if CRT_S3_CLIENT is not None:
+                    # The client is not safe to use after fork, so we need to release it.
+                    # make sure the client is shutdown properly before fork
+                    # also wait for every thread to be joined, incase of some thread is in the middle of cleanup.
+                    CRT_S3_CLIENT = None
+                    gc.collect()
+                    print("before join")
+                    # 0.5 secs
+                    join_all_managed_threads(500_000_000)
+
+            except Exception as e:
+                print(f"Join failed and error is {e}")
+                exit(-1)
+        os.register_at_fork(before=before_fork)
+        assert CRT_S3_CLIENT is not None
+        return CRT_S3_CLIENT
 
     @property
     def region(self) -> str:

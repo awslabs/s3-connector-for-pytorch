@@ -6,12 +6,15 @@
 use mountpoint_s3_client::config::{
     AddressingStyle, EndpointConfig, S3ClientAuthConfig, S3ClientConfig,
 };
+use mountpoint_s3_client::config::{Allocator, Uri};
 use mountpoint_s3_client::types::{GetObjectParams, HeadObjectParams, PutObjectParams};
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
-use mountpoint_s3_client::config::{Allocator, Uri};
+use mountpoint_s3_crt_sys::{aws_thread_join_all_managed, aws_thread_set_managed_join_timeout_ns};
 use nix::unistd::Pid;
+use pyo3::pyfunction;
 use pyo3::types::PyTuple;
+use pyo3::PyErr;
 use pyo3::{pyclass, pymethods, Bound, PyRef, PyResult, ToPyObject};
 use std::sync::Arc;
 
@@ -50,6 +53,29 @@ pub struct MountpointS3Client {
     endpoint: Option<String>,
 
     owner_pid: Pid,
+}
+
+/// Blocking call that waits for all managed threads to complete their join call.
+///
+/// This can only be called from the main thread or a non-managed thread.
+/// By default the wait is unbounded, but that default can be overridden via
+/// set_managed_join_timeout_ns()
+///
+/// Returns:
+///     Result: Ok on success, Err with error message on failure
+#[pyfunction]
+pub fn join_all_managed_threads(timeout_ns: u64) -> PyResult<()> {
+    unsafe {
+        aws_thread_set_managed_join_timeout_ns(timeout_ns);
+        let result = aws_thread_join_all_managed();
+        if result != 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to join managed threads. Error code: {}",
+                result
+            )));
+        }
+    }
+    Ok(())
 }
 
 #[pymethods]
@@ -147,7 +173,7 @@ impl MountpointS3Client {
     pub fn head_object(
         slf: PyRef<'_, Self>,
         bucket: String,
-        key: String
+        key: String,
     ) -> PyResult<PyHeadObjectResult> {
         let params = HeadObjectParams::default();
         slf.client.head_object(slf.py(), bucket, key, params)
@@ -230,7 +256,9 @@ fn auth_config(profile: Option<&str>, unsigned: bool) -> S3ClientAuthConfig {
 
 impl Drop for MountpointS3Client {
     fn drop(&mut self) {
+        println!("DROP HAPPENS");
         if nix::unistd::getpid() != self.owner_pid {
+            println!("HACK HAPPENS");
             // We don't want to try to deallocate a client on a different process after a fork, as
             // the threads the destructor is expecting to exist actually don't (they didn't survive
             // the fork). So we intentionally leak the inner client by bumping its reference count
