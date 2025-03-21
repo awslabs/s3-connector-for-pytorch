@@ -85,7 +85,15 @@ class S3Client:
             except Exception as e:
                 print(f"Join failed and error is {e}")
                 exit(-1)
-        os.register_at_fork(before=before_fork)
+
+        def after_in_parent():
+            global CRT_S3_CLIENT
+            assert CRT_S3_CLIENT is None
+            # After fork, we need to re-create the client in the parent process.
+            CRT_S3_CLIENT = self._client_builder()
+
+        os.register_at_fork(before=before_fork,
+                            after_in_parent=after_in_parent)
         assert CRT_S3_CLIENT is not None
         return CRT_S3_CLIENT
 
