@@ -54,19 +54,15 @@ class S3Client:
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
+        global CRT_S3_CLIENT
+        CRT_S3_CLIENT = None
 
     @property
     def _client(self) -> MountpointS3Client:
         global CRT_S3_CLIENT
-        # This is a fast check to avoid acquiring the lock unnecessarily.
-        if self._client_pid is None or self._client_pid != os.getpid():
-            # Acquire the lock to ensure thread-safety when creating the client.
-            with _client_lock:
-                # This double-check ensures that the client is only created once.
-                if self._client_pid is None or self._client_pid != os.getpid():
-                    # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
-                    CRT_S3_CLIENT = self._client_builder()
-                    self._client_pid = os.getpid()
+        if CRT_S3_CLIENT is None:
+            CRT_S3_CLIENT = self._client_builder()
+            self._client_pid = os.getpid()
         import gc
 
         def before_fork():
@@ -86,14 +82,7 @@ class S3Client:
                 print(f"Join failed and error is {e}")
                 exit(-1)
 
-        def after_in_parent():
-            global CRT_S3_CLIENT
-            assert CRT_S3_CLIENT is None
-            # After fork, we need to re-create the client in the parent process.
-            CRT_S3_CLIENT = self._client_builder()
-
-        os.register_at_fork(before=before_fork,
-                            after_in_parent=after_in_parent)
+        os.register_at_fork(before=before_fork)
         assert CRT_S3_CLIENT is not None
         return CRT_S3_CLIENT
 
