@@ -10,12 +10,13 @@ use mountpoint_s3_client::config::{Allocator, Uri};
 use mountpoint_s3_client::types::{GetObjectParams, HeadObjectParams, PutObjectParams};
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
-use mountpoint_s3_crt_sys::{aws_thread_join_all_managed, aws_thread_set_managed_join_timeout_ns};
+use mountpoint_s3_crt_sys::{
+    aws_last_error, aws_thread_join_all_managed, aws_thread_set_managed_join_timeout_ns,
+};
 use nix::unistd::Pid;
-use pyo3::pyfunction;
+use pyo3::marker::Python;
 use pyo3::types::PyTuple;
-use pyo3::PyErr;
-use pyo3::{pyclass, pymethods, Bound, PyRef, PyResult, ToPyObject};
+use pyo3::{pyclass, pyfunction, pymethods, Bound, PyErr, PyRef, PyResult, ToPyObject};
 use std::sync::Arc;
 
 use crate::exception::python_exception;
@@ -55,23 +56,42 @@ pub struct MountpointS3Client {
     owner_pid: Pid,
 }
 
-/// Blocking call that waits for all managed threads to complete their join call.
+/// Waits for all managed CRT threads to complete, with a specified timeout.
 ///
-/// This can only be called from the main thread or a non-managed thread.
-/// By default the wait is unbounded, but that default can be overridden via
-/// set_managed_join_timeout_ns()
+/// This function blocks the calling thread until all CRT-managed threads have
+/// completed execution or until the timeout expires.
+///
+/// Args:
+///     timeout_secs (float): Maximum time to wait for threads to join, in seconds.
+///                          Use 0.0 for no timeout.
 ///
 /// Returns:
-///     Result: Ok on success, Err with error message on failure
+///     None: On successful completion when all threads have joined.
+///
+/// Raises:
+///     RuntimeError: If threads failed to join within the timeout period.
+///
+/// Note:
+///     This function must only be called from the main thread or a non-managed thread.
+///     Calling it from a managed thread may result in deadlock or other undefined behavior.
+///
+/// Example:
+///     >>> join_all_managed_threads(0.5)  # Wait up to 0.5 seconds for threads to join
 #[pyfunction]
-pub fn join_all_managed_threads(timeout_ns: u64) -> PyResult<()> {
+pub fn join_all_managed_threads(py: Python<'_>, timeout_secs: f64) -> PyResult<()> {
     unsafe {
+        // Convert seconds to nanoseconds (1 second = 1_000_000_000 nanoseconds)
+        let timeout_ns = (timeout_secs * 1_000_000_000.0) as u64;
+
         aws_thread_set_managed_join_timeout_ns(timeout_ns);
-        let result = aws_thread_join_all_managed();
+
+        // Release the GIL while waiting for other threads to join, which may acquire GIL.
+        let result = py.allow_threads(|| aws_thread_join_all_managed());
+
         if result != 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "Failed to join managed threads. Error code: {}",
-                result
+                "Failed to join managed threads in {} secs",
+                timeout_secs
             )));
         }
     }
@@ -251,20 +271,5 @@ fn auth_config(profile: Option<&str>, unsigned: bool) -> S3ClientAuthConfig {
         S3ClientAuthConfig::Profile(profile_name.to_string())
     } else {
         S3ClientAuthConfig::Default
-    }
-}
-
-impl Drop for MountpointS3Client {
-    fn drop(&mut self) {
-        println!("DROP HAPPENS");
-        if nix::unistd::getpid() != self.owner_pid {
-            println!("HACK HAPPENS");
-            // We don't want to try to deallocate a client on a different process after a fork, as
-            // the threads the destructor is expecting to exist actually don't (they didn't survive
-            // the fork). So we intentionally leak the inner client by bumping its reference count
-            // and then forgetting it, so the reference count can never reach zero. It's a memory
-            // leak, but not a big one in practice given how long we expect clients to live.
-            std::mem::forget(Arc::clone(&self.client));
-        }
     }
 }

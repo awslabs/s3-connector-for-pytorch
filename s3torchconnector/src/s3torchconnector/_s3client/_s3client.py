@@ -3,6 +3,7 @@
 
 import logging
 import os
+import gc
 import threading
 from functools import partial
 from typing import Optional, Any
@@ -38,6 +39,31 @@ def _identity(obj: Any) -> Any:
 _client_lock = threading.Lock()
 
 
+def _before_fork_handler():
+    """Handler that cleans up CRT resources before fork operations."""
+    global CRT_S3_CLIENT
+    try:
+        if CRT_S3_CLIENT is not None:
+            # Release the client before fork as it's not fork-safe
+            CRT_S3_CLIENT = None
+            gc.collect()
+            # Wait for threads to complete joining (0.5 sec timeout)
+            join_all_managed_threads(0.5)
+    except Exception as e:
+        print(
+            "Warning: Failed to properly clean up native background threads before fork. "
+            f"Error: {e}\n"
+            "Your subprocess may crash or hang. To prevent this:\n"
+            "1. Ensure no active S3 client usage during fork operations\n"
+            "2. Use multiprocessing with 'spawn' or 'forkserver' start method instead"
+        )
+
+
+# register the handler to release the S3 client and wait for background threads to join before fork happens
+# As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
+os.register_at_fork(before=_before_fork_handler)
+
+
 class S3Client:
     def __init__(
         self,
@@ -49,8 +75,6 @@ class S3Client:
     ):
         self._region = region
         self._endpoint = endpoint
-        self._real_client: Optional[MountpointS3Client] = None
-        self._client_pid: Optional[int] = None
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
@@ -61,28 +85,10 @@ class S3Client:
     def _client(self) -> MountpointS3Client:
         global CRT_S3_CLIENT
         if CRT_S3_CLIENT is None:
-            CRT_S3_CLIENT = self._client_builder()
-            self._client_pid = os.getpid()
-        import gc
+            with _client_lock:
+                # This double-check ensures that the client is only created once.
+                CRT_S3_CLIENT = self._client_builder()
 
-        def before_fork():
-            global CRT_S3_CLIENT
-            try:
-                if CRT_S3_CLIENT is not None:
-                    # The client is not safe to use after fork, so we need to release it.
-                    # make sure the client is shutdown properly before fork
-                    # also wait for every thread to be joined, incase of some thread is in the middle of cleanup.
-                    CRT_S3_CLIENT = None
-                    gc.collect()
-                    print("before join")
-                    # 0.5 secs
-                    join_all_managed_threads(500_000_000)
-
-            except Exception as e:
-                print(f"Join failed and error is {e}")
-                exit(-1)
-
-        os.register_at_fork(before=before_fork)
         assert CRT_S3_CLIENT is not None
         return CRT_S3_CLIENT
 
