@@ -10,10 +10,7 @@ use mountpoint_s3_client::config::{Allocator, Uri};
 use mountpoint_s3_client::types::{GetObjectParams, HeadObjectParams, PutObjectParams};
 use mountpoint_s3_client::user_agent::UserAgent;
 use mountpoint_s3_client::{ObjectClient, S3CrtClient};
-use mountpoint_s3_crt_sys::{
-    aws_last_error, aws_thread_join_all_managed, aws_thread_set_managed_join_timeout_ns,
-};
-use nix::unistd::Pid;
+use mountpoint_s3_crt_sys::{aws_thread_join_all_managed, aws_thread_set_managed_join_timeout_ns};
 use pyo3::marker::Python;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pyfunction, pymethods, Bound, PyErr, PyRef, PyResult, ToPyObject};
@@ -52,8 +49,6 @@ pub struct MountpointS3Client {
     user_agent_prefix: String,
     #[pyo3(get)]
     endpoint: Option<String>,
-
-    owner_pid: Pid,
 }
 
 /// Waits for all managed CRT threads to complete, with a specified timeout.
@@ -259,7 +254,6 @@ impl MountpointS3Client {
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
             user_agent_prefix,
             endpoint,
-            owner_pid: nix::unistd::getpid(),
         }
     }
 }
