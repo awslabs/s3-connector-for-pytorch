@@ -17,7 +17,7 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
     ListObjectStream,
     GetObjectStream,
-    join_all_managed_threads
+    join_all_managed_threads,
 )
 
 from s3torchconnector._user_agent import UserAgent
