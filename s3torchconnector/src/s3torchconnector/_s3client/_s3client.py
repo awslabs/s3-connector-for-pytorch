@@ -86,10 +86,18 @@ class S3Client:
     @property
     def _client(self) -> MountpointS3Client:
         global CRT_S3_CLIENT
-        if self._client_pid is None or self._client_pid != os.getpid() or CRT_S3_CLIENT is None:
+        if (
+            self._client_pid is None
+            or self._client_pid != os.getpid()
+            or CRT_S3_CLIENT is None
+        ):
             # Acquire the lock to ensure thread-safety when creating the client.
             with _client_lock:
-                if self._client_pid is None or self._client_pid != os.getpid() or CRT_S3_CLIENT is None:
+                if (
+                    self._client_pid is None
+                    or self._client_pid != os.getpid()
+                    or CRT_S3_CLIENT is None
+                ):
                     # This double-check ensures that the client is only created once.
                     CRT_S3_CLIENT = self._client_builder()
                     self._client_pid = os.getpid()
