@@ -37,18 +37,18 @@ def _identity(obj: Any) -> Any:
 
 
 _client_lock = threading.Lock()
-CRT_S3_CLIENT = None
+NATIVE_S3_CLIENT = None
 
 
 def _before_fork_handler():
     """Handler that cleans up CRT resources before fork operations."""
-    global CRT_S3_CLIENT
+    global NATIVE_S3_CLIENT
     try:
-        if CRT_S3_CLIENT is not None:
+        if NATIVE_S3_CLIENT is not None:
             # Release the client before fork as it's not fork-safe
-            CRT_S3_CLIENT = None
+            NATIVE_S3_CLIENT = None
             gc.collect()
-            # Wait for threads to complete joining (0.5 sec timeout)
+            # Wait for native background threads to complete joining (0.5 sec timeout)
             join_all_managed_threads(0.5)
     except Exception as e:
         print(
@@ -80,30 +80,30 @@ class S3Client:
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
         self._client_pid: Optional[int] = None
-        global CRT_S3_CLIENT
-        CRT_S3_CLIENT = None
+        global NATIVE_S3_CLIENT
+        NATIVE_S3_CLIENT = None
 
     @property
     def _client(self) -> MountpointS3Client:
-        global CRT_S3_CLIENT
+        global NATIVE_S3_CLIENT
         if (
             self._client_pid is None
             or self._client_pid != os.getpid()
-            or CRT_S3_CLIENT is None
+            or NATIVE_S3_CLIENT is None
         ):
             # Acquire the lock to ensure thread-safety when creating the client.
             with _client_lock:
                 if (
                     self._client_pid is None
                     or self._client_pid != os.getpid()
-                    or CRT_S3_CLIENT is None
+                    or NATIVE_S3_CLIENT is None
                 ):
                     # This double-check ensures that the client is only created once.
-                    CRT_S3_CLIENT = self._client_builder()
+                    NATIVE_S3_CLIENT = self._client_builder()
                     self._client_pid = os.getpid()
 
-        assert CRT_S3_CLIENT is not None
-        return CRT_S3_CLIENT
+        assert NATIVE_S3_CLIENT is not None
+        return NATIVE_S3_CLIENT
 
     @property
     def region(self) -> str:
