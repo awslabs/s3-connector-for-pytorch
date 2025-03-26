@@ -37,6 +37,7 @@ def _identity(obj: Any) -> Any:
 
 
 _client_lock = threading.Lock()
+CRT_S3_CLIENT = None
 
 
 def _before_fork_handler():
@@ -78,16 +79,20 @@ class S3Client:
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
+        self._client_pid: Optional[int] = None
         global CRT_S3_CLIENT
         CRT_S3_CLIENT = None
 
     @property
     def _client(self) -> MountpointS3Client:
         global CRT_S3_CLIENT
-        if CRT_S3_CLIENT is None:
+        if self._client_pid is None or self._client_pid != os.getpid() or CRT_S3_CLIENT is None:
+            # Acquire the lock to ensure thread-safety when creating the client.
             with _client_lock:
-                # This double-check ensures that the client is only created once.
-                CRT_S3_CLIENT = self._client_builder()
+                if self._client_pid is None or self._client_pid != os.getpid() or CRT_S3_CLIENT is None:
+                    # This double-check ensures that the client is only created once.
+                    CRT_S3_CLIENT = self._client_builder()
+                    self._client_pid = os.getpid()
 
         assert CRT_S3_CLIENT is not None
         return CRT_S3_CLIENT

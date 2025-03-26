@@ -80,7 +80,7 @@ pub fn join_all_managed_threads(py: Python<'_>, timeout_secs: f64) -> PyResult<(
 
         aws_thread_set_managed_join_timeout_ns(timeout_ns);
 
-        // Release the GIL while waiting for other threads to join, which may acquire GIL.
+        // Release the GIL while waiting for other threads to join, which may acquire GIL, to avoid deadlock
         let result = py.allow_threads(|| aws_thread_join_all_managed());
 
         if result != 0 {
