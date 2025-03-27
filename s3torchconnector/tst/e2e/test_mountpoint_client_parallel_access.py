@@ -17,6 +17,7 @@ class S3ClientWithoutLock(S3Client):
             self._client_pid = os.getpid()
             # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
             NATIVE_S3_CLIENT = self._client_builder()
+        assert NATIVE_S3_CLIENT is not None
         return NATIVE_S3_CLIENT
 
     def _client_builder(self):
@@ -34,9 +35,11 @@ def access_client(client, error_event):
     try:
         if not error_event.is_set():
             client._client
-            print(f"Successfully accessed by thread {threading.current_thread().name}")
+            print(
+                f"Successfully accessed by thread {threading.current_thread().name}")
     except AssertionError as e:
-        print(f"AssertionError in thread {threading.current_thread().name}: {e}")
+        print(
+            f"AssertionError in thread {threading.current_thread().name}: {e}")
         error_event.set()
 
 
@@ -53,7 +56,8 @@ def test_multiple_thread_accessing_mountpoint_client_in_parallel_with_lock():
     print("Running test with lock...")
     client = S3ClientWithLock("us-west-2")
     if access_mountpoint_client_in_parallel(client):
-        pytest.fail("Test failed as AssertionError happened in one of the threads.")
+        pytest.fail(
+            "Test failed as AssertionError happened in one of the threads.")
 
 
 def access_mountpoint_client_in_parallel(client):
