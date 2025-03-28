@@ -34,13 +34,20 @@ logger = logging.getLogger(__name__)
 
 
 class S3FileSystem(FileSystemBase):
-    def __init__(self, region: str, s3_client: Optional[S3Client] = None, s3client_config: Optional[S3ClientConfig] = None) -> None:
+    def __init__(
+        self,
+        region: str,
+        s3_client: Optional[S3Client] = None,
+        s3client_config: Optional[S3ClientConfig] = None,
+    ) -> None:
         self._path: Union[str, os.PathLike] = ""
         user_agent = UserAgent(["dcp", torch.__version__])
         self._client = (
             s3_client
             if s3_client is not None
-            else S3Client(region=region, user_agent=user_agent, s3client_config=s3client_config)
+            else S3Client(
+                region=region, user_agent=user_agent, s3client_config=s3client_config
+            )
         )
 
     @contextmanager
@@ -250,7 +257,12 @@ class S3StorageWriter(FileSystemWriter):
 
 
 class S3StorageReader(FileSystemReader):
-    def __init__(self, region: str, path: Union[str, os.PathLike], s3client_config: Optional[S3ClientConfig] = None) -> None:
+    def __init__(
+        self,
+        region: str,
+        path: Union[str, os.PathLike],
+        s3client_config: Optional[S3ClientConfig] = None,
+    ) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
 

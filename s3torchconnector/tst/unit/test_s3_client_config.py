@@ -33,21 +33,25 @@ def test_throughput_target_gbps_setup(throughput_target_gbps: float):
     assert config.part_size == 8 * 1024 * 1024
     assert config.throughput_target_gbps == throughput_target_gbps
 
+
 @given(max_attempts=integers(min_value=1, max_value=10))
 def test_max_attempts_setup(max_attempts: int):
     config = S3ClientConfig(max_attempts=max_attempts)
     assert config.max_attempts == max_attempts
 
+
 @given(
     part_size=integers(min_value=5 * MiB, max_value=5 * GiB),
     throughput_target_gbps=floats(min_value=1.0, max_value=100.0),
-    max_attempts=integers(min_value=1, max_value=10)
+    max_attempts=integers(min_value=1, max_value=10),
 )
-@example(part_size=5 * MiB, throughput_target_gbps=10.0,  max_attempts=2)
-@example(part_size=5 * GiB, throughput_target_gbps=15.0,  max_attempts=8)
+@example(part_size=5 * MiB, throughput_target_gbps=10.0, max_attempts=2)
+@example(part_size=5 * GiB, throughput_target_gbps=15.0, max_attempts=8)
 def test_custom_setup(part_size: int, throughput_target_gbps: float, max_attempts: int):
     config = S3ClientConfig(
-        part_size=part_size, throughput_target_gbps=throughput_target_gbps, max_attempts=max_attempts
+        part_size=part_size,
+        throughput_target_gbps=throughput_target_gbps,
+        max_attempts=max_attempts,
     )
     assert config.part_size == part_size
     assert config.throughput_target_gbps == throughput_target_gbps
