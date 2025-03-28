@@ -63,7 +63,9 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
 
     def _generate_prefix_map(self) -> List[str]:
         """Generate mapping of ranks to numeric-based prefixes."""
-        world_size = dist.get_world_size()
+        world_size = 1
+        if  dist.is_initialized():
+            world_size = dist.get_world_size()
         prefix_length = self._calculate_prefix_length(world_size)
 
         all_prefixes = [
