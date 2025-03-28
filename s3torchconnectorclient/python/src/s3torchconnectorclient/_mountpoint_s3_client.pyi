@@ -145,3 +145,5 @@ class S3Exception(Exception):
     pass
 
 __version__: str
+
+def join_all_managed_threads(timeout_secs: float) -> None: ...
