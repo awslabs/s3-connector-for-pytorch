@@ -107,21 +107,24 @@ def test_user_agent_always_starts_with_package_version(comments):
 @given(
     part_size=integers(min_value=5 * MiB, max_value=5 * GiB),
     throughput_target_gbps=floats(min_value=10.0, max_value=100.0),
+    max_attempts=integers(min_value=1, max_value=10),
 )
-@example(part_size=5 * MiB, throughput_target_gbps=10.0)
-@example(part_size=5 * GiB, throughput_target_gbps=15.0)
-def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float):
+@example(part_size=5 * MiB, throughput_target_gbps=10.0,  max_attempts=1)
+@example(part_size=5 * GiB, throughput_target_gbps=15.0,  max_attempts=10)
+def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float, max_attempts: int):
     # Part size must have values between 5MiB and 5GiB
     s3_client = S3Client(
         region=TEST_REGION,
         s3client_config=S3ClientConfig(
             part_size=part_size,
             throughput_target_gbps=throughput_target_gbps,
+            max_attempts=max_attempts
         ),
     )
     assert s3_client._client.part_size == part_size
     assert s3_client._client.throughput_target_gbps == throughput_target_gbps
     assert s3_client._client.unsigned is False
+    assert s3_client._client.max_attempts == max_attempts
 
 
 @pytest.mark.parametrize(

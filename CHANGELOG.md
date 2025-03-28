@@ -2,6 +2,7 @@
 
 ### New features
 * Introducing support of FSDP in DCP benchmark (#313)
+* Exposing max_attempts setting through S3ClientConfig and adding support of S3CleintConfig to DCP
 
 ### Breaking changes
 * No breaking changes. 

@@ -15,6 +15,7 @@ use pyo3::marker::Python;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pyfunction, pymethods, Bound, PyErr, PyRef, PyResult, IntoPyObject, IntoPyObjectExt};
 use std::sync::Arc;
+use std::num::NonZeroUsize;
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
@@ -49,6 +50,8 @@ pub struct MountpointS3Client {
     user_agent_prefix: String,
     #[pyo3(get)]
     endpoint: Option<String>,
+    #[pyo3(get)]
+    max_attempts: usize,
 }
 
 /// Waits for all managed CRT threads to complete, with a specified timeout.
@@ -96,7 +99,7 @@ pub fn join_all_managed_threads(py: Python<'_>, timeout_secs: f64) -> PyResult<(
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None, force_path_style=false))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None, force_path_style=false, max_attempts=3))]
     #[allow(clippy::too_many_arguments)]
     pub fn new_s3_client(
         region: String,
@@ -107,6 +110,7 @@ impl MountpointS3Client {
         unsigned: bool,
         endpoint: Option<String>,
         force_path_style: bool,
+        max_attempts: usize,
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
@@ -136,7 +140,8 @@ impl MountpointS3Client {
             .throughput_target_gbps(throughput_target_gbps)
             .part_size(part_size)
             .auth_config(auth_config)
-            .endpoint_config(endpoint_config);
+            .endpoint_config(endpoint_config)
+            .max_attempts(NonZeroUsize::try_from(max_attempts).expect("max_attempts must be > 0"));
         let crt_client = Arc::new(S3CrtClient::new(config).map_err(python_exception)?);
 
         Ok(MountpointS3Client::new(
@@ -147,6 +152,7 @@ impl MountpointS3Client {
             profile,
             unsigned,
             force_path_style,
+            max_attempts,
             crt_client,
             endpoint,
         ))
@@ -220,6 +226,7 @@ impl MountpointS3Client {
             slf.unsigned.into_py_any(py)?.bind(py).to_owned(),
             slf.endpoint.clone().into_pyobject(py)?.into_any(),
             slf.force_path_style.into_py_any(py)?.bind(py).to_owned(),
+            slf.max_attempts.into_pyobject(py)?.into_any(),
         ];
         PyTuple::new(py, state)
     }
@@ -236,6 +243,7 @@ impl MountpointS3Client {
         // no_sign_request on mountpoint-s3-client
         unsigned: bool,
         force_path_style: bool,
+        max_attempts: usize,
         client: Arc<Client>,
         endpoint: Option<String>,
     ) -> Self
@@ -251,6 +259,7 @@ impl MountpointS3Client {
             profile,
             unsigned,
             force_path_style,
+            max_attempts,
             client: Arc::new(MountpointS3ClientInnerImpl::new(client)),
             user_agent_prefix,
             endpoint,

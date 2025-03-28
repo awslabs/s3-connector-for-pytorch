@@ -152,14 +152,16 @@ Using S3ClientConfig you can set up the following parameters for the underlying 
 
 * `unsigned(bool)`: Set to true to disable signing S3 requests.
 
+* `max_attempts(int)`: Number of retries for retriable errors
+
 For example this can be passed in like: 
 ```py
 from s3torchconnector import S3MapDataset, S3ClientConfig
 
 # Setup for DATASET_URI and REGION.
 ...
-# Setting part_size to 5 MiB and throughput_target_gbps to 15 Gbps.
-config = S3ClientConfig(part_size=5 * 1024 * 1024, throughput_target_gbps=15)
+# Setting part_size to 5 MiB, throughput_target_gbps to 15 Gbps and max_attempts to 5
+config = S3ClientConfig(part_size=5 * 1024 * 1024, throughput_target_gbps=15, max_attempts=5)
 # Passing this on to an S3MapDataset.
 s3_map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION, s3client_config=config)
 # Updating the configuration for checkpoints.

@@ -126,6 +126,7 @@ class S3Client:
             part_size=self._s3client_config.part_size,
             unsigned=self._s3client_config.unsigned,
             force_path_style=self._s3client_config.force_path_style,
+            max_attempts=self._s3client_config.max_attempts,
         )
 
     def get_object(
