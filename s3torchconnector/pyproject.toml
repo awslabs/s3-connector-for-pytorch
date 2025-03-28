@@ -51,7 +51,8 @@ lightning = [
 
 lightning-tests = [
     "s3torchconnector[lightning]",
-    "s3fs"
+    "s3fs",
+    "torchmetrics != 1.7.0",
 ]
 
 dcp = [
