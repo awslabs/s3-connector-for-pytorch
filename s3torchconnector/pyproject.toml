@@ -41,6 +41,7 @@ e2e = [
     "torchvision",
     "Pillow>=10.3.0",
     "boto3<1.37.2", # prevent conflict caused by aiobotocore that restrict version of botocore
+    #"boto3<=1.36.23", # prevent conflict caused by aiobotocore that restrict version of botocore
     "numpy < 2",
     "pytest-xdist"
 ]
@@ -51,7 +52,11 @@ lightning = [
 
 lightning-tests = [
     "s3torchconnector[lightning]",
-    "s3fs"
+    "s3fs",
+    "torchmetrics != 1.7.0",
+    #"lightning != 2.5.1",
+    #"pytorch-lightning != 2.5.1",
+    #"aiobotocore <= 2.20.0"
 ]
 
 dcp = [

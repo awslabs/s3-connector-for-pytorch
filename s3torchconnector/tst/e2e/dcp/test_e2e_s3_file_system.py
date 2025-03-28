@@ -9,6 +9,7 @@ import torch.distributed as dist
 from torch.distributed.checkpoint import CheckpointException
 import torch.multiprocessing as mp
 
+from s3torchconnector import S3ClientConfig
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader, S3FileSystem
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
@@ -242,6 +243,36 @@ def test_overwrite(checkpoint_directory):
         )
 
     assert "Checkpoint already exists" in str(excinfo.value)
+
+
+def test_s3client_config_for_writer(checkpoint_directory):
+    region = checkpoint_directory.region
+    s3_uri = checkpoint_directory.s3_uri
+    s3client_config = S3ClientConfig(
+        throughput_target_gbps=77, part_size=756, max_attempts=3
+    )
+
+    writer = S3StorageWriter(
+        region, s3_uri, overwrite=True, s3client_config=s3client_config
+    )
+    assert (
+        writer.fs._client._s3client_config.throughput_target_gbps
+        == s3client_config.throughput_target_gbps
+    )
+    assert writer.fs._client._s3client_config.part_size == s3client_config.part_size
+    assert (
+        writer.fs._client._s3client_config.max_attempts == s3client_config.max_attempts
+    )
+
+    reader = S3StorageReader(region, s3_uri, s3client_config=s3client_config)
+    assert (
+        reader.fs._client._s3client_config.throughput_target_gbps
+        == s3client_config.throughput_target_gbps
+    )
+    assert reader.fs._client._s3client_config.part_size == s3client_config.part_size
+    assert (
+        reader.fs._client._s3client_config.max_attempts == s3client_config.max_attempts
+    )
 
 
 def _verify_user_agent(s3fs: S3FileSystem):
