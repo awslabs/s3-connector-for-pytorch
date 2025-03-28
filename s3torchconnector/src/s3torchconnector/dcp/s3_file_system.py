@@ -27,19 +27,20 @@ import torch
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
+from .. import S3ClientConfig
 from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
 
 
 class S3FileSystem(FileSystemBase):
-    def __init__(self, region: str, s3_client: Optional[S3Client] = None) -> None:
+    def __init__(self, region: str, s3_client: Optional[S3Client] = None, s3client_config: Optional[S3ClientConfig] = None) -> None:
         self._path: Union[str, os.PathLike] = ""
         user_agent = UserAgent(["dcp", torch.__version__])
         self._client = (
             s3_client
             if s3_client is not None
-            else S3Client(region=region, user_agent=user_agent)
+            else S3Client(region=region, user_agent=user_agent, s3client_config=s3client_config)
         )
 
     @contextmanager
@@ -224,6 +225,7 @@ class S3StorageWriter(FileSystemWriter):
         self,
         region: str,
         path: str,
+        s3client_config: Optional[S3ClientConfig] = None,
         **kwargs,
     ) -> None:
         """
@@ -239,7 +241,7 @@ class S3StorageWriter(FileSystemWriter):
             sync_files=False,  # FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)
             **kwargs,
         )
-        self.fs = S3FileSystem(region)  # type: ignore
+        self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
 
     @classmethod
@@ -248,7 +250,7 @@ class S3StorageWriter(FileSystemWriter):
 
 
 class S3StorageReader(FileSystemReader):
-    def __init__(self, region: str, path: Union[str, os.PathLike]) -> None:
+    def __init__(self, region: str, path: Union[str, os.PathLike], s3client_config: Optional[S3ClientConfig] = None) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
 
@@ -257,7 +259,7 @@ class S3StorageReader(FileSystemReader):
             path (Union[str, os.PathLike]): The S3 path to read checkpoints from.
         """
         super().__init__(path)
-        self.fs = S3FileSystem(region)  # type: ignore
+        self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
         self.sync_files = False
 
