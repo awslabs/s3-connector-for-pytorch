@@ -38,6 +38,7 @@ pub struct PyMockClient {
 impl PyMockClient {
     #[new]
     #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string(), unsigned=false, force_path_style=false, max_attempts=3))]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         region: String,
         bucket: String,

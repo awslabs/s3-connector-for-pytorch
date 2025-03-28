@@ -109,16 +109,18 @@ def test_user_agent_always_starts_with_package_version(comments):
     throughput_target_gbps=floats(min_value=10.0, max_value=100.0),
     max_attempts=integers(min_value=1, max_value=10),
 )
-@example(part_size=5 * MiB, throughput_target_gbps=10.0,  max_attempts=1)
-@example(part_size=5 * GiB, throughput_target_gbps=15.0,  max_attempts=10)
-def test_s3_client_custom_config(part_size: int, throughput_target_gbps: float, max_attempts: int):
+@example(part_size=5 * MiB, throughput_target_gbps=10.0, max_attempts=1)
+@example(part_size=5 * GiB, throughput_target_gbps=15.0, max_attempts=10)
+def test_s3_client_custom_config(
+    part_size: int, throughput_target_gbps: float, max_attempts: int
+):
     # Part size must have values between 5MiB and 5GiB
     s3_client = S3Client(
         region=TEST_REGION,
         s3client_config=S3ClientConfig(
             part_size=part_size,
             throughput_target_gbps=throughput_target_gbps,
-            max_attempts=max_attempts
+            max_attempts=max_attempts,
         ),
     )
     assert s3_client._client.part_size == part_size
