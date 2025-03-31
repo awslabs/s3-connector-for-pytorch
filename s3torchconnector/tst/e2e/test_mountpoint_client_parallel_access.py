@@ -6,16 +6,19 @@ import pytest
 from s3torchconnector._s3client import S3Client
 from s3torchconnectorclient._mountpoint_s3_client import MountpointS3Client
 
+NATIVE_S3_CLIENT = None
+
 
 class S3ClientWithoutLock(S3Client):
     @property
     def _client(self) -> MountpointS3Client:
+        global NATIVE_S3_CLIENT
         if self._client_pid is None or self._client_pid != os.getpid():
             self._client_pid = os.getpid()
             # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
-            self._real_client = self._client_builder()
-        assert self._real_client is not None
-        return self._real_client
+            NATIVE_S3_CLIENT = self._client_builder()
+        assert NATIVE_S3_CLIENT is not None
+        return NATIVE_S3_CLIENT
 
     def _client_builder(self):
         time.sleep(1)

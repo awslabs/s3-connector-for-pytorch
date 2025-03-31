@@ -3,6 +3,7 @@
 
 import logging
 import os
+import gc
 import threading
 from functools import partial
 from typing import Optional, Any
@@ -16,13 +17,14 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
     ListObjectStream,
     GetObjectStream,
+    join_all_managed_threads,
 )
 
 from s3torchconnector._user_agent import UserAgent
 
 """
 _s3client.py
-    Internal client wrapper class on top of S3 client implementation 
+    Internal client wrapper class on top of S3 client implementation
     with multi-process support.
 """
 
@@ -35,6 +37,32 @@ def _identity(obj: Any) -> Any:
 
 
 _client_lock = threading.Lock()
+NATIVE_S3_CLIENT = None
+
+
+def _before_fork_handler():
+    """Handler that cleans up CRT resources before fork operations."""
+    global NATIVE_S3_CLIENT
+    try:
+        if NATIVE_S3_CLIENT is not None:
+            # Release the client before fork as it's not fork-safe
+            NATIVE_S3_CLIENT = None
+            gc.collect()
+            # Wait for native background threads to complete joining (0.5 sec timeout)
+            join_all_managed_threads(0.5)
+    except Exception as e:
+        print(
+            "Warning: Failed to properly clean up native background threads before fork. "
+            f"Error: {e}\n"
+            "Your subprocess may crash or hang. To prevent this:\n"
+            "1. Ensure no active S3 client usage during fork operations\n"
+            "2. Use multiprocessing with 'spawn' or 'forkserver' start method instead"
+        )
+
+
+# register the handler to release the S3 client and wait for background threads to join before fork happens
+# As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
+os.register_at_fork(before=_before_fork_handler)
 
 
 class S3Client:
@@ -48,25 +76,34 @@ class S3Client:
     ):
         self._region = region
         self._endpoint = endpoint
-        self._real_client: Optional[MountpointS3Client] = None
-        self._client_pid: Optional[int] = None
         user_agent = user_agent or UserAgent()
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
+        self._client_pid: Optional[int] = None
+        global NATIVE_S3_CLIENT
+        NATIVE_S3_CLIENT = None
 
     @property
     def _client(self) -> MountpointS3Client:
-        # This is a fast check to avoid acquiring the lock unnecessarily.
-        if self._client_pid is None or self._client_pid != os.getpid():
+        global NATIVE_S3_CLIENT
+        if (
+            self._client_pid is None
+            or self._client_pid != os.getpid()
+            or NATIVE_S3_CLIENT is None
+        ):
             # Acquire the lock to ensure thread-safety when creating the client.
             with _client_lock:
-                # This double-check ensures that the client is only created once.
-                if self._client_pid is None or self._client_pid != os.getpid():
-                    # `MountpointS3Client` does not survive forking, so re-create it if the PID has changed.
-                    self._real_client = self._client_builder()
+                if (
+                    self._client_pid is None
+                    or self._client_pid != os.getpid()
+                    or NATIVE_S3_CLIENT is None
+                ):
+                    # This double-check ensures that the client is only created once.
+                    NATIVE_S3_CLIENT = self._client_builder()
                     self._client_pid = os.getpid()
-        assert self._real_client is not None
-        return self._real_client
+
+        assert NATIVE_S3_CLIENT is not None
+        return NATIVE_S3_CLIENT
 
     @property
     def region(self) -> str:

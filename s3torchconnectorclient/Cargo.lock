@@ -811,9 +811,9 @@ dependencies = [
 
 [[package]]
 name = "mountpoint-s3-crt-sys"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac583f5a0056e8bc54fc11046b97c7fc0475a6b25920b0665010fafc7926a03a"
+checksum = "9bcd7a1f6773475fe44811d29fd68d2cc88aaa6e8ffb94af90a17c93a36c0319"
 dependencies = [
  "bindgen",
  "cc",
@@ -1180,6 +1180,7 @@ dependencies = [
  "futures",
  "log",
  "mountpoint-s3-client",
+ "mountpoint-s3-crt-sys",
  "nix",
  "pyo3",
  "rusty-fork",
