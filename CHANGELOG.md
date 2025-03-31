@@ -3,6 +3,7 @@
 ### New features
 * Introducing support of FSDP in DCP benchmark (#313)
 * Exposing max_attempts setting through S3ClientConfig and adding support of S3ClientConfig to DCP
+* Add support for Python 3.13 
 
 ### Breaking changes
 * No breaking changes. 
