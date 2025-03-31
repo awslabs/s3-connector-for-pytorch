@@ -23,4 +23,4 @@ class S3ClientConfig:
     part_size: int = 8 * 1024 * 1024
     unsigned: bool = False
     force_path_style: bool = False
-    max_attempts: int = 3
+    max_attempts: int = 10

@@ -12,7 +12,7 @@ def test_default():
     assert config.part_size == 8 * MiB
     assert config.throughput_target_gbps == 10.0
     assert config.force_path_style is False
-    assert config.max_attempts == 3
+    assert config.max_attempts == 10
 
 
 def test_enable_force_path_style():

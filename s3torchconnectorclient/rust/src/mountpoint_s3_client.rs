@@ -99,7 +99,7 @@ pub fn join_all_managed_threads(py: Python<'_>, timeout_secs: f64) -> PyResult<(
 #[pymethods]
 impl MountpointS3Client {
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None, force_path_style=false, max_attempts=3))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None, force_path_style=false, max_attempts=10))]
     #[allow(clippy::too_many_arguments)]
     pub fn new_s3_client(
         region: String,
