@@ -37,7 +37,7 @@ test = [
 ]
 
 e2e = [
-    "torchdata<=0.9.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
+    "torchdata<=0.9.0,>=0.8.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
     "torchvision",
     "Pillow>=10.3.0",
     "boto3<1.37.2", # prevent conflict caused by aiobotocore that restrict version of botocore
@@ -53,7 +53,7 @@ lightning = [
 lightning-tests = [
     "s3torchconnector[lightning]",
     "s3fs",
-    "torchmetrics != 1.7.0",
+    "torchmetrics != 1.7.0", # ruins lighting integration tests on importing lighting module
 ]
 
 dcp = [
