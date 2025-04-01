@@ -43,7 +43,7 @@ e2e = [
     "boto3<1.37.2", # prevent conflict caused by aiobotocore that restrict version of botocore
     "numpy < 2",
     "pytest-xdist",
-    "fsspec==2025.3.0; python_version == '3.8'", # ruins integration tests for datasets with newer fsspec on Python 3.8
+    "fsspec==2025.3.0; python_version == '3.8'", # pin fsspec version for Python 3.8 to prevent dataset e2e test failures
 ]
 
 lightning = [
@@ -53,7 +53,7 @@ lightning = [
 lightning-tests = [
     "s3torchconnector[lightning]",
     "s3fs",
-    "torchmetrics != 1.7.0", # ruins lighting integration tests on importing lighting module
+    "torchmetrics != 1.7.0", # version 1.7.0 breaks lightning checkpoints e2e tests during "lightning" module import
 ]
 
 dcp = [
