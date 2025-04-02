@@ -30,6 +30,7 @@ jobs:
           - cp310
           - cp311
           - cp312
+          - cp313
         builder:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
             kind: manylinux
