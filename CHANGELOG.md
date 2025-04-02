@@ -1,3 +1,14 @@
+## TBD
+
+### New features
+* Add support for Python 3.13 
+
+### Bug fixes
+* None 
+
+### Other changes
+* None
+
 ## v1.4.0 (April 9, 2025)
 
 ### New features
