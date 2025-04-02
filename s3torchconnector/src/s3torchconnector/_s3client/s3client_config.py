@@ -16,9 +16,11 @@ class S3ClientConfig:
         Part size must have values between 5MiB and 5GiB.
         8MiB by default (may change in future).
     force_path_style(bool): forceful path style addressing for S3 client.
+    max_attempts(int): amount of retry attempts for retrieable errors
     """
 
     throughput_target_gbps: float = 10.0
     part_size: int = 8 * 1024 * 1024
     unsigned: bool = False
     force_path_style: bool = False
+    max_attempts: int = 10

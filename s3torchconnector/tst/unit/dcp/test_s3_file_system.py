@@ -7,6 +7,7 @@ from typing import Union
 
 import pytest
 
+from s3torchconnector import S3ClientConfig
 from s3torchconnector._s3client import MockS3Client
 from s3torchconnector.dcp.s3_file_system import S3FileSystem
 from s3torchconnectorclient import S3Exception
@@ -209,6 +210,38 @@ def test_rm_file():
 
 def test_validate_checkpoint_id():
     assert S3FileSystem.validate_checkpoint_id(TEST_PATH) is True
+
+
+def test_custom_config_file():
+    s3client_config = S3ClientConfig(
+        throughput_target_gbps=7, part_size=8000, max_attempts=10
+    )
+    s3fs = S3FileSystem(TEST_REGION, s3client_config=s3client_config)
+    assert s3fs._client._s3client_config.throughput_target_gbps == 7
+    assert s3fs._client._s3client_config.part_size == 8000
+    assert s3fs._client._s3client_config.max_attempts == 10
+
+
+def test_default_config_file():
+    s3fs = S3FileSystem(TEST_REGION)
+    default_config = S3ClientConfig()
+    assert (
+        s3fs._client._s3client_config.throughput_target_gbps
+        == default_config.throughput_target_gbps
+    )
+    assert s3fs._client._s3client_config.part_size == default_config.part_size
+    assert s3fs._client._s3client_config.max_attempts == default_config.max_attempts
+
+
+def test_custom_config_file_for_writer_and_reader():
+    s3client_config = S3ClientConfig(
+        throughput_target_gbps=7, part_size=8000, max_attempts=10
+    )
+    s3fs = S3FileSystem(TEST_REGION, s3client_config=s3client_config)
+
+    assert s3fs._client._s3client_config.throughput_target_gbps == 7
+    assert s3fs._client._s3client_config.part_size == 8000
+    assert s3fs._client._s3client_config.max_attempts == 10
 
 
 @pytest.mark.parametrize("checkpoint_id", ["foobar", "s3:///"])
