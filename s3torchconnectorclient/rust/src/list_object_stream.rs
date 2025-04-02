@@ -140,17 +140,17 @@ mod tests {
             let locals = [
                 (
                     "MountpointS3Client",
-                    py.get_type_bound::<MountpointS3Client>(),
+                    py.get_type::<MountpointS3Client>(),
                 ),
                 (
                     "MockMountpointS3Client",
-                    py.get_type_bound::<PyMockClient>(),
+                    py.get_type::<PyMockClient>(),
                 ),
             ];
 
             py_run!(
                 py,
-                *locals.into_py_dict_bound(py),
+                *locals.into_py_dict(py).unwrap(),
                 r#"
                 expected_keys = {"test"}
                 

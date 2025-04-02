@@ -52,7 +52,7 @@ impl GetObjectStream {
                     ));
                 }
                 slf.offset += data.len() as u64;
-                let data = PyBytes::new_bound(py, data.as_ref());
+                let data = PyBytes::new(py, data.as_ref());
                 Ok(Some(data))
             }
         }
@@ -85,17 +85,17 @@ mod tests {
             let locals = [
                 (
                     "MountpointS3Client",
-                    py.get_type_bound::<MountpointS3Client>(),
+                    py.get_type::<MountpointS3Client>(),
                 ),
                 (
                     "MockMountpointS3Client",
-                    py.get_type_bound::<PyMockClient>(),
+                    py.get_type::<PyMockClient>(),
                 ),
             ];
 
             py_run!(
                 py,
-                *locals.into_py_dict_bound(py),
+                *locals.into_py_dict(py).unwrap(),
                 r#"
                 mock_client = MockMountpointS3Client("us-east-1", "mock-bucket")
                 client = mock_client.create_mocked_client()
