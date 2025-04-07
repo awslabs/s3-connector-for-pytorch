@@ -73,7 +73,7 @@ environment-pass = [
     "S3_CUSTOM_ENDPOINT_URL"
 ]
 before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
-build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*"]
+build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*", "cp313*"]
 skip = "*musllinux* *i686"
 
 [tool.cibuildwheel.linux]
@@ -108,3 +108,9 @@ test-command = [
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest -s {package}/../s3torchconnector/tst/e2e/dcp/test_e2e_s3_file_system.py",
     "AWS_DEFAULT_REGION=${S3_EXPRESS_REGION} CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest -s {package}/../s3torchconnector/tst/e2e/dcp/test_e2e_s3_file_system.py",
 ]
+
+[[tool.cibuildwheel.overrides]]
+# torch wheel has wheel for manylinux_2_28, if we try to test wheel on previous version
+# of manylinux we can't install torch to validate e2e tests
+select = "cp313-*"
+environment = {CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"}
