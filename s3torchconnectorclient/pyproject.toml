@@ -17,10 +17,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Topic :: Utilities"
 ]
+license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
+license = "BSD-3-Clause"
 
 dependencies = []
 
@@ -42,9 +43,6 @@ find = { where = ["python/src"] }
 
 [[tool.setuptools-rust.ext-modules]]
 target = "s3torchconnectorclient._mountpoint_s3_client"
-
-[tool.setuptools]
-license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
 
 [tool.cibuildwheel]
 test-requires = ["./s3torchconnector[e2e]"]
