@@ -47,6 +47,13 @@ jobs:
           - runner: macos-14
             kind: macosx
             arch: arm64
+        exclude:
+          # Exclude macos x86_64 + python 3.13 configuration that is not supported by torch
+          - python: cp313
+            builder:
+              runner: macos-13
+              kind: macosx
+              arch: x86_64
     permissions:
       id-token: write
       contents: read

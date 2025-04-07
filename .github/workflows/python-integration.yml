@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ ubuntu-22.04, macos-13 ]
+        runner: [ ubuntu-22.04, macos-13, macos-14 ]
         python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12", "3.13" ]
         test-run:
           - name: "S3"
@@ -37,6 +37,21 @@ jobs:
             region: ${{ vars.S3_EXPRESS_REGION }}
             storage-class: "EXPRESS_ONEZONE"
             endpoint-url: ""
+        exclude:
+          #  Exclude configuration that is not supported by torch
+          - runner: macos-13
+            python-version: "3.13"
+          # Exclude configurations that are already covered by macos-13
+          - runner: macos-14
+            python-version: "3.8"
+          - runner: macos-14
+            python-version: "3.9"
+          - runner: macos-14
+            python-version: "3.10"
+          - runner: macos-14
+            python-version: "3.11"
+          - runner: macos-14
+            python-version: "3.12"
     permissions:
       id-token: write
       contents: read
