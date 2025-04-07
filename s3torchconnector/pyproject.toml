@@ -17,10 +17,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Topic :: Utilities"
 ]
+license-files = ["LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
+license = "BSD-3-Clause"
 
 dependencies = [
     "torch >= 2.0.1, != 2.5.0",
@@ -71,6 +72,3 @@ dcp-test = [
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["src"] }
-
-[tool.setuptools]
-license-files = ["LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
