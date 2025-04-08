@@ -90,6 +90,11 @@ before-all = [
   "yum install -y llvm-toolset-7.0-clang"
 ]
 environment = { PATH="/opt/rh/llvm-toolset-7.0/root/usr/bin:/opt/rh/devtoolset-10/root/usr/bin:$HOME/.cargo/bin:$PATH", LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7.0/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib", CC="/opt/rh/devtoolset-10/root/usr/bin/gcc", CXX="/opt/rh/devtoolset-10/root/usr/bin/g++" }
+#before-build = [
+#    "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/",
+#  "source $HOME/.cargo/env",
+#  "rustc --version"
+#]
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "11.00" }
@@ -122,4 +127,4 @@ before-all = [
 # torch wheel has wheel for manylinux_2_28, if we try to test wheel on previous version
 # of manylinux we can't install torch to validate e2e tests
 select = "cp313-*"
-environment = {CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"}
+environment = {CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014", CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"}
