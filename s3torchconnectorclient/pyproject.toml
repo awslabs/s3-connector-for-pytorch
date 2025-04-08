@@ -1,5 +1,10 @@
 [build-system]
-requires = ["setuptools", "setuptools-rust", "build"]
+requires = [
+    "setuptools>=77.0.0; python_version>='3.13'",
+    "setuptools; python_version<'3.13'",
+    "setuptools-rust",
+    "build"
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -20,8 +25,8 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Utilities"
 ]
-license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
 license = "BSD-3-Clause"
+license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
 
 dependencies = []
 
