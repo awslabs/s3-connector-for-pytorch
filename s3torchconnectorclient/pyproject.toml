@@ -123,8 +123,8 @@ before-all = [
     "sh '/Applications/Python 3.12/Install Certificates.command'"
 ]
 
-[[tool.cibuildwheel.overrides]]
-# torch wheel has wheel for manylinux_2_28, if we try to test wheel on previous version
-# of manylinux we can't install torch to validate e2e tests
-select = "cp313-*"
-environment = {CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014", CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"}
+#[[tool.cibuildwheel.overrides]]
+## torch wheel has wheel for manylinux_2_28, if we try to test wheel on previous version
+## of manylinux we can't install torch to validate e2e tests
+#select = "cp313-*"
+#environment = {CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014", CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"}
