@@ -1,14 +1,20 @@
-## TBD
+## v1.4.0 (April 9, 2025)
 
 ### New features
 * Introducing support of FSDP in DCP benchmark (#313)
-* Exposing max_attempts setting through S3ClientConfig and adding support of S3ClientConfig to DCP
+* Exposing max_attempts setting through S3ClientConfig and adding support of S3ClientConfig to DCP (#322)
 
 ### Bug fixes
 * Consume mountpoint-s3-client changes for race condition on GET request path, that may lead to an empty response 
 
+### Other changes
+* Update Pyo3 version (#314)
+
 ### Breaking changes
-* No breaking changes. 
+* We changed the way we handle `fork` operations. The CRT client used for communication with S3 is not stable 
+during `fork` due to global state and locks held by background threads. To address this, we now clean up all 
+existing CRT clients before a `fork` operation and create new CRT clients in the child process. 
+This change prevents segfaults and hanging GET requests for training workloads that rely on `fork` (#320)  
 
 ## v1.3.2 (February 5, 2025)
 
