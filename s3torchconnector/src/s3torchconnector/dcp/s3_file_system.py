@@ -44,11 +44,11 @@ class S3FileSystem(FileSystemBase):
         self._path: Union[str, os.PathLike] = ""
         user_agent = UserAgent(["dcp", torch.__version__])
         self._client = (
-            s3_client
-            if s3_client is not None
-            else S3Client(
+            S3Client(
                 region=region, user_agent=user_agent, s3client_config=s3client_config
             )
+            if s3_client is None
+            else s3_client
         )
 
     @contextmanager

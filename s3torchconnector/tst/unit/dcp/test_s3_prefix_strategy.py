@@ -2,13 +2,14 @@
 #  // SPDX-License-Identifier: BSD
 
 import pytest
-from unittest.mock import patch, MagicMock
-
-from hypothesis import given
-
-from s3torchconnector.dcp.s3_prefix_strategy import DefaultPrefixStrategy, S3PrefixStrategyBase
-from s3torchconnector.dcp.s3_prefix_strategy import HexPrefixStrategy
-
+from unittest.mock import patch
+from s3torchconnector.dcp.s3_prefix_strategy import (
+    S3PrefixStrategyBase,
+    DefaultPrefixStrategy,
+    BinaryPrefixStrategy,
+    RoundRobinPrefixStrategy,
+    HexPrefixStrategy
+)
 
 def test_default_strategy_generate_prefix():
     """Test the generate_prefix method of DefaultPrefixStrategy."""
@@ -57,11 +58,82 @@ def test_hex_prefix_strategy(is_initialized_mock,
     is_initialized_mock.return_value = True
     get_world_size_mock.return_value = world_size
     hex_strategy = HexPrefixStrategy()
-    assert hex_strategy.generate_prefix(10) == "0xa_"
-    assert hex_strategy(255) == "0xff_"
+    assert hex_strategy.generate_prefix(10) == "a/__10_"
+    assert hex_strategy(255) == "f/__255_"
 
     hex_strategy = HexPrefixStrategy(epoch_num=5)
-    assert hex_strategy.generate_prefix(10) == "0xa_"
-    assert hex_strategy(255) == "0xff_"
+    assert hex_strategy.generate_prefix(10) == "a/epoch_5/__10_"
+    assert hex_strategy(255) == "f/epoch_5/__255_"
 
 
+@patch("torch.distributed.get_world_size")
+@patch("torch.distributed.is_initialized")
+def test_binary_prefix_strategy(is_initialized_mock, get_world_size_mock):
+    """Test the BinaryPrefixStrategy."""
+    # Test without distributed initialization
+    is_initialized_mock.return_value = False
+    binary_strategy = BinaryPrefixStrategy()
+    assert binary_strategy.generate_prefix(0) == "0/__0_"
+    assert binary_strategy(1) == "0/__1_"
+
+    # Test with distributed initialization
+    is_initialized_mock.return_value = True
+    get_world_size_mock.return_value = 4
+    binary_strategy = BinaryPrefixStrategy()
+    assert binary_strategy.generate_prefix(0) == "00/__0_"
+    assert binary_strategy.generate_prefix(3) == "11/__3_"
+    assert binary_strategy.prefix_map == ["00", "01", "10", "11"]
+
+    # Test with epoch number
+    binary_strategy = BinaryPrefixStrategy(epoch_num=3)
+    assert binary_strategy.generate_prefix(0) == "00/epoch_3/__0_"
+    assert binary_strategy(3) == "11/epoch_3/__3_"
+
+
+def test_round_robin_prefix_strategy():
+    """Test the RoundRobinPrefixStrategy."""
+    # Test basic functionality
+    prefixes = ["prefix1", "prefix2", "prefix3"]
+    rr_strategy = RoundRobinPrefixStrategy(prefixes)
+
+    assert rr_strategy.generate_prefix(0) == "prefix1/__0_"
+    assert rr_strategy.generate_prefix(1) == "prefix2/__1_"
+    assert rr_strategy.generate_prefix(2) == "prefix3/__2_"
+    assert rr_strategy.generate_prefix(3) == "prefix1/__3_"
+    assert rr_strategy.user_prefixes == prefixes
+
+    # Test with epoch number
+    rr_strategy = RoundRobinPrefixStrategy(prefixes, epoch_num=5)
+    assert rr_strategy.generate_prefix(0) == "prefix1/epoch_5/__0_"
+    assert rr_strategy(4) == "prefix2/epoch_5/__4_"
+
+    # Test empty prefixes
+    with pytest.raises(ValueError):
+        RoundRobinPrefixStrategy([])
+
+    # Test single prefix
+    single_prefix_strategy = RoundRobinPrefixStrategy(["prefix"])
+    assert single_prefix_strategy.generate_prefix(0) == "prefix/__0_"
+    assert single_prefix_strategy.generate_prefix(1) == "prefix/__1_"
+
+
+@patch("torch.distributed.get_world_size")
+@patch("torch.distributed.is_initialized")
+def test_hex_prefix_strategy_extended(is_initialized_mock, get_world_size_mock):
+    """Additional tests for HexPrefixStrategy."""
+    # Test large world size
+    is_initialized_mock.return_value = True
+    get_world_size_mock.return_value = 257  # Requires 3 hex digits
+
+    hex_strategy = HexPrefixStrategy()
+    assert hex_strategy.generate_prefix(256) == "100/__256_"
+    assert hex_strategy(257) == "000/__257_"
+    assert hex_strategy(0) == "000/__0_"
+    assert hex_strategy(100) == "064/__100_"
+    assert len(hex_strategy.prefix_map) == 257
+
+    # Test small world size
+    get_world_size_mock.return_value = 2
+    hex_strategy = HexPrefixStrategy()
+    assert hex_strategy.generate_prefix(0) == "0/__0_"
+    assert hex_strategy.generate_prefix(1) == "1/__1_"
