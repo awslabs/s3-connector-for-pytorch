@@ -59,7 +59,7 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
             or <pattern>/__<rank>_ if no epoch number is provided.
         """
         epoch_suffix = f"epoch_{self.epoch_num}/" if self.epoch_num is not None else ""
-        return f"{self.prefix_map[rank]}/{epoch_suffix}__{rank}_"
+        return f"{self.prefix_map[rank % len(self.prefix_map)]}/{epoch_suffix}__{rank}_"
 
     def _generate_prefix_map(self) -> List[str]:
         """Generate mapping of ranks to numeric-based prefixes."""
@@ -73,10 +73,7 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
             for i in range(self.base**prefix_length)
         ]
 
-        if len(all_prefixes) > world_size:
-            step_size = len(all_prefixes) // world_size
-            return all_prefixes[::step_size][:world_size]
-        return all_prefixes
+        return all_prefixes[:world_size]
 
     def _calculate_prefix_length(self, world_size: int) -> int:
         """Calculate minimum prefix length needed for unique combinations."""
