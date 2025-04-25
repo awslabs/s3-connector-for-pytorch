@@ -24,13 +24,19 @@ def generate_random_port():
 
 
 def setup(rank, world_size, port):
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = port
-    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+    dist.init_process_group(
+        backend="gloo",
+        world_size=world_size,
+        rank=rank,
+        init_method=f"tcp://127.0.0.1:{port}",
+    )
 
 
 def cleanup():
-    dist.destroy_process_group()
+    # Synchronization point: Barrier ensures all process groups reach this point
+    dist.barrier()
+    if dist.is_initialized():
+        dist.destroy_process_group()
 
 
 def run(
