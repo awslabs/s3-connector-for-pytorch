@@ -33,10 +33,7 @@ def setup(rank, world_size, port):
 
 
 def cleanup():
-    # Synchronization point: Barrier ensures all process groups reach this point
-    dist.barrier()
-    if dist.is_initialized():
-        dist.destroy_process_group()
+    dist.destroy_process_group()
 
 
 def run(
