@@ -1,6 +1,5 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-
 import pytest
 import torch
 import torch.distributed.checkpoint as dcp
@@ -17,6 +16,9 @@ from s3torchconnectorclient import __version__
 
 import os
 import random
+
+from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
+from test_common import _list_folders_in_bucket
 
 
 def generate_random_port():
@@ -47,6 +49,7 @@ def run(
     s3_path_s3storagewriter,
     test_data,
     port,
+    prefix_strategy,
 ):
     print(f"Running on rank {rank}.")
 
@@ -59,6 +62,7 @@ def run(
             thread_count=threads,
             path=s3_path_s3storagewriter,
             overwrite=True,
+            prefix_strategy=prefix_strategy,
         ),
     )
 
@@ -66,8 +70,8 @@ def run(
 
 
 def multi_process_dcp_save_load(
-    world_size, thread_count, checkpoint_directory, tensor_dimensions, port_offset
-):
+    world_size, thread_count, checkpoint_directory, tensor_dimensions, port_offset,  prefix_strategy
+) -> str:
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
     s3_path_s3storagewriter = s3_path_s3storagewriter.replace("[", "_").replace(
@@ -90,6 +94,7 @@ def multi_process_dcp_save_load(
             s3_path_s3storagewriter,
             test_data,
             port,
+            prefix_strategy,
         ),
         nprocs=world_size,
         join=True,
@@ -103,6 +108,11 @@ def multi_process_dcp_save_load(
         thread_count,
     )
 
+    return s3_path_s3storagewriter
+
+def _verify_user_agent(s3fs: S3FileSystem):
+    expected_user_agent = f"s3torchconnector/{__version__} (dcp; {torch.__version__})"
+    assert s3fs._client.user_agent_prefix == expected_user_agent
 
 def dcp_save(data, writer):
     _verify_user_agent(writer.fs)
@@ -167,8 +177,9 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
 def test_dcp_when_multi_process(
     checkpoint_directory, tensor_dimensions, thread_count, port_offset
 ):
+    # how to get different prefix strategy for each test
     multi_process_dcp_save_load(
-        3, thread_count, checkpoint_directory, tensor_dimensions, port_offset
+        3, thread_count, checkpoint_directory, tensor_dimensions, port_offset, None
     )
 
 
@@ -281,6 +292,26 @@ def test_s3client_config_for_writer(checkpoint_directory):
     )
 
 
-def _verify_user_agent(s3fs: S3FileSystem):
-    expected_user_agent = f"s3torchconnector/{__version__} (dcp; {torch.__version__})"
-    assert s3fs._client.user_agent_prefix == expected_user_agent
+@pytest.mark.parametrize(
+    "tensor_dimensions, thread_count, port_offset",
+    [
+        ([1024, 10, 10], 1, 20000),
+        ([1024, 10, 10], 4, 40000),
+    ],
+    ids=[
+        "prefix_single_thread",
+        "prefix_multi_thread",
+    ],
+)
+def test_round_robin_prefix_strategy(checkpoint_directory, tensor_dimensions, thread_count, port_offset):
+    prefixes = ["prefix1", "prefix2", "prefix3"]
+    rr_strategy = RoundRobinPrefixStrategy(prefixes)
+    base_folder = multi_process_dcp_save_load(
+        3, thread_count, checkpoint_directory, tensor_dimensions, port_offset, rr_strategy
+    )
+    bucket, key = parse_s3_uri(base_folder)
+    # ensure that provided prefixes were used for distributing checkpoints
+    list_result = _list_folders_in_bucket(bucket, key)
+    assert set(list_result) == set(prefixes)
+
+
