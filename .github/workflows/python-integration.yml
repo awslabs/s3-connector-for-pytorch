@@ -110,7 +110,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/e2e/dcp -n auto
+          pytest s3torchconnector/tst/e2e/dcp
 
       - name: s3torchconnectorclient ${{ matrix.test-run.name }} integration tests
         run: |
