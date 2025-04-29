@@ -33,7 +33,7 @@ class DefaultPrefixStrategy(S3PrefixStrategyBase):
 class NumericPrefixStrategy(S3PrefixStrategyBase):
     """Base class for numeric prefix generation strategies."""
 
-    def __init__(self, base: int, epoch_num: int = None):
+    def __init__(self, base: int, epoch_num: int = None, min_prefix_len: int = 10):
         """
         Initialize numeric prefix strategy.
 
@@ -45,6 +45,7 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
         super().__init__()
         self.base = base
         self.epoch_num = epoch_num
+        self.min_prefix_len = min_prefix_len
         self.prefix_map = self._generate_prefix_map()
 
     def generate_prefix(self, rank: int) -> str:
@@ -66,11 +67,12 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
         world_size = 1
         if  dist.is_initialized():
             world_size = dist.get_world_size()
-        prefix_length = self._calculate_prefix_length(world_size)
+        minimum_required_length = self._calculate_prefix_length(world_size)
+        adjusted_prefix_length = max(minimum_required_length, self.min_prefix_len)
 
         all_prefixes = [
-            self._format_number(i, prefix_length)
-            for i in range(self.base**prefix_length)
+            self._format_number(i, adjusted_prefix_length)[::-1]
+            for i in range(self.base**minimum_required_length)
         ]
 
         return all_prefixes[:world_size]
