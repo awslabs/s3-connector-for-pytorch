@@ -1,10 +1,14 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import threading
 import io
 from typing import Union
+import logging
 
 from s3torchconnectorclient._mountpoint_s3_client import PutObjectStream
+
+logger = logging.getLogger(__name__)
 
 
 class S3Writer(io.BufferedIOBase):
@@ -13,13 +17,24 @@ class S3Writer(io.BufferedIOBase):
     def __init__(self, stream: PutObjectStream):
         self.stream = stream
         self._position = 0
+        self._closed = False
+        self._lock = threading.Lock()
 
     def __enter__(self):
         self._position = 0
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        """Close stream on normal exit, log any exceptions that occurred."""
+        if exc_type is not None:
+            try:
+                logger.info(
+                    f"Exception occurred before closing stream: {exc_type.__name__}: {exc_val}"
+                )
+            except:
+                pass
+        else:
+            self.close()
 
     def write(
         self,
@@ -49,7 +64,10 @@ class S3Writer(io.BufferedIOBase):
         Raises:
             S3Exception: An error occurred accessing S3.
         """
-        self.stream.close()
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                self.stream.close()
 
     def flush(self):
         """No-op"""
