@@ -37,7 +37,7 @@ jobs:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-arm-3.0-large
             kind: manylinux
             arch: aarch64
-#          - runner: ubuntu-20.04
+#          - runner: ubuntu-24.04
 #            kind: manylinux
 #            arch: x86_64
           - runner: macos-13
@@ -111,7 +111,7 @@ jobs:
 
   build_source_wheels:
     name: Build source wheels for ${{ matrix.build_target }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: generate_third_party_licenses
     strategy:
       matrix:
