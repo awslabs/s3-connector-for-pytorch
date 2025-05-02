@@ -9,7 +9,7 @@ from torch.distributed.checkpoint import CheckpointException
 import torch.multiprocessing as mp
 
 from s3torchconnector import S3ClientConfig
-from s3torchconnector.dcp import S3StorageWriter, S3StorageReader, S3FileSystem
+from s3torchconnector.dcp import S3StorageWriter, S3StorageReader, S3FileSystem, BinaryPrefixStrategy
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnectorclient import __version__
@@ -162,10 +162,10 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
 @pytest.mark.parametrize(
     "tensor_dimensions, thread_count, port_offset",
     [
-        ([3, 2], 1, 20000),
-        ([10, 1024, 1024], 1, 30000),
-        ([3, 2], 4, 40000),
-        ([10, 1024, 1024], 4, 50000),
+        ([3, 2], 1, 10000),
+        ([10, 1024, 1024], 1, 15000),
+        ([3, 2], 4, 20000),
+        ([10, 1024, 1024], 4, 25000),
     ],
     ids=[
         "small_tensor_single_thread",
@@ -295,8 +295,8 @@ def test_s3client_config_for_writer(checkpoint_directory):
 @pytest.mark.parametrize(
     "tensor_dimensions, thread_count, port_offset",
     [
-        ([1024, 10, 10], 1, 20000),
-        ([1024, 10, 10], 4, 40000),
+        ([1024, 10, 10], 1, 30000),
+        ([1024, 10, 10], 4, 35000),
     ],
     ids=[
         "prefix_single_thread",
@@ -315,3 +315,29 @@ def test_round_robin_prefix_strategy(checkpoint_directory, tensor_dimensions, th
     assert set(list_result) == set(prefixes)
 
 
+@pytest.mark.parametrize(
+    "tensor_dimensions, thread_count, port_offset",
+    [
+        ([1024, 10, 10], 1, 40000),
+        ([1024, 10, 10], 4, 45000),
+    ],
+    ids=[
+        "prefix_single_thread",
+        "prefix_multi_thread",
+    ],
+)
+def test_round_binary_prefix_strategy(checkpoint_directory, tensor_dimensions, thread_count, port_offset):
+    rr_strategy = BinaryPrefixStrategy(epoch_num=4, min_prefix_length=4, prefix_count=4)
+    base_folder = multi_process_dcp_save_load(
+        4, thread_count, checkpoint_directory, tensor_dimensions, port_offset, rr_strategy
+    )
+    bucket, key = parse_s3_uri(base_folder)
+    # ensure that provided prefixes were used for distributing checkpoints
+    list_result = _list_folders_in_bucket(bucket, key)
+    expected_prefixes = ["0000", "1000", "0100", "1100",]
+    assert set(list_result) == set(expected_prefixes)
+
+    for partition_prefix in expected_prefixes:
+        # ensure that sub folders for epochs were created
+        list_result = _list_folders_in_bucket(bucket, f"{key}/{partition_prefix}")
+        assert set(list_result) == {"epoch_4"}
