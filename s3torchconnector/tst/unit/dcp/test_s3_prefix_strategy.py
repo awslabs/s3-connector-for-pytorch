@@ -8,22 +8,19 @@ from s3torchconnector.dcp.s3_prefix_strategy import (
     DefaultPrefixStrategy,
     BinaryPrefixStrategy,
     RoundRobinPrefixStrategy,
-    HexPrefixStrategy
+    HexPrefixStrategy,
 )
+
 
 def test_default_strategy_generate_prefix():
     """Test the generate_prefix method of DefaultPrefixStrategy."""
     default_strategy = DefaultPrefixStrategy()
-    test_cases = [
-        (0, "__0_"),
-        (1, "__1_"),
-        (100, "__100_"),
-        (-1, "__-1_")
-    ]
+    test_cases = [(0, "__0_"), (1, "__1_"), (100, "__100_"), (-1, "__-1_")]
 
     for rank, expected in test_cases:
         result = default_strategy.generate_prefix(rank)
         assert result == expected
+
 
 def test_call_method():
     """Test the __call__ method of the strategy."""
@@ -33,10 +30,12 @@ def test_call_method():
     result = default_strategy(rank)
     assert result == expected
 
+
 def test_base_class_is_abstract():
     """Test that S3PrefixStrategyBase cannot be instantiated directly."""
     with pytest.raises(TypeError):
         S3PrefixStrategyBase()
+
 
 def test_custom_strategy():
     """Test creating and using a custom strategy."""
@@ -49,10 +48,10 @@ def test_custom_strategy():
     assert custom_strategy.generate_prefix(1) == "rank_1/data_"
     assert custom_strategy(2) == "rank_2/data_"
 
+
 @patch("torch.distributed.get_world_size")
 @patch("torch.distributed.is_initialized")
-def test_hex_prefix_strategy(is_initialized_mock,
-                             get_world_size_mock):
+def test_hex_prefix_strategy(is_initialized_mock, get_world_size_mock):
     """Test the HexPrefixStrategy."""
     world_size = 16
     is_initialized_mock.return_value = True
@@ -82,7 +81,12 @@ def test_binary_prefix_strategy(is_initialized_mock, get_world_size_mock):
     binary_strategy = BinaryPrefixStrategy()
     assert binary_strategy.generate_prefix(0) == "0000000000/__0_"
     assert binary_strategy.generate_prefix(3) == "1100000000/__3_"
-    assert binary_strategy.prefix_map == ["0000000000", "1000000000", "0100000000", "1100000000"]
+    assert binary_strategy.prefix_map == [
+        "0000000000",
+        "1000000000",
+        "0100000000",
+        "1100000000",
+    ]
 
     # Test with epoch number
     binary_strategy = BinaryPrefixStrategy(epoch_num=3)

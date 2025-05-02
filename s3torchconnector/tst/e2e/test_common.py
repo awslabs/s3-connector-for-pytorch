@@ -37,28 +37,23 @@ def _read_data(s3reader: S3Reader) -> Tuple[str, bytes]:
 
 
 def _list_folders_in_bucket(bucket_name, prefix=""):
-    if prefix and not prefix.endswith('/'):
-        prefix += '/'
+    if prefix and not prefix.endswith("/"):
+        prefix += "/"
 
-    s3_client = boto3.client('s3')
-    paginator = s3_client.get_paginator('list_objects_v2')
+    s3_client = boto3.client("s3")
+    paginator = s3_client.get_paginator("list_objects_v2")
 
-    pages = paginator.paginate(
-        Bucket=bucket_name,
-        Delimiter='/',
-        Prefix=prefix
-    )
+    pages = paginator.paginate(Bucket=bucket_name, Delimiter="/", Prefix=prefix)
 
     folders = []
     for page in pages:
         # Common prefixes are the folders
-        if 'CommonPrefixes' in page:
-            for obj in page['CommonPrefixes']:
-                folder_name = obj['Prefix']
+        if "CommonPrefixes" in page:
+            for obj in page["CommonPrefixes"]:
+                folder_name = obj["Prefix"]
                 if prefix:
                     # Remove the prefix from the folder name if it exists
-                    folder_name = folder_name[len(prefix):]
+                    folder_name = folder_name[len(prefix) :]
                 if folder_name:  # Avoid empty folder names
-                    folders.append(folder_name.rstrip('/'))
+                    folders.append(folder_name.rstrip("/"))
     return folders
-

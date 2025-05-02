@@ -34,7 +34,13 @@ class DefaultPrefixStrategy(S3PrefixStrategyBase):
 class NumericPrefixStrategy(S3PrefixStrategyBase):
     """Base class for numeric prefix generation strategies."""
 
-    def __init__(self, base: int, epoch_num: int = None, min_prefix_length: int = 10, prefix_count: int = None):
+    def __init__(
+        self,
+        base: int,
+        epoch_num: int = None,
+        min_prefix_length: int = 10,
+        prefix_count: int = None,
+    ):
         """
             Initialize numeric prefix strategy.
 
@@ -51,13 +57,21 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
             ValueError: If epoch_num, min_prefix_length, or prefix_count are invalid.
         """
         if min_prefix_length < 1:
-            raise ValueError(f"Minimum prefix length must be positive, got {min_prefix_length}")
+            raise ValueError(
+                f"Minimum prefix length must be positive, got {min_prefix_length}"
+            )
 
         if epoch_num is not None and not isinstance(epoch_num, int):
-            raise ValueError(f"Epoch number must be None or an integer, got {epoch_num}")
+            raise ValueError(
+                f"Epoch number must be None or an integer, got {epoch_num}"
+            )
 
-        if prefix_count is not None and (not isinstance(prefix_count, int) or prefix_count < 1):
-                raise ValueError(f"Prefix count must be a positive integer, got {prefix_count}")
+        if prefix_count is not None and (
+            not isinstance(prefix_count, int) or prefix_count < 1
+        ):
+            raise ValueError(
+                f"Prefix count must be a positive integer, got {prefix_count}"
+            )
 
         super().__init__()
         self.base = base
@@ -96,7 +110,7 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
             for i in range(self.base**minimum_required_length)
         ]
 
-        return all_prefixes[:self.prefix_count]
+        return all_prefixes[: self.prefix_count]
 
     def _calculate_prefix_length(self) -> int:
         """Calculate minimum prefix length needed for unique combinations."""
@@ -116,8 +130,18 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
 class BinaryPrefixStrategy(NumericPrefixStrategy):
     """Binary (Base2) prefix generation strategy using only 0 and 1."""
 
-    def __init__(self, epoch_num: int = None, min_prefix_length: int = 10, prefix_count: int = None):
-        super().__init__(base=2, epoch_num=epoch_num, min_prefix_length=min_prefix_length, prefix_count=prefix_count)
+    def __init__(
+        self,
+        epoch_num: int = None,
+        min_prefix_length: int = 10,
+        prefix_count: int = None,
+    ):
+        super().__init__(
+            base=2,
+            epoch_num=epoch_num,
+            min_prefix_length=min_prefix_length,
+            prefix_count=prefix_count,
+        )
 
     def _format_number(self, number: int, length: int) -> str:
         return format(number, f"0{length}b")
@@ -126,8 +150,18 @@ class BinaryPrefixStrategy(NumericPrefixStrategy):
 class HexPrefixStrategy(NumericPrefixStrategy):
     """Hexadecimal-based prefix generation strategy."""
 
-    def __init__(self, epoch_num: int = None, min_prefix_length: int = 10, prefix_count: int = None):
-        super().__init__(base=16, epoch_num=epoch_num, min_prefix_length=min_prefix_length, prefix_count=prefix_count)
+    def __init__(
+        self,
+        epoch_num: int = None,
+        min_prefix_length: int = 10,
+        prefix_count: int = None,
+    ):
+        super().__init__(
+            base=16,
+            epoch_num=epoch_num,
+            min_prefix_length=min_prefix_length,
+            prefix_count=prefix_count,
+        )
 
     def _format_number(self, number: int, length: int) -> str:
         return format(number, f"0{length}x")
@@ -168,4 +202,3 @@ class RoundRobinPrefixStrategy(S3PrefixStrategyBase):
         """
         epoch_suffix = f"epoch_{self.epoch_num}/" if self.epoch_num is not None else ""
         return f"{self.user_prefixes[rank % len(self.user_prefixes)]}/{epoch_suffix}__{rank}_"
-
