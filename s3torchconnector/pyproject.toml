@@ -30,7 +30,7 @@ dependencies = [
 test = [
     "pytest",
     "pytest-timeout",
-    "hypothesis",
+    "hypothesis!=6.131.9",
     "flake8",
     "black",
     "mypy"
