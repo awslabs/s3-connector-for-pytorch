@@ -9,7 +9,12 @@ from torch.distributed.checkpoint import CheckpointException
 import torch.multiprocessing as mp
 
 from s3torchconnector import S3ClientConfig
-from s3torchconnector.dcp import S3StorageWriter, S3StorageReader, S3FileSystem, BinaryPrefixStrategy
+from s3torchconnector.dcp import (
+    S3StorageWriter,
+    S3StorageReader,
+    S3FileSystem,
+    BinaryPrefixStrategy,
+)
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnectorclient import __version__
@@ -70,7 +75,12 @@ def run(
 
 
 def multi_process_dcp_save_load(
-    world_size, thread_count, checkpoint_directory, tensor_dimensions, port_offset,  prefix_strategy
+    world_size,
+    thread_count,
+    checkpoint_directory,
+    tensor_dimensions,
+    port_offset,
+    prefix_strategy,
 ) -> str:
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
@@ -110,9 +120,11 @@ def multi_process_dcp_save_load(
 
     return s3_path_s3storagewriter
 
+
 def _verify_user_agent(s3fs: S3FileSystem):
     expected_user_agent = f"s3torchconnector/{__version__} (dcp; {torch.__version__})"
     assert s3fs._client.user_agent_prefix == expected_user_agent
+
 
 def dcp_save(data, writer):
     _verify_user_agent(writer.fs)
@@ -303,11 +315,18 @@ def test_s3client_config_for_writer(checkpoint_directory):
         "prefix_multi_thread",
     ],
 )
-def test_round_robin_prefix_strategy(checkpoint_directory, tensor_dimensions, thread_count, port_offset):
+def test_round_robin_prefix_strategy(
+    checkpoint_directory, tensor_dimensions, thread_count, port_offset
+):
     prefixes = ["prefix1", "prefix2", "prefix3"]
     rr_strategy = RoundRobinPrefixStrategy(prefixes)
     base_folder = multi_process_dcp_save_load(
-        3, thread_count, checkpoint_directory, tensor_dimensions, port_offset, rr_strategy
+        3,
+        thread_count,
+        checkpoint_directory,
+        tensor_dimensions,
+        port_offset,
+        rr_strategy,
     )
     bucket, key = parse_s3_uri(base_folder)
     # ensure that provided prefixes were used for distributing checkpoints
@@ -326,15 +345,27 @@ def test_round_robin_prefix_strategy(checkpoint_directory, tensor_dimensions, th
         "prefix_multi_thread",
     ],
 )
-def test_round_binary_prefix_strategy(checkpoint_directory, tensor_dimensions, thread_count, port_offset):
+def test_round_binary_prefix_strategy(
+    checkpoint_directory, tensor_dimensions, thread_count, port_offset
+):
     rr_strategy = BinaryPrefixStrategy(epoch_num=4, min_prefix_length=4, prefix_count=4)
     base_folder = multi_process_dcp_save_load(
-        4, thread_count, checkpoint_directory, tensor_dimensions, port_offset, rr_strategy
+        4,
+        thread_count,
+        checkpoint_directory,
+        tensor_dimensions,
+        port_offset,
+        rr_strategy,
     )
     bucket, key = parse_s3_uri(base_folder)
     # ensure that provided prefixes were used for distributing checkpoints
     list_result = _list_folders_in_bucket(bucket, key)
-    expected_prefixes = ["0000", "1000", "0100", "1100",]
+    expected_prefixes = [
+        "0000",
+        "1000",
+        "0100",
+        "1100",
+    ]
     assert set(list_result) == set(expected_prefixes)
 
     for partition_prefix in expected_prefixes:
