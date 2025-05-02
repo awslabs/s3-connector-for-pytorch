@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "s3torchconnectorclient"
 version = "1.4.0"
 description = "Internal S3 client implementation for s3torchconnector"
-requires-python = ">=3.8,<3.13,!=3.12.10"
+requires-python = ">=3.8,<3.13"
 readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -28,7 +28,7 @@ test = [
     "boto3",
     "pytest",
     "pytest-timeout",
-    "hypothesis!=6.131.9",
+    "hypothesis",
     "flake8",
     "black",
     "mypy",
@@ -72,7 +72,7 @@ environment-pass = [
     "S3_CUSTOM_ENDPOINT_URL"
 ]
 before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
-build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312.9"]
+build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*"]
 skip = "*musllinux* *i686"
 
 [tool.cibuildwheel.linux]
