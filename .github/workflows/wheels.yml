@@ -21,14 +21,6 @@ jobs:
   build_wheels:
     name: Wheels for ${{ matrix.python }} - ${{ matrix.builder.kind }} - ${{ matrix.builder.arch }}
     runs-on: ${{ matrix.builder.runner }}
-    env:
-      CIBW_BUILD: ${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}
-      CIBW_BEFORE_ALL: >-
-        ${{ matrix.python == 'cp312' && matrix.builder.kind == 'macosx' 
-        && 'curl -o /tmp/Python3129.pkg https://www.python.org/ftp/python/3.12.9/python-3.12.9-macos11.pkg 
-        && sudo installer -pkg /tmp/Python3129.pkg -target / 
-        && sh "/Applications/Python 3.12/Install Certificates.command"' 
-        || '' }}    
     needs: generate_third_party_licenses
     strategy:
       matrix:
