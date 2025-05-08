@@ -109,8 +109,9 @@ test-command = [
 ]
 
 [[tool.cibuildwheel.overrides]]
-# Using Python 3.12.9 for MacOS to mitigate integration test hanging issue
-# pytest was unable to cleanup hanging multiprocess resources in test_multiprocess_dataloading.py
+# Using CPython 3.12.9 for MacOS to mitigate integration test hanging issue
+# Python is unable to cleanup hanging multiprocessing resource tracker processes in test_multiprocess_dataloading.py
+# See similar issue in: https://github.com/pytorch/pytorch/issues/153050
 select = "cp312-macosx*"
 before-all = [
     "curl -o /tmp/Python3129.pkg https://www.python.org/ftp/python/3.12.9/python-3.12.9-macos11.pkg", 
