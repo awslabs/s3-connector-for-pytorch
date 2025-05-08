@@ -8,6 +8,7 @@ import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Union, Optional
+from typing import List
 
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
@@ -267,7 +268,7 @@ class S3StorageWriter(FileSystemWriter):
         self.path = self.fs.init_path(path)
         self.prefix_strategy = prefix_strategy or DefaultPrefixStrategy()
 
-    def prepare_global_plan(self, plans: list[SavePlan]) -> list[SavePlan]:
+    def prepare_global_plan(self, plans: List[SavePlan]) -> List[SavePlan]:
         """
         Prepare save plans with S3-specific storage metadata.
 
