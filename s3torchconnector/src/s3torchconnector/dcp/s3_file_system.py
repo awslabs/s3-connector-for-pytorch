@@ -246,7 +246,7 @@ class S3StorageWriter(FileSystemWriter):
         region: str,
         path: str,
         s3client_config: Optional[S3ClientConfig] = None,
-        prefix_strategy: S3PrefixStrategyBase = None,
+        prefix_strategy: Optional[S3PrefixStrategyBase] = None,
         **kwargs,
     ) -> None:
         """

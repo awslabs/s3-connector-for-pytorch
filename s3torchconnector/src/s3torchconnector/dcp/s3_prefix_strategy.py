@@ -1,10 +1,9 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 import torch.distributed as dist
-from sympy import variations
 
 
 class S3PrefixStrategyBase(ABC):
@@ -37,9 +36,9 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
     def __init__(
         self,
         base: int,
-        epoch_num: int = None,
+        epoch_num: Optional[int] = None,
         min_prefix_length: int = 10,
-        prefix_count: int = None,
+        prefix_count: Optional[int] = None,
     ):
         """
             Initialize numeric prefix strategy.
@@ -132,9 +131,9 @@ class BinaryPrefixStrategy(NumericPrefixStrategy):
 
     def __init__(
         self,
-        epoch_num: int = None,
+        epoch_num: Optional[int] = None,
         min_prefix_length: int = 10,
-        prefix_count: int = None,
+        prefix_count: Optional[int] = None,
     ):
         super().__init__(
             base=2,
@@ -152,9 +151,9 @@ class HexPrefixStrategy(NumericPrefixStrategy):
 
     def __init__(
         self,
-        epoch_num: int = None,
+        epoch_num: Optional[int] = None,
         min_prefix_length: int = 10,
-        prefix_count: int = None,
+        prefix_count: Optional[int] = None,
     ):
         super().__init__(
             base=16,
@@ -170,7 +169,7 @@ class HexPrefixStrategy(NumericPrefixStrategy):
 class RoundRobinPrefixStrategy(S3PrefixStrategyBase):
     """Strategy that distributes ranks across user-provided prefixes in round-robin fashion."""
 
-    def __init__(self, user_prefixes: List[str], epoch_num: int = None):
+    def __init__(self, user_prefixes: List[str], epoch_num: Optional[int] = None):
         """
         Initialize round-robin prefix strategy.
 
