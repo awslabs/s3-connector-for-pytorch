@@ -35,10 +35,6 @@ test = [
     "Pillow"
 ]
 
-[tool.pytest.ini_options]
-faulthandler_timeout = 600 # Dumps tracebacks when test hangs for 10 minutes
-timeout = 1800 # Terminates tests if it runs longer than 30 minutes
-
 [tool.setuptools.packages]
 # Pure Python packages/modules
 find = { where = ["python/src"] }
