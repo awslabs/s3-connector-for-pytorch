@@ -3,6 +3,7 @@
 
 import io
 from typing import Union
+import threading
 
 from s3torchconnectorclient._mountpoint_s3_client import PutObjectStream
 
@@ -13,6 +14,8 @@ class S3Writer(io.BufferedIOBase):
     def __init__(self, stream: PutObjectStream):
         self.stream = stream
         self._position = 0
+        self._closed = False
+        self._lock = threading.Lock()
 
     def __enter__(self):
         self._position = 0
@@ -49,7 +52,10 @@ class S3Writer(io.BufferedIOBase):
         Raises:
             S3Exception: An error occurred accessing S3.
         """
-        self.stream.close()
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                self.stream.close()
 
     def flush(self):
         """No-op"""

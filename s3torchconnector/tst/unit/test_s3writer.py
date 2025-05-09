@@ -4,6 +4,7 @@
 from io import BytesIO
 from typing import List, Tuple
 from unittest.mock import Mock
+import threading
 
 import pytest
 from hypothesis import given
@@ -53,3 +54,36 @@ def test_s3writer_tell(stream_and_lengths: Tuple[List[bytes], List[int]]):
 
             assert b_length == length
             assert bytewriter.tell() == s3writer.tell()
+
+
+def test_multiple_close_calls():
+    """Test that multiple calls to close() only close the stream once."""
+    MOCK_STREAM.reset_mock()
+
+    writer = S3Writer(MOCK_STREAM)
+
+    writer.close()
+    writer.close()
+    writer.close()
+
+    MOCK_STREAM.close.assert_called_once()
+    assert writer._closed
+
+
+def test_concurrent_close_calls():
+    """Test that concurrent calls to close() only close the stream once."""
+    MOCK_STREAM.reset_mock()
+
+    writer = S3Writer(MOCK_STREAM)
+    threads = []
+
+    for _ in range(5):
+        thread = threading.Thread(target=writer.close)
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    MOCK_STREAM.close.assert_called_once()
+    assert writer._closed
