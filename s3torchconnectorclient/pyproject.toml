@@ -107,3 +107,14 @@ test-command = [
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest -s {package}/../s3torchconnector/tst/e2e/dcp/test_e2e_s3_file_system.py",
     "AWS_DEFAULT_REGION=${S3_EXPRESS_REGION} CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest -s {package}/../s3torchconnector/tst/e2e/dcp/test_e2e_s3_file_system.py",
 ]
+
+[[tool.cibuildwheel.overrides]]
+# Using CPython 3.12.9 for MacOS to mitigate integration test hanging issue
+# Python is unable to cleanup hanging multiprocessing resource tracker processes in test_multiprocess_dataloading.py
+# See similar issue in: https://github.com/pytorch/pytorch/issues/153050
+select = "cp312-macosx*"
+before-all = [
+    "curl -o /tmp/Python3129.pkg https://www.python.org/ftp/python/3.12.9/python-3.12.9-macos11.pkg", 
+    "sudo installer -pkg /tmp/Python3129.pkg -target /",
+    "sh '/Applications/Python 3.12/Install Certificates.command'"
+]
