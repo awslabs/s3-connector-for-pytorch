@@ -111,7 +111,7 @@ jobs:
 
   build_source_wheels:
     name: Build source wheels for ${{ matrix.build_target }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: generate_third_party_licenses
     strategy:
       matrix:
