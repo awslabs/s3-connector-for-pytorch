@@ -88,7 +88,14 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/e2e --ignore-glob '*/**/test_e2e_s3_lightning_checkpoint.py' --ignore-glob '*/**/dcp' -n auto
+          pytest s3torchconnector/tst/e2e --ignore-glob '*/**/test_e2e_s3_lightning_checkpoint.py' --ignore-glob '*/**/dcp' --ignore-glob '*/**/test_distributed_training.py' -n auto
+
+      - name: s3torchconnector ${{ matrix.test-run.name }} distributed training integration tests
+        run: |
+          CI_REGION=${{ matrix.test-run.region }} \
+          CI_BUCKET=${{ matrix.test-run.bucket }} \
+          CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          pytest s3torchconnector/tst/e2e/test_distributed_training.py
 
       - name: Install Lightning dependency
         run: |
@@ -110,7 +117,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/e2e/dcp -n auto
+          pytest s3torchconnector/tst/e2e/dcp
 
       - name: s3torchconnectorclient ${{ matrix.test-run.name }} integration tests
         run: |
