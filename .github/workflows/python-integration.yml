@@ -95,7 +95,7 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
-          pytest s3torchconnector/tst/e2e/test_distributed_training.py'
+          pytest s3torchconnector/tst/e2e/test_distributed_training.py
 
       - name: Install Lightning dependency
         run: |
