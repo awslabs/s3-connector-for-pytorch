@@ -17,7 +17,9 @@ from torch.distributed.checkpoint.state_dict import (
 from torch.distributed.device_mesh import init_device_mesh
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
+from s3torchconnector import S3ClientConfig
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
+from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 
 
 class Model(torch.nn.Module):
@@ -98,6 +100,10 @@ def _setup(rank, world_size):
     torch.cuda.set_device(rank)
 
 
+def _cleanup():
+    dist.destroy_process_group()
+
+
 def _train_initial_model(device, rank, world_size):
     print(f"Train initial model on rank:{rank}")
     model, optim = _init_model(device, world_size)
@@ -126,8 +132,34 @@ def run(rank, world_size, region, s3_uri, device="cuda"):
     model, optim = _train_initial_model(device, rank, world_size)
 
     print(f"Saving checkpoint on rank:{rank}")
-    # initialize S3StorageWriter with region and bucket name, before passing to dcp.save as writer
-    storage_writer = S3StorageWriter(region, s3_uri)
+    # S3ClientConfig configuration for optimized data transfer to S3
+    s3config = S3ClientConfig(
+        # Sets the size of each part in multipart upload to 16MB (16 * 1024 * 1024 bytes)
+        # This is a reasonable default for large file transfers
+        part_size=16 * 1024 * 1024,
+        # Targets a throughput of 600 Gbps for data transfer
+        # Suitable for high-bandwidth environments (P5/trn1 instances) and large model transfers
+        throughput_target_gbps=600,
+        # Maximum number of retry attempts for failed operations
+        # Helps handle transient network issues or S3 throttling
+        max_attempts=20,
+    )
+
+    # RoundRobinPrefixStrategy distributes checkpoint data across multiple prefixes in a round-robin fashion
+    strategy = RoundRobinPrefixStrategy(
+        # List of prefix strings that will be used in rotation for storing checkpoint shards
+        # Each prefix represents a separate "path" in S3 where checkpoint data will be stored
+        # Using multiple prefixes helps with lowering TPS per prefix
+        user_prefixes=["0000000000", "1000000000", "0100000000", "1100000000"],
+        # Optional integer for versioning checkpoints across training epochs
+        # If provided, will append epoch number to prefix paths
+        # Helps track checkpoint evolution over training progress
+        epoch_num=5,  # Optional: for checkpoint versioning
+    )
+    # initialize S3StorageWriter with region, bucket name and s3config, before passing to dcp.save as writer
+    storage_writer = S3StorageWriter(
+        region=region, path=s3_uri, s3client_config=s3config, prefix_strategy=strategy
+    )
     dcp.save(
         state_dict={"model": model, "optimizer": optim},
         storage_writer=storage_writer,
@@ -139,13 +171,16 @@ def run(rank, world_size, region, s3_uri, device="cuda"):
     )
     print(f"Load previously saved checkpoint on rank:{rank}")
     # initialize S3StorageReader with region and bucket name, before passing to dcp.load as reader
-    storage_reader = S3StorageReader(region, s3_uri)
+    storage_reader = S3StorageReader(
+        region=region, path=s3_uri, s3client_config=s3config
+    )
     dcp.load(
         state_dict={"model": modified_model, "optimizer": modified_optim},
         storage_reader=storage_reader,
     )
     _continue_training_loaded_model(modified_model, modified_optim, model, rank)
     print(f"Quiting on rank:{rank}")
+    _cleanup()
 
 
 if __name__ == "__main__":
