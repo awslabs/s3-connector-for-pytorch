@@ -87,3 +87,25 @@ def test_concurrent_close_calls():
 
     MOCK_STREAM.close.assert_called_once()
     assert writer._closed
+
+
+def test_exit_without_exception():
+    """Test __exit__ method when no exception occurs."""
+    MOCK_STREAM.reset_mock()
+
+    writer = S3Writer(MOCK_STREAM)
+    writer.__exit__(None, None, None)
+
+    MOCK_STREAM.close.assert_called_once()
+
+
+def test_exit_with_exception(caplog):
+    """Test __exit__ method when an exception occurs."""
+    MOCK_STREAM.reset_mock()
+
+    writer = S3Writer(MOCK_STREAM)
+    test_exception = ValueError("Test exception")
+    writer.__exit__(ValueError, test_exception, None)
+
+    # Stream should not be closed on exception
+    MOCK_STREAM.close.assert_not_called()

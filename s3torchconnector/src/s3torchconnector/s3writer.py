@@ -4,8 +4,11 @@
 import io
 from typing import Union
 import threading
+import logging
 
 from s3torchconnectorclient._mountpoint_s3_client import PutObjectStream
+
+logger = logging.getLogger(__name__)
 
 
 class S3Writer(io.BufferedIOBase):
@@ -22,7 +25,16 @@ class S3Writer(io.BufferedIOBase):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        """Close stream on normal exit, log any exceptions that occurred."""
+        if exc_type is not None:
+            try:
+                logger.info(
+                    f"Exception occurred before closing stream: {exc_type.__name__}: {exc_val}"
+                )
+            except:
+                pass
+        else:
+            self.close()
 
     def write(
         self,
