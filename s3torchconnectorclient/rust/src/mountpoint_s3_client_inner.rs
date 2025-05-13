@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use futures::executor::block_on;
 use futures::TryStreamExt;
-use mountpoint_s3_client::types::{CopyObjectParams, GetObjectParams, HeadObjectParams, ListObjectsResult, PutObjectParams};
+use mountpoint_s3_client::types::{GetBodyPart, CopyObjectParams, GetObjectParams, HeadObjectParams, ListObjectsResult, PutObjectParams};
 use mountpoint_s3_client::ObjectClient;
 use pyo3::{PyResult, Python};
 
@@ -17,7 +17,7 @@ use crate::put_object_stream::PutObjectStream;
 use crate::python_structs::py_head_object_result::PyHeadObjectResult;
 
 pub type MPGetObjectClosure =
-    Box<dyn FnMut(Python) -> PyResult<Option<(u64, Box<[u8]>)>> + Send + Sync>;
+    Box<dyn FnMut(Python) -> PyResult<Option<GetBodyPart>> + Send + Sync>;
 
 /// We need an extra trait here, as pyo3 doesn't support structs with generics.
 /// However, it does allow dynamic traits. We can't ues `ObjectClient` itself, as that requires

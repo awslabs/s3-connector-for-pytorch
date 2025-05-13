@@ -5,6 +5,7 @@
 
 use pyo3::types::PyBytes;
 use pyo3::{pyclass, pymethods, Bound, PyRef, PyRefMut, PyResult};
+use mountpoint_s3_client::types::GetBodyPart;
 
 use crate::exception::S3Exception;
 use crate::mountpoint_s3_client_inner::MPGetObjectClosure;
@@ -45,7 +46,7 @@ impl GetObjectStream {
         let body_part = (slf.next_part)(py)?;
         match body_part {
             None => Ok(None),
-            Some((offset, data)) => {
+            Some(GetBodyPart { offset, data }) => {
                 if offset != slf.offset {
                     return Err(S3Exception::new_err(
                         "Data from S3 was returned out of order!",
