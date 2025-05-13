@@ -189,7 +189,6 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
 def test_dcp_when_multi_process(
     checkpoint_directory, tensor_dimensions, thread_count, port_offset
 ):
-    # how to get different prefix strategy for each test
     multi_process_dcp_save_load(
         3, thread_count, checkpoint_directory, tensor_dimensions, port_offset, None
     )

@@ -173,7 +173,7 @@ model.load_state_dict(model_state_dict)
 
 ## S3 Prefix Strategies for Distributed Checkpointing
 
-The S3StorageWriter implements various prefix strategies to optimize checkpoint organization in S3 buckets.
+S3StorageWriter implements various prefix strategies to optimize checkpoint organization in S3 buckets.
 These strategies are specifically designed to prevent throttling (503 Slow Down errors) in high-throughput scenarios 
 by implementing S3 key naming best practices as outlined in 
 [Best practices design patterns: optimizing Amazon S3 performance](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html).

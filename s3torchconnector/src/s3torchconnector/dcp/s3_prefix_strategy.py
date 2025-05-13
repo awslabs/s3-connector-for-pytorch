@@ -106,10 +106,10 @@ class NumericPrefixStrategy(S3PrefixStrategyBase):
 
         all_prefixes = [
             self._format_number(i, adjusted_prefix_length)[::-1]
-            for i in range(self.base**minimum_required_length)
+            for i in range(self.prefix_count)
         ]
 
-        return all_prefixes[: self.prefix_count]
+        return all_prefixes
 
     def _calculate_prefix_length(self) -> int:
         """Calculate minimum prefix length needed for unique combinations."""
