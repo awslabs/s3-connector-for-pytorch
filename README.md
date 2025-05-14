@@ -171,6 +171,134 @@ DCP.load(
 model.load_state_dict(model_state_dict)
 ```
 
+## S3 Prefix Strategies for Distributed Checkpointing
+
+S3StorageWriter implements various prefix strategies to optimize checkpoint organization in S3 buckets.
+These strategies are specifically designed to prevent throttling (503 Slow Down errors) in high-throughput scenarios 
+by implementing S3 key naming best practices as outlined in 
+[Best practices design patterns: optimizing Amazon S3 performance](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html).
+
+When many distributed training processes write checkpoints simultaneously, the prefixing strategies help distribute
+the load across multiple S3 partitions.
+
+### Available Strategies
+
+#### 1. RoundRobinPrefixStrategy
+Distributes checkpoints across specified prefixes in a round-robin fashion, ideal for balancing data across multiple storage locations.
+
+```python
+from s3torchconnector.dcp import RoundRobinPrefixStrategy, S3StorageWriter
+
+model = torchvision.models.resnet18()
+
+# Initialize with multiple prefixes and optional epoch tracking
+strategy = RoundRobinPrefixStrategy(
+    user_prefixes=["shard1", "shard2", "shard3"],
+    epoch_num=5  # Optional: for checkpoint versioning
+)
+
+writer = S3StorageWriter(
+    region=REGION,
+    path="CHECKPOINT_URI",
+    prefix_strategy=strategy
+)
+
+# Save checkpoint
+DCP.save(
+    state_dict=model.state_dict(),
+    storage_writer=writer
+)
+```
+Output Structure:
+```
+CHECKPOINT_URI
+├── shard1/
+│   └── epoch_5/
+│       ├── __0_0.distcp
+│       ├── __3_0.distcp
+│       └── ...
+├── shard2/
+│   └── epoch_5/
+│       ├── __1_0.distcp
+│       ├── __4_0.distcp
+│       └── ...
+└── shard3/
+    └── epoch_5/
+        ├── __2_0.distcp
+        ├── __5_0.distcp
+        └── ...
+```
+
+#### 2. BinaryPrefixStrategy
+
+Generates binary (base-2) prefixes for optimal partitioning in distributed environments.
+
+```python
+from s3torchconnector.dcp import BinaryPrefixStrategy
+
+strategy = BinaryPrefixStrategy(
+    epoch_num=1,          # Optional: for checkpoint versioning
+    min_prefix_len=10     # Optional: minimum prefix length
+)
+
+```
+Output Structure:
+```
+s3://my-bucket/checkpoints/
+├── 0000000000/
+│   └── epoch_1/
+│       └── __0_0.distcp
+├── 1000000000/
+│   └── epoch_1/
+│       └── __1_0.distcp
+├── 0100000000/
+│   └── epoch_1/
+│       └── __2_0.distcp
+└── ...
+```
+
+#### 3. HexPrefixStrategy
+
+Uses hexadecimal (base-16) prefixes for a balance of efficiency and readability.
+```
+from s3torchconnector.dcp import HexPrefixStrategy
+
+strategy = HexPrefixStrategy(
+    epoch_num=1,          # Optional: for checkpoint versioning
+    min_prefix_len=4      # Optional: minimum prefix length
+)
+```
+Output Structure:
+```
+s3://my-bucket/checkpoints/
+├── 0000/
+│   └── epoch_1/
+│       └── __0_0.distcp
+├── 1000/
+│   └── epoch_1/
+│       └── __1_0.distcp
+...
+├── f000/
+│   └── epoch_1/
+│       └── __15_0.distcp
+└── ...
+```
+
+### Creating Custom Strategies
+
+You can implement custom prefix strategies by extending the S3PrefixStrategyBase class:
+```
+from s3torchconnector.dcp import S3PrefixStrategyBase
+
+class CustomPrefixStrategy(S3PrefixStrategyBase):
+    def __init__(self, custom_param):
+        super().__init__()
+        self.custom_param = custom_param
+
+    def generate_prefix(self, rank: int) -> str:
+        return f"custom_{self.custom_param}/{rank}/"
+```
+
 ## Parallel/Distributed Training
 
 Amazon S3 Connector for PyTorch provides support for parallel and distributed training with PyTorch, 
