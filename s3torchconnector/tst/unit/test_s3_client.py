@@ -2,6 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 import logging
 import pytest
+import sys
 
 from hypothesis import given, example
 from hypothesis.strategies import lists, text, integers, floats
@@ -17,6 +18,10 @@ TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_URI = f"s3://{TEST_BUCKET}/{TEST_KEY}"
+PYTHON_VERSION = (
+    f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+)
+DEFAULT_USER_AGENT = f"s3torchconnector/{__version__} Python/{PYTHON_VERSION}"
 
 KiB = 1 << 10
 MiB = 1 << 20
@@ -76,18 +81,15 @@ def test_copy_object_log(s3_client: S3Client, caplog):
 
 def test_s3_client_default_user_agent():
     s3_client = S3Client(region=TEST_REGION)
-    expected_user_agent = f"s3torchconnector/{__version__}"
-    assert s3_client.user_agent_prefix == expected_user_agent
-    assert s3_client._client.user_agent_prefix == expected_user_agent
+    assert s3_client.user_agent_prefix == DEFAULT_USER_AGENT
+    assert s3_client._client.user_agent_prefix == DEFAULT_USER_AGENT
 
 
 def test_s3_client_custom_user_agent():
     s3_client = S3Client(
         region=TEST_REGION, user_agent=UserAgent(["component/version", "metadata"])
     )
-    expected_user_agent = (
-        f"s3torchconnector/{__version__} (component/version; metadata)"
-    )
+    expected_user_agent = f"{DEFAULT_USER_AGENT} (component/version; metadata)"
     assert s3_client.user_agent_prefix == expected_user_agent
     assert s3_client._client.user_agent_prefix == expected_user_agent
 
