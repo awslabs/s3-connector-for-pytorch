@@ -2,7 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 import logging
 import pytest
-import sys
+import platform
 
 from hypothesis import given, example
 from hypothesis.strategies import lists, text, integers, floats
@@ -18,10 +18,12 @@ TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_URI = f"s3://{TEST_BUCKET}/{TEST_KEY}"
-PYTHON_VERSION = (
-    f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-)
-DEFAULT_USER_AGENT = f"s3torchconnector/{__version__} Python/{PYTHON_VERSION}"
+PYTHON_VERSION = platform.python_version()
+OS_NAME = platform.system().lower()
+if OS_NAME == "darwin":
+    OS_NAME = "macos"
+OS_VERSION = platform.release()
+DEFAULT_USER_AGENT = f"s3torchconnector/{__version__} ua/2.0 os/{OS_NAME}#{OS_VERSION} lang/python#{PYTHON_VERSION}"
 
 KiB = 1 << 10
 MiB = 1 << 20
