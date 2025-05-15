@@ -12,14 +12,10 @@ class UserAgent:
     def __init__(self, comments: Optional[List[str]] = None):
         if comments is not None and not isinstance(comments, list):
             raise ValueError("Argument comments must be a List[str]")
-
         python_version = platform.python_version()
-        os_name = platform.system().lower()
-        if os_name == "darwin":
-            os_name = "macos"
-        os_version = platform.release()
-
-        self._user_agent_prefix = f"{__package__}/{__version__} ua/2.0 os/{os_name}#{os_version} lang/python#{python_version}"
+        self._user_agent_prefix = (
+            f"{__package__}/{__version__} ua/2.0 lang/python#{python_version}"
+        )
         self._comments = comments or []
 
     @property

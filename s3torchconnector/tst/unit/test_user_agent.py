@@ -11,11 +11,7 @@ from s3torchconnector._version import __version__
 from s3torchconnector._user_agent import UserAgent
 
 PYTHON_VERSION = platform.python_version()
-OS_NAME = platform.system().lower()
-if OS_NAME == "darwin":
-    OS_NAME = "macos"
-OS_VERSION = platform.release()
-DEFAULT_PREFIX = f"s3torchconnector/{__version__} ua/2.0 os/{OS_NAME}#{OS_VERSION} lang/python#{PYTHON_VERSION}"
+DEFAULT_PREFIX = f"s3torchconnector/{__version__} ua/2.0 lang/python#{PYTHON_VERSION}"
 
 
 @pytest.mark.parametrize(

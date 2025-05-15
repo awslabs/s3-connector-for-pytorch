@@ -259,12 +259,6 @@ def _verify_equal_state_dict(
 
 
 def _verify_user_agent(s3_lightning_checkpoint: S3LightningCheckpoint):
-
     python_version = platform.python_version()
-    os_name = platform.system().lower()
-    if os_name == "darwin":
-        os_name = "macos"
-    os_version = platform.release()
-
-    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 os/{os_name}#{os_version} lang/python#{python_version} (lightning; {lightning.__version__})"
+    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (lightning; {lightning.__version__})"
     assert s3_lightning_checkpoint._client.user_agent_prefix == expected_user_agent
