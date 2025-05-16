@@ -25,7 +25,6 @@ jobs:
     strategy:
       matrix:
         python:
-          - cp38
           - cp39
           - cp310
           - cp311
