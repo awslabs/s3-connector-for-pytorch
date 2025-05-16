@@ -1,0 +1,88 @@
+s3torchconnector.s3map_dataset
+==============================
+
+.. py:module:: s3torchconnector.s3map_dataset
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   s3torchconnector.s3map_dataset.log
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.s3map_dataset.S3MapDataset
+
+
+Module Contents
+---------------
+
+.. py:data:: log
+
+.. py:class:: S3MapDataset(region: str, get_dataset_objects: Callable[[s3torchconnector._s3client.S3Client], Iterable[s3torchconnector._s3bucket_key_data.S3BucketKeyData]], endpoint: Optional[str] = None, transform: Callable[[s3torchconnector.S3Reader], Any] = identity, s3client_config: Optional[s3torchconnector._s3client.S3ClientConfig] = None)
+
+   Bases: :py:obj:`torch.utils.data.Dataset`
+
+
+   A Map-Style dataset created from S3 objects.
+
+   To create an instance of S3MapDataset, you need to use
+   `from_prefix` or `from_objects` methods.
+
+
+   .. py:property:: region
+
+
+   .. py:property:: endpoint
+
+
+   .. py:method:: from_objects(object_uris: Union[str, Iterable[str]], *, region: str, endpoint: Optional[str] = None, transform: Callable[[s3torchconnector.S3Reader], Any] = identity, s3client_config: Optional[s3torchconnector._s3client.S3ClientConfig] = None)
+      :classmethod:
+
+
+      Returns an instance of S3MapDataset using the S3 URI(s) provided.
+
+      :param object_uris: S3 URI of the object(s) desired.
+      :type object_uris: str | Iterable[str]
+      :param region: AWS region of the S3 bucket where the objects are stored.
+      :type region: str
+      :param endpoint: AWS endpoint of the S3 bucket where the objects are stored.
+      :type endpoint: str
+      :param transform: Optional callable which is used to transform an S3Reader into the desired type.
+      :param s3client_config: Optional S3ClientConfig with parameters for S3 client.
+
+      :returns: A Map-Style dataset created from S3 objects.
+      :rtype: S3MapDataset
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: from_prefix(s3_uri: str, *, region: str, endpoint: Optional[str] = None, transform: Callable[[s3torchconnector.S3Reader], Any] = identity, s3client_config: Optional[s3torchconnector._s3client.S3ClientConfig] = None)
+      :classmethod:
+
+
+      Returns an instance of S3MapDataset using the S3 URI provided.
+
+      :param s3_uri: An S3 URI (prefix) of the object(s) desired. Objects matching the prefix will be included in the returned dataset.
+      :type s3_uri: str
+      :param region: AWS region of the S3 bucket where the objects are stored.
+      :type region: str
+      :param endpoint: AWS endpoint of the S3 bucket where the objects are stored.
+      :type endpoint: str
+      :param transform: Optional callable which is used to transform an S3Reader into the desired type.
+      :param s3client_config: Optional S3ClientConfig with parameters for S3 client.
+
+      :returns: A Map-Style dataset created from S3 objects.
+      :rtype: S3MapDataset
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+

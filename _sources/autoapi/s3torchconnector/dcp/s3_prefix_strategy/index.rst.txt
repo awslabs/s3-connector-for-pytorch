@@ -1,0 +1,137 @@
+s3torchconnector.dcp.s3_prefix_strategy
+=======================================
+
+.. py:module:: s3torchconnector.dcp.s3_prefix_strategy
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase
+   s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy
+   s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy
+   s3torchconnector.dcp.s3_prefix_strategy.BinaryPrefixStrategy
+   s3torchconnector.dcp.s3_prefix_strategy.HexPrefixStrategy
+   s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy
+
+
+Module Contents
+---------------
+
+.. py:class:: S3PrefixStrategyBase
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   Base class for S3 prefix generation strategies.
+
+
+   .. py:method:: generate_prefix(rank: int) -> str
+      :abstractmethod:
+
+
+      Generate storage prefix for the given rank.
+
+
+
+.. py:class:: DefaultPrefixStrategy
+
+   Bases: :py:obj:`S3PrefixStrategyBase`
+
+
+   Default strategy for generating S3 prefixes.
+
+
+   .. py:method:: generate_prefix(rank: int) -> str
+
+      Generate simple rank-based name without prefix.
+
+
+
+.. py:class:: NumericPrefixStrategy(base: int, epoch_num: Optional[int] = None, min_prefix_length: int = 10, prefix_count: Optional[int] = None)
+
+   Bases: :py:obj:`S3PrefixStrategyBase`
+
+
+   Base class for numeric prefix generation strategies.
+
+
+   .. py:attribute:: base
+
+
+   .. py:attribute:: epoch_num
+      :value: None
+
+
+
+   .. py:attribute:: min_prefix_len
+      :value: 10
+
+
+
+   .. py:attribute:: prefix_count
+      :value: 1
+
+
+
+   .. py:attribute:: prefix_map
+
+
+   .. py:method:: generate_prefix(rank: int) -> str
+
+      Generate numeric-based prefix with optional epoch number.
+
+      :param rank: Process rank in the distributed environment.
+
+      :returns: <pattern>/epoch_<num>/__<rank>_
+                or <pattern>/__<rank>_ if no epoch number is provided.
+      :rtype: Prefix string in format
+
+
+
+.. py:class:: BinaryPrefixStrategy(epoch_num: Optional[int] = None, min_prefix_length: int = 10, prefix_count: Optional[int] = None)
+
+   Bases: :py:obj:`NumericPrefixStrategy`
+
+
+   Binary (Base2) prefix generation strategy using only 0 and 1.
+
+
+.. py:class:: HexPrefixStrategy(epoch_num: Optional[int] = None, min_prefix_length: int = 10, prefix_count: Optional[int] = None)
+
+   Bases: :py:obj:`NumericPrefixStrategy`
+
+
+   Hexadecimal-based prefix generation strategy.
+
+
+.. py:class:: RoundRobinPrefixStrategy(user_prefixes: List[str], epoch_num: Optional[int] = None)
+
+   Bases: :py:obj:`S3PrefixStrategyBase`
+
+
+   Strategy that distributes ranks across user-provided prefixes in round-robin fashion.
+
+
+   .. py:attribute:: user_prefixes
+
+
+   .. py:attribute:: epoch_num
+      :value: None
+
+
+
+   .. py:method:: generate_prefix(rank: int) -> str
+
+      Generate prefix for given rank using round-robin distribution.
+
+      :param rank: Process rank in the distributed environment.
+
+      :returns: <user_prefix>/epoch_<num>/__<rank>_
+                or <user_prefix>/__<rank>_ if no epoch number is provided.
+      :rtype: Prefix string in format
+
+
+
