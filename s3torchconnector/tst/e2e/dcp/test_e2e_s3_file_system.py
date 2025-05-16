@@ -21,6 +21,7 @@ from s3torchconnectorclient import __version__
 
 import os
 import random
+import platform
 
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
@@ -122,7 +123,8 @@ def multi_process_dcp_save_load(
 
 
 def _verify_user_agent(s3fs: S3FileSystem):
-    expected_user_agent = f"s3torchconnector/{__version__} (dcp; {torch.__version__})"
+    python_version = platform.python_version()
+    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (dcp; {torch.__version__})"
     assert s3fs._client.user_agent_prefix == expected_user_agent
 
 

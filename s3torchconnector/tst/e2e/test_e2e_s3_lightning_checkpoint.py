@@ -4,6 +4,7 @@ import lightning
 import pytest
 import random
 import torch
+import platform
 
 from pathlib import Path
 from typing import Dict, Any
@@ -258,7 +259,6 @@ def _verify_equal_state_dict(
 
 
 def _verify_user_agent(s3_lightning_checkpoint: S3LightningCheckpoint):
-    expected_user_agent = (
-        f"s3torchconnector/{__version__} (lightning; {lightning.__version__})"
-    )
+    python_version = platform.python_version()
+    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (lightning; {lightning.__version__})"
     assert s3_lightning_checkpoint._client.user_agent_prefix == expected_user_agent

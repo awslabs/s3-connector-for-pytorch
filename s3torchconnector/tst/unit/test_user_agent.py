@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from typing import List
+import platform
 
 import pytest
 
 from s3torchconnector._version import __version__
 from s3torchconnector._user_agent import UserAgent
 
-DEFAULT_PREFIX = f"s3torchconnector/{__version__}"
+PYTHON_VERSION = platform.python_version()
+DEFAULT_PREFIX = f"s3torchconnector/{__version__} ua/2.0 lang/python#{PYTHON_VERSION}"
 
 
 @pytest.mark.parametrize(
