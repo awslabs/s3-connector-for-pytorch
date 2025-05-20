@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.s3map_dataset &mdash; Amazon S3 Connector for PyTorch 1.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=350a9c04"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.s3map_dataset</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for s3torchconnector.s3map_dataset</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.</span>
+<span class="c1">#  // SPDX-License-Identifier: BSD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.utils.data</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">s3torchconnector._s3bucket_key_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3BucketKeyData</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._s3client</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Client</span><span class="p">,</span> <span class="n">S3ClientConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Reader</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._s3dataset_common</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_objects_from_uris</span><span class="p">,</span>
+    <span class="n">get_objects_from_prefix</span><span class="p">,</span>
+    <span class="n">identity</span><span class="p">,</span>
+<span class="p">)</span>
+
+<div class="viewcode-block" id="log">
+<a class="viewcode-back" href="../../autoapi/s3torchconnector/s3map_dataset/index.html#s3torchconnector.log">[docs]</a>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="S3MapDataset">
+<a class="viewcode-back" href="../../autoapi/s3torchconnector/s3map_dataset/index.html#s3torchconnector.S3MapDataset">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3MapDataset</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A Map-Style dataset created from S3 objects.</span>
+
+<span class="sd">    To create an instance of S3MapDataset, you need to use</span>
+<span class="sd">    `from_prefix` or `from_objects` methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">get_dataset_objects</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">S3Client</span><span class="p">],</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">S3BucketKeyData</span><span class="p">]],</span>
+        <span class="n">endpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">S3Reader</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">identity</span><span class="p">,</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_dataset_objects</span> <span class="o">=</span> <span class="n">get_dataset_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transform</span> <span class="o">=</span> <span class="n">transform</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_region</span> <span class="o">=</span> <span class="n">region</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_endpoint</span> <span class="o">=</span> <span class="n">endpoint</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_s3client_config</span> <span class="o">=</span> <span class="n">s3client_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bucket_key_pairs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">S3BucketKeyData</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="S3MapDataset.region">
+<a class="viewcode-back" href="../../autoapi/s3torchconnector/s3map_dataset/index.html#s3torchconnector.S3MapDataset.region">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">region</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_region</span></div>
+
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="S3MapDataset.endpoint">
+<a class="viewcode-back" href="../../autoapi/s3torchconnector/s3map_dataset/index.html#s3torchconnector.S3MapDataset.endpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_endpoint</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dataset_bucket_key_pairs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">S3BucketKeyData</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket_key_pairs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bucket_key_pairs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_dataset_objects</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_client</span><span class="p">()))</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket_key_pairs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket_key_pairs</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="S3MapDataset.from_objects">
+<a class="viewcode-back" href="../../autoapi/s3torchconnector/s3map_dataset/index.html#s3torchconnector.S3MapDataset.from_objects">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_objects</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">object_uris</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">S3Reader</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">identity</span><span class="p">,</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an instance of S3MapDataset using the S3 URI(s) provided.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          object_uris(str | Iterable[str]): S3 URI of the object(s) desired.</span>
+<span class="sd">          region(str): AWS region of the S3 bucket where the objects are stored.</span>
+<span class="sd">          endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.</span>
+<span class="sd">          transform: Optional callable which is used to transform an S3Reader into the desired type.</span>
+<span class="sd">          s3client_config: Optional S3ClientConfig with parameters for S3 client.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            S3MapDataset: A Map-Style dataset created from S3 objects.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            S3Exception: An error occurred accessing S3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Building </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> from_objects&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">region</span><span class="p">,</span>
+            <span class="n">partial</span><span class="p">(</span><span class="n">get_objects_from_uris</span><span class="p">,</span> <span class="n">object_uris</span><span class="p">),</span>
+            <span class="n">endpoint</span><span class="p">,</span>
+            <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
+            <span class="n">s3client_config</span><span class="o">=</span><span class="n">s3client_config</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="S3MapDataset.from_prefix">
+<a class="viewcode-back" href="../../autoapi/s3torchconnector/s3map_dataset/index.html#s3torchconnector.S3MapDataset.from_prefix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_prefix</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">s3_uri</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">S3Reader</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">identity</span><span class="p">,</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an instance of S3MapDataset using the S3 URI provided.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">          s3_uri(str): An S3 URI (prefix) of the object(s) desired. Objects matching the prefix will be included in the returned dataset.</span>
+<span class="sd">          region(str): AWS region of the S3 bucket where the objects are stored.</span>
+<span class="sd">          endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.</span>
+<span class="sd">          transform: Optional callable which is used to transform an S3Reader into the desired type.</span>
+<span class="sd">          s3client_config: Optional S3ClientConfig with parameters for S3 client.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            S3MapDataset: A Map-Style dataset created from S3 objects.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            S3Exception: An error occurred accessing S3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Building </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> from_prefix </span><span class="si">{</span><span class="n">s3_uri</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">region</span><span class="p">,</span>
+            <span class="n">partial</span><span class="p">(</span><span class="n">get_objects_from_prefix</span><span class="p">,</span> <span class="n">s3_uri</span><span class="p">),</span>
+            <span class="n">endpoint</span><span class="p">,</span>
+            <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
+            <span class="n">s3client_config</span><span class="o">=</span><span class="n">s3client_config</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_client</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="n">S3Client</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">,</span>
+                <span class="n">endpoint</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span>
+                <span class="n">s3client_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_s3client_config</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S3Reader</span><span class="p">:</span>
+        <span class="n">bucket_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_bucket_key_pairs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_client</span><span class="p">()</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span>
+            <span class="n">bucket_key</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">bucket_key</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">object_info</span><span class="o">=</span><span class="n">bucket_key</span><span class="o">.</span><span class="n">object_info</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_object</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_bucket_key_pairs</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
