@@ -1,3 +1,21 @@
+## v1.4.1 (May 20, 2025)
+
+### New features
+* Add S3 prefix strategies to prevent throttling in distributed checkpointing (#327)
+
+### Bug fixes
+* Consume mountpoint-s3-client 0.14.1 to address AWS_ERROR_HTTP_RESPONSE_FIRST_BYTE_TIMEOUT error (#332)
+* Prevent S3Writer stream closure on exception to preserve original error context (#331)
+* Add PyTorch 2.7.0 support (#329)
+
+### Other changes
+* Add Python version to user agent string (#333)
+* Address DCP test hanging and distributed test errors (#330)
+* Update GitHub Actions runners to ubuntu-24.04 (#328)
+
+### Breaking changes
+* No breaking changes.
+
 ## v1.4.0 (April 9, 2025)
 
 ### New features
