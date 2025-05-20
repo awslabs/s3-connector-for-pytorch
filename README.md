@@ -19,7 +19,7 @@ Amazon S3, without first saving to local storage.
 
 ### Prerequisites
 
-- Python 3.8 or greater is installed (Note: Using 3.12+ is not recommended as PyTorch does not support). 
+- Python 3.8-3.12 is supported. 
 - PyTorch >= 2.0 (TODO: Check with PyTorch 1.x)
 
 ### Installation
