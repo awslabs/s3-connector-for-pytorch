@@ -5,6 +5,8 @@ import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
 from typing import Callable, Optional, Iterator, Union
+from enum import Enum
+from abc import ABC, abstractmethod
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -13,7 +15,46 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 )
 
 
-class S3Reader(io.BufferedIOBase):
+class ReaderType(Enum):
+    SEQUENTIAL = "sequential"
+    RANGE_BASED = "range"
+
+
+class _BaseS3Reader(ABC, io.BufferedIOBase):
+    """Abstract base class for S3 reader implementations."""
+
+    @property
+    @abstractmethod
+    def bucket(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def key(self) -> str:
+        pass
+
+    @abstractmethod
+    def prefetch(self) -> None:
+        pass
+
+    @abstractmethod
+    def read(self, size: Optional[int] = None) -> bytes:
+        pass
+
+    @abstractmethod
+    def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
+        pass
+
+    @abstractmethod
+    def tell(self) -> int:
+        pass
+
+    @abstractmethod
+    def readinto(self, buf) -> int:
+        pass
+
+
+class _SequentialS3Reader(_BaseS3Reader):
     """A read-only, file like representation of a single object stored in S3."""
 
     def __init__(
@@ -221,3 +262,63 @@ class S3Reader(io.BufferedIOBase):
             bool: Return whether object was opened for writing.
         """
         return False
+
+
+class _RangedS3Reader(_BaseS3Reader):
+    """Range-based S3 reader implementation (placeholder)."""
+
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("Range-based reading not yet implemented")
+
+
+class S3Reader(io.BufferedIOBase):
+    """A read-only, file like representation of a single object stored in S3."""
+
+    def __init__(
+        self,
+        bucket: str,
+        key: str,
+        get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
+        get_stream: Callable[[], GetObjectStream],
+        reader_type: ReaderType = ReaderType.SEQUENTIAL,
+    ):
+        self._reader = self._create_reader(
+            bucket, key, get_object_info, get_stream, reader_type
+        )
+
+    @staticmethod
+    def _create_reader(bucket, key, get_object_info, get_stream, reader_type):
+        if reader_type == ReaderType.SEQUENTIAL:
+            return _SequentialS3Reader(bucket, key, get_object_info, get_stream)
+        elif reader_type == ReaderType.RANGE_BASED:
+            return _RangedS3Reader(bucket, key, get_object_info, get_stream)
+        raise ValueError(f"Unsupported reader type: {reader_type}")
+
+    @property
+    def bucket(self):
+        return self._reader.bucket
+
+    @property
+    def key(self):
+        return self._reader.key
+
+    def prefetch(self) -> None:
+        self._reader.prefetch()
+
+    def readinto(self, buf) -> int:
+        return self._reader.readinto(buf)
+
+    def read(self, size: Optional[int] = None) -> bytes:
+        return self._reader.read(size)
+
+    def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
+        return self._reader.seek(offset, whence)
+
+    def tell(self) -> int:
+        return self._reader.tell()
+
+    def readable(self) -> bool:
+        return self._reader.readable()
+
+    def writable(self) -> bool:
+        return self._reader.writable()
