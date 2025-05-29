@@ -59,7 +59,7 @@ def test_dataset_creation_from_objects(
 
     assert isinstance(dataset, S3IterableDataset)
     _verify_dataset(
-        dataset, expected_keys, lambda data: data._get_object_info is not None
+        dataset, expected_keys, lambda data: data._reader._get_object_info is not None
     )
 
 
@@ -90,7 +90,7 @@ def test_dataset_creation_from_prefix(
     _verify_dataset(
         dataset,
         expected_keys,
-        lambda data: data._object_info is not None,
+        lambda data: data._reader._object_info is not None,
     )
 
 
@@ -193,8 +193,12 @@ def test_iteration_multiple_times(
     dataset._client = client
 
     # Test that we can iterate over dataset multiple times by verifying it multiple times.
-    _verify_dataset(dataset, expected_keys, lambda data: data._object_info is not None)
-    _verify_dataset(dataset, expected_keys, lambda data: data._object_info is not None)
+    _verify_dataset(
+        dataset, expected_keys, lambda data: data._reader._object_info is not None
+    )
+    _verify_dataset(
+        dataset, expected_keys, lambda data: data._reader._object_info is not None
+    )
 
 
 def test_dataset_creation_from_prefix_with_region_and_endpoint():
@@ -368,10 +372,10 @@ def _verify_dataset(
             assert data.bucket == TEST_BUCKET
             assert data.key == expected_keys[index]
             assert object_info_check(data)
-            assert data._stream is None
+            assert data._reader._stream is None
             data.prefetch()
-            assert data._stream is not None
-            for content in data._stream:
+            assert data._reader._stream is not None
+            for content in data._reader._stream:
                 expected_content = (
                     f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
                 )
