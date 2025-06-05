@@ -4,12 +4,25 @@
 import io
 import logging
 import os
+import queue
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Union, Optional
 from typing import List
-
+from torch import Future
+from torch.distributed.checkpoint.metadata import Metadata
+from torch.distributed.checkpoint.storage import ( WriteResult)
+from torch.distributed.checkpoint.planner import (
+    LoadItemType,
+    LoadPlan,
+    LoadPlanner,
+    ReadItem,
+    SavePlan,
+    SavePlanner,
+    WriteItem,
+    WriteItemType,
+)
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
     retry,
@@ -35,6 +48,7 @@ from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_SUFFIX = ".distcp"
 
 class S3FileSystem(FileSystemBase):
     def __init__(
@@ -260,9 +274,7 @@ from dataclasses import dataclass
 @dataclass
 class StorageMetadata:
     """Metadata for S3 storage prefix."""
-
     prefix: str
-
 
 class S3StorageWriter(FileSystemWriter):
     def __init__(
@@ -272,6 +284,7 @@ class S3StorageWriter(FileSystemWriter):
         s3client_config: Optional[S3ClientConfig] = None,
         prefix_strategy: Optional[S3PrefixStrategyBase] = None,
         thread_count: int = 1,
+        num_copies: int = 1,
         **kwargs,
     ) -> None:
         """
@@ -294,6 +307,7 @@ class S3StorageWriter(FileSystemWriter):
         )
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
+        self.num_copies = num_copies
         self.prefix_strategy = prefix_strategy or DefaultPrefixStrategy()
 
     def prepare_global_plan(self, plans: List[SavePlan]) -> List[SavePlan]:
@@ -312,6 +326,52 @@ class S3StorageWriter(FileSystemWriter):
             )
             for idx, plan in enumerate(plans)
         ]
+    
+    def write_data(
+        self,
+        plan: SavePlan,
+        planner: SavePlanner,
+    ):
+        storage_plan = plan.storage_data
+        file_count = 0
+        
+        def gen_file():
+            nonlocal file_count
+            file_name = f"{storage_plan.prefix}{file_count}{DEFAULT_SUFFIX}"
+            file_count += 1
+            return file_name
+        
+        file_queue: queue.Queue = queue.Queue()
+        for copy in range(self.num_copies):
+            for item in plan.items:
+                file_name = gen_file()
+                file_name_with_copy = f"copy-{copy}/{file_name}"
+                path = self.fs.concat_path(self.path, file_name_with_copy)
+                file_queue.put((path, file_name_with_copy, [item]))
+            file_count = 0
+        return self._write_data(planner, file_queue)
+        
+    def finish(self, metadata: Metadata, results: list[list[WriteResult]]) -> None:
+        """
+        Finish the checkpointing process and save the number of copies in metadata
+
+        Args:
+            metadata: Metadata for the checkpoint.
+            results: List of write results for each rank.
+        """
+        # Process results normally
+        storage_md = {}
+        for wr_list in results:
+            storage_md.update({wr.index: wr.storage_data for wr in wr_list})
+        metadata.storage_data = storage_md
+        
+        # Add duplication info to metadata
+        metadata.storage_meta = self.storage_meta()
+        setattr(metadata.storage_meta, "num_copies", self.num_copies)
+        
+        super().finish(metadata, results)
+
+        
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
@@ -348,3 +408,4 @@ class S3StorageReader(FileSystemReader):
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
     return path if isinstance(path, str) else str(path)
+
