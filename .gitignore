@@ -64,6 +64,8 @@ dmypy.json
 s3torchbenchmarking/**/multirun/
 s3torchbenchmarking/**/nvme/
 s3torchbenchmarking/**/*.csv
+multirun/
+outputs/
 
 # Rust .gitignore (https://github.com/github/gitignore/blob/main/Rust.gitignore) -- cherry-picked ######################
 
