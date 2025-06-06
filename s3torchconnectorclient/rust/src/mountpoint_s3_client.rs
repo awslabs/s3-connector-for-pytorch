@@ -158,13 +158,26 @@ impl MountpointS3Client {
         ))
     }
 
+    #[pyo3(signature = (bucket, key, start=None, end=None))]
     pub fn get_object(
         slf: PyRef<'_, Self>,
         bucket: String,
         key: String,
+        start: Option<u64>,
+        end: Option<u64>,
     ) -> PyResult<GetObjectStream> {
-        let params = GetObjectParams::default();
-        slf.client.get_object(slf.py(), bucket, key, params)
+        let mut params = GetObjectParams::default();
+        
+        // Configure byte range for the request 
+        if let Some(start_val) = start {
+            let range = match end {
+                Some(end_val) => start_val..end_val,
+                None => start_val..u64::MAX,
+            };
+            params = params.range(Some(range));
+        }
+        
+        slf.client.get_object(slf.py(), bucket, key, params, start)
     }
 
     #[pyo3(signature = (bucket, prefix=String::from(""), delimiter=String::from(""), max_keys=1000))]
