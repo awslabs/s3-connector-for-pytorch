@@ -211,7 +211,7 @@ def verify_item(dataset: S3MapDataset, index: int, expected_key: str):
     assert data is not None
     assert data.bucket == TEST_BUCKET
     assert data.key == expected_key
-    assert data._stream is None
+    assert data._reader._stream is None
     expected_content = f"{TEST_BUCKET}-{expected_key}-dummyData".encode()
     content = data.read()
     assert content == expected_content
