@@ -326,27 +326,21 @@ class _RangedS3Reader(_BaseS3Reader):
         start = self._position
         end = min(start + buf_size, self._get_size())
 
-        # Clear buffer for new range request
-        self._buffer = io.BytesIO()
+        # Create memoryview of the target buffer
+        view = memoryview(buf)
 
         # Get stream for specified byte range
         self._stream = self._get_stream(start, end)
 
-        total_read = 0
+        bytes_read = 0
         for chunk in self._stream:
-            # Write remaining portion to reach requested size
-            if total_read + len(chunk) > buf_size:
-                self._buffer.write(chunk[: buf_size - total_read])
-                break
-            self._buffer.write(chunk)
-            total_read += len(chunk)
-            if buf_size is not None and total_read >= buf_size:
+            chunk_size = min(len(chunk), buf_size - bytes_read)
+            view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
+            bytes_read += chunk_size
+            if bytes_read == buf_size:
                 break
 
-        self._buffer.seek(0)
-        bytes_read = self._buffer.readinto(buf)
         self._position += bytes_read
-
         return bytes_read
 
     def read(self, size: Optional[int] = None) -> bytes:
@@ -380,28 +374,23 @@ class _RangedS3Reader(_BaseS3Reader):
         else:
             end = min(start + size, self._get_size())
 
-        # Clear buffer for new range request
-        self._buffer = io.BytesIO()
+        # Pre-allocate buffer
+        buffer = bytearray(size)
+        view = memoryview(buffer)
 
         # Get stream for specified byte range
         self._stream = self._get_stream(start, end)
 
-        total_read = 0
+        bytes_read = 0
         for chunk in self._stream:
-            # Write remaining portion to reach requested size
-            if total_read + len(chunk) > size:
-                self._buffer.write(chunk[: size - total_read])
-                break
-            self._buffer.write(chunk)
-            total_read += len(chunk)
-            if size is not None and total_read >= size:
+            chunk_size = min(len(chunk), size - bytes_read)
+            view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
+            bytes_read += chunk_size
+            if bytes_read == size:
                 break
 
-        self._buffer.seek(0)
-        data = self._buffer.read()
-        self._position += len(data)
-
-        return data
+        self._position += bytes_read
+        return bytes(buffer[:bytes_read])
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
         """Change the stream position to the given byte offset, interpreted relative to whence.
