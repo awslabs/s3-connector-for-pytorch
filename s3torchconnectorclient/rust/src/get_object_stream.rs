@@ -24,10 +24,10 @@ pub struct GetObjectStream {
 }
 
 impl GetObjectStream {
-    pub(crate) fn new(next_part: MPGetObjectClosure, bucket: String, key: String) -> Self {
+    pub(crate) fn new(next_part: MPGetObjectClosure, bucket: String, key: String, start_offset: Option<u64>) -> Self {
         Self {
             next_part,
-            offset: 0,
+            offset: start_offset.unwrap_or(0),
             bucket,
             key,
         }

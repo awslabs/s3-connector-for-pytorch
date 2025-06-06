@@ -10,7 +10,7 @@ import weakref
 from functools import partial
 from typing import Optional, Any, List
 
-from s3torchconnector import S3Reader, S3Writer
+from s3torchconnector import S3Reader, S3Writer, ReaderType
 from .s3client_config import S3ClientConfig
 
 from s3torchconnectorclient._mountpoint_s3_client import (
@@ -146,7 +146,12 @@ class S3Client:
         )
 
     def get_object(
-        self, bucket: str, key: str, *, object_info: Optional[ObjectInfo] = None
+        self,
+        bucket: str,
+        key: str,
+        *,
+        object_info: Optional[ObjectInfo] = None,
+        reader_type: ReaderType = ReaderType.SEQUENTIAL,
     ) -> S3Reader:
         log.debug(f"GetObject s3://{bucket}/{key}, {object_info is None=}")
         if object_info is None:
@@ -159,10 +164,17 @@ class S3Client:
             key,
             get_object_info=get_object_info,
             get_stream=partial(self._get_object_stream, bucket, key),
+            reader_type=reader_type,
         )
 
-    def _get_object_stream(self, bucket: str, key: str) -> GetObjectStream:
-        return self._client.get_object(bucket, key)
+    def _get_object_stream(
+        self,
+        bucket: str,
+        key: str,
+        start: Optional[int] = None,
+        end: Optional[int] = None,
+    ) -> GetObjectStream:
+        return self._client.get_object(bucket, key, start, end)
 
     def put_object(
         self, bucket: str, key: str, storage_class: Optional[str] = None

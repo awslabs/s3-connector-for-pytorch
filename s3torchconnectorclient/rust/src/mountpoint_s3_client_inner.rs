@@ -24,7 +24,7 @@ pub type MPGetObjectClosure =
 /// us to specify the additional types (GetObjectResult, PutObjectResult, ClientError), which
 /// we don't want to do.
 pub(crate) trait MountpointS3ClientInner {
-    fn get_object(&self, py: Python, bucket: String, key: String, params: GetObjectParams) -> PyResult<GetObjectStream>;
+    fn get_object(&self, py: Python, bucket: String, key: String, params: GetObjectParams, start_offset: Option<u64>) -> PyResult<GetObjectStream>;
     fn list_objects(
         &self,
         bucket: &str,
@@ -68,7 +68,7 @@ where
     <Client as ObjectClient>::GetObjectResponse: Sync + Unpin + 'static,
     <Client as ObjectClient>::PutObjectRequest: Sync + 'static,
 {
-    fn get_object(&self, py: Python, bucket: String, key: String, params: GetObjectParams) -> PyResult<GetObjectStream> {
+    fn get_object(&self, py: Python, bucket: String, key: String, params: GetObjectParams, start_offset: Option<u64>) -> PyResult<GetObjectStream> {
         let request = self.client.get_object(&bucket, &key, &params);
 
         // TODO - Look at use of `block_on` and see if we can future this.
@@ -78,7 +78,7 @@ where
             py.allow_threads(|| block_on(request.try_next()).map_err(python_exception))
         });
 
-        Ok(GetObjectStream::new(closure, bucket, key))
+        Ok(GetObjectStream::new(closure, bucket, key, start_offset))
     }
 
     fn list_objects(
