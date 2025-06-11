@@ -38,7 +38,7 @@ def _identity(obj: Any) -> Any:
 
 
 _client_lock = threading.Lock()
-_active_clients: List[weakref.ReferenceType] = []
+_active_clients = weakref.WeakSet()
 
 
 def _before_fork_handler():
@@ -49,9 +49,8 @@ def _before_fork_handler():
         if not clients_list:
             return
 
-        for client_weak_ref in clients_list:
-            client = client_weak_ref()
-            if client is not None and client._native_client is not None:
+        for client in clients_list:
+            if client._native_client is not None:
                 # Release the client before fork as it's not fork-safe
                 client._native_client = None
         _reset_active_s3clients()
@@ -116,8 +115,8 @@ class S3Client:
                     global _active_clients
                     if not _active_clients:
                         # global _active_clients
-                        _active_clients = []
-                    _active_clients.append(weakref.ref(self))
+                        _active_clients = weakref.WeakSet()
+                    _active_clients.add(self)
 
         assert self._native_client is not None
         return self._native_client
@@ -210,7 +209,7 @@ def _get_active_s3clients() -> List[weakref.ReferenceType]:
         if _active_clients:
             lst = list(_active_clients)
         else:
-            _active_clients = []
+            _active_clients = weakref.WeakSet()
     return lst
 
 
@@ -222,4 +221,4 @@ def _reset_active_s3clients():
     global _active_clients
     with _client_lock:
         # Clear the list of active clients, we will repopulate it after fork
-        _active_clients = []
+        _active_clients = weakref.WeakSet()
