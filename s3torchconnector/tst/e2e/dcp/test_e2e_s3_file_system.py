@@ -30,8 +30,9 @@ from typing import Optional
 
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
+import concurrent
 
-
+NUM_OF_COPIES = 1
 def generate_random_port():
     return random.randint(1, 500)
 
@@ -74,6 +75,7 @@ def run(
             path=s3_path_s3storagewriter,
             overwrite=True,
             prefix_strategy=prefix_strategy,
+            num_copies=NUM_OF_COPIES
         ),
     )
 
@@ -124,6 +126,7 @@ def multi_process_dcp_save_load(
         world_size,
         thread_count,
         reader_constructor,
+        num_copies=NUM_OF_COPIES
     )
 
     return s3_path_s3storagewriter
@@ -162,7 +165,8 @@ def load_data(
     world_size,
     thread_count,
     reader_constructor: Optional[S3ReaderConstructorProtocol],
-):
+    num_copies = 1,
+    ):
     s3_client = S3Client(region=region)
     bucket, key = parse_s3_uri(s3_path_s3storagewriter)
     list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
@@ -170,7 +174,7 @@ def load_data(
     # Compare length
     assert list_result_s3storagewriter is not None
     assert (
-        len(list_result_s3storagewriter[0].object_info) == world_size * thread_count + 1
+        len(list_result_s3storagewriter[0].object_info) == (world_size * thread_count *num_copies) + 1
     )
 
     # Load using S3StorageReader
@@ -396,9 +400,53 @@ def test_round_binary_prefix_strategy(
         "0100",
         "1100",
     ]
-    assert set(list_result) == set(expected_prefixes)
+    assert set(list_result) == set(expected_prefixes) 
 
     for partition_prefix in expected_prefixes:
         # ensure that sub folders for epochs were created
         list_result = _list_folders_in_bucket(bucket, f"{key}/{partition_prefix}")
         assert set(list_result) == {"epoch_4"}
+
+
+def test_save_async_with_copies(checkpoint_directory):
+    """Testing that save_async works correctly even with multiple copies
+
+    Args:
+        checkpoint_directory str: S3 URI of the checkpoint directory
+    """
+    t1 = torch.randn(10)
+    region = checkpoint_directory.region
+    s3_uri = f"{checkpoint_directory.s3_uri}async_test"
+    
+    # Save asychronously, returns a future
+    
+    future = dcp.async_save(
+        {"random": t1},
+        storage_writer=S3StorageWriter(region, s3_uri, overwrite=False, num_copies=NUM_OF_COPIES),
+    )
+    
+    # Wait for this future
+    concurrent.futures.wait([future])
+    s3_client = S3Client(region=region)
+    bucket, key = parse_s3_uri(s3_uri)
+    list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
+    
+    assert list_result_s3storagewriter is not None
+    assert len(list_result_s3storagewriter[0].object_info) == NUM_OF_COPIES + 1
+    
+    # Verify we can load the data correctly
+    sd = {"random": torch.zeros(10)}
+    dcp.load(sd, storage_reader=S3StorageReader(region, s3_uri))
+    assert torch.allclose(sd["random"], t1) is True
+    print("Test passed: Async save was successful.")
+    
+     # Check that the copies were created with the expected structure
+    for i in range(3):
+        copy_prefix = f"copy-{i}"
+        copy_objects = list(s3_client.list_objects(bucket, f"{key}/{copy_prefix}/"))
+        assert copy_objects is not None
+        assert len(copy_objects[0].object_info) > 0
+      
+    print("Test passed: save_async with multiple copies works correctly.")
+
+  

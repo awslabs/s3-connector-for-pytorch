@@ -4,25 +4,23 @@
 import io
 import logging
 import os
+import pickle
 import queue
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Union, Optional
+from typing import Generator, Union, Optional, cast
 from typing import List
 from torch import Future
-from torch.distributed.checkpoint.metadata import Metadata
+from torch.distributed.checkpoint.metadata import Metadata, StorageMeta
 from torch.distributed.checkpoint.storage import ( WriteResult)
 from torch.distributed.checkpoint.planner import (
-    LoadItemType,
-    LoadPlan,
-    LoadPlanner,
-    ReadItem,
     SavePlan,
     SavePlanner,
-    WriteItem,
-    WriteItemType,
+    LoadPlan,
+    LoadPlanner
 )
+import torch.distributed as dist
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
     retry,
@@ -38,6 +36,7 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemBase,
 )
 import torch
+import sys
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
@@ -47,7 +46,13 @@ from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    stream=sys.stdout,
+    format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
+)
+_metadata_fn: str = ".metadata"
 
+logging.getLogger().setLevel(logging.DEBUG)
 DEFAULT_SUFFIX = ".distcp"
 
 class S3FileSystem(FileSystemBase):
@@ -268,7 +273,7 @@ class S3FileSystem(FileSystemBase):
 
 from torch.distributed.checkpoint.planner import SavePlan
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -329,6 +334,8 @@ class S3StorageWriter(FileSystemWriter):
         plan: SavePlan,
         planner: SavePlanner,
     ):
+        if self.num_copies <= 1:
+            return super().write_data(plan, planner)
         storage_plan = plan.storage_data
         file_count = 0
         
@@ -340,12 +347,20 @@ class S3StorageWriter(FileSystemWriter):
         
         file_queue: queue.Queue = queue.Queue()
         for copy in range(self.num_copies):
-            for item in plan.items:
-                file_name = gen_file()
-                file_name_with_copy = f"copy-{copy}/{file_name}"
-                path = self.fs.concat_path(self.path, file_name_with_copy)
-                file_queue.put((path, file_name_with_copy, [item]))
-            file_count = 0
+            from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
+            if self.single_file_per_rank:
+                for bucket in _split_by_size_and_type(self.thread_count, plan.items):
+                    file_name = gen_file()
+                    file_name_with_copy = f"copy-{copy}/{file_name}"
+                    path = self.fs.concat_path(self.path, file_name_with_copy)
+                    file_queue.put((path, file_name_with_copy, bucket))
+                file_count = 0
+            else:
+                for item in plan.items:
+                    file_name = gen_file()
+                    file_name_with_copy = f"copy-{copy}/{file_name}"
+                    path = self.fs.concat_path(self.path, file_name_with_copy)
+                    file_queue.put((path, file_name, [item]))
         return self._write_data(planner, file_queue)
         
     def finish(self, metadata: Metadata, results: list[list[WriteResult]]) -> None:
@@ -361,14 +376,30 @@ class S3StorageWriter(FileSystemWriter):
         for wr_list in results:
             storage_md.update({wr.index: wr.storage_data for wr in wr_list})
         metadata.storage_data = storage_md
-        
         # Add duplication info to metadata
-        metadata.storage_meta = self.storage_meta()
-        setattr(metadata.storage_meta, "num_copies", self.num_copies)
-        
-        super().finish(metadata, results)
+        if metadata.storage_meta is None:
+            metadata.storage_meta = StorageMeta()
 
+        # Add num_copies info to modules list
+        metadata.storage_meta.modules.append(f"num_copies={self.num_copies}")
+            
+         # Replace the storage_meta with our extended version
+        logging.debug("storage_data: updated METADATA %s", metadata.storage_meta)
         
+        tmp_path = cast(Path, self.fs.concat_path(self.path, f"{_metadata_fn}.tmp"))
+        with self.fs.create_stream(tmp_path, "wb") as metadata_file:
+            pickle.dump(metadata, metadata_file)
+            if self.sync_files:
+                try:
+                    os.fsync(metadata_file.fileno())
+                except (AttributeError, io.UnsupportedOperation):
+                    os.sync()
+
+        # delete in-case other checkpoints were present.
+        if self.fs.exists(self.metadata_path):
+            self.fs.rm_file(self.metadata_path)
+
+        self.fs.rename(tmp_path, self.metadata_path)
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
@@ -397,11 +428,80 @@ class S3StorageReader(FileSystemReader):
         self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
         self.path = self.fs.init_path(path)
         self.sync_files = False
+        self.num_copies = 1
+        self.assigned_copy = None
+        self.rank = None
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
+    def read_metadata(self) -> Metadata:
+        """
+        Read the metadata from the checkpoint directory including the number of copies present
+
+        Returns:
+            Metadata: The metadata for the checkpoint.
+        """
+        metadata = super().read_metadata()
+        logger.debug(f"Storage metadata: {metadata.storage_meta}")
+        self.num_copies = metadata.storage_meta.modules[0].split("=")[1]
+        logger.debug(f"Num of copies: {self.num_copies}")
+        # Log all the important info of metadata
+        # logger.debug(f"Metadata: {metadata}")
+     
+        return metadata
+    
+    def set_up_storage_reader(self, metadata, is_coordinator):
+        """
+            Assigns each worker a specific copy based on its rank where num_copies equals the total rank, each rank get its own dedictaed copy
+        """
+        super().set_up_storage_reader(metadata, is_coordinator)
+        
+        try:
+            if dist.is_initialized():
+                self.rank = dist.get_rank()
+            else:
+                self.rank = 0
+        except Exception:
+            self.rank = 0
+            
+        if self.num_copies > 1:
+            self.assigned_copy = self.rank 
+            logger.debug(f"Worker rank {self.rank} assigned to copy {self.assigned_copy}")
+        
+    def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future:
+        """Read data from assigned copy
+
+        Args:
+            plan (LoadPlan): Load plan for reading
+            planner (LoadPlanner): Load planner for reading
+
+        Returns:
+            Future: Completes when reading operations is done
+        """
+        logger.debug(f"Rank {self.rank}: Reading data from assigned copy {self.assigned_copy}")
+        logger.debug(f"Number of copies: {self.num_copies}")
+        if self.num_copies <= 1 or self.assigned_copy is None:
+            logger.debug(f"Using default path for reading: num_copies={self.num_copies}, assigned_copy={self.assigned_copy}")
+            return super().read_data(plan, planner)
+
+        original_path = self.path
+        logger.debug(f"Rank {self.rank}: Original path for reading: {original_path}")
+        
+        try:
+            copy_path = self.fs.concat_path(self.path, f"copy-{self.assigned_copy}")
+            logger.debug(f"Rank {self.rank}: Reading from copy path: {copy_path}")
+            self.path = copy_path
+            return super().read_data(plan, planner)
+        except Exception as e:
+            logger.error(f"Rank {self.rank}: Error reading from copy {self.assigned_copy}: {e}")
+            raise
+        finally:
+            logger.debug(f"Rank {self.rank}: Restoring original path: {original_path}")
+            self.path = original_path
+
+    
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
     return path if isinstance(path, str) else str(path)
