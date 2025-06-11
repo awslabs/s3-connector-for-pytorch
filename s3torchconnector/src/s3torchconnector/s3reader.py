@@ -34,10 +34,6 @@ class _BaseS3Reader(ABC, io.BufferedIOBase):
         pass
 
     @abstractmethod
-    def prefetch(self) -> None:
-        pass
-
-    @abstractmethod
     def read(self, size: Optional[int] = None) -> bytes:
         pass
 
@@ -281,7 +277,6 @@ class _RangedS3Reader(_BaseS3Reader):
         self._get_object_info = get_object_info
         self._get_stream = get_stream
         self._stream: Optional[Iterator[bytes]] = None
-        self._buffer = io.BytesIO()
         self._size: Optional[int] = None
         self._position = 0
 
@@ -296,15 +291,6 @@ class _RangedS3Reader(_BaseS3Reader):
     @cached_property
     def _object_info(self):
         return self._get_object_info()
-
-    def prefetch(self) -> None:
-        """Start fetching data from S3.
-
-        Raises:
-            S3Exception: An error occurred accessing S3.
-        """
-        # This reader does not prefetch
-        pass
 
     def readinto(self, buf) -> int:
         """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
