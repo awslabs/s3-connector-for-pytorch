@@ -12,7 +12,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-from s3torchconnector import S3Reader
+from s3torchconnector import S3Reader, ReaderType
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -25,6 +25,40 @@ TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 MOCK_OBJECT_INFO = Mock(ObjectInfo)
 MOCK_STREAM = Mock(GetObjectStream)
+
+# Allow all tests in this file to be run with both sequential and range-based reader types
+pytestmark = pytest.mark.parametrize(
+    "reader_type", [ReaderType.SEQUENTIAL, ReaderType.RANGE_BASED]
+)
+
+
+def create_object_info_getter(stream_data):
+    """Create an object info getter function with size calculated from stream data."""
+
+    def get_object_info():
+        mock_object_info = Mock(ObjectInfo)
+        data = b"".join(stream_data)
+        mock_object_info.size = len(data)
+        return mock_object_info
+
+    return get_object_info
+
+
+def create_stream_getter(stream_data):
+    """Create a stream getter function with range get capabilities. Simulates _get_object_stream"""
+
+    def get_stream(start=None, end=None):
+        if not start and not end:
+            # Sequential reader case
+            return iter(stream_data)
+        else:
+            # Range-based reader case:
+            data = b"".join(stream_data)
+            start_val = start if start is not None else 0
+            end_val = end if end is not None else len(data)
+            return iter([data[start_val:end_val]])
+
+    return get_stream
 
 
 @composite
@@ -58,8 +92,10 @@ def bytestream_and_position(draw, *, position_min_value: int = 0):
         (MOCK_OBJECT_INFO, lambda: ""),
     ],
 )
-def test_s3reader_creation(object_info, get_stream):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: object_info, get_stream)
+def test_s3reader_creation(reader_type: ReaderType, object_info, get_stream):
+    s3reader = S3Reader(
+        TEST_BUCKET, TEST_KEY, lambda: object_info, get_stream, reader_type=reader_type
+    )
     assert s3reader
     assert s3reader.bucket == TEST_BUCKET
     assert s3reader.key == TEST_KEY
@@ -71,9 +107,9 @@ def test_s3reader_creation(object_info, get_stream):
     "bucket, key",
     [(None, None), (None, ""), (None, TEST_KEY), ("", TEST_KEY)],
 )
-def test_s3reader_invalid_creation(bucket, key):
+def test_s3reader_invalid_creation(reader_type: ReaderType, bucket, key):
     with pytest.raises(ValueError, match="Bucket should be specified"):
-        S3Reader(bucket, key, lambda: None, lambda: [])
+        S3Reader(bucket, key, lambda: None, lambda: [], reader_type=reader_type)
 
 
 @pytest.mark.parametrize(
@@ -84,33 +120,30 @@ def test_s3reader_invalid_creation(bucket, key):
         [b"hello!"],
     ],
 )
-def test_s3reader_prefetch(stream):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: stream)
-    assert s3reader._reader._stream is None
-    s3reader.prefetch()
-    assert s3reader._reader._stream is stream
-    s3reader.prefetch()
-    assert s3reader._reader._stream is stream
-
-
-@pytest.mark.parametrize(
-    "stream",
-    [
-        [b"1", b"2", b"3"],
-        [],
-        [b"hello!"],
-    ],
-)
-def test_s3reader_read(stream):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: stream)
+def test_s3reader_read(reader_type: ReaderType, stream):
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     assert s3reader._reader._stream is None
     assert b"".join(stream) == s3reader.read()
 
 
 @given(bytestream_and_positions())
-def test_s3reader_seek(stream_and_positions: Tuple[List[bytes], List[int]]):
+def test_s3reader_seek(
+    reader_type: ReaderType, stream_and_positions: Tuple[List[bytes], List[int]]
+):
     stream, positions = stream_and_positions
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     bytesio = BytesIO(b"".join(stream))
     assert s3reader.tell() == 0
 
@@ -118,21 +151,23 @@ def test_s3reader_seek(stream_and_positions: Tuple[List[bytes], List[int]]):
         s3reader.seek(position)
         bytesio.seek(position)
 
-        assert (
-            s3reader.tell()
-            == s3reader._reader._buffer.tell()
-            == bytesio.tell()
-            == position
-        )
-        assert s3reader._reader._buffer_size() >= position
+        assert s3reader.tell() == bytesio.tell() == position
         assert s3reader.read() == bytesio.read()
-        assert s3reader.tell() == s3reader._reader._buffer.tell() == bytesio.tell()
+        assert s3reader.tell() == bytesio.tell()
 
 
 @given(bytestream_and_positions())
-def test_s3reader_read(stream_and_positions: Tuple[List[bytes], List[int]]):
+def test_s3reader_read_with_sizes(
+    reader_type: ReaderType, stream_and_positions: Tuple[List[bytes], List[int]]
+):
     stream, positions = stream_and_positions
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     bytesio = BytesIO(b"".join(stream))
 
     positions.sort()
@@ -140,35 +175,22 @@ def test_s3reader_read(stream_and_positions: Tuple[List[bytes], List[int]]):
         size = new_position - bytesio.tell()
 
         assert s3reader.read(size) == bytesio.read(size)
-        assert (
-            s3reader.tell()
-            == s3reader._reader._buffer.tell()
-            == bytesio.tell()
-            == new_position
-        )
-
-
-@pytest.mark.parametrize(
-    "stream, to_read",
-    [
-        ([b"1"], 0),
-        ([b"1", b"2", b"3"], 1),
-    ],
-)
-def test_s3reader_does_not_buffer_all(stream: List[bytes], to_read: int):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
-
-    assert len(s3reader.read(to_read)) == to_read
-    assert s3reader._reader._stream is None or list(s3reader._reader._stream) != []
+        assert s3reader.tell() == bytesio.tell() == new_position
 
 
 @given(
     lists(binary(min_size=1, max_size=5000)),
     integers(min_value=-sys.maxsize, max_value=-1),
 )
-def test_read_with_negative(stream: List[bytes], amount: int):
+def test_read_with_negative(reader_type: ReaderType, stream: List[bytes], amount: int):
     # Below -sys.maxsize, we get an OverflowError. I don't think it's too important to support this though.
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     assert s3reader.read(amount) == b"".join(stream)
 
 
@@ -176,9 +198,15 @@ def test_read_with_negative(stream: List[bytes], amount: int):
     lists(binary(min_size=1, max_size=5000)),
     integers(min_value=0, max_value=sys.maxsize),
 )
-def test_over_read(stream: List[bytes], overread: int):
+def test_over_read(reader_type: ReaderType, stream: List[bytes], overread: int):
     # Currently fails when over sys.maxsize, but this number (~9 EB) is way bigger than the maximum S3 object size
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     stream_length = sum(map(len, stream))
     to_read = stream_length + overread
     assume(to_read <= sys.maxsize)
@@ -186,8 +214,10 @@ def test_over_read(stream: List[bytes], overread: int):
     assert s3reader.read(to_read) == b"".join(stream)
 
 
-def test_seeks_end():
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]))
+def test_seeks_end(reader_type: ReaderType):
+    s3reader = S3Reader(
+        TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]), reader_type=reader_type
+    )
     s3reader._reader._size = 10
     buf = memoryview(bytearray(10))
 
@@ -202,8 +232,10 @@ def test_seeks_end():
     assert s3reader.readinto(buf) == 0
 
 
-def test_not_writable():
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]))
+def test_not_writable(reader_type: ReaderType):
+    s3reader = S3Reader(
+        TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]), reader_type=reader_type
+    )
     assert not s3reader.writable()
 
 
@@ -214,8 +246,10 @@ def test_not_writable():
         ("foo", TypeError),
     ],
 )
-def test_bad_whence(whence, exception_type):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]))
+def test_bad_whence(reader_type: ReaderType, whence, exception_type):
+    s3reader = S3Reader(
+        TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]), reader_type=reader_type
+    )
 
     with pytest.raises(exception_type):
         s3reader.seek(0, whence)
@@ -225,8 +259,10 @@ def test_bad_whence(whence, exception_type):
     "offset",
     [0.4, 0.0, 1.0, "test", 1 + 2j, [1, 2, 3], {}, {2}],
 )
-def test_fails_with_non_int_arg(offset):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]))
+def test_fails_with_non_int_arg(reader_type: ReaderType, offset):
+    s3reader = S3Reader(
+        TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]), reader_type=reader_type
+    )
 
     with pytest.raises(TypeError):
         s3reader.seek(offset)
@@ -238,14 +274,22 @@ def test_fails_with_non_int_arg(offset):
     lists(binary(min_size=1, max_size=5000)),
     integers(max_value=-1),
 )
-def test_negative_seek(stream: List[bytes], seek: int):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+def test_negative_seek(reader_type: ReaderType, stream: List[bytes], seek: int):
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        lambda: None,
+        lambda: iter(stream),
+        reader_type=reader_type,
+    )
     with pytest.raises(ValueError):
         s3reader.seek(seek)
 
 
-def test_end_seek_does_not_start_s3_request():
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]))
+def test_end_seek_does_not_start_s3_request(reader_type: ReaderType):
+    s3reader = S3Reader(
+        TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter([]), reader_type=reader_type
+    )
     s3reader._reader._size = 10
     s3reader.seek(0, SEEK_END)
     assert s3reader.tell() == 10
@@ -253,9 +297,17 @@ def test_end_seek_does_not_start_s3_request():
 
 
 @given(bytestream_and_position(position_min_value=1))
-def test_end_seek_with_offset(stream_and_positions: Tuple[List[bytes], int]):
+def test_end_seek_with_offset(
+    reader_type: ReaderType, stream_and_positions: Tuple[List[bytes], int]
+):
     stream, position = stream_and_positions
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     s3reader._reader._size = stream_length = sum(map(len, stream))
 
     s3reader.seek(-position, SEEK_END)
@@ -265,9 +317,17 @@ def test_end_seek_with_offset(stream_and_positions: Tuple[List[bytes], int]):
 
 
 @given(bytestream_and_positions())
-def test_s3reader_relative_seek(stream_and_positions: Tuple[List[bytes], List[int]]):
+def test_s3reader_relative_seek(
+    reader_type: ReaderType, stream_and_positions: Tuple[List[bytes], List[int]]
+):
     stream, positions = stream_and_positions
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     bytesio = BytesIO(b"".join(stream))
 
     for new_position in positions:
@@ -277,12 +337,7 @@ def test_s3reader_relative_seek(stream_and_positions: Tuple[List[bytes], List[in
         s3reader.seek(offset, SEEK_CUR)
         bytesio.seek(new_position)
 
-        assert (
-            s3reader.tell()
-            == s3reader._reader._buffer.tell()
-            == bytesio.tell()
-            == new_position
-        )
+        assert s3reader.tell() == bytesio.tell() == new_position
         assert s3reader.read() == bytesio.read()
 
         s3reader.seek(new_position)
@@ -292,28 +347,19 @@ def test_s3reader_relative_seek(stream_and_positions: Tuple[List[bytes], List[in
 @given(
     lists(binary(min_size=1, max_size=5000)),
 )
-def test_s3reader_writes_size_after_read_all(stream: List[bytes]):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+def test_s3reader_writes_size_after_read_all(
+    reader_type: ReaderType, stream: List[bytes]
+):
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     assert s3reader._reader._size is None
     s3reader.read()
     assert s3reader._reader._size == sum(map(len, stream))
-
-
-@given(
-    lists(binary(min_size=1, max_size=5000)),
-)
-def test_s3reader_writes_size_after_read_all_explicit(stream: List[bytes]):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
-    assert s3reader._reader._size is None
-    total_length = sum(map(len, stream))
-    # We're able to read all the data
-    assert len(s3reader.read(total_length)) == total_length
-    # We don't know we've reached the end
-    assert s3reader._reader._size is None
-    # Reading past the end gives us empty
-    assert s3reader.read(1) == b""
-    # Once we've read past the end, we know how big the file is
-    assert s3reader._reader._size == total_length
 
 
 @given(
@@ -321,9 +367,15 @@ def test_s3reader_writes_size_after_read_all_explicit(stream: List[bytes]):
     integers(min_value=0, max_value=10),
 )
 def test_s3reader_readinto_buffer_smaller_than_chunks(
-    stream: List[bytes], buf_size: int
+    reader_type: ReaderType, stream: List[bytes], buf_size: int
 ):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     assert s3reader._reader._size is None
     total_length = sum(map(len, stream))
     buf = memoryview(bytearray(buf_size))
@@ -331,8 +383,6 @@ def test_s3reader_readinto_buffer_smaller_than_chunks(
     if buf_size > 0 and total_length > 0:
         assert s3reader.readinto(buf) == buf_size
         assert s3reader.tell() == buf_size
-        # We haven't reached the end yet
-        assert s3reader._reader._size is None
         # confirm that read data is the same as in source
         assert buf[:buf_size] == (b"".join(stream))[:buf_size]
     else:
@@ -345,9 +395,15 @@ def test_s3reader_readinto_buffer_smaller_than_chunks(
     integers(min_value=30, max_value=40),
 )
 def test_s3reader_readinto_buffer_bigger_than_chunks(
-    stream: List[bytes], buf_size: int
+    reader_type: ReaderType, stream: List[bytes], buf_size: int
 ):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     assert s3reader._reader._size is None
     buf = memoryview(bytearray(buf_size))
     # We're able to read the data that can be accommodated in buf
@@ -363,9 +419,15 @@ def test_s3reader_readinto_buffer_bigger_than_chunks(
     integers(min_value=100, max_value=100),
 )
 def test_s3reader_readinto_buffer_bigger_than_whole_object(
-    stream: List[bytes], buf_size: int
+    reader_type: ReaderType, stream: List[bytes], buf_size: int
 ):
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     assert s3reader._reader._size is None
     total_length = sum(map(len, stream))
     buf = memoryview(bytearray(buf_size))
@@ -384,14 +446,20 @@ def test_s3reader_readinto_buffer_bigger_than_whole_object(
     integers(min_value=0, max_value=1),
 )
 def test_s3reader_mixing_readinto_and_read(
-    stream: List[bytes], buf_size: int, flip: int
+    reader_type: ReaderType, stream: List[bytes], buf_size: int, flip: int
 ):
     position = 0
     loops_count = 20
     all_data = b"".join(stream)
     total_length = len(all_data)
     buf = memoryview(bytearray(buf_size))
-    s3reader = S3Reader(TEST_BUCKET, TEST_KEY, lambda: None, lambda: iter(stream))
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        create_object_info_getter(stream),
+        create_stream_getter(stream),
+        reader_type=reader_type,
+    )
     for i in range(0, loops_count):
         if position >= total_length:
             break
