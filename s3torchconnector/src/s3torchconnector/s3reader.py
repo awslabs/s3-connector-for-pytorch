@@ -370,12 +370,12 @@ class _RangedS3Reader(_BaseS3Reader):
         start = self._position
         if size is None or size < 0:
             end = self._get_size()
-            size = end - start
         else:
             end = min(start + size, self._get_size())
 
         # Pre-allocate buffer
-        buffer = bytearray(size)
+        byte_size = end - start
+        buffer = bytearray(byte_size)
         view = memoryview(buffer)
 
         # Get stream for specified byte range
@@ -383,10 +383,10 @@ class _RangedS3Reader(_BaseS3Reader):
 
         bytes_read = 0
         for chunk in self._stream:
-            chunk_size = min(len(chunk), size - bytes_read)
+            chunk_size = min(len(chunk), byte_size - bytes_read)
             view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
             bytes_read += chunk_size
-            if bytes_read == size:
+            if bytes_read >= byte_size:
                 break
 
         self._position += bytes_read
