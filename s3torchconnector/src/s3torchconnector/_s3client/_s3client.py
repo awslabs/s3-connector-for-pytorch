@@ -7,7 +7,7 @@ import gc
 import threading
 import weakref
 from functools import partial
-from typing import Optional, Any, Set
+from typing import Optional, Any, List
 
 from s3torchconnector import S3Reader, S3Writer
 from .s3client_config import S3ClientConfig
@@ -37,19 +37,24 @@ def _identity(obj: Any) -> Any:
     return obj
 
 
-_active_clients = weakref.WeakSet()
 _client_lock = threading.Lock()
+_active_clients: List[weakref.ReferenceType] = []
 
 
 def _before_fork_handler():
-    """Handler that cleans up CRT resources before fork operations."""
-    # Get all instances of S3Client that exist in the current process
-
+    # Handler that cleans up CRT resources before fork operations.
     try:
-        for client in _get_active_s3clients():
+        # Get all instances of S3Client that exist in the current process
+        clients_list = _get_active_s3clients()
+        if not clients_list:
+            return
+
+        for client_weak_ref in clients_list:
+            client = client_weak_ref()
             if client is not None and client._native_client is not None:
                 # Release the client before fork as it's not fork-safe
                 client._native_client = None
+        _reset_active_s3clients()
         gc.collect()
         # Wait for native background threads to complete joining (0.5 sec timeout)
         join_all_managed_threads(0.5)
@@ -63,9 +68,14 @@ def _before_fork_handler():
         )
 
 
+def _after_fork_handler():
+    """Handler that initializes the list of active clients after fork in child process."""
+    _reset_active_s3clients()
+
+
 # register the handler to release the S3 client and wait for background threads to join before fork happens
-# As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
-os.register_at_fork(before=_before_fork_handler)
+# As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
+os.register_at_fork(before=_before_fork_handler, after_in_child=_after_fork_handler)
 
 
 class S3Client:
@@ -84,8 +94,6 @@ class S3Client:
         self._s3client_config = s3client_config or S3ClientConfig()
         self._client_pid: Optional[int] = None
         self._native_client: Optional[MountpointS3Client] = None
-        # Track the client in the set of active clients.
-        _active_clients.add(self)
 
     @property
     def _client(self) -> MountpointS3Client:
@@ -104,6 +112,12 @@ class S3Client:
                     # This double-check ensures that the client is only created once.
                     self._native_client = self._client_builder()
                     self._client_pid = os.getpid()
+                    # Track the client in the list of active clients.
+                    global _active_clients
+                    if not _active_clients:
+                        # global _active_clients
+                        _active_clients = []
+                    _active_clients.append(weakref.ref(self))
 
         assert self._native_client is not None
         return self._native_client
@@ -182,12 +196,30 @@ class S3Client:
         return self._client.copy_object(src_bucket, src_key, dst_bucket, dst_key)
 
 
-def _get_active_s3clients() -> Set[S3Client]:
+def _get_active_s3clients() -> List[weakref.ReferenceType]:
     """
-    Returns a set of all active S3 clients.
+    Returns a copy of list of all active S3 clients.
+    Pay attention, it grabs a lock on _client_lock.
 
     Returns:
-        Set[S3Client]: A set containing all active S3 client instances.
+        List[weakref.ReferenceType]: A list of weak references to active S3 client instances.
     """
-    # Return a copy to prevent external modifications
-    return set(_active_clients)
+    lst = []
+    global _active_clients
+    with _client_lock:
+        if _active_clients:
+            lst = list(_active_clients)
+        else:
+            _active_clients = []
+    return lst
+
+
+def _reset_active_s3clients():
+    """
+    Resets the list of active S3 clients.
+    Pay attention, it grabs a lock on _client_lock.
+    """
+    global _active_clients
+    with _client_lock:
+        # Clear the list of active clients, we will repopulate it after fork
+        _active_clients = []
