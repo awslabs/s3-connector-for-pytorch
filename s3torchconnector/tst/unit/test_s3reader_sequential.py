@@ -14,7 +14,7 @@ from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 from s3torchconnector import S3Reader, ReaderType
-from .test_s3reader import (
+from .test_s3reader_common import (
     TEST_BUCKET,
     TEST_KEY,
     MOCK_OBJECT_INFO,
@@ -30,6 +30,7 @@ logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
+
 def create_sequential_s3reader(stream):
     return S3Reader(
         TEST_BUCKET,
@@ -38,6 +39,7 @@ def create_sequential_s3reader(stream):
         lambda: iter(stream),
         reader_type=ReaderType.SEQUENTIAL,
     )
+
 
 @pytest.mark.parametrize(
     "stream",

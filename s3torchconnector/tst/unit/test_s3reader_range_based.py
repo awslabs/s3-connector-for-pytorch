@@ -14,7 +14,7 @@ from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 from s3torchconnector import S3Reader, ReaderType
-from .test_s3reader import (
+from .test_s3reader_common import (
     TEST_BUCKET,
     TEST_KEY,
     MOCK_OBJECT_INFO,
@@ -43,7 +43,6 @@ def create_range_s3reader(stream):
     )
 
 
-# Core functionality tests (split out from common tests)
 @given(lists(binary(min_size=1, max_size=5000)))
 def test_s3reader_writes_size_before_read_all(stream):
     s3reader = create_range_s3reader(stream)
@@ -52,7 +51,7 @@ def test_s3reader_writes_size_before_read_all(stream):
     # We're able to read all the data
     assert len(s3reader.read(total_length)) == total_length
     # Read operation writes size before reading
-    assert s3reader._reader._size is total_length
+    assert s3reader._reader._size == total_length
     # Reading past the end gives us empty
     assert s3reader.read(1) == b""
 
