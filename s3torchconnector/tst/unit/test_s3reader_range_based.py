@@ -33,24 +33,20 @@ logging.getLogger().setLevel(1)
 log = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="module")
-def reader_type():
-    return ReaderType.RANGE_BASED
-
-
-@given(
-    lists(binary(min_size=1, max_size=5000)),
-)
-def test_s3reader_writes_size_before_read_all(
-    reader_type: ReaderType, stream: List[bytes]
-):
-    s3reader = S3Reader(
+def create_range_s3reader(stream):
+    return S3Reader(
         TEST_BUCKET,
         TEST_KEY,
         create_object_info_getter(stream),
         create_stream_getter(stream),
-        reader_type=reader_type,
+        reader_type=ReaderType.RANGE_BASED,
     )
+
+
+# Core functionality tests (split out from common tests)
+@given(lists(binary(min_size=1, max_size=5000)))
+def test_s3reader_writes_size_before_read_all(stream):
+    s3reader = create_range_s3reader(stream)
     assert s3reader._reader._size is None
     total_length = sum(map(len, stream))
     # We're able to read all the data
@@ -66,15 +62,9 @@ def test_s3reader_writes_size_before_read_all(
     integers(min_value=0, max_value=10),
 )
 def test_s3reader_writes_size_when_readinto_buffer_smaller_than_chunks(
-    reader_type: ReaderType, stream: List[bytes], buf_size: int
+    stream, buf_size
 ):
-    s3reader = S3Reader(
-        TEST_BUCKET,
-        TEST_KEY,
-        create_object_info_getter(stream),
-        create_stream_getter(stream),
-        reader_type=reader_type,
-    )
+    s3reader = create_range_s3reader(stream)
     assert s3reader._reader._size is None
     total_length = sum(map(len, stream))
     buf = memoryview(bytearray(buf_size))
