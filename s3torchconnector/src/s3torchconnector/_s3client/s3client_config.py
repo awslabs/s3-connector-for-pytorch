@@ -18,7 +18,7 @@ class S3ClientConfig:
     unsigned(bool): Set to true to disable signing S3 requests.
     force_path_style(bool): forceful path style addressing for S3 client.
     max_attempts(int): amount of retry attempts for retrieable errors.
-    config(str): Profile name to use for S3 authentication.
+    profile(str): Profile name to use for S3 authentication.
     """
 
     throughput_target_gbps: float = 10.0
@@ -26,4 +26,4 @@ class S3ClientConfig:
     unsigned: bool = False
     force_path_style: bool = False
     max_attempts: int = 10
-    config: str = None
+    profile: str = None
