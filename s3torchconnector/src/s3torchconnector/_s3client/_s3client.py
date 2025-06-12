@@ -38,7 +38,7 @@ def _identity(obj: Any) -> Any:
 
 
 _client_lock = threading.Lock()
-_active_clients = weakref.WeakSet()
+_active_clients: "weakref.WeakSet[Any]" = weakref.WeakSet()
 
 
 def _before_fork_handler():
