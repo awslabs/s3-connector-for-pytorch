@@ -14,6 +14,8 @@ from typing import List
 from torch import Future
 from torch.distributed.checkpoint.metadata import Metadata, StorageMeta
 from torch.distributed.checkpoint.storage import ( WriteResult)
+from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
+
 from torch.distributed.checkpoint.planner import (
     SavePlan,
     SavePlanner,
@@ -336,9 +338,10 @@ class S3StorageWriter(FileSystemWriter):
         self,
         plan: SavePlan,
         planner: SavePlanner,
-    ):
+        ):
         if self.num_copies <= 1:
             return super().write_data(plan, planner)
+        
         storage_plan = plan.storage_data
         file_count = 0
         
@@ -349,21 +352,30 @@ class S3StorageWriter(FileSystemWriter):
             return file_name
         
         file_queue: queue.Queue = queue.Queue()
+        from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
+        
         for copy in range(self.num_copies):
-            from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
             if self.single_file_per_rank:
                 for bucket in _split_by_size_and_type(self.thread_count, plan.items):
                     file_name = gen_file()
-                    file_name_with_copy = f"copy-{copy}/{file_name}"
-                    path = self.fs.concat_path(self.path, file_name_with_copy)
-                    file_queue.put((path, file_name_with_copy, bucket))
+                    # Store just the copy prefix in the relative path
+                    relative_path = f"copy-{copy}/{file_name}"
+                    # Full path for the actual file
+                    full_path = self.fs.concat_path(self.path, relative_path)
+                    # Put the tuple in the queue with the correct relative path
+                    file_queue.put((full_path, file_name, bucket))
                 file_count = 0
             else:
                 for item in plan.items:
                     file_name = gen_file()
-                    file_name_with_copy = f"copy-{copy}/{file_name}"
-                    path = self.fs.concat_path(self.path, file_name_with_copy)
-                    file_queue.put((path, file_name, [item]))
+                    # Store just the copy prefix in the relative path
+                    relative_path = f"copy-{copy}/{file_name}"
+                    # Full path for the actual file
+                    full_path = self.fs.concat_path(self.path, relative_path)
+                    # Put the tuple in the queue with the correct relative path
+                    file_queue.put((full_path, relative_path, [item]))
+                file_count = 0
+    
         return self._write_data(planner, file_queue)
         
     def finish(self, metadata: Metadata, results: list[list[WriteResult]]) -> None:
@@ -378,6 +390,7 @@ class S3StorageWriter(FileSystemWriter):
         storage_md = {}
         for wr_list in results:
             storage_md.update({wr.index: wr.storage_data for wr in wr_list})
+            
         metadata.storage_data = storage_md
         # Add duplication info to metadata
         if metadata.storage_meta is None:
@@ -448,7 +461,7 @@ class S3StorageReader(FileSystemReader):
         """
         metadata = super().read_metadata()
         logger.debug(f"Storage metadata: {metadata.storage_meta}")
-        self.num_copies = metadata.storage_meta.modules[0].split("=")[1]
+        self.num_copies = int(metadata.storage_meta.modules[0].split("=")[1])
         logger.debug(f"Num of copies: {self.num_copies}")
         # Log all the important info of metadata
         # logger.debug(f"Metadata: {metadata}")
