@@ -31,6 +31,7 @@ pytestmark = pytest.mark.parametrize(
     "reader_type", [ReaderType.SEQUENTIAL, ReaderType.RANGE_BASED]
 )
 
+
 def create_s3reader(stream, reader_type):
     return S3Reader(
         TEST_BUCKET,
@@ -39,6 +40,7 @@ def create_s3reader(stream, reader_type):
         create_stream_getter(stream),
         reader_type=reader_type,
     )
+
 
 def create_object_info_getter(stream_data):
     """Create an object info getter function with size calculated from stream data."""
