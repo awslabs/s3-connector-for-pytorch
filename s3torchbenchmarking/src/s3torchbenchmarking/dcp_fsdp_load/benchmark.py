@@ -47,7 +47,7 @@ def run_fsdp_load(
 
     This function is meant to be executed in subprocesses."""
     setup(cfg.backend, world_size=cfg.world_size, rank=rank)
-    suffix = "2025-06-11-16-02-KptY"
+    suffix = "2025-06-12-16-01-rhTn"
     if rank == 0:
         logger.info("Creating Model")
     
