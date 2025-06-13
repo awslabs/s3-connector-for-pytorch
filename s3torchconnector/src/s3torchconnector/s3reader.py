@@ -376,7 +376,7 @@ class _RangedS3Reader(_BaseS3Reader):
                 break
 
         self._position += bytes_read
-        return bytes(buffer[:bytes_read])
+        return view.tobytes()
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
         """Change the stream position to the given byte offset, interpreted relative to whence.
