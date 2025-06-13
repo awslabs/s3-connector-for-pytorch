@@ -14,6 +14,7 @@ from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 from s3torchconnector import S3Reader, ReaderType
+from s3torchconnector.s3reader import _SequentialS3Reader
 from .test_s3reader_common import (
     TEST_BUCKET,
     TEST_KEY,
@@ -39,6 +40,18 @@ def create_sequential_s3reader(stream):
         lambda: iter(stream),
         reader_type=ReaderType.SEQUENTIAL,
     )
+
+
+def test_default_reader_type():
+    """Test that SEQUENTIAL is the default reader type"""
+    stream = [b"test"]
+    s3reader = S3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        lambda: None,
+        lambda: iter(stream),
+    )
+    assert isinstance(s3reader._reader, _SequentialS3Reader)
 
 
 @pytest.mark.parametrize(

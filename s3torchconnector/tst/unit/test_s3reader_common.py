@@ -13,6 +13,7 @@ from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 from s3torchconnector import S3Reader, ReaderType
+from s3torchconnector.s3reader import _SequentialS3Reader, _RangedS3Reader
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -25,6 +26,10 @@ TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 MOCK_OBJECT_INFO = Mock(ObjectInfo)
 MOCK_STREAM = Mock(GetObjectStream)
+READER_TYPE_TO_CLASS = {
+    ReaderType.SEQUENTIAL: _SequentialS3Reader,
+    ReaderType.RANGE_BASED: _RangedS3Reader,
+}
 
 # Allow all tests in this file to be run with both sequential and range-based reader types
 pytestmark = pytest.mark.parametrize(
@@ -90,6 +95,13 @@ def bytestream_and_position(draw, *, position_min_value: int = 0):
     position = draw(integers(min_value=position_min_value, max_value=total_length))
 
     return byte_array, position
+
+
+def test_reader_type_instance(reader_type: ReaderType):
+    """Test that the reader type is set correctly"""
+    stream = [b"test"]
+    s3reader = create_s3reader(stream, reader_type)
+    assert isinstance(s3reader._reader, READER_TYPE_TO_CLASS[reader_type])
 
 
 @pytest.mark.parametrize(
