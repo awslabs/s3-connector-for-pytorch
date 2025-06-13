@@ -5,6 +5,7 @@ import logging
 import os
 import gc
 import threading
+import traceback
 import weakref
 from functools import partial
 from typing import Optional, Any, List
@@ -53,6 +54,7 @@ def _before_fork_handler():
             if client._native_client is not None:
                 # Release the client before fork as it's not fork-safe
                 client._native_client = None
+        # Clear the list of active clients. We will re-populate it after fork with only active clients.
         _reset_active_s3clients()
         gc.collect()
         # Wait for native background threads to complete joining (0.5 sec timeout)
@@ -65,6 +67,7 @@ def _before_fork_handler():
             "1. Ensure no active S3 client usage during fork operations\n"
             "2. Use multiprocessing with 'spawn' or 'forkserver' start method instead"
         )
+        traceback.print_exc()
 
 
 def _after_fork_handler():
@@ -112,10 +115,6 @@ class S3Client:
                     self._native_client = self._client_builder()
                     self._client_pid = os.getpid()
                     # Track the client in the list of active clients.
-                    global _active_clients
-                    if not _active_clients:
-                        # global _active_clients
-                        _active_clients = weakref.WeakSet()
                     _active_clients.add(self)
 
         assert self._native_client is not None
@@ -195,7 +194,7 @@ class S3Client:
         return self._client.copy_object(src_bucket, src_key, dst_bucket, dst_key)
 
 
-def _get_active_s3clients() -> List[weakref.ReferenceType]:
+def _get_active_s3clients() -> List[S3Client]:
     """
     Returns a copy of list of all active S3 clients.
     Pay attention, it grabs a lock on _client_lock.
@@ -204,12 +203,9 @@ def _get_active_s3clients() -> List[weakref.ReferenceType]:
         List[weakref.ReferenceType]: A list of weak references to active S3 client instances.
     """
     lst = []
-    global _active_clients
     with _client_lock:
         if _active_clients:
             lst = list(_active_clients)
-        else:
-            _active_clients = weakref.WeakSet()
     return lst
 
 
@@ -220,5 +216,4 @@ def _reset_active_s3clients():
     """
     global _active_clients
     with _client_lock:
-        # Clear the list of active clients, we will repopulate it after fork
         _active_clients = weakref.WeakSet()
