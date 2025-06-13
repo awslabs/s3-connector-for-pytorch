@@ -6,7 +6,8 @@ from typing import Iterable, Union, Sequence
 
 import pytest
 
-from s3torchconnector import S3Exception
+from s3torchconnector import S3Exception, ReaderType
+from s3torchconnector.s3reader import _SequentialS3Reader, _RangedS3Reader
 from s3torchconnector._s3client import MockS3Client
 
 from s3torchconnector._s3dataset_common import (
@@ -27,6 +28,10 @@ TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_PREFIX = f"s3://{TEST_BUCKET}"
 TEST_ENDPOINT = "https://s3.us-east-1.amazonaws.com"
+READER_TYPE_TO_CLASS = {
+    ReaderType.SEQUENTIAL: _SequentialS3Reader,
+    ReaderType.RANGE_BASED: _RangedS3Reader,
+}
 
 
 @pytest.mark.parametrize(
