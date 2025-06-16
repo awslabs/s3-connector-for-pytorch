@@ -312,6 +312,10 @@ class _RangedS3Reader(_BaseS3Reader):
         start = self._position
         end = min(start + buf_size, self._get_size())
 
+        # Return no data if zero-length range
+        if start >= end:
+            return 0
+
         # Create memoryview of the target buffer
         view = memoryview(buf)
 
@@ -358,6 +362,10 @@ class _RangedS3Reader(_BaseS3Reader):
             end = self._get_size()
         else:
             end = min(start + size, self._get_size())
+
+        # Return no data if zero-length range
+        if start >= end:
+            return b""
 
         # Pre-allocate buffer
         byte_size = end - start
