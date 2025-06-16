@@ -3,7 +3,7 @@
 
 import logging
 import sys
-from io import BytesIO, SEEK_END, SEEK_CUR
+from io import BytesIO, SEEK_SET, SEEK_END, SEEK_CUR
 from typing import List, Tuple
 from unittest.mock import Mock
 
@@ -190,6 +190,32 @@ def test_read_with_negative(reader_type: ReaderType, stream: List[bytes], amount
     # Below -sys.maxsize, we get an OverflowError. I don't think it's too important to support this though.
     s3reader = create_s3reader(stream, reader_type)
     assert s3reader.read(amount) == b"".join(stream)
+
+
+@pytest.mark.parametrize(
+    "description, start, size, stream, expected_data, expected_position",
+    [
+        ("Zero-length read from start", 0, 0, [b"0123456789ABCDEF"], b"", 0),
+        ("Zero-length read from middle", 5, 0, [b"0123456789ABCDEF"], b"", 5),
+        ("Read beyond EOF", 16, 10, [b"0123456789ABCDEF"], b"", 16),
+        ("Read from empty file", 0, 10, [], b"", 0),
+    ],
+)
+def test_s3reader_edge_cases(
+    reader_type: ReaderType,
+    description,
+    start,
+    size,
+    stream,
+    expected_data,
+    expected_position,
+):
+    """Test edge cases for S3Reader"""
+    s3reader = create_s3reader(stream, reader_type)
+    s3reader.seek(start)
+    result = s3reader.read(size)
+    assert result == expected_data
+    assert s3reader.tell() == expected_position
 
 
 @given(
