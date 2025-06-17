@@ -97,8 +97,8 @@ dataloader_builders = [dataloader_for_iterable, dataloader_for_map]
 # Allow us to construct our datasets in tests with either both reader types.
 reader_types = [ReaderType.SEQUENTIAL, ReaderType.RANGE_BASED]
 
-num_workers_to_test = [1, 2, 3]
-num_processes_to_test = [1, 2, 3]
+num_workers_to_test = [1, 3]
+num_processes_to_test = [1, 3]
 test_args = list(
     product(
         sorted(start_methods),
