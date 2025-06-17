@@ -480,52 +480,19 @@ class _RangedS3Reader(_BaseS3Reader):
 class S3Reader(io.BufferedIOBase):
     """A read-only, file like representation of a single object stored in S3."""
 
-    def __init__(
-        self,
+    def __new__(
+        cls,
         bucket: str,
         key: str,
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
         reader_config: Optional[S3ReaderConfig] = None,
     ):
-        self._config = reader_config or S3ReaderConfig()
-        self._reader = self._create_reader(
-            bucket, key, get_object_info, get_stream, self._config.reader_type
-        )
+        config = reader_config or S3ReaderConfig()
 
-    @staticmethod
-    def _create_reader(bucket, key, get_object_info, get_stream, reader_type):
-        if reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL:
+        if config.reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL:
             return _SequentialS3Reader(bucket, key, get_object_info, get_stream)
-        elif reader_type == S3ReaderConfig.ReaderType.RANGE_BASED:
+        elif config.reader_type == S3ReaderConfig.ReaderType.RANGE_BASED:
             return _RangedS3Reader(bucket, key, get_object_info, get_stream)
-        raise ValueError(f"Unsupported reader type: {reader_type}")
 
-    @property
-    def bucket(self):
-        return self._reader.bucket
-
-    @property
-    def key(self):
-        return self._reader.key
-
-    def prefetch(self) -> None:
-        self._reader.prefetch()
-
-    def readinto(self, buf) -> int:
-        return self._reader.readinto(buf)
-
-    def read(self, size: Optional[int] = None) -> bytes:
-        return self._reader.read(size)
-
-    def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
-        return self._reader.seek(offset, whence)
-
-    def tell(self) -> int:
-        return self._reader.tell()
-
-    def readable(self) -> bool:
-        return self._reader.readable()
-
-    def writable(self) -> bool:
-        return self._reader.writable()
+        raise ValueError(f"Unsupported reader type: {config.reader_type}")

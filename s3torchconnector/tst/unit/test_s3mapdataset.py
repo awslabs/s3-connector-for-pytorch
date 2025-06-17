@@ -294,8 +294,8 @@ def verify_item(
     assert data is not None
     assert data.bucket == TEST_BUCKET
     assert data.key == expected_key
-    assert isinstance(data._reader, READER_TYPE_TO_CLASS[reader_config.reader_type])
-    assert data._reader._stream is None
+    assert isinstance(data, READER_TYPE_TO_CLASS[reader_config.reader_type])
+    assert data._stream is None
     expected_content = f"{TEST_BUCKET}-{expected_key}-dummyData".encode()
     content = data.read()
     assert content == expected_content

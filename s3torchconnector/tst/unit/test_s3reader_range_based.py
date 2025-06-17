@@ -50,12 +50,12 @@ def create_range_s3reader(stream):
 @given(lists(binary(min_size=1, max_size=5000)))
 def test_s3reader_writes_size_before_read_all(stream):
     s3reader = create_range_s3reader(stream)
-    assert s3reader._reader._size is None
+    assert s3reader._size is None
     total_length = sum(map(len, stream))
     # We're able to read all the data
     assert len(s3reader.read(total_length)) == total_length
     # Read operation writes size before reading
-    assert s3reader._reader._size == total_length
+    assert s3reader._size == total_length
     # Reading past the end gives us empty
     assert s3reader.read(1) == b""
 
@@ -68,7 +68,7 @@ def test_s3reader_writes_size_when_readinto_buffer_smaller_than_chunks(
     stream, buf_size
 ):
     s3reader = create_range_s3reader(stream)
-    assert s3reader._reader._size is None
+    assert s3reader._size is None
     total_length = sum(map(len, stream))
     buf = memoryview(bytearray(buf_size))
     # We're able to read all the available data or the data that can be accommodated in buf
@@ -76,7 +76,7 @@ def test_s3reader_writes_size_when_readinto_buffer_smaller_than_chunks(
         assert s3reader.readinto(buf) == buf_size
         assert s3reader.tell() == buf_size
         # Readinto operation does write size
-        assert s3reader._reader._size == total_length
+        assert s3reader._size == total_length
         # confirm that read data is the same as in source
         assert buf[:buf_size] == (b"".join(stream))[:buf_size]
     else:
