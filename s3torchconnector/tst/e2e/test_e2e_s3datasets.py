@@ -127,6 +127,40 @@ def test_unsigned_client(reader_type):
     assert len(s3_dataloader) >= 1296
 
 
+def test_s3mapdataset_user_agent(image_directory, reader_type):
+    """Test that user agent includes correct dataset type and reader type for S3MapDataset."""
+    map_dataset = S3MapDataset.from_prefix(
+        s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
+        region=image_directory.region,
+        reader_type=reader_type,
+    )
+
+    # Trigger client initialization
+    first_item = map_dataset[0]
+    first_item.read(1)
+
+    user_agent = map_dataset._client.user_agent_prefix
+    assert "md/dataset#map" in user_agent
+    assert f"md/reader_type#{reader_type.name.lower()}" in user_agent
+
+
+def test_s3iterabledataset_user_agent(image_directory, reader_type):
+    """Test that user agent includes correct dataset type and reader type for S3IterableDataset."""
+    iter_dataset = S3IterableDataset.from_prefix(
+        s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
+        region=image_directory.region,
+        reader_type=reader_type,
+    )
+
+    # Trigger client initialization
+    first_item = next(iter(iter_dataset))
+    first_item.read(1)
+
+    user_agent = iter_dataset._client.user_agent_prefix
+    assert "md/dataset#iterable" in user_agent
+    assert f"md/reader_type#{reader_type.name.lower()}" in user_agent
+
+
 def _compare_dataloaders(
     local_dataloader: DataLoader, s3_dataloader: DataLoader, expected_batch_count: int
 ):
