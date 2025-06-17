@@ -7,6 +7,7 @@ from io import SEEK_CUR, SEEK_END, SEEK_SET
 from typing import Callable, Optional, Iterator, Union
 from enum import Enum
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -15,9 +16,22 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 )
 
 
-class ReaderType(Enum):
-    SEQUENTIAL = "sequential"
-    RANGE_BASED = "range"
+@dataclass(frozen=True)
+class S3ReaderConfig:
+    """A dataclass exposing configurable parameters for S3Reader.
+
+    Args:
+    reader_type (ReaderType): Determines the S3 access strategy.
+        SEQUENTIAL:  Buffers entire object sequentially. Best for full reads and repeated access.
+        RANGE_BASED: Fetches specific byte ranges on-demand. Suitable for partial reads of large objects.
+    """
+
+    class ReaderType(Enum):
+        SEQUENTIAL = "sequential"
+        RANGE_BASED = "range"
+
+    # Default to _SequentialS3Reader
+    reader_type: ReaderType = ReaderType.SEQUENTIAL
 
 
 class _BaseS3Reader(ABC, io.BufferedIOBase):
@@ -472,17 +486,18 @@ class S3Reader(io.BufferedIOBase):
         key: str,
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
-        reader_type: ReaderType = ReaderType.SEQUENTIAL,
+        reader_config: Optional[S3ReaderConfig] = None,
     ):
+        self._config = reader_config or S3ReaderConfig()
         self._reader = self._create_reader(
-            bucket, key, get_object_info, get_stream, reader_type
+            bucket, key, get_object_info, get_stream, self._config.reader_type
         )
 
     @staticmethod
     def _create_reader(bucket, key, get_object_info, get_stream, reader_type):
-        if reader_type == ReaderType.SEQUENTIAL:
+        if reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL:
             return _SequentialS3Reader(bucket, key, get_object_info, get_stream)
-        elif reader_type == ReaderType.RANGE_BASED:
+        elif reader_type == S3ReaderConfig.ReaderType.RANGE_BASED:
             return _RangedS3Reader(bucket, key, get_object_info, get_stream)
         raise ValueError(f"Unsupported reader type: {reader_type}")
 

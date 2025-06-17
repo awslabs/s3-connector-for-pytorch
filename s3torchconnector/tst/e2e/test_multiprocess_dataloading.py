@@ -11,7 +11,7 @@ import pytest
 from torch.utils.data import DataLoader, get_worker_info
 from torchdata.datapipes.iter import IterableWrapper
 
-from s3torchconnector import S3IterableDataset, S3MapDataset, S3Reader, ReaderType
+from s3torchconnector import S3IterableDataset, S3MapDataset, S3Reader, S3ReaderConfig
 
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture
@@ -23,23 +23,23 @@ start_methods = _get_fork_methods()
 
 
 def from_prefix(
-    cls, image_directory: BucketPrefixFixture, reader_type: ReaderType, **kwargs
+    cls, image_directory: BucketPrefixFixture, reader_config: S3ReaderConfig, **kwargs
 ):
     return cls.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
-        reader_type=reader_type,
+        reader_config=reader_config,
         **kwargs,
     )
 
 
 def from_objects(
-    cls, image_directory: BucketPrefixFixture, reader_type: ReaderType, **kwargs
+    cls, image_directory: BucketPrefixFixture, reader_config: S3ReaderConfig, **kwargs
 ):
     return cls.from_objects(
         [f"s3://{image_directory.bucket}/{key}" for key in image_directory],
         region=image_directory.region,
-        reader_type=reader_type,
+        reader_config=reader_config,
         **kwargs,
     )
 
@@ -48,21 +48,23 @@ def from_objects(
 dataset_builders = (from_prefix, from_objects)
 
 # Allow us to construct our datasets in tests with either both reader types.
-reader_types = [ReaderType.SEQUENTIAL, ReaderType.RANGE_BASED]
+reader_configs = [
+    S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.SEQUENTIAL),
+    S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.RANGE_BASED),
+]
+test_args = list(product(sorted(start_methods), dataset_builders, reader_configs))
 
-test_args = list(product(sorted(start_methods), dataset_builders, reader_types))
 
-
-@pytest.mark.parametrize("start_method, dataset_builder, reader_type", test_args)
+@pytest.mark.parametrize("start_method, dataset_builder, reader_config", test_args)
 def test_s3iterable_dataset_multiprocess_torchdata(
     start_method: str,
     dataset_builder: Callable,
     image_directory: BucketPrefixFixture,
-    reader_type: ReaderType,
+    reader_config: S3ReaderConfig,
 ):
     _set_start_method(start_method)
     dataset = dataset_builder(
-        S3IterableDataset, image_directory, reader_type=reader_type
+        S3IterableDataset, image_directory, reader_config=reader_config
     )
 
     dataset = IterableWrapper(dataset, deepcopy=False).sharding_filter().map(_read_data)
@@ -89,19 +91,19 @@ def test_s3iterable_dataset_multiprocess_torchdata(
     assert uris_seen == {key: 1 for key in image_directory}
 
 
-@pytest.mark.parametrize("start_method, dataset_builder, reader_type", test_args)
+@pytest.mark.parametrize("start_method, dataset_builder, reader_config", test_args)
 def test_s3iterable_dataset_multiprocess(
     start_method: str,
     dataset_builder: Callable,
     image_directory: BucketPrefixFixture,
-    reader_type: ReaderType,
+    reader_config: S3ReaderConfig,
 ):
     _set_start_method(start_method)
     dataset = dataset_builder(
         S3IterableDataset,
         image_directory,
         transform=_extract_object_data,
-        reader_type=reader_type,
+        reader_config=reader_config,
     )
 
     num_workers = 3
@@ -126,19 +128,19 @@ def test_s3iterable_dataset_multiprocess(
         assert dict(s3keys) == {key: num_workers for key in image_directory}
 
 
-@pytest.mark.parametrize("start_method, dataset_builder, reader_type", test_args)
+@pytest.mark.parametrize("start_method, dataset_builder, reader_config", test_args)
 def test_s3mapdataset_multiprocess(
     start_method: str,
     dataset_builder: Callable,
     image_directory: BucketPrefixFixture,
-    reader_type: ReaderType,
+    reader_config: S3ReaderConfig,
 ):
     _set_start_method(start_method)
     dataset = dataset_builder(
         S3MapDataset,
         image_directory,
         transform=_extract_object_data,
-        reader_type=reader_type,
+        reader_config=reader_config,
     )
 
     num_workers = 3
