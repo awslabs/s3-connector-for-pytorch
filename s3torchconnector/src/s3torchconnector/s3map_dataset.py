@@ -9,6 +9,7 @@ from s3torchconnector._s3bucket_key_data import S3BucketKeyData
 
 from ._s3client import S3Client, S3ClientConfig
 from . import S3Reader, ReaderType
+from ._user_agent import UserAgent
 
 from ._s3dataset_common import (
     get_objects_from_uris,
@@ -135,9 +136,13 @@ class S3MapDataset(torch.utils.data.Dataset):
 
     def _get_client(self):
         if self._client is None:
+            reader_type_string = self._reader_type.name.lower()
             self._client = S3Client(
                 self.region,
                 endpoint=self.endpoint,
+                user_agent=UserAgent(
+                    comments=[f"md/dataset#map md/reader_type#{reader_type_string}"]
+                ),
                 s3client_config=self._s3client_config,
             )
         return self._client

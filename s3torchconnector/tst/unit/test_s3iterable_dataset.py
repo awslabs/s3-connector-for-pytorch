@@ -423,6 +423,19 @@ def test_dataset_creation_against_multiple_workers(
     ), "The number of keys should be evenly distributed across ranks, with a difference of at most 1"
 
 
+@pytest.mark.parametrize("reader_type", [ReaderType.SEQUENTIAL, ReaderType.RANGE_BASED])
+def test_user_agent_includes_dataset_and_reader_type(reader_type):
+    """Test that user agent includes dataset type and reader type."""
+    dataset = S3IterableDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, reader_type=reader_type
+    )
+    dataset._get_client()
+
+    user_agent = dataset._client.user_agent_prefix
+    assert "md/dataset#iterable" in user_agent
+    assert f"md/reader_type#{reader_type.name.lower()}" in user_agent
+
+
 def _verify_dataset(
     dataset: S3IterableDataset,
     expected_keys: Sequence[str],

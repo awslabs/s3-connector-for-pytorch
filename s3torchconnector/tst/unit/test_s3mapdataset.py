@@ -259,6 +259,19 @@ def test_dataset_creation_from_prefix_with_region_and_endpoint():
     assert dataset.endpoint == TEST_ENDPOINT
 
 
+@pytest.mark.parametrize("reader_type", [ReaderType.SEQUENTIAL, ReaderType.RANGE_BASED])
+def test_user_agent_includes_dataset_and_reader_type(reader_type):
+    """Test that user agent includes dataset type and reader type."""
+    dataset = S3MapDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, reader_type=reader_type
+    )
+    dataset._get_client()
+
+    user_agent = dataset._client.user_agent_prefix
+    assert "md/dataset#map" in user_agent
+    assert f"md/reader_type#{reader_type.name.lower()}" in user_agent
+
+
 def verify_item(
     dataset: S3MapDataset, index: int, expected_key: str, reader_type: ReaderType
 ):
