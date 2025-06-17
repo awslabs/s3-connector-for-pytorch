@@ -168,3 +168,18 @@ def test_force_path_style_s3_client():
         s3client_config=S3ClientConfig(force_path_style=True),
     )
     assert s3_client._client.force_path_style is True
+
+
+def test_s3_client_different_configs():
+    s3_client_slow = S3Client(
+        region=TEST_REGION,
+        s3client_config=S3ClientConfig(throughput_target_gbps=5, part_size=5 * MiB),
+    )
+    s3_client_fast = S3Client(
+        region=TEST_REGION,
+        s3client_config=S3ClientConfig(throughput_target_gbps=500, part_size=32 * MiB),
+    )
+    assert s3_client_slow._client.throughput_target_gbps == 5
+    assert s3_client_slow._client.part_size == 5 * MiB
+    assert s3_client_fast._client.throughput_target_gbps == 500
+    assert s3_client_fast._client.part_size == 32 * MiB
