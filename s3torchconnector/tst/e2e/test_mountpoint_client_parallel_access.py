@@ -1,10 +1,13 @@
 import os
-import random
 import time
 import threading
 import pytest
 from s3torchconnector._s3client import S3Client
 from s3torchconnectorclient._mountpoint_s3_client import MountpointS3Client
+
+from test_common import _get_fork_methods
+from conftest import getenv
+
 
 NATIVE_S3_CLIENT = None
 
@@ -29,6 +32,24 @@ class S3ClientWithLock(S3Client):
     def _client_builder(self):
         time.sleep(1)
         return super()._client_builder()
+
+
+def test_s3_client_reset_after_fork():
+    methods = _get_fork_methods()
+    if "fork" not in methods:
+        pytest.skip("fork is not supported")
+    region = getenv("CI_REGION")
+    s3_client1 = S3Client(region=region)
+    s3_client2 = S3Client(region=region)
+
+    assert s3_client1._client is not None
+    assert s3_client2._client is not None
+    assert s3_client1._native_client is not None
+    assert s3_client2._native_client is not None
+    # fork process to clean-up clients
+    os.fork()
+    assert s3_client1._native_client is None
+    assert s3_client2._native_client is None
 
 
 def access_client(client, error_event):
