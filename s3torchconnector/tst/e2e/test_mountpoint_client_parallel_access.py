@@ -34,22 +34,47 @@ class S3ClientWithLock(S3Client):
         return super()._client_builder()
 
 
-# def test_s3_client_reset_after_fork():
-#     methods = _get_fork_methods()
-#     if "fork" not in methods:
-#         pytest.skip("fork is not supported")
-#     region = getenv("CI_REGION")
-#     s3_client1 = S3Client(region=region)
-#     s3_client2 = S3Client(region=region)
-#
-#     assert s3_client1._client is not None
-#     assert s3_client2._client is not None
-#     assert s3_client1._native_client is not None
-#     assert s3_client2._native_client is not None
-#     # fork process to clean-up clients
-#     os.fork()
-#     assert s3_client1._native_client is None
-#     assert s3_client2._native_client is None
+def test_s3_client_reset_after_fork():
+    methods = _get_fork_methods()
+    if "fork" not in methods:
+        pytest.skip("fork is not supported")
+    region = getenv("CI_REGION")
+    s3_client1 = S3Client(region=region)
+    s3_client2 = S3Client(region=region)
+
+    if (
+        s3_client1._client is None
+        or s3_client2._client is None
+        or s3_client1._native_client is None
+        or s3_client2._native_client is None
+    ):
+        pytest.fail("Native client is not initialized")
+    # fork process to clean-up clients
+    # Fork process
+    pid = os.fork()
+
+    if pid == 0:
+        # Child process
+        try:
+            if (
+                s3_client1._native_client is not None
+                or s3_client2._native_client is not None
+            ):
+                os._exit(1)  # Fail if clients are not reset
+            os._exit(0)  # Success
+        finally:
+            os._exit(1)  # Ensure child exits in case of any other error
+    else:
+        # Parent process
+        _, status = os.waitpid(pid, 0)
+        exit_code = os.WEXITSTATUS(status)
+
+        if (
+            exit_code != 0
+            or s3_client1._native_client is not None
+            or s3_client2._native_client is not None
+        ):
+            pytest.fail("Native client is not reset after fork")
 
 
 def access_client(client, error_event):
