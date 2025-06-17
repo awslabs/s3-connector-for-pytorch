@@ -200,13 +200,10 @@ def _get_active_s3clients() -> List[S3Client]:
     Pay attention, it grabs a lock on _client_lock.
 
     Returns:
-        List[weakref.ReferenceType]: A list of weak references to active S3 client instances.
+        List[S3Client]: A list of active S3 client instances.
     """
-    lst = []
     with _client_lock:
-        if _active_clients:
-            lst = list(_active_clients)
-    return lst
+        return list(_active_clients)
 
 
 def _reset_active_s3clients():
