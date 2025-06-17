@@ -13,7 +13,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-from s3torchconnector import S3Reader, ReaderType
+from s3torchconnector import S3Reader, S3ReaderConfig
 from .test_s3reader_common import (
     TEST_BUCKET,
     TEST_KEY,
@@ -32,6 +32,10 @@ logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
+RANGE_BASED_READER_CONFIG = S3ReaderConfig(
+    reader_type=S3ReaderConfig.ReaderType.RANGE_BASED
+)
+
 
 def create_range_s3reader(stream):
     return S3Reader(
@@ -39,7 +43,7 @@ def create_range_s3reader(stream):
         TEST_KEY,
         create_object_info_getter(stream),
         create_stream_getter(stream),
-        reader_type=ReaderType.RANGE_BASED,
+        reader_config=RANGE_BASED_READER_CONFIG,
     )
 
 
