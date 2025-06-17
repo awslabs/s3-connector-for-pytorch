@@ -13,7 +13,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-from s3torchconnector import S3Reader, ReaderType
+from s3torchconnector import S3Reader, S3ReaderConfig
 from s3torchconnector.s3reader import _SequentialS3Reader
 from .test_s3reader_common import (
     TEST_BUCKET,
@@ -31,6 +31,10 @@ logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
+SEQUENTIAL_READER_CONFIG = S3ReaderConfig(
+    reader_type=S3ReaderConfig.ReaderType.SEQUENTIAL
+)
+
 
 def create_sequential_s3reader(stream):
     return S3Reader(
@@ -38,7 +42,7 @@ def create_sequential_s3reader(stream):
         TEST_KEY,
         lambda: None,
         lambda: iter(stream),
-        reader_type=ReaderType.SEQUENTIAL,
+        reader_config=SEQUENTIAL_READER_CONFIG,
     )
 
 
@@ -68,7 +72,7 @@ def test_s3reader_prefetch(stream):
         TEST_KEY,
         lambda: None,
         lambda: stream,
-        reader_type=ReaderType.SEQUENTIAL,
+        reader_config=SEQUENTIAL_READER_CONFIG,
     )
     assert s3reader._reader._stream is None
     s3reader.prefetch()
