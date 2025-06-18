@@ -4,7 +4,7 @@
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
-from typing import Callable, Optional, Iterator, Union
+from typing import Callable, Optional, Iterator, Union, cast
 from enum import Enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -485,14 +485,30 @@ class S3Reader(io.BufferedIOBase):
         bucket: str,
         key: str,
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
-        get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
+        get_stream: Union[
+            Callable[[], GetObjectStream],
+            Callable[[Optional[int], Optional[int]], GetObjectStream],
+        ],
         reader_config: Optional[S3ReaderConfig] = None,
     ):
         config = reader_config or S3ReaderConfig()
 
         if config.reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL:
-            return _SequentialS3Reader(bucket, key, get_object_info, get_stream)
+            return _SequentialS3Reader(
+                bucket,
+                key,
+                get_object_info,
+                cast(Callable[[], GetObjectStream], get_stream),
+            )
         elif config.reader_type == S3ReaderConfig.ReaderType.RANGE_BASED:
-            return _RangedS3Reader(bucket, key, get_object_info, get_stream)
+            return _RangedS3Reader(
+                bucket,
+                key,
+                get_object_info,
+                cast(
+                    Callable[[Optional[int], Optional[int]], GetObjectStream],
+                    get_stream,
+                ),
+            )
 
         raise ValueError(f"Unsupported reader type: {config.reader_type}")
