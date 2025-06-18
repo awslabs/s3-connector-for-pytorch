@@ -104,7 +104,7 @@ def bytestream_and_position(draw, *, position_min_value: int = 0):
     return byte_array, position
 
 
-def test_reader_type_instance(reader_config: S3ReaderConfig):
+def test_s3reader_reader_type_instance(reader_config: S3ReaderConfig):
     """Test that the reader type is set correctly"""
     stream = [b"test"]
     s3reader = create_s3reader(stream, reader_config)

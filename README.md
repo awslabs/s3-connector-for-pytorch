@@ -115,6 +115,35 @@ For example, assuming the following directory bucket name `my-test-bucket--usw2-
 usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
+## Reader Configurations
+
+Both dataset types support configurable reading strategies through `S3ReaderConfig`:
+
+```python
+from s3torchconnector import S3MapDataset, S3ReaderConfig
+
+# Configure reading strategy: SEQUENTIAL or RANGE_BASED
+reader_config = S3ReaderConfig(
+    reader_type=S3ReaderConfig.ReaderType.RANGE_BASED
+)
+# Or using the alternative constructor:
+reader_config = S3ReaderConfig.range_based()
+
+dataset = S3MapDataset.from_prefix(
+    DATASET_URI, 
+    region=REGION,
+    reader_config=reader_config
+)
+
+# Random access example
+item = dataset[0]
+item.seek(5 * 1024 * 1024)   # Seek to specific offset
+content = item.read(1024)    # Read desired bytes
+```
+
+The default `SEQUENTIAL` reader type is optimized for full reads and repeated access, while the `RANGE_BASED` reader type is designed for efficient random access patterns and partial reads of large objects.
+
+
 ## Distributed checkpoints
 
 ### Overview

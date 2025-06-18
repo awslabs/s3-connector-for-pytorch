@@ -81,7 +81,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
           enable_sharding: If True, shard the dataset across multiple workers for parallel data loading. If False (default), each worker loads the entire dataset independently.
-          reader_config: Optional S3ReaderConfig with parameters for S3Reader.
+          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -121,7 +121,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
           enable_sharding: If True, shard the dataset across multiple workers for parallel data loading. If False (default), each worker loads the entire dataset independently.
-          reader_config: Optional S3ReaderConfig with parameters for S3Reader.
+          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.

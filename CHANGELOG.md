@@ -1,6 +1,7 @@
 ## TBD
 
 ### New features
+* Implement range-based S3 Reader for byte range requests, enabling efficient random read patterns (#339)
 
 ### Bug fixes
 * Enable multiple CRT clients per process with different configs (#340)
