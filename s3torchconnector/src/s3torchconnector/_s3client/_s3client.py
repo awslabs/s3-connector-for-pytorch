@@ -5,8 +5,10 @@ import logging
 import os
 import gc
 import threading
+import traceback
+import weakref
 from functools import partial
-from typing import Optional, Any
+from typing import Optional, Any, List
 
 from s3torchconnector import S3Reader, S3Writer
 from .s3client_config import S3ClientConfig
@@ -37,19 +39,26 @@ def _identity(obj: Any) -> Any:
 
 
 _client_lock = threading.Lock()
-NATIVE_S3_CLIENT = None
+_active_clients: "weakref.WeakSet[Any]" = weakref.WeakSet()
 
 
 def _before_fork_handler():
-    """Handler that cleans up CRT resources before fork operations."""
-    global NATIVE_S3_CLIENT
+    # Handler that cleans up CRT resources before fork operations.
     try:
-        if NATIVE_S3_CLIENT is not None:
-            # Release the client before fork as it's not fork-safe
-            NATIVE_S3_CLIENT = None
-            gc.collect()
-            # Wait for native background threads to complete joining (0.5 sec timeout)
-            join_all_managed_threads(0.5)
+        # Get all instances of S3Client that exist in the current process
+        clients_list = _get_active_s3clients()
+        if not clients_list:
+            return
+
+        for client in clients_list:
+            if client._native_client is not None:
+                # Release the client before fork as it's not fork-safe
+                client._native_client = None
+        # Clear the list of active clients. We will re-populate it after fork with only active clients.
+        _reset_active_s3clients()
+        gc.collect()
+        # Wait for native background threads to complete joining (0.5 sec timeout)
+        join_all_managed_threads(0.5)
     except Exception as e:
         print(
             "Warning: Failed to properly clean up native background threads before fork. "
@@ -58,11 +67,17 @@ def _before_fork_handler():
             "1. Ensure no active S3 client usage during fork operations\n"
             "2. Use multiprocessing with 'spawn' or 'forkserver' start method instead"
         )
+        traceback.print_exc()
+
+
+def _after_fork_handler():
+    """Handler that initializes the list of active clients after fork in child process."""
+    _reset_active_s3clients()
 
 
 # register the handler to release the S3 client and wait for background threads to join before fork happens
-# As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
-os.register_at_fork(before=_before_fork_handler)
+# As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
+os.register_at_fork(before=_before_fork_handler, after_in_child=_after_fork_handler)
 
 
 class S3Client:
@@ -80,30 +95,30 @@ class S3Client:
         self._user_agent_prefix = user_agent.prefix
         self._s3client_config = s3client_config or S3ClientConfig()
         self._client_pid: Optional[int] = None
-        global NATIVE_S3_CLIENT
-        NATIVE_S3_CLIENT = None
+        self._native_client: Optional[MountpointS3Client] = None
 
     @property
     def _client(self) -> MountpointS3Client:
-        global NATIVE_S3_CLIENT
         if (
             self._client_pid is None
             or self._client_pid != os.getpid()
-            or NATIVE_S3_CLIENT is None
+            or self._native_client is None
         ):
             # Acquire the lock to ensure thread-safety when creating the client.
             with _client_lock:
                 if (
                     self._client_pid is None
                     or self._client_pid != os.getpid()
-                    or NATIVE_S3_CLIENT is None
+                    or self._native_client is None
                 ):
                     # This double-check ensures that the client is only created once.
-                    NATIVE_S3_CLIENT = self._client_builder()
+                    self._native_client = self._client_builder()
                     self._client_pid = os.getpid()
+                    # Track the client in the list of active clients.
+                    _active_clients.add(self)
 
-        assert NATIVE_S3_CLIENT is not None
-        return NATIVE_S3_CLIENT
+        assert self._native_client is not None
+        return self._native_client
 
     @property
     def region(self) -> str:
@@ -178,3 +193,25 @@ class S3Client:
             f"CopyObject s3://{src_bucket}/{src_key} to s3://{dst_bucket}/{dst_key}"
         )
         return self._client.copy_object(src_bucket, src_key, dst_bucket, dst_key)
+
+
+def _get_active_s3clients() -> List[S3Client]:
+    """
+    Returns a copy of list of all active S3 clients.
+    Pay attention, it grabs a lock on _client_lock.
+
+    Returns:
+        List[S3Client]: A list of active S3 client instances.
+    """
+    with _client_lock:
+        return list(_active_clients)
+
+
+def _reset_active_s3clients():
+    """
+    Resets the list of active S3 clients.
+    Pay attention, it grabs a lock on _client_lock.
+    """
+    global _active_clients
+    with _client_lock:
+        _active_clients = weakref.WeakSet()
