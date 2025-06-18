@@ -14,6 +14,7 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 
 from .base import BaseS3Reader
 
+
 class RangedS3Reader(BaseS3Reader):
     """Range-based S3 reader implementation
 
