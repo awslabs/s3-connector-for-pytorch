@@ -12,9 +12,9 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
 )
 
-from .base import _BaseS3Reader
+from .base import BaseS3Reader
 
-class _RangedS3Reader(_BaseS3Reader):
+class RangedS3Reader(BaseS3Reader):
     """Range-based S3 reader implementation
 
     Provides efficient random access to S3 objects by requesting specific byte ranges.

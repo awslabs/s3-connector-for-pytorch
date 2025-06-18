@@ -3,9 +3,9 @@
 
 from .s3reader import S3Reader
 from .s3reader_config import S3ReaderConfig
-from .base import _BaseS3Reader
-from .sequential import _SequentialS3Reader
-from .ranged import _RangedS3Reader
+from .base import BaseS3Reader
+from .sequential import SequentialS3Reader
+from .ranged import RangedS3Reader
 
 __all__ = [
     'S3Reader',

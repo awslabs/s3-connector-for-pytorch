@@ -20,7 +20,7 @@ class S3ReaderConfig:
         SEQUENTIAL = "sequential"
         RANGE_BASED = "range"
 
-    # Default to _SequentialS3Reader
+    # Default to SequentialS3Reader
     reader_type: ReaderType = ReaderType.SEQUENTIAL
 
     @classmethod

@@ -14,7 +14,7 @@ from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 from s3torchconnector import S3Reader, S3ReaderConfig
-from s3torchconnector.s3reader import _SequentialS3Reader
+from s3torchconnector.s3reader import SequentialS3Reader
 from .test_s3reader_common import (
     TEST_BUCKET,
     TEST_KEY,
@@ -55,7 +55,7 @@ def test_default_reader_type():
         lambda: None,
         lambda: iter(stream),
     )
-    assert isinstance(s3reader, _SequentialS3Reader)
+    assert isinstance(s3reader, SequentialS3Reader)
 
 
 @pytest.mark.parametrize(

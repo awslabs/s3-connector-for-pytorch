@@ -13,7 +13,7 @@ from hypothesis.strategies import lists, binary, integers, composite
 from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
 from s3torchconnector import S3Reader, S3ReaderConfig
-from s3torchconnector.s3reader import _SequentialS3Reader, _RangedS3Reader
+from s3torchconnector.s3reader import SequentialS3Reader, RangedS3Reader
 
 logging.basicConfig(
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
@@ -27,8 +27,8 @@ TEST_KEY = "test-key"
 MOCK_OBJECT_INFO = Mock(ObjectInfo)
 MOCK_STREAM = Mock(GetObjectStream)
 READER_TYPE_TO_CLASS = {
-    S3ReaderConfig.ReaderType.SEQUENTIAL: _SequentialS3Reader,
-    S3ReaderConfig.ReaderType.RANGE_BASED: _RangedS3Reader,
+    S3ReaderConfig.ReaderType.SEQUENTIAL: SequentialS3Reader,
+    S3ReaderConfig.ReaderType.RANGE_BASED: RangedS3Reader,
 }
 
 
