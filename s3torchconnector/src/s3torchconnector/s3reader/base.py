@@ -6,6 +6,7 @@ from io import SEEK_SET
 from abc import ABC, abstractmethod
 from typing import Optional
 
+
 class BaseS3Reader(ABC, io.BufferedIOBase):
     """Abstract base class for S3 reader implementations."""
 

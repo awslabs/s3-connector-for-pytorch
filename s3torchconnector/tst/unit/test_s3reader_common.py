@@ -289,13 +289,13 @@ def test_s3reader_readinto_edge_cases(
     s3reader.seek(start)
     buf = bytearray(buf_size)
     bytes_read = s3reader.readinto(buf)
-    
+
     assert bytes_read == expected_bytes_read
     assert s3reader.tell() == expected_position
-    
+
     if expected_bytes_read > 0:
         data = b"".join(stream)
-        assert buf[:bytes_read] == data[start:start+bytes_read]
+        assert buf[:bytes_read] == data[start : start + bytes_read]
 
 
 @given(

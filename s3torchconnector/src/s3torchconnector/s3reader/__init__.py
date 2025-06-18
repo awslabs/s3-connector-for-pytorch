@@ -8,6 +8,6 @@ from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
 
 __all__ = [
-    'S3Reader',
-    'S3ReaderConfig',
+    "S3Reader",
+    "S3ReaderConfig",
 ]
