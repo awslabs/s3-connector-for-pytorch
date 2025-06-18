@@ -34,3 +34,17 @@ class BaseS3Reader(ABC, io.BufferedIOBase):
     @abstractmethod
     def readinto(self, buf) -> int:
         pass
+
+    def readable(self) -> bool:
+        """
+        Returns:
+            bool: Return whether object was opened for reading.
+        """
+        return True
+
+    def writable(self) -> bool:
+        """
+        Returns:
+            bool: Return whether object was opened for writing.
+        """
+        return False

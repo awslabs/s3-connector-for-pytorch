@@ -209,17 +209,3 @@ class RangedS3Reader(BaseS3Reader):
               int: Current stream position.
         """
         return self._position
-
-    def readable(self) -> bool:
-        """
-        Returns:
-            bool: Return whether object was opened for reading.
-        """
-        return True
-
-    def writable(self) -> bool:
-        """
-        Returns:
-            bool: Return whether object was opened for writing.
-        """
-        return False
