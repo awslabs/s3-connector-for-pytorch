@@ -240,11 +240,12 @@ def test_read_with_negative(
     [
         ("Zero-length read from start", 0, 0, [b"0123456789ABCDEF"], b"", 0),
         ("Zero-length read from middle", 5, 0, [b"0123456789ABCDEF"], b"", 5),
+        ("Read near EOF", 10, 10, [b"0123456789ABCDEF"], b"ABCDEF", 16),
         ("Read beyond EOF", 16, 10, [b"0123456789ABCDEF"], b"", 16),
         ("Read from empty file", 0, 10, [], b"", 0),
     ],
 )
-def test_s3reader_edge_cases(
+def test_s3reader_read_edge_cases(
     reader_config: S3ReaderConfig,
     description,
     start,
@@ -253,13 +254,48 @@ def test_s3reader_edge_cases(
     expected_data,
     expected_position,
 ):
-    """Test edge cases for S3Reader"""
+    """Test edge cases for S3Reader read method"""
     s3reader = create_s3reader(stream, reader_config)
     assert isinstance(s3reader, READER_TYPE_TO_CLASS[reader_config.reader_type])
     s3reader.seek(start)
     result = s3reader.read(size)
     assert result == expected_data
     assert s3reader.tell() == expected_position
+
+
+@pytest.mark.parametrize(
+    "description, start, buf_size, stream, expected_bytes_read, expected_position",
+    [
+        ("Zero-length readinto from start", 0, 0, [b"0123456789ABCDEF"], 0, 0),
+        ("Zero-length readinto from middle", 5, 0, [b"0123456789ABCDEF"], 0, 5),
+        ("Readinto near EOF", 10, 10, [b"0123456789ABCDEF"], 6, 16),
+        ("Readinto beyond EOF", 16, 10, [b"0123456789ABCDEF"], 0, 16),
+        ("Readinto from empty file", 0, 10, [], 0, 0),
+    ],
+)
+def test_s3reader_readinto_edge_cases(
+    reader_config: S3ReaderConfig,
+    description,
+    start,
+    buf_size,
+    stream,
+    expected_bytes_read,
+    expected_position,
+):
+    """Test edge cases for S3Reader readinto method"""
+    s3reader = create_s3reader(stream, reader_config)
+    assert isinstance(s3reader, READER_TYPE_TO_CLASS[reader_config.reader_type])
+
+    s3reader.seek(start)
+    buf = bytearray(buf_size)
+    bytes_read = s3reader.readinto(buf)
+    
+    assert bytes_read == expected_bytes_read
+    assert s3reader.tell() == expected_position
+    
+    if expected_bytes_read > 0:
+        data = b"".join(stream)
+        assert buf[:bytes_read] == data[start:start+bytes_read]
 
 
 @given(
