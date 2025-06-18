@@ -147,6 +147,31 @@ def test_s3reader_invalid_creation(reader_config: S3ReaderConfig, bucket, key):
 
 
 @pytest.mark.parametrize(
+    "factory_method, expected_type",
+    [
+        (S3ReaderConfig.sequential, S3ReaderConfig.ReaderType.SEQUENTIAL),
+        (S3ReaderConfig.range_based, S3ReaderConfig.ReaderType.RANGE_BASED),
+    ],
+)
+def test_s3readerconfig_alternative_constructors(factory_method, expected_type):
+    """Test alternative constructor methods for creating S3ReaderConfig instances."""
+    config = factory_method()
+    assert isinstance(config, S3ReaderConfig)
+    assert config.reader_type == expected_type
+
+    # Test alternative construcotr methods returns same config as original method
+    assert config == S3ReaderConfig(reader_type=expected_type)
+
+    # Test alternative constructor methods create new instances
+    assert factory_method() is not factory_method()
+
+    # Test with S3Reader
+    stream = [b"test"]
+    s3reader = create_s3reader(stream, factory_method())
+    assert isinstance(s3reader, READER_TYPE_TO_CLASS[expected_type])
+
+
+@pytest.mark.parametrize(
     "stream",
     [
         [b"1", b"2", b"3"],
