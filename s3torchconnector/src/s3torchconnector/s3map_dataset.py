@@ -79,7 +79,7 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          reader_config: Optional S3ReaderConfig with parameters for S3Reader.
+          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -116,7 +116,7 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          reader_config: Optional S3ReaderConfig with parameters for S3Reader.
+          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
