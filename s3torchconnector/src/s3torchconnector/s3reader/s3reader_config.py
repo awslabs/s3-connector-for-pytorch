@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+
 @dataclass(frozen=True)
 class S3ReaderConfig:
     """A dataclass exposing configurable parameters for S3Reader.

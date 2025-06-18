@@ -13,6 +13,7 @@ from .s3reader_config import S3ReaderConfig
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
 
+
 class S3Reader(io.BufferedIOBase):
     """A read-only, file like representation of a single object stored in S3.
 
