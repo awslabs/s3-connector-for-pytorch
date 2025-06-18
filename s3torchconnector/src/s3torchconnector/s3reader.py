@@ -77,7 +77,14 @@ class _BaseS3Reader(ABC, io.BufferedIOBase):
 
 
 class _SequentialS3Reader(_BaseS3Reader):
-    """A read-only, file like representation of a single object stored in S3."""
+    """Sequential S3 reader implementation
+
+    Maintains an internal buffer and reads data sequentially from S3.
+    This implementation is optimal for:
+    - Full sequential reads
+    - Repeated access to the same data
+    - Scenarios where data is typically read in order
+    """
 
     def __init__(
         self,
@@ -287,7 +294,15 @@ class _SequentialS3Reader(_BaseS3Reader):
 
 
 class _RangedS3Reader(_BaseS3Reader):
-    """Range-based S3 reader implementation"""
+    """Range-based S3 reader implementation
+
+    Provides efficient random access to S3 objects by requesting specific byte ranges.
+
+    This reader is optimal for:
+    - Random access patterns
+    - Partial reads of large objects
+    - Memory-constrained scenarios where buffering full objects is impractical
+    """
 
     def __init__(
         self,
@@ -490,7 +505,18 @@ class _RangedS3Reader(_BaseS3Reader):
 
 
 class S3Reader(io.BufferedIOBase):
-    """A read-only, file like representation of a single object stored in S3."""
+    """A read-only, file like representation of a single object stored in S3.
+
+    This class acts as a factory that returns either a sequential or range-based reader
+    implementation based on the provided configuration.
+
+    Args:
+        bucket (str): S3 bucket name
+        key (str): Object key in the bucket
+        get_object_info: Callable that returns object metadata
+        get_stream: Callable that returns object data stream
+        reader_config (S3ReaderConfig, optional): Configuration for reader behavior.
+    """
 
     def __new__(
         cls,
