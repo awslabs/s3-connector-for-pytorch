@@ -10,8 +10,8 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
 )
 from .s3reader_config import S3ReaderConfig
-from .sequential import _SequentialS3Reader
-from .ranged import _RangedS3Reader
+from .sequential import SequentialS3Reader
+from .ranged import RangedS3Reader
 
 class S3Reader(io.BufferedIOBase):
     """A read-only, file like representation of a single object stored in S3.
@@ -41,14 +41,14 @@ class S3Reader(io.BufferedIOBase):
         config = reader_config or S3ReaderConfig()
 
         if config.reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL:
-            return _SequentialS3Reader(
+            return SequentialS3Reader(
                 bucket,
                 key,
                 get_object_info,
                 cast(Callable[[], GetObjectStream], get_stream),
             )
         elif config.reader_type == S3ReaderConfig.ReaderType.RANGE_BASED:
-            return _RangedS3Reader(
+            return RangedS3Reader(
                 bucket,
                 key,
                 get_object_info,
