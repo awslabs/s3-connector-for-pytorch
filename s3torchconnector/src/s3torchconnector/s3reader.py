@@ -1,6 +1,8 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+from __future__ import annotations
+
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
@@ -32,6 +34,16 @@ class S3ReaderConfig:
 
     # Default to _SequentialS3Reader
     reader_type: ReaderType = ReaderType.SEQUENTIAL
+
+    @classmethod
+    def sequential(cls) -> S3ReaderConfig:
+        """Alternative constructor for sequential reading configuration."""
+        return cls(reader_type=cls.ReaderType.SEQUENTIAL)
+
+    @classmethod
+    def range_based(cls) -> S3ReaderConfig:
+        """Alternative constructor for range-based reading configuration."""
+        return cls(reader_type=cls.ReaderType.RANGE_BASED)
 
 
 class _BaseS3Reader(ABC, io.BufferedIOBase):
