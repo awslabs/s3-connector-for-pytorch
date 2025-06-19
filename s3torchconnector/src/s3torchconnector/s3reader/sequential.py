@@ -44,11 +44,11 @@ class SequentialS3Reader(BaseS3Reader):
         self._position = 0
 
     @property
-    def bucket(self):
+    def bucket(self) -> str:
         return self._bucket
 
     @property
-    def key(self):
+    def key(self) -> str:
         return self._key
 
     @cached_property
