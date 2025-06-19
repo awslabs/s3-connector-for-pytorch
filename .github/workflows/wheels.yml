@@ -23,6 +23,7 @@ jobs:
     runs-on: ${{ matrix.builder.runner }}
     needs: generate_third_party_licenses
     strategy:
+      fail-fast: false
       matrix:
         python:
           - cp38
@@ -114,6 +115,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: generate_third_party_licenses
     strategy:
+      fail-fast: false
       matrix:
         build_target:
           - s3torchconnector
