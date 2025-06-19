@@ -147,6 +147,30 @@ def test_s3reader_invalid_creation(reader_config: S3ReaderConfig, bucket, key):
 
 
 @pytest.mark.parametrize(
+    "invalid_config",
+    [
+        42,
+        "sequential",
+        {"reader_type": "sequential"},
+        True,
+        None.__class__,  # NoneType
+    ],
+)
+def test_s3reader_invalid_config_type(invalid_config):
+    """Test that S3Reader raises TypeError for invalid reader_config types"""
+    with pytest.raises(
+        TypeError, match="reader_config must be an instance of S3ReaderConfig"
+    ):
+        S3Reader(
+            TEST_BUCKET,
+            TEST_KEY,
+            lambda: None,
+            lambda: None,
+            reader_config=invalid_config,
+        )
+
+
+@pytest.mark.parametrize(
     "factory_method, expected_type",
     [
         (S3ReaderConfig.sequential, S3ReaderConfig.ReaderType.SEQUENTIAL),
