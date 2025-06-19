@@ -31,4 +31,4 @@ export S3_EXPRESS_REGION=${EXPRESS_REGION_NAME}
 export S3_EXPRESS_BUCKET=${EXPRESS_BUCKET_NAME}
 export S3_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL}
 
-CIBW_MANYLINUX_X86_64_IMAGE=manylinux2014 CIBW_MANYLINUX_AARCH64_IMAGE=manylinux2014 cibuildwheel --output-dir wheelhouse --platform linux s3torchconnectorclient
+cibuildwheel --output-dir wheelhouse --platform linux s3torchconnectorclient
