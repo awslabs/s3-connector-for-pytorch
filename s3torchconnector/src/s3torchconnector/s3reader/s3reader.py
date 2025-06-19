@@ -39,6 +39,11 @@ class S3Reader(io.BufferedIOBase):
         ],
         reader_config: Optional[S3ReaderConfig] = None,
     ):
+        if reader_config is not None and not isinstance(reader_config, S3ReaderConfig):
+            raise TypeError(
+                f"reader_config must be an instance of S3ReaderConfig, got {type(reader_config)}"
+            )
+
         config = reader_config or S3ReaderConfig()
 
         if config.reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL:
