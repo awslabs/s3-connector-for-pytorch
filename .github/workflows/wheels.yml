@@ -96,6 +96,8 @@ jobs:
       # Run cibuildwheel manually, as the current runner uses setup-python
       # https://github.com/pypa/cibuildwheel/issues/1623
       - run: >
+          CIBW_MANYLINUX_X86_64_IMAGE=manylinux2014
+          CIBW_MANYLINUX_AARCH64_IMAGE=manylinux2014
           python -m pipx run
           cibuildwheel
           "s3torchconnectorclient"
