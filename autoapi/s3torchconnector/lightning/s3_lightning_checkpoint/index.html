@@ -1,0 +1,213 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.lightning.s3_lightning_checkpoint &mdash; Amazon S3 Connector for PyTorch 1.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=350a9c04"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="s3torchconnector.s3checkpoint" href="../../s3checkpoint/index.html" />
+    <link rel="prev" title="s3torchconnector.lightning" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html">s3torchconnector</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../../dcp/index.html">s3torchconnector.dcp</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="../index.html">s3torchconnector.lightning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3checkpoint/index.html">s3torchconnector.s3checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3iterable_dataset/index.html">s3torchconnector.s3iterable_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3map_dataset/index.html">s3torchconnector.s3map_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3reader/index.html">s3torchconnector.s3reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3writer/index.html">s3torchconnector.s3writer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#classes">Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#package-contents">Package Contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">s3torchconnector</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">s3torchconnector.lightning</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.lightning.s3_lightning_checkpoint</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../../_sources/autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-s3torchconnector.lightning.s3_lightning_checkpoint">
+<span id="s3torchconnector-lightning-s3-lightning-checkpoint"></span><h1>s3torchconnector.lightning.s3_lightning_checkpoint<a class="headerlink" href="#module-s3torchconnector.lightning.s3_lightning_checkpoint" title="Link to this heading"></a></h1>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint" title="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3LightningCheckpoint</span></code></a></p></td>
+<td><p>A checkpoint manager for S3 using the <code class="xref py py-class docutils literal notranslate"><span class="pre">CheckpointIO</span></code> interface.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.lightning.s3_lightning_checkpoint.</span></span><span class="sig-name descname"><span class="pre">S3LightningCheckpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3client_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector._s3client.S3ClientConfig</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/lightning/s3_lightning_checkpoint.html#S3LightningCheckpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">lightning.pytorch.plugins.io.CheckpointIO</span></code></p>
+<p>A checkpoint manager for S3 using the <code class="xref py py-class docutils literal notranslate"><span class="pre">CheckpointIO</span></code> interface.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.region">
+<span class="sig-name descname"><span class="pre">region</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/lightning/s3_lightning_checkpoint.html#S3LightningCheckpoint.region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.region" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.save_checkpoint">
+<span class="sig-name descname"><span class="pre">save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/lightning/s3_lightning_checkpoint.html#S3LightningCheckpoint.save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.save_checkpoint" title="Link to this definition"></a></dt>
+<dd><p>Save model/training states as a checkpoint file through state-dump and upload to S3.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>checkpoint</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Containing model and trainer state</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – Write-target S3 uri</p></li>
+<li><p><strong>storage_options</strong> – Optional parameters when saving the model/training states.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.load_checkpoint">
+<span class="sig-name descname"><span class="pre">load_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">map_location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/lightning/s3_lightning_checkpoint.html#S3LightningCheckpoint.load_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.load_checkpoint" title="Link to this definition"></a></dt>
+<dd><p>Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – S3 uri to checkpoint</p></li>
+<li><p><strong>map_location</strong> – A function, <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.device</span></code>, string or a dict specifying how to remap storage locations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded checkpoint</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.remove_checkpoint">
+<span class="sig-name descname"><span class="pre">remove_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/lightning/s3_lightning_checkpoint.html#S3LightningCheckpoint.remove_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.remove_checkpoint" title="Link to this definition"></a></dt>
+<dd><p>Remove checkpoint file from the S3 uri.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – S3 uri to checkpoint</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.teardown">
+<span class="sig-name descname"><span class="pre">teardown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/lightning/s3_lightning_checkpoint.html#S3LightningCheckpoint.teardown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint.teardown" title="Link to this definition"></a></dt>
+<dd><p>This method is called to teardown the process.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="s3torchconnector.lightning" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../s3checkpoint/index.html" class="btn btn-neutral float-right" title="s3torchconnector.s3checkpoint" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

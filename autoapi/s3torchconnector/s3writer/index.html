@@ -1,0 +1,243 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.s3writer &mdash; Amazon S3 Connector for PyTorch 1.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=350a9c04"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="prev" title="s3torchconnector.s3reader" href="../s3reader/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html">s3torchconnector</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../dcp/index.html">s3torchconnector.dcp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lightning/index.html">s3torchconnector.lightning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3checkpoint/index.html">s3torchconnector.s3checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3iterable_dataset/index.html">s3torchconnector.s3iterable_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3map_dataset/index.html">s3torchconnector.s3map_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3reader/index.html">s3torchconnector.s3reader</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">s3torchconnector.s3writer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../index.html#classes">Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../index.html#package-contents">Package Contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">s3torchconnector</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.s3writer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/autoapi/s3torchconnector/s3writer/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-s3torchconnector.s3writer">
+<span id="s3torchconnector-s3writer"></span><h1>s3torchconnector.s3writer<a class="headerlink" href="#module-s3torchconnector.s3writer" title="Link to this heading"></a></h1>
+<section id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3writer.logger" title="s3torchconnector.s3writer.logger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">logger</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3writer.S3Writer" title="s3torchconnector.s3writer.S3Writer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3Writer</span></code></a></p></td>
+<td><p>A write-only, file like representation of a single object stored in S3.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.logger">
+<span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3writer.</span></span><span class="sig-name descname"><span class="pre">logger</span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.logger" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3writer.</span></span><span class="sig-name descname"><span class="pre">S3Writer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnectorclient._mountpoint_s3_client.PutObjectStream</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">io.BufferedIOBase</span></code></p>
+<p>A write-only, file like representation of a single object stored in S3.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.stream">
+<span class="sig-name descname"><span class="pre">stream</span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.stream" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">memoryview</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.write" title="Link to this definition"></a></dt>
+<dd><p>Write bytes to S3 Object specified by bucket and key</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>bytes</em><em> | </em><em>memoryview</em>) – bytes to write</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of bytes written</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.close" title="Link to this definition"></a></dt>
+<dd><p>Close write-stream to S3. Ensures all bytes are written successfully.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.flush">
+<span class="sig-name descname"><span class="pre">flush</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.flush"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.flush" title="Link to this definition"></a></dt>
+<dd><p>No-op</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.readable">
+<span class="sig-name descname"><span class="pre">readable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.readable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.readable" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Return whether object was opened for reading.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.writable">
+<span class="sig-name descname"><span class="pre">writable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.writable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.writable" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Return whether object was opened for writing.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3writer.S3Writer.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3writer.html#S3Writer.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3writer.S3Writer.tell" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current stream position.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../s3reader/index.html" class="btn btn-neutral float-left" title="s3torchconnector.s3reader" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
