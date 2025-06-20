@@ -78,7 +78,10 @@ where
             py.allow_threads(|| block_on(request.try_next()).map_err(python_exception))
         });
 
-        Ok(GetObjectStream::new(closure, bucket, key))
+        // Extract start_offset from params if needed for RangedS3Reader
+        let start_offset = params.range.as_ref().map(|range| range.start);
+
+        Ok(GetObjectStream::new(closure, bucket, key, start_offset))
     }
 
     fn list_objects(

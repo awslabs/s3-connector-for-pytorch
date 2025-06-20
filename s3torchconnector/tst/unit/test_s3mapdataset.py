@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from s3torchconnector import S3MapDataset, S3Reader
+from s3torchconnector import S3MapDataset, S3Reader, S3ReaderConfig
 from s3torchconnector._s3client import MockS3Client
 
 from .test_s3dataset_common import (
@@ -16,7 +16,20 @@ from .test_s3dataset_common import (
     _create_mock_client_with_dummy_objects,
     S3_PREFIX,
     TEST_ENDPOINT,
+    READER_TYPE_TO_CLASS,
 )
+
+
+@pytest.fixture(
+    params=[
+        S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.SEQUENTIAL),
+        S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.RANGE_BASED),
+    ],
+    scope="module",
+)
+def reader_config(request) -> S3ReaderConfig:
+    """Provide S3ReaderConfig instances for all supported reader types."""
+    return request.param
 
 
 def test_dataset_creation_from_prefix_with_region(caplog):
@@ -35,6 +48,42 @@ def test_dataset_creation_from_objects_with_region(caplog):
     assert "Building S3MapDataset from_objects" in caplog.text
 
 
+def test_default_reader_type_from_prefix():
+    """Test that SEQUENTIAL is the default reader type when creating from prefix"""
+    dataset = S3MapDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
+    assert dataset._reader_config.reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL
+
+
+def test_default_reader_type_from_objects():
+    """Test that SEQUENTIAL is the default reader type when creating from objects"""
+    dataset = S3MapDataset.from_objects([], region=TEST_REGION)
+    assert dataset._reader_config.reader_type == S3ReaderConfig.ReaderType.SEQUENTIAL
+
+
+def test_dataset_creation_from_prefix_with_reader_config(reader_config: S3ReaderConfig):
+    dataset = S3MapDataset.from_prefix(
+        S3_PREFIX,
+        region=TEST_REGION,
+        reader_config=reader_config,
+    )
+    assert isinstance(dataset, S3MapDataset)
+    assert dataset.region == TEST_REGION
+    assert dataset._reader_config == reader_config
+    assert dataset._reader_config.reader_type == reader_config.reader_type
+
+
+def test_dataset_creation_from_objects_with_reader_config(
+    reader_config: S3ReaderConfig,
+):
+    dataset = S3MapDataset.from_objects(
+        [], region=TEST_REGION, reader_config=reader_config
+    )
+    assert isinstance(dataset, S3MapDataset)
+    assert dataset.region == TEST_REGION
+    assert dataset._reader_config == reader_config
+    assert dataset._reader_config.reader_type == reader_config.reader_type
+
+
 @pytest.mark.parametrize(
     "keys",
     [
@@ -43,9 +92,13 @@ def test_dataset_creation_from_objects_with_region(caplog):
         ["obj1", "obj2", "obj3", "test"],
     ],
 )
-def test_dataset_creation_from_objects(keys: Sequence[str]):
+def test_dataset_creation_from_objects(
+    keys: Sequence[str], reader_config: S3ReaderConfig
+):
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
-    dataset = S3MapDataset.from_objects(object_uris, region=TEST_REGION)
+    dataset = S3MapDataset.from_objects(
+        object_uris, region=TEST_REGION, reader_config=reader_config
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -54,7 +107,7 @@ def test_dataset_creation_from_objects(keys: Sequence[str]):
     assert isinstance(dataset, S3MapDataset)
     assert len(dataset) == len(keys)
     for index, key in enumerate(keys):
-        verify_item(dataset, index, key)
+        verify_item(dataset, index, key, reader_config)
 
 
 @pytest.mark.parametrize(
@@ -75,15 +128,18 @@ def test_dataset_creation_from_prefix(
     keys: Sequence[str],
     prefix: str,
     expected_keys: Sequence[str],
+    reader_config: S3ReaderConfig,
 ):
-    dataset = S3MapDataset.from_prefix(s3_uri=prefix, region=TEST_REGION)
+    dataset = S3MapDataset.from_prefix(
+        s3_uri=prefix, region=TEST_REGION, reader_config=reader_config
+    )
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
     dataset._client = client
     assert isinstance(dataset, S3MapDataset)
     assert len(dataset) == len(expected_keys)
 
     for index, key in enumerate(expected_keys):
-        verify_item(dataset, index, key)
+        verify_item(dataset, index, key, reader_config)
 
 
 @pytest.mark.parametrize(
@@ -107,12 +163,16 @@ def test_dataset_creation_from_prefix(
     ],
 )
 def test_transform_from_prefix(
-    key: str, transform: Callable[[S3Reader], Any], expected: Any
+    key: str,
+    transform: Callable[[S3Reader], Any],
+    expected: Any,
+    reader_config: S3ReaderConfig,
 ):
     dataset = S3MapDataset.from_prefix(
         s3_uri=S3_PREFIX,
         region=TEST_REGION,
         transform=transform,
+        reader_config=reader_config,
     )
 
     # use mock client for unit testing
@@ -144,7 +204,10 @@ def test_transform_from_prefix(
     ],
 )
 def test_transform_from_objects(
-    key: str, transform: Callable[[S3Reader], Any], expected: Any
+    key: str,
+    transform: Callable[[S3Reader], Any],
+    expected: Any,
+    reader_config: S3ReaderConfig,
 ):
     object_uris = f"{S3_PREFIX}/{key}"
 
@@ -152,6 +215,7 @@ def test_transform_from_objects(
         object_uris,
         region=TEST_REGION,
         transform=transform,
+        reader_config=reader_config,
     )
 
     # use mock client for unit testing
@@ -162,8 +226,10 @@ def test_transform_from_objects(
     assert list(dataset) == [expected]
 
 
-def test_from_prefix_seek_no_head():
-    dataset = S3MapDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
+def test_from_prefix_seek_no_head(reader_config: S3ReaderConfig):
+    dataset = S3MapDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, reader_config=reader_config
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, ["foo"])
@@ -205,12 +271,30 @@ def test_dataset_creation_from_prefix_with_region_and_endpoint():
     assert dataset.endpoint == TEST_ENDPOINT
 
 
-def verify_item(dataset: S3MapDataset, index: int, expected_key: str):
+def test_user_agent_includes_dataset_and_reader_type(reader_config: S3ReaderConfig):
+    """Test that user agent includes dataset type and reader type."""
+    dataset = S3MapDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, reader_config=reader_config
+    )
+    dataset._get_client()
+
+    user_agent = dataset._client.user_agent_prefix
+    assert "md/dataset#map" in user_agent
+    assert f"md/reader_type#{reader_config.reader_type.name.lower()}" in user_agent
+
+
+def verify_item(
+    dataset: S3MapDataset,
+    index: int,
+    expected_key: str,
+    reader_config: S3ReaderConfig,
+):
     data = dataset[index]
 
     assert data is not None
     assert data.bucket == TEST_BUCKET
     assert data.key == expected_key
+    assert isinstance(data, READER_TYPE_TO_CLASS[reader_config.reader_type])
     assert data._stream is None
     expected_content = f"{TEST_BUCKET}-{expected_key}-dummyData".encode()
     content = data.read()

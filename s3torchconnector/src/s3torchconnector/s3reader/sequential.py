@@ -11,10 +11,18 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     GetObjectStream,
     HeadObjectResult,
 )
+from .base import BaseS3Reader
 
 
-class S3Reader(io.BufferedIOBase):
-    """A read-only, file like representation of a single object stored in S3."""
+class SequentialS3Reader(BaseS3Reader):
+    """Sequential S3 reader implementation
+
+    Maintains an internal buffer and reads data sequentially from S3.
+    This implementation is optimal for:
+    - Full sequential reads
+    - Repeated access to the same data
+    - Scenarios where data is typically read in order
+    """
 
     def __init__(
         self,
@@ -36,11 +44,11 @@ class S3Reader(io.BufferedIOBase):
         self._position = 0
 
     @property
-    def bucket(self):
+    def bucket(self) -> str:
         return self._bucket
 
     @property
-    def key(self):
+    def key(self) -> str:
         return self._key
 
     @cached_property
@@ -207,17 +215,3 @@ class S3Reader(io.BufferedIOBase):
               int: Current stream position.
         """
         return self._position
-
-    def readable(self) -> bool:
-        """
-        Returns:
-            bool: Return whether object was opened for reading.
-        """
-        return True
-
-    def writable(self) -> bool:
-        """
-        Returns:
-            bool: Return whether object was opened for writing.
-        """
-        return False

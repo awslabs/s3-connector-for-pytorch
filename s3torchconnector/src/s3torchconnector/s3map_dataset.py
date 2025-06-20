@@ -8,7 +8,8 @@ import torch.utils.data
 from s3torchconnector._s3bucket_key_data import S3BucketKeyData
 
 from ._s3client import S3Client, S3ClientConfig
-from . import S3Reader
+from . import S3Reader, S3ReaderConfig
+from ._user_agent import UserAgent
 
 from ._s3dataset_common import (
     get_objects_from_uris,
@@ -33,6 +34,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
+        reader_config: Optional[S3ReaderConfig] = None,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -41,6 +43,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         self._s3client_config = s3client_config
         self._client = None
         self._bucket_key_pairs: Optional[List[S3BucketKeyData]] = None
+        self._reader_config = reader_config or S3ReaderConfig()
 
     @property
     def region(self):
@@ -66,6 +69,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
+        reader_config: Optional[S3ReaderConfig] = None,
     ):
         """Returns an instance of S3MapDataset using the S3 URI(s) provided.
 
@@ -75,6 +79,7 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
+          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -89,6 +94,7 @@ class S3MapDataset(torch.utils.data.Dataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
+            reader_config=reader_config,
         )
 
     @classmethod
@@ -100,6 +106,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
+        reader_config: Optional[S3ReaderConfig] = None,
     ):
         """Returns an instance of S3MapDataset using the S3 URI provided.
 
@@ -109,6 +116,7 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
+          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -123,13 +131,18 @@ class S3MapDataset(torch.utils.data.Dataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
+            reader_config=reader_config,
         )
 
     def _get_client(self):
         if self._client is None:
+            reader_type_string = self._reader_config.reader_type.name.lower()
             self._client = S3Client(
                 self.region,
                 endpoint=self.endpoint,
+                user_agent=UserAgent(
+                    comments=[f"md/dataset#map md/reader_type#{reader_type_string}"]
+                ),
                 s3client_config=self._s3client_config,
             )
         return self._client
@@ -137,7 +150,10 @@ class S3MapDataset(torch.utils.data.Dataset):
     def _get_object(self, i: int) -> S3Reader:
         bucket_key = self._dataset_bucket_key_pairs[i]
         return self._get_client().get_object(
-            bucket_key.bucket, bucket_key.key, object_info=bucket_key.object_info
+            bucket_key.bucket,
+            bucket_key.key,
+            object_info=bucket_key.object_info,
+            reader_config=self._reader_config,
         )
 
     def __getitem__(self, i: int) -> Any:
