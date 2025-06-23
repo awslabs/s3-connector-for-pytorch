@@ -2,7 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 
 import io
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Optional, Union, Protocol
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -12,6 +12,12 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 from .s3reader_config import S3ReaderConfig
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
+
+
+class GetStreamCallable(Protocol):
+    def __call__(
+        self, start: Optional[int] = None, end: Optional[int] = None
+    ) -> GetObjectStream: ...
 
 
 class S3Reader(io.BufferedIOBase):
@@ -33,12 +39,14 @@ class S3Reader(io.BufferedIOBase):
         bucket: str,
         key: str,
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
-        get_stream: Union[
-            Callable[[], GetObjectStream],
-            Callable[[Optional[int], Optional[int]], GetObjectStream],
-        ],
+        get_stream: GetStreamCallable,
         reader_config: Optional[S3ReaderConfig] = None,
     ):
+        """Factory method to create appropriate S3Reader instance.
+
+        Uses __new__ instead of a regular factory function to maintain backwards
+        compatibility while allowing S3Reader to return specific reader instances.
+        """
         if reader_config is not None and not isinstance(reader_config, S3ReaderConfig):
             raise TypeError(
                 f"reader_config must be an instance of S3ReaderConfig, got {type(reader_config)}"
@@ -51,17 +59,14 @@ class S3Reader(io.BufferedIOBase):
                 bucket,
                 key,
                 get_object_info,
-                cast(Callable[[], GetObjectStream], get_stream),
+                get_stream,
             )
         elif config.reader_type == S3ReaderConfig.ReaderType.RANGE_BASED:
             return RangedS3Reader(
                 bucket,
                 key,
                 get_object_info,
-                cast(
-                    Callable[[Optional[int], Optional[int]], GetObjectStream],
-                    get_stream,
-                ),
+                get_stream,
             )
 
         raise ValueError(f"Unsupported reader type: {config.reader_type}")
