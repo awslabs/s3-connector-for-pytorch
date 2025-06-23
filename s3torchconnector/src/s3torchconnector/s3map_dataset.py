@@ -136,7 +136,7 @@ class S3MapDataset(torch.utils.data.Dataset):
 
     def _get_client(self):
         if self._client is None:
-            reader_type_string = self._reader_config.reader_type.name.lower()
+            reader_type_string = self._reader_config.get_reader_type_string()
             self._client = S3Client(
                 self.region,
                 endpoint=self.endpoint,

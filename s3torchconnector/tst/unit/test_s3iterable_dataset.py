@@ -439,9 +439,12 @@ def test_user_agent_includes_dataset_and_reader_type(reader_config: S3ReaderConf
     dataset._get_client()
 
     user_agent = dataset._client.user_agent_prefix
-    assert "md/dataset#iterable" in user_agent
-    assert f"md/reader_type#{reader_config.reader_type.name.lower()}" in user_agent
 
+    expected_reader_type = reader_config.get_reader_type_string()
+    # expect: sequential / range_based
+
+    assert "md/dataset#iterable" in user_agent
+    assert f"md/reader_type#{expected_reader_type}" in user_agent
 
 def _verify_dataset(
     dataset: S3IterableDataset,

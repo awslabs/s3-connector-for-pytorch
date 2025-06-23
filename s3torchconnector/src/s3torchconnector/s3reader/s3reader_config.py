@@ -26,7 +26,7 @@ class S3ReaderConfig:
 
     class ReaderType(Enum):
         SEQUENTIAL = "sequential"
-        RANGE_BASED = "range"
+        RANGE_BASED = "range_based"
 
     # Default to SEQUENTIAL reader
     reader_type: ReaderType = ReaderType.SEQUENTIAL
@@ -40,3 +40,7 @@ class S3ReaderConfig:
     def range_based(cls) -> S3ReaderConfig:
         """Alternative constructor for range-based reading configuration."""
         return cls(reader_type=cls.ReaderType.RANGE_BASED)
+    
+    def get_reader_type_string(self) -> str:
+        """Returns the lowercase string representation of the reader type."""
+        return self.reader_type.value
