@@ -66,7 +66,7 @@ def create_object_info_getter(stream_data):
     return get_object_info
 
 
-def create_stream_getter(stream_data):
+def create_stream_getter(stream_data, chunk_size=5):
     """Create a stream getter function with range get capabilities. Simulates _get_object_stream"""
 
     def get_stream(start=None, end=None):
@@ -76,9 +76,12 @@ def create_stream_getter(stream_data):
         else:
             # Range-based reader case:
             data = b"".join(stream_data)
-            start_val = start if start is not None else 0
+            start_val = start or 0
             end_val = end if end is not None else len(data)
-            return iter([data[start_val:end_val]])
+            data = data[start_val:end_val]
+            # Split into chunks to simulate chunk-based stream
+            chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+            return iter(chunks)
 
     return get_stream
 
