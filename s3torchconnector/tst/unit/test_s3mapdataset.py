@@ -282,7 +282,7 @@ def test_user_agent_includes_dataset_and_reader_type(reader_config: S3ReaderConf
 
     expected_reader_type = reader_config.get_reader_type_string()
     # expect: sequential / range_based
-    
+
     assert "md/dataset#map" in user_agent
     assert f"md/reader_type#{expected_reader_type}" in user_agent
 
