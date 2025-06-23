@@ -80,7 +80,7 @@ def create_stream_getter(stream_data, chunk_size=5):
             end_val = end if end is not None else len(data)
             data = data[start_val:end_val]
             # Split into chunks to simulate chunk-based stream
-            chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+            chunks = [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
             return iter(chunks)
 
     return get_stream
