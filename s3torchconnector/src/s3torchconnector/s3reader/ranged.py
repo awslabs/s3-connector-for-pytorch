@@ -54,35 +54,37 @@ class RangedS3Reader(BaseS3Reader):
     @cached_property
     def _object_info(self):
         return self._get_object_info()
-    
-    def _read_into_view(self, view: memoryview, start: int, end: int, buf_size: int) -> int:
+
+    def _read_into_view(
+        self, view: memoryview, start: int, end: int, buf_size: int
+    ) -> int:
         """Creates a range-based stream and reads bytes from S3 into a memoryview.
-        
+
         Args:
             view: Target memoryview to write data into
             start: Starting byte position in S3 object (inclusive)
             end: Ending byte position in S3 object (non inclusive)
             buf_size: Size of the buffer to fill
-        
+
         Returns:
             int: Number of bytes read
         """
         # Create new stream for each read
         stream = self._get_stream(start, end)
-        
+
         bytes_read = 0
         for chunk in stream:
             # Safeguard for buffer overflow (stream size > buf_size)
             chunk_size = min(len(chunk), buf_size - bytes_read)
-            view[bytes_read:bytes_read + chunk_size] = chunk[:chunk_size]
+            view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
             bytes_read += chunk_size
             # Exit if finished reading
             if bytes_read == buf_size:
                 break
-                
+
         self._position += bytes_read
         return bytes_read
-    
+
     def readinto(self, buf) -> int:
         """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
         Return the number of bytes read. If no bytes are available, zero is returned.
@@ -93,6 +95,17 @@ class RangedS3Reader(BaseS3Reader):
         Returns:
             int : numer of bytes read or zero, if no bytes available
         """
+
+        try:
+            view = memoryview(buf)
+            if view.readonly:
+                raise TypeError(
+                    f"argument must be a writable bytes-like object, not {type(buf).__name__}"
+                )
+        except TypeError:
+            raise TypeError(
+                f"argument must be a writable bytes-like object, not {type(buf).__name__}"
+            )
 
         buf_size = len(buf)
         if self._position_at_end() or buf_size == 0:
@@ -107,7 +120,6 @@ class RangedS3Reader(BaseS3Reader):
         if start >= end:
             return 0
 
-        view = memoryview(buf)
         return self._read_into_view(view, start, end, buf_size)
 
     def read(self, size: Optional[int] = None) -> bytes:
