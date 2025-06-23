@@ -82,3 +82,23 @@ def test_s3reader_writes_size_when_readinto_buffer_smaller_than_chunks(
     else:
         assert s3reader.readinto(buf) == 0
         assert s3reader.tell() == 0
+
+
+@pytest.mark.parametrize(
+    "invalid_buf",
+    [
+        b"test",  # bytes (readonly)
+        memoryview(b"test"),  # memoryview of bytes (readonly)
+        42,  # non-buffer type
+        "string",  # non-buffer type
+        None,  # non-buffer type
+    ],
+    ids=["bytes", "readonly_memoryview", "int", "str", "none"],
+)
+def test_s3reader_readinto_invalid_buffer(invalid_buf):
+    """Test that readinto raises TypeError for readonly and non-buffer objects"""
+    s3reader = create_range_s3reader([b"test data"])
+    with pytest.raises(
+        TypeError, match="argument must be a writable bytes-like object"
+    ):
+        s3reader.readinto(invalid_buf)
