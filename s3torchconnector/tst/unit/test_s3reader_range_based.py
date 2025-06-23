@@ -78,7 +78,7 @@ def test_s3reader_writes_size_when_readinto_buffer_smaller_than_chunks(
         # Readinto operation does write size
         assert s3reader._size == total_length
         # confirm that read data is the same as in source
-        assert buf[:buf_size] == (b"".join(stream))[:buf_size]
+        assert buf[:buf_size] == b"".join(stream)[:buf_size]
     else:
         assert s3reader.readinto(buf) == 0
         assert s3reader.tell() == 0
