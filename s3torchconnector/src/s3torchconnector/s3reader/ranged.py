@@ -54,7 +54,35 @@ class RangedS3Reader(BaseS3Reader):
     @cached_property
     def _object_info(self):
         return self._get_object_info()
-
+    
+    def _read_into_view(self, view: memoryview, start: int, end: int, buf_size: int) -> int:
+        """Creates a range-based stream and reads bytes from S3 into a memoryview.
+        
+        Args:
+            view: Target memoryview to write data into
+            start: Starting byte position in S3 object (inclusive)
+            end: Ending byte position in S3 object (non inclusive)
+            buf_size: Size of the buffer to fill
+        
+        Returns:
+            int: Number of bytes read
+        """
+        # Create new stream for each read
+        stream = self._get_stream(start, end)
+        
+        bytes_read = 0
+        for chunk in stream:
+            # Safeguard for buffer overflow (stream size > buf_size)
+            chunk_size = min(len(chunk), buf_size - bytes_read)
+            view[bytes_read:bytes_read + chunk_size] = chunk[:chunk_size]
+            bytes_read += chunk_size
+            # Exit if finished reading
+            if bytes_read == buf_size:
+                break
+                
+        self._position += bytes_read
+        return bytes_read
+    
     def readinto(self, buf) -> int:
         """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
         Return the number of bytes read. If no bytes are available, zero is returned.
@@ -79,28 +107,14 @@ class RangedS3Reader(BaseS3Reader):
         if start >= end:
             return 0
 
-        # Create memoryview of the target buffer
         view = memoryview(buf)
-
-        # Get stream for specified byte range
-        self._stream = self._get_stream(start, end)
-
-        bytes_read = 0
-        for chunk in self._stream:
-            chunk_size = min(len(chunk), buf_size - bytes_read)
-            view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
-            bytes_read += chunk_size
-            if bytes_read == buf_size:
-                break
-
-        self._position += bytes_read
-        return bytes_read
+        return self._read_into_view(view, start, end, buf_size)
 
     def read(self, size: Optional[int] = None) -> bytes:
         """Read up to size bytes from the current position.
 
         If size is zero or positive, read that many bytes from S3, or until the end of the object.
-        If size is None or negative, read until the end of the range.
+        If size is None or negative, read until the end of the object.
 
         Args:
             size (int | None): how many bytes to read.
@@ -135,18 +149,7 @@ class RangedS3Reader(BaseS3Reader):
         buffer = bytearray(byte_size)
         view = memoryview(buffer)
 
-        # Get stream for specified byte range
-        self._stream = self._get_stream(start, end)
-
-        bytes_read = 0
-        for chunk in self._stream:
-            chunk_size = min(len(chunk), byte_size - bytes_read)
-            view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
-            bytes_read += chunk_size
-            if bytes_read >= byte_size:
-                break
-
-        self._position += bytes_read
+        self._read_into_view(view, start, end, byte_size)
         return view.tobytes()
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
