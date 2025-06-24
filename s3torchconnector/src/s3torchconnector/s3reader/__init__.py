@@ -2,12 +2,14 @@
 #  // SPDX-License-Identifier: BSD
 
 from .s3reader import S3Reader
-from .s3reader_config import S3ReaderConfig
-from .base import BaseS3Reader
+from .constructor import S3ReaderConstructor
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
+from .protocol import GetStreamCallable, S3ReaderConstructorProtocol
 
 __all__ = [
     "S3Reader",
-    "S3ReaderConfig",
+    "S3ReaderConstructor",
+    "SequentialS3Reader",
+    "RangedS3Reader",
 ]
