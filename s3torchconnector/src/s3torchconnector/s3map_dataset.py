@@ -8,7 +8,8 @@ import torch.utils.data
 from s3torchconnector._s3bucket_key_data import S3BucketKeyData
 
 from ._s3client import S3Client, S3ClientConfig
-from . import S3Reader, S3ReaderConfig
+from . import S3Reader, S3ReaderConstructor
+from .s3reader import S3ReaderConstructorProtocol
 from ._user_agent import UserAgent
 
 from ._s3dataset_common import (
@@ -34,7 +35,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        reader_config: Optional[S3ReaderConfig] = None,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -43,7 +44,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         self._s3client_config = s3client_config
         self._client = None
         self._bucket_key_pairs: Optional[List[S3BucketKeyData]] = None
-        self._reader_config = reader_config or S3ReaderConfig()
+        self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
 
     @property
     def region(self):
@@ -69,7 +70,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        reader_config: Optional[S3ReaderConfig] = None,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ):
         """Returns an instance of S3MapDataset using the S3 URI(s) provided.
 
@@ -79,7 +80,8 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
+          reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
+            e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -94,7 +96,7 @@ class S3MapDataset(torch.utils.data.Dataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            reader_config=reader_config,
+            reader_constructor=reader_constructor,
         )
 
     @classmethod
@@ -106,7 +108,7 @@ class S3MapDataset(torch.utils.data.Dataset):
         endpoint: Optional[str] = None,
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
-        reader_config: Optional[S3ReaderConfig] = None,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ):
         """Returns an instance of S3MapDataset using the S3 URI provided.
 
@@ -116,7 +118,8 @@ class S3MapDataset(torch.utils.data.Dataset):
           endpoint(str): AWS endpoint of the S3 bucket where the objects are stored.
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
-          reader_config (Optional[S3ReaderConfig]): Configuration for S3Reader behavior.
+          reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
+            e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
 
         Returns:
             S3MapDataset: A Map-Style dataset created from S3 objects.
@@ -131,12 +134,14 @@ class S3MapDataset(torch.utils.data.Dataset):
             endpoint,
             transform=transform,
             s3client_config=s3client_config,
-            reader_config=reader_config,
+            reader_constructor=reader_constructor,
         )
 
     def _get_client(self):
         if self._client is None:
-            reader_type_string = self._reader_config.get_reader_type_string()
+            reader_type_string = S3ReaderConstructor.get_reader_type_string(
+                self._reader_constructor
+            )
             self._client = S3Client(
                 self.region,
                 endpoint=self.endpoint,
@@ -153,7 +158,7 @@ class S3MapDataset(torch.utils.data.Dataset):
             bucket_key.bucket,
             bucket_key.key,
             object_info=bucket_key.object_info,
-            reader_config=self._reader_config,
+            reader_constructor=self._reader_constructor,
         )
 
     def __getitem__(self, i: int) -> Any:

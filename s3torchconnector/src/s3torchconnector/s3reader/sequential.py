@@ -11,10 +11,10 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     GetObjectStream,
     HeadObjectResult,
 )
-from .base import BaseS3Reader
+from .s3reader import S3Reader
 
 
-class SequentialS3Reader(BaseS3Reader):
+class SequentialS3Reader(S3Reader):
     """Sequential S3 reader implementation
 
     Maintains an internal buffer and reads data sequentially from S3.
