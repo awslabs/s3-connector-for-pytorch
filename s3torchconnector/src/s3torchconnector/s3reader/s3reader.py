@@ -10,9 +10,9 @@ from typing import Optional
 class S3Reader(ABC, io.BufferedIOBase):
     """An abstract base class for read-only, file-like representation of a single object stored in S3.
 
-    This class defines the interface for S3 readers. Concrete implementations (sequential or range-based)
-    extend this class. S3ReaderConstructor creates partial functions of these implementations, which
-    are then completed by S3Client with the remaining required parameters.
+    This class defines the interface for S3 readers. Concrete implementations (SequentialS3Reader or
+    RangedS3Reader extend this class. S3ReaderConstructor creates partial functions of these
+    implementations, which are then completed by S3Client with the remaining required parameters.
     """
 
     @property

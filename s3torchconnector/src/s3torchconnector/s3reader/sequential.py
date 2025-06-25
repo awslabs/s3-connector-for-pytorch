@@ -17,11 +17,8 @@ from .s3reader import S3Reader
 class SequentialS3Reader(S3Reader):
     """Sequential S3 reader implementation
 
-    Maintains an internal buffer and reads data sequentially from S3.
-    This implementation is optimal for:
-    - Full sequential reads
-    - Repeated access to the same data
-    - Scenarios where data is typically read in order
+    Maintains an internal buffer for efficient sequential reads and repeated access.
+    Optimal for most use cases, including full object reads.
     """
 
     def __init__(

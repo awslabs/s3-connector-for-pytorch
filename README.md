@@ -117,31 +117,27 @@ prefix for Amazon S3 Express One Zone should end with '/'**), paired with region
 
 ## Reader Configurations
 
-Both dataset types support configurable reading strategies through `S3ReaderConfig`:
+Both dataset types support configurable reading strategies by building a `reader_constructor` through `S3ReaderConstructor`:
 
 ```python
-from s3torchconnector import S3MapDataset, S3ReaderConfig
+from s3torchconnector import S3MapDataset, S3ReaderConstructor
 
-# Configure reading strategy: SEQUENTIAL or RANGE_BASED
-reader_config = S3ReaderConfig(
-    reader_type=S3ReaderConfig.ReaderType.RANGE_BASED
-)
-# Or using the alternative constructor:
-reader_config = S3ReaderConfig.range_based()
+# Create reader constructor (partial(S3Reader) instance) (sequential or range_based)
+reader_constructor = S3ReaderConstructor.range_based()
 
 dataset = S3MapDataset.from_prefix(
     DATASET_URI, 
     region=REGION,
-    reader_config=reader_config
+    reader_constructor=reader_constructor
 )
 
-# Random access example
+# Partial read example
 item = dataset[0]
-item.seek(5 * 1024 * 1024)   # Seek to specific offset
-content = item.read(1024)    # Read desired bytes
+item.seek(50 * 1024 * 1024)             # Seek to specific offset
+content = item.read(5 * 1024 * 1024)    # Read desired bytes
 ```
 
-The default `SEQUENTIAL` reader type is optimized for full reads and repeated access, while the `RANGE_BASED` reader type is designed for efficient random access patterns and partial reads of large objects.
+The default sequential reader type is optimized for most use cases (including full reads and repeated access), while the range-based reader type should only be used for specific workflows requiring sparse partial reads of very large objects (100MB+).
 
 
 ## Distributed checkpoints
