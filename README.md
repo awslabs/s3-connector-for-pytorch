@@ -41,6 +41,7 @@ that role.
 - Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` 
 on Unix or macOS.
 - Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
+- Pass the name of the desired profile that you have configured in `~/.aws/config` and `~/.aws/credentials` to the `S3ClientConfig` object.
 
 ### Examples
 

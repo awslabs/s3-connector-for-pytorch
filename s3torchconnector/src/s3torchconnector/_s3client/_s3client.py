@@ -136,6 +136,7 @@ class S3Client:
         return MountpointS3Client(
             region=self._region,
             endpoint=self._endpoint,
+            profile=self._s3client_config.profile,
             user_agent_prefix=self._user_agent_prefix,
             throughput_target_gbps=self._s3client_config.throughput_target_gbps,
             part_size=self._s3client_config.part_size,
