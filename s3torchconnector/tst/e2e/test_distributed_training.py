@@ -13,7 +13,8 @@ import pytest
 import torch.multiprocessing as mp
 from torch.utils.data import DataLoader, DistributedSampler
 
-from s3torchconnector import S3IterableDataset, S3MapDataset, S3ReaderConfig
+from s3torchconnector import S3IterableDataset, S3MapDataset, S3ReaderConstructor
+from s3torchconnector.s3reader import S3ReaderConstructorProtocol
 
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture, BucketPrefixData
@@ -41,34 +42,40 @@ def cleanup():
 
 
 def from_prefix(
-    cls, image_directory: BucketPrefixFixture, reader_config: S3ReaderConfig, **kwargs
+    cls,
+    image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
+    **kwargs,
 ):
     return cls.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
         transform=_read_data,
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
         **kwargs,
     )
 
 
 def from_objects(
-    cls, image_directory: BucketPrefixFixture, reader_config: S3ReaderConfig, **kwargs
+    cls,
+    image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
+    **kwargs,
 ):
     return cls.from_objects(
         [f"s3://{image_directory.bucket}/{key}" for key in image_directory],
         region=image_directory.region,
         transform=_read_data,
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
         **kwargs,
     )
 
 
 def dataloader_for_map(
-    dataset_builder, image_directory, num_workers, batch_size, reader_config
+    dataset_builder, image_directory, num_workers, batch_size, reader_constructor
 ):
     dataset = dataset_builder(
-        S3MapDataset, image_directory, reader_config=reader_config
+        S3MapDataset, image_directory, reader_constructor=reader_constructor
     )
     sampler = DistributedSampler(dataset)
     dataloader = DataLoader(
@@ -78,13 +85,13 @@ def dataloader_for_map(
 
 
 def dataloader_for_iterable(
-    dataset_builder, image_directory, num_workers, batch_size, reader_config
+    dataset_builder, image_directory, num_workers, batch_size, reader_constructor
 ):
     dataset = dataset_builder(
         cls=S3IterableDataset,
         image_directory=image_directory,
         enable_sharding=True,
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     return dataloader
@@ -97,9 +104,9 @@ dataset_builders = [from_prefix, from_objects]
 dataloader_builders = [dataloader_for_iterable, dataloader_for_map]
 
 # Allow us to construct our datasets in tests with either both reader types.
-reader_configs = [
-    S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.SEQUENTIAL),
-    S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.RANGE_BASED),
+reader_constructors = [
+    S3ReaderConstructor.sequential(),
+    S3ReaderConstructor.range_based(),
 ]
 num_workers_to_test = [1, 3]
 num_processes_to_test = [1, 3]
@@ -110,13 +117,13 @@ test_args = list(
         dataloader_builders,
         num_workers_to_test,
         num_processes_to_test,
-        reader_configs,
+        reader_constructors,
     )
 )
 
 
 @pytest.mark.parametrize(
-    "start_method, dataset_builder, dataloader_builder, num_workers, num_processes, reader_config",
+    "start_method, dataset_builder, dataloader_builder, num_workers, num_processes, reader_constructor",
     test_args,
 )
 def test_distributed_training(
@@ -127,7 +134,7 @@ def test_distributed_training(
     num_workers: int,
     num_processes: int,
     image_directory_for_dp: BucketPrefixFixture,
-    reader_config: S3ReaderConfig,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     """Calculate a unique port number based on the input parameters
     This ensures that each test case runs on a different port
@@ -139,17 +146,19 @@ def test_distributed_training(
         (dataloader_builders, dataloader_builder),
         (num_workers_to_test, num_workers),
         (num_processes_to_test, num_processes),
-        (reader_configs, reader_config),
+        (reader_constructors, reader_constructor),
     ]
     options, values = zip(*parameters)
     multipliers = [prod(map(len, options[i + 1 :])) for i in range(len(options))]
     port_offset = sum(o.index(v) * m for o, v, m in zip(options, values, multipliers))
     unique_port = 2000 + port_offset
 
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(reader_constructor)
+
     print(
         f"Testing {request.node.name} with start_method={start_method}, "
         f"dataset_builder={dataset_builder.__name__}, dataloader_builder={dataloader_builder.__name__}, "
-        f"num_workers={num_workers}, num_processes={num_processes}, reader_config={reader_config}, "
+        f"num_workers={num_workers}, num_processes={num_processes}, reader_type_string={reader_type_string}, "
         f"unique_port={unique_port}"
     )
 
@@ -167,7 +176,7 @@ def test_distributed_training(
             dataloader_builder,
             image_directory_for_dp.get_data_snapshot(),
             result_queue,
-            reader_config,
+            reader_constructor,
         ),
         nprocs=num_processes,
         start_method=start_method,
@@ -204,13 +213,13 @@ def _test_s3iterable_dataset_multiprocess_torchdata(
     dataloader_builder: Callable,
     image_directory: BucketPrefixData,
     result_queue: mp.Queue,
-    reader_config: S3ReaderConfig,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     setup(unique_port, rank, world_size)
     _set_start_method(start_method)
     batch_size = 2
     dataloader = dataloader_builder(
-        dataset_builder, image_directory, num_workers, batch_size, reader_config
+        dataset_builder, image_directory, num_workers, batch_size, reader_constructor
     )
 
     total_objects = 0

@@ -11,9 +11,8 @@ from unittest.mock import Mock
 import pytest
 from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
-from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-from s3torchconnector import S3Reader, S3ReaderConfig
+from s3torchconnector.s3reader import RangedS3Reader
 from .test_s3reader_common import (
     TEST_BUCKET,
     TEST_KEY,
@@ -32,18 +31,13 @@ logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
-RANGE_BASED_READER_CONFIG = S3ReaderConfig(
-    reader_type=S3ReaderConfig.ReaderType.RANGE_BASED
-)
-
 
 def create_range_s3reader(stream):
-    return S3Reader(
+    return RangedS3Reader(
         TEST_BUCKET,
         TEST_KEY,
         create_object_info_getter(stream),
         create_stream_getter(stream),
-        reader_config=RANGE_BASED_READER_CONFIG,
     )
 
 
