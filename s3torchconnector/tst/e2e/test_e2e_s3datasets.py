@@ -13,39 +13,44 @@ from s3torchconnector import (
     S3IterableDataset,
     S3MapDataset,
     S3ClientConfig,
-    S3ReaderConfig,
+    S3ReaderConstructor,
 )
+from s3torchconnector.s3reader import S3ReaderConstructorProtocol
 
 
 @pytest.fixture(
     params=[
-        S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.SEQUENTIAL),
-        S3ReaderConfig(reader_type=S3ReaderConfig.ReaderType.RANGE_BASED),
+        S3ReaderConstructor.sequential(),
+        S3ReaderConstructor.range_based(),
     ],
     scope="module",
 )
-def reader_config(request) -> S3ReaderConfig:
-    """Provide S3ReaderConfig instances for all supported reader types."""
+def reader_constructor(request) -> S3ReaderConstructor:
+    """Provide reader constructor (partial(S3Reader)) instances for all supported reader types."""
     return request.param
 
 
 def test_s3iterable_dataset_images_10_from_prefix(
-    image_directory, reader_config: S3ReaderConfig
+    image_directory, reader_constructor: S3ReaderConstructorProtocol
 ):
     s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
     dataset = S3IterableDataset.from_prefix(
-        s3_uri=s3_uri, region=image_directory.region, reader_config=reader_config
+        s3_uri=s3_uri,
+        region=image_directory.region,
+        reader_constructor=reader_constructor,
     )
     assert isinstance(dataset, S3IterableDataset)
     _verify_image_iterable_dataset(image_directory, dataset)
 
 
 def test_s3mapdataset_images_10_from_prefix(
-    image_directory, reader_config: S3ReaderConfig
+    image_directory, reader_constructor: S3ReaderConstructorProtocol
 ):
     s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
     dataset = S3MapDataset.from_prefix(
-        s3_uri=s3_uri, region=image_directory.region, reader_config=reader_config
+        s3_uri=s3_uri,
+        region=image_directory.region,
+        reader_constructor=reader_constructor,
     )
     assert isinstance(dataset, S3MapDataset)
     assert len(dataset) == 10
@@ -67,7 +72,7 @@ def test_dataloader_10_images_s3iterable_dataset(
     batch_size: int,
     expected_batch_count: int,
     image_directory,
-    reader_config: S3ReaderConfig,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     local_dataloader = _create_local_dataloader(image_directory, batch_size)
     assert isinstance(local_dataloader.dataset, IterDataPipe)
@@ -77,7 +82,7 @@ def test_dataloader_10_images_s3iterable_dataset(
         s3_uri=s3_uri,
         region=image_directory.region,
         transform=lambda obj: obj.read(),
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
 
     s3_dataloader = _pytorch_dataloader(s3_dataset, batch_size)
@@ -95,7 +100,7 @@ def test_dataloader_10_images_s3mapdataset(
     batch_size: int,
     expected_batch_count: int,
     image_directory,
-    reader_config: S3ReaderConfig,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     local_dataloader = _create_local_dataloader(image_directory, batch_size, True)
     assert isinstance(local_dataloader.dataset, MapDataPipe)
@@ -105,7 +110,7 @@ def test_dataloader_10_images_s3mapdataset(
         s3_uri=s3_uri,
         region=image_directory.region,
         transform=lambda obj: obj.read(),
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
     s3_dataloader = _pytorch_dataloader(s3_dataset, batch_size)
     assert s3_dataloader is not None
@@ -114,12 +119,14 @@ def test_dataloader_10_images_s3mapdataset(
     _compare_dataloaders(local_dataloader, s3_dataloader, expected_batch_count)
 
 
-def test_dataset_unpickled_iterates(image_directory, reader_config: S3ReaderConfig):
+def test_dataset_unpickled_iterates(
+    image_directory, reader_constructor: S3ReaderConstructorProtocol
+):
     s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
     dataset = S3IterableDataset.from_prefix(
         s3_uri=s3_uri,
         region=image_directory.region,
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
     assert isinstance(dataset, S3IterableDataset)
     unpickled = pickle.loads(pickle.dumps(dataset))
@@ -130,7 +137,7 @@ def test_dataset_unpickled_iterates(image_directory, reader_config: S3ReaderConf
     assert expected == actual
 
 
-def test_unsigned_client(reader_config: S3ReaderConfig):
+def test_unsigned_client(reader_constructor: S3ReaderConstructorProtocol):
     s3_uri = "s3://s3torchconnector-demo/geonet/images/"
     region = "us-east-1"
     s3_dataset = S3MapDataset.from_prefix(
@@ -138,7 +145,7 @@ def test_unsigned_client(reader_config: S3ReaderConfig):
         region=region,
         transform=lambda obj: obj.read(),
         s3client_config=S3ClientConfig(unsigned=True),
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
     s3_dataloader = _pytorch_dataloader(s3_dataset)
     assert s3_dataloader is not None
@@ -146,12 +153,14 @@ def test_unsigned_client(reader_config: S3ReaderConfig):
     assert len(s3_dataloader) >= 1296
 
 
-def test_s3mapdataset_user_agent(image_directory, reader_config: S3ReaderConfig):
+def test_s3mapdataset_user_agent(
+    image_directory, reader_constructor: S3ReaderConstructorProtocol
+):
     """Test that user agent includes correct dataset type and reader type for S3MapDataset."""
     map_dataset = S3MapDataset.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
 
     # Trigger client initialization
@@ -159,16 +168,19 @@ def test_s3mapdataset_user_agent(image_directory, reader_config: S3ReaderConfig)
     first_item.read(1)
 
     user_agent = map_dataset._client.user_agent_prefix
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(reader_constructor)
     assert "md/dataset#map" in user_agent
-    assert f"md/reader_type#{reader_config.reader_type.name.lower()}" in user_agent
+    assert f"md/reader_type#{reader_type_string}" in user_agent
 
 
-def test_s3iterabledataset_user_agent(image_directory, reader_config: S3ReaderConfig):
+def test_s3iterabledataset_user_agent(
+    image_directory, reader_constructor: S3ReaderConstructorProtocol
+):
     """Test that user agent includes correct dataset type and reader type for S3IterableDataset."""
     iter_dataset = S3IterableDataset.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
-        reader_config=reader_config,
+        reader_constructor=reader_constructor,
     )
 
     # Trigger client initialization
@@ -176,8 +188,9 @@ def test_s3iterabledataset_user_agent(image_directory, reader_config: S3ReaderCo
     first_item.read(1)
 
     user_agent = iter_dataset._client.user_agent_prefix
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(reader_constructor)
     assert "md/dataset#iterable" in user_agent
-    assert f"md/reader_type#{reader_config.reader_type.name.lower()}" in user_agent
+    assert f"md/reader_type#{reader_type_string}" in user_agent
 
 
 def _compare_dataloaders(

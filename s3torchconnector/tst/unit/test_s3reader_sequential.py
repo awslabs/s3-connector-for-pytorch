@@ -11,9 +11,7 @@ from unittest.mock import Mock
 import pytest
 from hypothesis import given, assume
 from hypothesis.strategies import lists, binary, integers, composite
-from s3torchconnectorclient._mountpoint_s3_client import ObjectInfo, GetObjectStream
 
-from s3torchconnector import S3Reader, S3ReaderConfig
 from s3torchconnector.s3reader import SequentialS3Reader
 from .test_s3reader_common import (
     TEST_BUCKET,
@@ -31,31 +29,14 @@ logging.getLogger().setLevel(1)
 
 log = logging.getLogger(__name__)
 
-SEQUENTIAL_READER_CONFIG = S3ReaderConfig(
-    reader_type=S3ReaderConfig.ReaderType.SEQUENTIAL
-)
-
 
 def create_sequential_s3reader(stream):
-    return S3Reader(
-        TEST_BUCKET,
-        TEST_KEY,
-        lambda: None,
-        lambda: iter(stream),
-        reader_config=SEQUENTIAL_READER_CONFIG,
-    )
-
-
-def test_default_reader_type():
-    """Test that SEQUENTIAL is the default reader type"""
-    stream = [b"test"]
-    s3reader = S3Reader(
+    return SequentialS3Reader(
         TEST_BUCKET,
         TEST_KEY,
         lambda: None,
         lambda: iter(stream),
     )
-    assert isinstance(s3reader, SequentialS3Reader)
 
 
 @pytest.mark.parametrize(
@@ -67,12 +48,11 @@ def test_default_reader_type():
     ],
 )
 def test_s3reader_prefetch(stream):
-    s3reader = S3Reader(
+    s3reader = SequentialS3Reader(
         TEST_BUCKET,
         TEST_KEY,
         lambda: None,
         lambda: stream,
-        reader_config=SEQUENTIAL_READER_CONFIG,
     )
     assert s3reader._stream is None
     s3reader.prefetch()
