@@ -12,28 +12,32 @@ from .ranged import RangedS3Reader
 class S3ReaderConstructor:
     """Constructor for creating partial(S3Reader) instances.
 
-    Creates partial S3Reader instances that will be completed by S3Client with the
-    remaining required parameters (e.g. bucket, key, get_object_info, get_stream).
+    Creates partial ``S3Reader`` instances that will be completed by ``S3Client`` with the
+    remaining required parameters (e.g. ``bucket``, ``key``, ``get_object_info``, ``get_stream``).
 
     The constructor provides factory methods for different reader types:
-    - sequential(): Creates a constructor for sequential readers that buffer the entire object.
+
+    - ``sequential()``: Creates a constructor for sequential readers that buffer the entire object.
       Best for full reads and repeated access.
-    - range_based(): Creates a constructor for range-based readers that fetch specific byte ranges
+    - ``range_based()``: Creates a constructor for range-based readers that fetch specific byte ranges
       on-demand. Suitable for partial reads of large objects.
 
-    Usage Examples:
-        # For sequential reading (default)
-        reader_constructor = S3ReaderConstructor.sequential()
+    Examples:
+        For sequential reading (default)::
 
-        # For range-based reading
-        reader_constructor = S3ReaderConstructor.range_based()
+            reader_constructor = S3ReaderConstructor.sequential()
 
-        # Using with S3MapDataset
-        dataset = S3MapDataset.from_prefix(
-            DATASET_URI,
-            region=REGION,
-            reader_constructor=S3ReaderConstructor.range_based()
-        )
+        For range-based reading::
+
+            reader_constructor = S3ReaderConstructor.range_based()
+
+        Using with ``S3MapDataset``::
+
+            dataset = S3MapDataset.from_prefix(
+                DATASET_URI,
+                region=REGION,
+                reader_constructor=S3ReaderConstructor.range_based()
+            )
     """
 
     @staticmethod
