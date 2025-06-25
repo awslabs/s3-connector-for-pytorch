@@ -18,12 +18,8 @@ from .s3reader import S3Reader
 class RangedS3Reader(S3Reader):
     """Range-based S3 reader implementation
 
-    Provides efficient random access to S3 objects by requesting specific byte ranges.
-
-    This reader is optimal for:
-    - Random access patterns
-    - Partial reads of large objects
-    - Memory-constrained scenarios where buffering full objects is impractical
+    Performs byte-range requests for S3 objects on-demand without buffering.
+    Optimal for sparse partial reads of large objects.
     """
 
     def __init__(

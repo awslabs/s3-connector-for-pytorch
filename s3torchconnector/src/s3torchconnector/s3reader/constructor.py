@@ -24,13 +24,13 @@ class S3ReaderConstructor:
     Usage Examples:
         # For sequential reading (default)
         reader_constructor = S3ReaderConstructor.sequential()
-        
+
         # For range-based reading
         reader_constructor = S3ReaderConstructor.range_based()
 
         # Using with S3MapDataset
         dataset = S3MapDataset.from_prefix(
-            DATASET_URI, 
+            DATASET_URI,
             region=REGION,
             reader_constructor=S3ReaderConstructor.range_based()
         )
