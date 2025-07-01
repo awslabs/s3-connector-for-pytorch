@@ -20,8 +20,9 @@ from s3torchconnector.s3reader import S3ReaderConstructorProtocol
 
 @pytest.fixture(
     params=[
-        S3ReaderConstructor.sequential(),
-        S3ReaderConstructor.range_based(),
+        S3ReaderConstructor.sequential(),  # Sequential Reader
+        S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
+        S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
     ],
     scope="module",
 )
@@ -151,6 +152,36 @@ def test_unsigned_client(reader_constructor: S3ReaderConstructorProtocol):
     assert s3_dataloader is not None
     assert isinstance(s3_dataloader.dataset, S3MapDataset)
     assert len(s3_dataloader) >= 1296
+
+
+@pytest.mark.parametrize(
+    "reader_a,reader_b",
+    [
+        (S3ReaderConstructor.sequential(), S3ReaderConstructor.range_based()),
+        (S3ReaderConstructor.sequential(), S3ReaderConstructor.range_based(0)),
+        (S3ReaderConstructor.range_based(), S3ReaderConstructor.range_based(0)),
+    ],
+)
+def test_all_reader_combinations_produce_identical_results(
+    image_directory, reader_a, reader_b
+):
+    """Test that all reader type combinations produce identical results with real S3 data"""
+    s3_uri = f"s3://{image_directory.bucket}/{image_directory.prefix}"
+
+    datasets = [
+        S3MapDataset.from_prefix(
+            s3_uri=s3_uri,
+            region=image_directory.region,
+            reader_constructor=reader,
+            transform=lambda obj: obj.read(),
+        )
+        for reader in [reader_a, reader_b]
+    ]
+
+    dataloaders = [_pytorch_dataloader(ds, batch_size=2) for ds in datasets]
+    expected_batch_count = (len(datasets[0]) + 1) // 2
+
+    _compare_dataloaders(*dataloaders, expected_batch_count)
 
 
 def test_s3mapdataset_user_agent(

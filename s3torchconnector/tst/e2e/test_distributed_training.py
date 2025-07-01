@@ -105,8 +105,9 @@ dataloader_builders = [dataloader_for_iterable, dataloader_for_map]
 
 # Allow us to construct our datasets in tests with either both reader types.
 reader_constructors = [
-    S3ReaderConstructor.sequential(),
-    S3ReaderConstructor.range_based(),
+    S3ReaderConstructor.sequential(),  # Sequential Reader
+    S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
+    S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
 ]
 num_workers_to_test = [1, 3]
 num_processes_to_test = [1, 3]

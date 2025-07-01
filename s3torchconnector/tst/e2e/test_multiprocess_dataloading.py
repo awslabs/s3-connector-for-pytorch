@@ -61,8 +61,9 @@ dataset_builders = (from_prefix, from_objects)
 
 # Allow us to construct our datasets in tests with either both reader types.
 reader_constructors = [
-    S3ReaderConstructor.sequential(),
-    S3ReaderConstructor.range_based(),
+    S3ReaderConstructor.sequential(),  # Sequential Reader
+    S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
+    S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
 ]
 test_args = list(product(sorted(start_methods), dataset_builders, reader_constructors))
 
