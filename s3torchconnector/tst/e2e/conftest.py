@@ -27,6 +27,8 @@ class BucketPrefixData(object):
     prefix: str
     storage_class: str = None
     contents: dict
+    profile_arn: str = None
+    profile_bucket: str = None
 
     def __init__(
         self,
@@ -35,12 +37,16 @@ class BucketPrefixData(object):
         prefix: str,
         storage_class: str = None,
         contents: dict = None,
+        profile_arn: str = None,
+        profile_bucket: str = None,
     ):
         self.bucket = bucket
         self.prefix = prefix
         self.region = region
         self.storage_class = storage_class
         self.contents = contents or {}
+        self.profile_arn = profile_arn
+        self.profile_bucket = profile_bucket
 
     @property
     def s3_uri(self):
@@ -61,9 +67,22 @@ class BucketPrefixFixture(BucketPrefixData):
     to this instance, so other concurrent tests won't affect its state."""
 
     def __init__(
-        self, region: str, bucket: str, prefix: str, storage_class: str = None
+        self,
+        region: str,
+        bucket: str,
+        prefix: str,
+        storage_class: str = None,
+        profile_arn: str = None,
+        profile_bucket: str = None,
     ):
-        super().__init__(region, bucket, prefix, storage_class)
+        super().__init__(
+            region,
+            bucket,
+            prefix,
+            storage_class,
+            profile_arn=profile_arn,
+            profile_bucket=profile_bucket,
+        )
         session = boto3.Session(region_name=region)
         self.s3 = session.client("s3")
 
@@ -80,7 +99,13 @@ class BucketPrefixFixture(BucketPrefixData):
         Useful when passing data to another process without serializing s3 client
         """
         return BucketPrefixData(
-            self.region, self.bucket, self.prefix, self.storage_class, self.contents
+            self.region,
+            self.bucket,
+            self.prefix,
+            self.storage_class,
+            self.contents,
+            self.profile_arn,
+            self.profile_bucket,
         )
 
 
@@ -90,12 +115,16 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
     prefix = getenv("CI_PREFIX")
     region = getenv("CI_REGION")
     storage_class = getenv("CI_STORAGE_CLASS", optional=True)
+    profile_arn = getenv("CI_PROFILE_ROLE", optional=True)
+    profile_bucket = getenv("CI_PROFILE_BUCKET", optional=True)
     assert prefix == "" or prefix.endswith("/")
 
     nonce = random.randrange(2**64)
     prefix = f"{prefix}{name}/{nonce}/"
 
-    return BucketPrefixFixture(region, bucket, prefix, storage_class)
+    return BucketPrefixFixture(
+        region, bucket, prefix, storage_class, profile_arn, profile_bucket
+    )
 
 
 @pytest.fixture
@@ -139,3 +168,8 @@ def _create_image_directory_fixture(num_image: int, image_size: int, node_name: 
 @pytest.fixture
 def checkpoint_directory(request) -> BucketPrefixFixture:
     return get_test_bucket_prefix(f"{request.node.name}/checkpoint_directory")
+
+
+@pytest.fixture
+def empty_directory(request) -> BucketPrefixFixture:
+    return get_test_bucket_prefix(f"{request.node.name}/empty_directory")

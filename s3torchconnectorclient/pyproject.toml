@@ -32,7 +32,7 @@ test = [
     "flake8",
     "black",
     "mypy",
-    "Pillow"
+    "Pillow<=11.2.1" # instalation of the newer versions fails in manylinux2014 images
 ]
 
 [tool.setuptools.packages]
@@ -51,10 +51,10 @@ test-extras = "test"
 test-command = [
     "pytest {package}/python/tst/unit",
     "pytest {package}/../s3torchconnector/tst/unit --ignore {package}/../s3torchconnector/tst/unit/lightning --ignore {package}/../s3torchconnector/tst/unit/dcp",
-    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/python/tst/integration",
-    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py --ignore {package}/../s3torchconnector/tst/e2e/dcp",
-    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/python/tst/integration",
-    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py --ignore {package}/../s3torchconnector/tst/e2e/dcp",
+    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} CI_PROFILE_ROLE=${PROFILE_IAM_ROLE} CI_PROFILE_BUCKET=${S3_PROFILE_BUCKET} pytest {package}/python/tst/integration",
+    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} CI_PROFILE_ROLE=${PROFILE_IAM_ROLE} CI_PROFILE_BUCKET=${S3_PROFILE_BUCKET} pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py --ignore {package}/../s3torchconnector/tst/e2e/dcp",
+    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' CI_PROFILE_ROLE=${PROFILE_IAM_ROLE} CI_PROFILE_BUCKET=${S3_EXPRESS_PROFILE_BUCKET} pytest {package}/python/tst/integration",
+    "CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' CI_PROFILE_ROLE=${PROFILE_IAM_ROLE} CI_PROFILE_BUCKET=${S3_EXPRESS_PROFILE_BUCKET} pytest {package}/../s3torchconnector/tst/e2e --ignore {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py --ignore {package}/../s3torchconnector/tst/e2e/dcp",
     "python -m pip install -e '{package}/../s3torchconnector[lightning-tests]'",
     "pytest {package}/../s3torchconnector/tst/unit/lightning",
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest {package}/../s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py",
@@ -69,7 +69,10 @@ environment-pass = [
     "S3_PREFIX",
     "S3_EXPRESS_BUCKET",
     "S3_EXPRESS_REGION",
-    "S3_CUSTOM_ENDPOINT_URL"
+    "S3_CUSTOM_ENDPOINT_URL",
+    "PROFILE_IAM_ROLE",
+    "S3_PROFILE_BUCKET",
+    "S3_EXPRESS_PROFILE_BUCKET"
 ]
 before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
 build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*"]
