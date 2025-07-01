@@ -115,30 +115,70 @@ For example, assuming the following directory bucket name `my-test-bucket--usw2-
 usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3/<PREFIX>` (**please note that the 
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
+
 ## Reader Configurations
 
-Both dataset types support configurable reading strategies by building a `reader_constructor` through `S3ReaderConstructor`:
+Amazon S3 Connector for PyTorch supports two types of readers, configurable through `S3ReaderConstructor`.
+
+### Reader Types
+
+#### 1. Sequential Reader (Default)
+
+- Downloads and buffers the entire S3 object in memory.
+- Optimized for full object reads and repeated access to the same data.
+
+#### 2. Range-based Reader
+
+- Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
+- Features adaptive buffering:
+  - **Small reads** (< `buffer_size`): Uses internal buffer to reduce S3 API calls.
+  - **Large reads** (≥ `buffer_size`): Bypasses buffer for direct transfer.
+
+### When to Use Each Reader
+
+- **Sequential Reader**: For smaller objects or when processing entire files.
+- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads or random access patterns. 
+
+### Example Usage
 
 ```python
 from s3torchconnector import S3MapDataset, S3ReaderConstructor
 
-# Create reader constructor (partial(S3Reader) instance) (sequential or range_based)
-reader_constructor = S3ReaderConstructor.range_based()
+# Create a range-based reader constructor with a 16MB buffer
+reader_constructor = S3ReaderConstructor.range_based(
+    buffer_size=16 * 1024 * 1024
+)
 
+# Initialize map dataset with the custom reader constructor
 dataset = S3MapDataset.from_prefix(
     DATASET_URI, 
     region=REGION,
     reader_constructor=reader_constructor
 )
 
-# Partial read example
+# Perform a partial read
 item = dataset[0]
-item.seek(50 * 1024 * 1024)             # Seek to specific offset
-content = item.read(5 * 1024 * 1024)    # Read desired bytes
+item.seek(50 * 1024 * 1024)  # Seek to a 50MB offset
+content = item.read(5 * 1024 * 1024)  # Read 5MB of data
 ```
 
-The default sequential reader type is optimized for most use cases (including full reads and repeated access), while the range-based reader type should only be used for specific workflows requiring sparse partial reads of very large objects (100MB+).
+### Additional Configuration Examples
 
+```
+# Default sequential reader
+reader_constructor = S3ReaderConstructor.sequential()
+
+# Range-based reader with default 8MB buffer
+reader_constructor = S3ReaderConstructor.range_based()
+
+# Range-based reader with custom buffer size
+reader_constructor = S3ReaderConstructor.range_based(buffer_size=16*1024*1024)
+
+# Range-based reader with buffering disabled
+reader_constructor = S3ReaderConstructor.range_based(buffer_size=0)
+```
+
+For more detailed information, please refer to the [`S3ReaderConstructor` documentation](https://awslabs.github.io/s3-connector-for-pytorch/autoapi/s3torchconnector/s3reader/constructor/index.html).
 
 ## Distributed checkpoints
 
