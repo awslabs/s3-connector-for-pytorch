@@ -28,9 +28,18 @@ MOCK_OBJECT_INFO = Mock(ObjectInfo)
 MOCK_STREAM = Mock(GetObjectStream)
 
 
-@pytest.fixture(params=[SequentialS3Reader, RangedS3Reader], scope="module")
+@pytest.fixture(
+    params=[
+        SequentialS3Reader,
+        lambda *args, **kwargs: RangedS3Reader(*args, **kwargs),  # Default buffer
+        lambda *args, **kwargs: RangedS3Reader(
+            *args, **kwargs, buffer_size=0
+        ),  # No buffer
+    ],
+    scope="module",
+)
 def reader_implementation(request) -> Type[S3Reader]:
-    """Provide S3Reader implementations for all supported reader types."""
+    """Provide S3Reader implementations for all supported reader types and buffer configurations."""
     return request.param
 
 

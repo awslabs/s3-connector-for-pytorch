@@ -25,8 +25,9 @@ from .test_s3dataset_common import (
 
 @pytest.fixture(
     params=[
-        S3ReaderConstructor.sequential(),
-        S3ReaderConstructor.range_based(),
+        S3ReaderConstructor.sequential(),  # Sequential Reader
+        S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
+        S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
     ],
     scope="module",
 )
