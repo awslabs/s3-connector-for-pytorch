@@ -14,12 +14,30 @@ from s3torchconnectorclient._mountpoint_s3_client import (
 
 from .s3reader import S3Reader
 
+DEFAULT_BUFFER_SIZE = 8 * 1024 * 1024  # 8MB
+
 
 class RangedS3Reader(S3Reader):
-    """Range-based S3 reader implementation
+    """Range-based S3 reader implementation with adaptive buffering.
 
-    Performs byte-range requests for S3 objects on-demand without buffering.
+    Performs byte-range requests to read specific portions of S3 objects without
+    downloading the entire file. Includes optional internal buffer to reduce S3 API
+    calls for small, sequential reads while bypassing buffering for large reads.
     Optimal for sparse partial reads of large objects.
+
+    Buffering behavior:
+
+    * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer, copies to user
+    * Large reads (>= ``buffer_size``): Direct S3 access, bypass buffer
+    * Buffer can be disabled by setting ``buffer_size`` to 0
+    * If ``buffer_size`` is None, uses default 8MB buffer
+
+    Args:
+        bucket: S3 bucket name
+        key: S3 object key
+        get_object_info: Callable that returns object metadata
+        get_stream: Callable that returns stream for byte range requests
+        buffer_size: Internal buffer size in bytes, defaults to 8MB
     """
 
     def __init__(
@@ -28,6 +46,7 @@ class RangedS3Reader(S3Reader):
         key: str,
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
+        buffer_size: Optional[int] = None,
     ):
         if not bucket:
             raise ValueError("Bucket should be specified")
@@ -37,7 +56,24 @@ class RangedS3Reader(S3Reader):
         self._get_stream = get_stream
         self._stream: Optional[Iterator[bytes]] = None
         self._size: Optional[int] = None
-        self._position = 0
+        self._position: int = 0
+
+        # Buffer Parameters
+        self._buffer_size: int
+        self._enable_buffering: bool
+        if buffer_size is None:  # If None, use default buffer size
+            self._buffer_size = DEFAULT_BUFFER_SIZE
+            self._enable_buffering = True
+        else:  # If integer, enable buffering if > 0
+            self._buffer_size = buffer_size
+            self._enable_buffering = buffer_size > 0
+        # Create reusable buffer - reset via clear()
+        self._buffer: Optional[bytearray] = (
+            bytearray(self._buffer_size) if self._enable_buffering else None
+        )
+        # Track buffer byte range
+        self._buffer_start: int = 0
+        self._buffer_end: int = 0
 
     @property
     def bucket(self) -> str:
@@ -51,33 +87,91 @@ class RangedS3Reader(S3Reader):
     def _object_info(self):
         return self._get_object_info()
 
-    def _read_into_view(
-        self, view: memoryview, start: int, end: int, buf_size: int
-    ) -> int:
+    def _load_buffer(self, start: int):
+        """Load self._buffer with ranged request
+
+        Args:
+            start: Starting byte position to load into buffer
+        """
+        end = min(start + self._buffer_size, self._get_size())
+
+        assert self._buffer is not None  # for type checker
+        # Clear buffer and reuse it
+        self._buffer.clear()
+        for chunk in self._get_stream(start, end):
+            self._buffer.extend(chunk)
+
+        # Update Buffer Boundaries
+        self._buffer_start, self._buffer_end = start, end
+
+    def _read_buffered(self, view: memoryview, start: int, end: int) -> int:
+        """Read data from internal buffer into the provided memoryview.
+        Loads buffer if buffer doesn't contain full data range.
+
+        Args:
+            view: Target memoryview to write data into
+            start: Starting byte position in S3 object (inclusive)
+            end: Ending byte position in S3 object (exclusive)
+
+        Returns:
+            int: Number of bytes read
+        """
+        if start < self._buffer_start or end > self._buffer_end:
+            self._load_buffer(start)
+
+        buffer_offset = start - self._buffer_start
+        length = end - start
+
+        assert self._buffer is not None  # for type checker
+        view[:length] = self._buffer[buffer_offset : buffer_offset + length]
+
+        return length
+
+    def _read_unbuffered(self, view: memoryview, start: int, end: int) -> int:
         """Creates a range-based stream and reads bytes from S3 into a memoryview.
 
         Args:
             view: Target memoryview to write data into
             start: Starting byte position in S3 object (inclusive)
-            end: Ending byte position in S3 object (non inclusive)
-            buf_size: Size of the buffer to fill
+            end: Ending byte position in S3 object (exclusive)
 
         Returns:
             int: Number of bytes read
         """
-        # Create new stream for each read
-        stream = self._get_stream(start, end)
-
+        length = end - start
         bytes_read = 0
-        for chunk in stream:
-            # Safeguard for buffer overflow (stream size > buf_size)
-            chunk_size = min(len(chunk), buf_size - bytes_read)
+        for chunk in self._get_stream(start, end):
+            # Safeguard for buffer overflow (stream size > length)
+            chunk_size = min(len(chunk), length - bytes_read)
             view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
             bytes_read += chunk_size
             # Exit if finished reading
-            if bytes_read == buf_size:
+            if bytes_read == length:
                 break
 
+        return bytes_read
+
+    def _read_range(self, view: memoryview, start: int, end: int) -> int:
+        """Reads into a memoryview from a specific byte range.
+        Dispatch read request to buffered or unbuffered implementation based on request size.
+
+        - Large requests bypass buffering to speed up data transfer
+        - Small requests use buffering to reduce S3 API calls, anticipating next call
+
+        Args:
+            view: Target memoryview to write data into
+            start: Starting byte position in S3 object (inclusive)
+            end: Ending byte position in S3 object (exclusive)
+
+        Returns:
+            int: Number of bytes read
+        """
+        if end - start >= self._buffer_size or not self._enable_buffering:
+            # Large reads: return data directly
+            bytes_read = self._read_unbuffered(view, start, end)
+        else:
+            # Small reads: buffer data and return from buffer
+            bytes_read = self._read_buffered(view, start, end)
         self._position += bytes_read
         return bytes_read
 
@@ -116,7 +210,7 @@ class RangedS3Reader(S3Reader):
         if start >= end:
             return 0
 
-        return self._read_into_view(view, start, end, buf_size)
+        return self._read_range(view, start, end)
 
     def read(self, size: Optional[int] = None) -> bytes:
         """Read up to size bytes from the current position.
@@ -157,7 +251,7 @@ class RangedS3Reader(S3Reader):
         buffer = bytearray(byte_size)
         view = memoryview(buffer)
 
-        self._read_into_view(view, start, end, byte_size)
+        self._read_range(view, start, end)
         return view.tobytes()
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
