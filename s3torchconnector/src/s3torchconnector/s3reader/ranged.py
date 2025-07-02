@@ -54,7 +54,6 @@ class RangedS3Reader(S3Reader):
         self._key = key
         self._get_object_info = get_object_info
         self._get_stream = get_stream
-        self._stream: Optional[Iterator[bytes]] = None
         self._size: Optional[int] = None
         self._position: int = 0
 

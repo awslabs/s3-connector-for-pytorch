@@ -177,7 +177,6 @@ def test_s3mapdataset_multiprocess(
 
 
 def _extract_object_data(s3reader: S3Reader) -> ((str, bytes), (int, int)):
-    assert s3reader._stream is None
     return _read_data(s3reader), _get_worker_info()
 
 

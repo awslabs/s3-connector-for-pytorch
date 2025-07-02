@@ -475,7 +475,6 @@ def _verify_dataset(
             )
             assert isinstance(data, READER_TYPE_STRING_TO_CLASS[reader_type_string])
             assert object_info_check(data)
-            assert data._stream is None
             expected_content = (
                 f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
             )
