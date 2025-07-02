@@ -125,60 +125,80 @@ Amazon S3 Connector for PyTorch supports two types of readers, configurable thro
 #### 1. Sequential Reader (Default)
 
 - Downloads and buffers the entire S3 object in memory.
-- Optimized for full object reads and repeated access to the same data.
+- Prioritizes performance over memory usage by buffering entire objects.
 
 #### 2. Range-based Reader
 
 - Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
+- Prioritizes memory efficiency, with performance gains only for sparse partial reads and random access patterns.
 - Features adaptive buffering:
   - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
   - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
 
 ### When to Use Each Reader
 
-- **Sequential Reader**: For smaller objects or when processing entire files.
-- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads or random access patterns. 
+- **Sequential Reader**: For processing entire files, and when repeated access to the data is required. Best for most general use cases.
+- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads or random access patterns, and in memory-constrained environments. 
 
-### Example Usage
+### Examples
 
-```python
-from s3torchconnector import S3MapDataset, S3ReaderConstructor
+Direct method - `S3Client` usage with range-based reader without buffer:
+```py
+# Direct S3Client usage for zero-copy partial reads into pre-allocated buffers, for memory efficiency and fast data transfer
+from s3torchconnector._s3client import S3Client
 
-# Create a range-based reader constructor with a 16MB buffer
+s3_client = S3Client(region=REGION)
 reader_constructor = S3ReaderConstructor.range_based(
-    buffer_size=16 * 1024 * 1024
+    buffer_size=0  # No buffer, for direct transfer
 )
-
-# Initialize map dataset with the custom reader constructor
-dataset = S3MapDataset.from_prefix(
-    DATASET_URI, 
-    region=REGION,
+reader = s3_client.get_object(
+    bucket="my-bucket", 
+    key="large_object.bin", 
     reader_constructor=reader_constructor
 )
 
-# Perform a partial read
-item = dataset[0]
-item.seek(50 * 1024 * 1024)  # Seek to a 50MB offset
-content = item.read(5 * 1024 * 1024)  # Read 5MB of data
+
+buffer = bytearray(10 * 1024 * 1024)  # 10MB buffer
+reader.seek(100 * 1024 * 1024)   # Skip to 100MB offset
+bytes_read = reader.readinto(buffer)  # Direct read into buffer
 ```
 
-### Additional Configuration Examples
+DCP interface - `S3StorageReader` usage with range-based reader with buffer:
+```py
+# Load distributed checkpoint with range-based reader to optimize memory usage for large checkpoint files
+from s3torchconnector.dcp import S3StorageReader
 
-```python
-# Default sequential reader
-reader_constructor = S3ReaderConstructor.sequential()
-
-# Range-based reader with default 8MB buffer
-reader_constructor = S3ReaderConstructor.range_based()
-
-# Range-based reader with custom buffer size
-reader_constructor = S3ReaderConstructor.range_based(buffer_size=16*1024*1024)
-
-# Range-based reader with buffering disabled
-reader_constructor = S3ReaderConstructor.range_based(buffer_size=0)
+reader_constructor = S3ReaderConstructor.range_based(
+    buffer_size=16*1024*1024  # 16MB buffer
+)
+s3_storage_reader = S3StorageReader(
+    region=REGION, 
+    path=CHECKPOINT_URI,
+    reader_constructor=reader_constructor
+)
+DCP.load(
+    state_dict=model_state_dict,
+    storage_reader=s3_storage_reader,
+)
 ```
 
-For more detailed information, please refer to the [`S3ReaderConstructor` documentation](https://awslabs.github.io/s3-connector-for-pytorch/autoapi/s3torchconnector/s3reader/constructor/index.html).
+Dataset interface - `S3MapDataset` usage with sequential reader:
+```py
+# Use sequential reader for optimal performance when reading entire objects
+from s3torchconnector import S3MapDataset, S3ReaderConstructor
+
+dataset = S3MapDataset.from_prefix(
+    DATASET_URI, 
+    region=REGION,
+    reader_constructor=S3ReaderConstructor.sequential()
+)
+
+for item in dataset:
+    content = item.read()
+    ...
+```
+
+For `S3ReaderConstructor` usage details, please refer to the [`S3ReaderConstructor` documentation](https://awslabs.github.io/s3-connector-for-pytorch/autoapi/s3torchconnector/s3reader/constructor/index.html).
 
 ## Distributed checkpoints
 
@@ -254,7 +274,7 @@ the load across multiple S3 partitions.
 #### 1. RoundRobinPrefixStrategy
 Distributes checkpoints across specified prefixes in a round-robin fashion, ideal for balancing data across multiple storage locations.
 
-```python
+```py
 from s3torchconnector.dcp import RoundRobinPrefixStrategy, S3StorageWriter
 
 model = torchvision.models.resnet18()
@@ -328,7 +348,7 @@ s3://my-bucket/checkpoints/
 #### 3. HexPrefixStrategy
 
 Uses hexadecimal (base-16) prefixes for a balance of efficiency and readability.
-```
+```py
 from s3torchconnector.dcp import HexPrefixStrategy
 
 strategy = HexPrefixStrategy(
@@ -355,7 +375,7 @@ s3://my-bucket/checkpoints/
 ### Creating Custom Strategies
 
 You can implement custom prefix strategies by extending the S3PrefixStrategyBase class:
-```
+```python
 from s3torchconnector.dcp import S3PrefixStrategyBase
 
 class CustomPrefixStrategy(S3PrefixStrategyBase):
@@ -379,7 +399,7 @@ The S3IterableDataset can be directly passed to PyTorch's DataLoader for paralle
 By default, all worker processes will share the same list of training objects. However, 
 if you need each worker to have access to a unique portion of the dataset for better parallelization, 
 you can enable dataset sharding using the `enable_sharding` parameter. 
-```
+```py
 dataset = S3IterableDataset.from_prefix(DATASET_URI, region=REGION, enable_sharding=True)
 dataloader = DataLoader(dataset, num_workers=4)
 ```
@@ -391,7 +411,7 @@ Each worker, regardless of its host, will load and process a distinct subset of 
 For the S3MapDataset, you need to pass it to DataLoader along with a [DistributedSampler](https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler) wrapped around it. 
 The DistributedSampler ensures that each worker or node receives a unique subset of the dataset, 
 enabling efficient parallel and distributed training.
-```
+```py
 dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
 sampler = DistributedSampler(dataset)
 dataloader = DataLoader(dataset, sampler=sampler, num_workers=4)

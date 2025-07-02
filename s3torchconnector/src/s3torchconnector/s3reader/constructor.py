@@ -21,14 +21,6 @@ class S3ReaderConstructor:
       Best for full reads and repeated access.
     - ``range_based()``: Creates a constructor for range-based readers that fetch specific byte ranges.
       Suitable for random access patterns for large objects.
-
-    Example Usage with ``S3MapDataset``::
-
-            dataset = S3MapDataset.from_prefix(
-                DATASET_URI,
-                region=REGION,
-                reader_constructor=S3ReaderConstructor.range_based()
-            )
     """
 
     @staticmethod
@@ -62,7 +54,7 @@ class S3ReaderConstructor:
         Buffer size affects read performance:
 
         * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer to reduce S3 API calls for small, sequential reads
-        * Large reads (>= ``buffer_size``): bypass the buffer for direct transfer from S3
+        * Large reads (≥ ``buffer_size``): bypass the buffer for direct transfer from S3
 
         Configuration Guide:
 
