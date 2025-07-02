@@ -131,8 +131,8 @@ Amazon S3 Connector for PyTorch supports two types of readers, configurable thro
 
 - Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
 - Features adaptive buffering:
-  - **Small reads** (< `buffer_size`): Uses internal buffer to reduce S3 API calls.
-  - **Large reads** (≥ `buffer_size`): Bypasses buffer for direct transfer.
+  - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
+  - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
 
 ### When to Use Each Reader
 
@@ -164,7 +164,7 @@ content = item.read(5 * 1024 * 1024)  # Read 5MB of data
 
 ### Additional Configuration Examples
 
-```
+```python
 # Default sequential reader
 reader_constructor = S3ReaderConstructor.sequential()
 
@@ -186,7 +186,9 @@ For more detailed information, please refer to the [`S3ReaderConstructor` docume
 
 Amazon S3 Connector for PyTorch provides robust support for PyTorch distributed checkpoints. This feature includes:
 
-- `S3StorageWriter` and `S3StorageReader`: Implementations of PyTorch's StorageWriter and StorageReader interfaces.
+- `S3StorageWriter`: Implementation of PyTorch's StorageWriter interface.
+
+- `S3StorageReader`: Implementation of PyTorch's StorageReader interface. Supports configurable reading strategies via the `reader_constructor` parameter (see [Reader Configurations](#reader-configurations)).
 - `S3FileSystem`: An implementation of PyTorch's FileSystemBase.
 
 These tools enable seamless integration of Amazon S3 with 

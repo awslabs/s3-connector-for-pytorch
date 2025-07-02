@@ -28,6 +28,7 @@ import torch
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
+from ..s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
@@ -41,9 +42,29 @@ class S3FileSystem(FileSystemBase):
         region: str,
         s3_client: Optional[S3Client] = None,
         s3client_config: Optional[S3ClientConfig] = None,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ) -> None:
+        """
+        Initialize S3FileSystem.
+
+        Args:
+            region (str): The AWS region for S3.
+            s3_client (Optional[S3Client]): Optional S3Client instance.
+            s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
+            reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
+                e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
+        """
         self._path: Union[str, os.PathLike] = ""
-        user_agent = UserAgent(["dcp", torch.__version__])
+        self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
+
+        # Get reader type string for user agent
+        reader_type_string = S3ReaderConstructor.get_reader_type_string(
+            self._reader_constructor
+        )
+        user_agent = UserAgent(
+            ["dcp", torch.__version__, f"md/reader_type#{reader_type_string}"]
+        )
+
         self._client = (
             S3Client(
                 region=region, user_agent=user_agent, s3client_config=s3client_config
@@ -78,7 +99,9 @@ class S3FileSystem(FileSystemBase):
                 yield stream
         elif mode == "rb":  # read mode
             logger.debug("create_stream readable for %s", path_str)
-            with self._client.get_object(bucket, key) as stream:
+            with self._client.get_object(
+                bucket, key, reader_constructor=self._reader_constructor
+            ) as stream:
                 yield stream
         else:
             raise ValueError(
@@ -257,6 +280,9 @@ class S3StorageWriter(FileSystemWriter):
             region (str): The AWS region for S3.
             path (str): The S3 URI to write checkpoints to.
             prefix_strategy: Strategy for generating S3 prefixes.
+            s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
+            prefix_strategy (Optional[S3PrefixStrategyBase]): Optional strategy for generating S3 prefixes to
+                optimize checkpoint organization and prevent throttling.
             kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
@@ -296,6 +322,7 @@ class S3StorageReader(FileSystemReader):
         region: str,
         path: Union[str, os.PathLike],
         s3client_config: Optional[S3ClientConfig] = None,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
@@ -303,9 +330,12 @@ class S3StorageReader(FileSystemReader):
         Args:
             region (str): The AWS region for S3.
             path (Union[str, os.PathLike]): The S3 path to read checkpoints from.
+            s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
+            reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
+                e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
         """
         super().__init__(path)
-        self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
+        self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
         self.path = self.fs.init_path(path)
         self.sync_files = False
 
