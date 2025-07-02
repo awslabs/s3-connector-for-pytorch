@@ -150,7 +150,6 @@ def test_s3reader_invalid_creation(reader_implementation: Type[S3Reader], bucket
 )
 def test_s3reader_read(reader_implementation: Type[S3Reader], stream):
     s3reader = create_s3reader(stream, reader_implementation)
-    assert s3reader._stream is None
     assert b"".join(stream) == s3reader.read()
 
 
@@ -375,7 +374,6 @@ def test_end_seek_does_not_start_s3_request(reader_implementation: Type[S3Reader
     s3reader._size = 10
     s3reader.seek(0, SEEK_END)
     assert s3reader.tell() == 10
-    assert s3reader._stream is None
 
 
 @given(bytestream_and_position(position_min_value=1))

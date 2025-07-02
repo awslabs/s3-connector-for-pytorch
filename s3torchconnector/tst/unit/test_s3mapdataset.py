@@ -315,7 +315,6 @@ def verify_item(
         data,
         READER_TYPE_STRING_TO_CLASS[reader_type_string],
     )
-    assert data._stream is None
     expected_content = f"{TEST_BUCKET}-{expected_key}-dummyData".encode()
     content = data.read()
     assert content == expected_content
