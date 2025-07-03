@@ -63,12 +63,15 @@ class RangedS3Reader(S3Reader):
         if buffer_size is None:  # If None, use default buffer size
             self._buffer_size = DEFAULT_BUFFER_SIZE
             self._enable_buffering = True
-        else:  # If integer, enable buffering if > 0
+        else:  # If integer, enable buffering if > 0 (0 disables buffer)
             self._buffer_size = buffer_size
             self._enable_buffering = buffer_size > 0
-        # Create reusable buffer - reset via clear()
+        # Create reusable buffer
         self._buffer: Optional[bytearray] = (
             bytearray(self._buffer_size) if self._enable_buffering else None
+        )
+        self._buffer_view: Optional[memoryview] = (
+            memoryview(self._buffer) if self._buffer else None
         )
         # Track buffer byte range
         self._buffer_start: int = 0
@@ -94,14 +97,16 @@ class RangedS3Reader(S3Reader):
         """
         end = min(start + self._buffer_size, self._get_size())
 
-        assert self._buffer is not None  # for type checker
-        # Clear buffer and reuse it
-        self._buffer.clear()
+        assert self._buffer_view is not None  # for type checker
+        bytes_read = 0
+        # Reuse buffer
         for chunk in self._get_stream(start, end):
-            self._buffer.extend(chunk)
+            chunk_len = len(chunk)
+            self._buffer_view[bytes_read : bytes_read + chunk_len] = chunk
+            bytes_read += chunk_len
 
         # Update Buffer Boundaries
-        self._buffer_start, self._buffer_end = start, end
+        self._buffer_start, self._buffer_end = start, start + bytes_read
 
     def _read_buffered(self, view: memoryview, start: int, end: int) -> int:
         """Read data from internal buffer into the provided memoryview.
