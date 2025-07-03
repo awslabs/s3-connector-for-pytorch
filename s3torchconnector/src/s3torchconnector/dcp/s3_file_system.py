@@ -279,7 +279,6 @@ class S3StorageWriter(FileSystemWriter):
         Args:
             region (str): The AWS region for S3.
             path (str): The S3 URI to write checkpoints to.
-            prefix_strategy: Strategy for generating S3 prefixes.
             s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
             prefix_strategy (Optional[S3PrefixStrategyBase]): Optional strategy for generating S3 prefixes to
                 optimize checkpoint organization and prevent throttling.

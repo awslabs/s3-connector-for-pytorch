@@ -20,7 +20,7 @@ class S3ReaderConstructor:
     - ``sequential()``: Creates a constructor for sequential readers that buffer the entire object.
       Best for full reads and repeated access.
     - ``range_based()``: Creates a constructor for range-based readers that fetch specific byte ranges.
-      Suitable for random access patterns for large objects.
+      Suitable for sparse partial reads for large objects.
     """
 
     @staticmethod
@@ -59,7 +59,7 @@ class S3ReaderConstructor:
         Configuration Guide:
 
         * Use larger buffer sizes for workloads with many small, sequential reads of nearby bytes
-        * Use smaller buffer sizes or disable buffering for sparse, random access patterns
+        * Use smaller buffer sizes or disable buffering for sparse partial reads
         * Buffer can be disabled by setting ``buffer_size`` to 0
         * If ``buffer_size`` is None, uses default 8MB buffer
 
@@ -74,10 +74,7 @@ class S3ReaderConstructor:
             # Range-based reader with buffering disabled
             reader_constructor = S3ReaderConstructor.range_based(buffer_size=0)
         """
-        if buffer_size is None:
-            return partial(RangedS3Reader)
-        else:
-            return partial(RangedS3Reader, buffer_size=buffer_size)
+        return partial(RangedS3Reader, buffer_size=buffer_size)
 
     @staticmethod
     def default() -> S3ReaderConstructorProtocol:

@@ -304,15 +304,15 @@ def test_s3filesystem_reader_constructor_integration(
         elif expected_reader_type == "range_based":
             assert isinstance(reader, RangedS3Reader)
             # For range-based, verify buffer configuration
-            if "buffer_size" in reader_constructor.keywords:
-                # Explicit buffer_size was provided
-                expected_buffer_size = reader_constructor.keywords["buffer_size"]
-                assert reader._buffer_size == expected_buffer_size
-                assert reader._enable_buffering == (expected_buffer_size > 0)
-            else:
-                # No explicit buffer_size provided, use default buffer size
+            expected_buffer_size = reader_constructor.keywords["buffer_size"]
+            if expected_buffer_size is None:
+                # None - use default buffer size
                 assert reader._buffer_size == DEFAULT_BUFFER_SIZE
                 assert reader._enable_buffering is True
+            else:
+                # Explicit buffer_size was provided - enable buffer if > 0
+                assert reader._buffer_size == expected_buffer_size
+                assert reader._enable_buffering == (expected_buffer_size > 0)
         else:
             raise ValueError(f"Unexpected reader type: {expected_reader_type}")
 

@@ -130,7 +130,7 @@ Amazon S3 Connector for PyTorch supports two types of readers, configurable thro
 #### 2. Range-based Reader
 
 - Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
-- Prioritizes memory efficiency, with performance gains only for sparse partial reads and random access patterns.
+- Prioritizes memory efficiency, with performance gains only for sparse partial reads.
 - Features adaptive buffering:
   - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
   - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
@@ -138,7 +138,9 @@ Amazon S3 Connector for PyTorch supports two types of readers, configurable thro
 ### When to Use Each Reader
 
 - **Sequential Reader**: For processing entire files, and when repeated access to the data is required. Best for most general use cases.
-- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads or random access patterns, and in memory-constrained environments. 
+- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads, and in memory-constrained environments. 
+
+**Note**: S3Reader instances are not thread-safe and should not be shared across threads. For multiprocessing with DataLoader, each worker process creates its own S3Reader instance automatically.
 
 ### Examples
 
@@ -151,7 +153,7 @@ s3_client = S3Client(region=REGION)
 reader_constructor = S3ReaderConstructor.range_based(
     buffer_size=0  # No buffer, for direct transfer
 )
-reader = s3_client.get_object(
+s3reader = s3_client.get_object(
     bucket="my-bucket", 
     key="large_object.bin", 
     reader_constructor=reader_constructor
@@ -159,8 +161,8 @@ reader = s3_client.get_object(
 
 
 buffer = bytearray(10 * 1024 * 1024)  # 10MB buffer
-reader.seek(100 * 1024 * 1024)   # Skip to 100MB offset
-bytes_read = reader.readinto(buffer)  # Direct read into buffer
+s3reader.seek(100 * 1024 * 1024)   # Skip to 100MB offset
+bytes_read = s3reader.readinto(buffer)  # Direct read into buffer
 ```
 
 DCP interface - `S3StorageReader` usage with range-based reader with buffer:
@@ -321,7 +323,7 @@ CHECKPOINT_URI
 
 Generates binary (base-2) prefixes for optimal partitioning in distributed environments.
 
-```python
+```py
 from s3torchconnector.dcp import BinaryPrefixStrategy
 
 strategy = BinaryPrefixStrategy(
@@ -375,7 +377,7 @@ s3://my-bucket/checkpoints/
 ### Creating Custom Strategies
 
 You can implement custom prefix strategies by extending the S3PrefixStrategyBase class:
-```python
+```py
 from s3torchconnector.dcp import S3PrefixStrategyBase
 
 class CustomPrefixStrategy(S3PrefixStrategyBase):
