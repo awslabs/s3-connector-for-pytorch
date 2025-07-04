@@ -112,207 +112,207 @@ def test_s3reader_readinto_invalid_buffer(invalid_buf):
         s3reader.readinto(invalid_buf)
 
 
-class TestRangedS3ReaderBuffering:
-    """Test class specifically for RangedS3Reader buffering functionality"""
+# Buffer Behaviour Tests
 
-    @pytest.mark.parametrize(
-        "buffer_size, expected_buffer_size, expected_enable_buffering",
-        [
-            (None, DEFAULT_BUFFER_SIZE, True),
-            (1024, 1024, True),
-            (1024 * 1024, 1024 * 1024, True),
-            (64 * 1024 * 1024, 64 * 1024 * 1024, True),
-            (0, 0, False),
-        ],
-    )
-    @given(bytestream_and_position())
-    def test_buffer_configuration(
-        self,
-        buffer_size,
-        expected_buffer_size,
-        expected_enable_buffering,
-        stream_and_position,
-    ):
-        """Test buffer configuration with different sizes"""
-        stream, position = stream_and_position
-        s3reader = create_range_s3reader(stream, buffer_size)
 
-        assert s3reader._buffer_size == expected_buffer_size
-        assert s3reader._enable_buffering is expected_enable_buffering
+@pytest.mark.parametrize(
+    "buffer_size, expected_buffer_size, expected_enable_buffering",
+    [
+        (None, DEFAULT_BUFFER_SIZE, True),
+        (1024, 1024, True),
+        (1024 * 1024, 1024 * 1024, True),
+        (64 * 1024 * 1024, 64 * 1024 * 1024, True),
+        (0, 0, False),
+    ],
+)
+def test_buffer_configuration(
+    buffer_size,
+    expected_buffer_size,
+    expected_enable_buffering,
+):
+    """Test buffer configuration with different sizes"""
+    s3reader = create_range_s3reader(MOCK_STREAM, buffer_size)
 
-    def _verify_buffer_configuration(self, s3reader, buffer_size, enable_buffering):
-        """Helper to verify buffer configuration"""
-        assert s3reader._enable_buffering == enable_buffering
-        if enable_buffering:
-            assert isinstance(s3reader._buffer, bytearray)
-            assert s3reader._buffer_size == buffer_size
-        else:
-            assert s3reader._buffer is None
-            assert s3reader._buffer_size == 0
+    assert s3reader._buffer_size == expected_buffer_size
+    assert s3reader._enable_buffering is expected_enable_buffering
 
-    def _verify_buffer_load_behavior(self, s3reader, buffer_state, buffer_should_load):
-        """Helper to verify buffer loading behavior and content"""
-        total_data, buffer_size, initial_buffer_end, data = buffer_state
 
-        if buffer_should_load:
-            assert s3reader._buffer_end > initial_buffer_end  # Buffer was loaded
-            assert s3reader._buffer_start == 0  # Buffer starts at beginning
-            expected_buffer_end = min(buffer_size, len(total_data))
-            assert s3reader._buffer_end == expected_buffer_end
-            # Verify buffer contains correct data
-            expected_buffer_data = total_data[:expected_buffer_end]
-            actual_buffer_data = bytes(s3reader._buffer[: len(expected_buffer_data)])
-            assert actual_buffer_data == expected_buffer_data
-            assert s3reader._buffer[: len(data)] == data
-        else:
-            assert s3reader._buffer_end == initial_buffer_end  # Buffer unchanged
+def _verify_buffer_configuration(s3reader, buffer_size, enable_buffering):
+    """Helper to verify buffer configuration"""
+    assert s3reader._enable_buffering == enable_buffering
+    if enable_buffering:
+        assert isinstance(s3reader._buffer, bytearray)
+        assert s3reader._buffer_size == buffer_size
+    else:
+        assert s3reader._buffer is None
+        assert s3reader._buffer_size == 0
 
-    @pytest.mark.parametrize(
-        "buffer_size, read_size, enable_buffering, buffer_should_load",
-        BUFFER_BEHAVIOR_TEST_CASES,
-    )
-    @given(lists(binary(min_size=100, max_size=200), min_size=10, max_size=20))
-    def test_buffer_behavior_by_read_size(
-        self, buffer_size, read_size, enable_buffering, buffer_should_load, stream
-    ):
-        """Test buffer behavior with different read sizes including edge cases"""
-        total_data = b"".join(stream)
-        s3reader = create_range_s3reader(stream, buffer_size)
 
-        self._verify_buffer_configuration(s3reader, buffer_size, enable_buffering)
+def _verify_buffer_load_behavior(s3reader, buffer_state, buffer_should_load):
+    """Helper to verify buffer loading behavior and content"""
+    total_data, buffer_size, initial_buffer_end, data = buffer_state
 
-        initial_buffer_end = s3reader._buffer_end
-        data = s3reader.read(read_size)
+    if buffer_should_load:
+        # Verify _buffer_end is tracked correctly
+        assert s3reader._buffer_end > initial_buffer_end  # Buffer was loaded
+        expected_buffer_end = min(s3reader._buffer_start + buffer_size, len(total_data))
+        assert s3reader._buffer_end == expected_buffer_end
+        # Verify buffer contains correct data
+        expected_buffer_data = total_data[:expected_buffer_end]
+        actual_buffer_data = s3reader._buffer[: len(expected_buffer_data)]
+        assert actual_buffer_data == expected_buffer_data
+        assert s3reader._buffer[: len(data)] == data
+    else:
+        assert s3reader._buffer_end == initial_buffer_end  # Buffer unchanged
 
-        buffer_state = (total_data, buffer_size, initial_buffer_end, data)
-        self._verify_buffer_load_behavior(s3reader, buffer_state, buffer_should_load)
 
-        assert len(data) == read_size
-        assert data == total_data[:read_size]
+@pytest.mark.parametrize(
+    "buffer_size, read_size, enable_buffering, buffer_should_load",
+    BUFFER_BEHAVIOR_TEST_CASES,
+)
+@given(lists(binary(min_size=100, max_size=200), min_size=10, max_size=20))
+def test_buffer_behavior_by_read_size(
+    buffer_size, read_size, enable_buffering, buffer_should_load, stream
+):
+    """Test buffer behavior with different read sizes including edge cases"""
+    total_data = b"".join(stream)
+    s3reader = create_range_s3reader(stream, buffer_size)
 
-    @pytest.mark.parametrize(
-        "buffer_size, buf_size, enable_buffering, buffer_should_load",
-        BUFFER_BEHAVIOR_TEST_CASES,
-    )
-    @given(lists(binary(min_size=100, max_size=200), min_size=10, max_size=20))
-    def test_buffer_behavior_by_readinto_size(
-        self, buffer_size, buf_size, enable_buffering, buffer_should_load, stream
-    ):
-        """Test buffer behavior with readinto using different buffer sizes including edge cases"""
-        total_data = b"".join(stream)
-        s3reader = create_range_s3reader(stream, buffer_size)
+    _verify_buffer_configuration(s3reader, buffer_size, enable_buffering)
 
-        self._verify_buffer_configuration(s3reader, buffer_size, enable_buffering)
+    initial_buffer_end = s3reader._buffer_end
+    data = s3reader.read(read_size)
 
-        initial_buffer_end = s3reader._buffer_end
-        buf = bytearray(buf_size)
-        bytes_read = s3reader.readinto(buf)
+    buffer_state = (total_data, buffer_size, initial_buffer_end, data)
+    _verify_buffer_load_behavior(s3reader, buffer_state, buffer_should_load)
 
-        buffer_state = (total_data, buffer_size, initial_buffer_end, buf)
-        self._verify_buffer_load_behavior(s3reader, buffer_state, buffer_should_load)
+    assert len(data) == read_size
+    assert data == total_data[:read_size]
 
-        assert bytes_read == buf_size
-        assert buf == total_data[:buf_size]
 
-    @given(lists(binary(min_size=50, max_size=100), min_size=5, max_size=10))
-    def test_buffer_reuse_sequential_reads(self, stream):
-        """Test that sequential small reads reuse the buffer efficiently"""
-        buffer_size = 200
-        total_data = b"".join(stream)
+@pytest.mark.parametrize(
+    "buffer_size, buf_size, enable_buffering, buffer_should_load",
+    BUFFER_BEHAVIOR_TEST_CASES,
+)
+@given(lists(binary(min_size=100, max_size=200), min_size=10, max_size=20))
+def test_buffer_behavior_by_readinto_size(
+    buffer_size, buf_size, enable_buffering, buffer_should_load, stream
+):
+    """Test buffer behavior with readinto using different buffer sizes including edge cases"""
+    total_data = b"".join(stream)
+    s3reader = create_range_s3reader(stream, buffer_size)
 
-        s3reader = create_range_s3reader(stream, buffer_size)
+    _verify_buffer_configuration(s3reader, buffer_size, enable_buffering)
 
-        # First read loads buffer
-        first_read = s3reader.read(20)
-        initial_buffer_start = s3reader._buffer_start
-        initial_buffer_end = s3reader._buffer_end
+    initial_buffer_end = s3reader._buffer_end
+    buf = bytearray(buf_size)
+    bytes_read = s3reader.readinto(buf)
 
-        # Verify buffer was loaded
-        assert s3reader.tell() == 20
-        assert initial_buffer_end == min(buffer_size, len(total_data))
-        expected_buffer_data = total_data[:initial_buffer_end]
-        assert s3reader._buffer[: len(expected_buffer_data)] == expected_buffer_data
+    buffer_state = (total_data, buffer_size, initial_buffer_end, buf)
+    _verify_buffer_load_behavior(s3reader, buffer_state, buffer_should_load)
 
-        # Second read within buffer range
-        second_read = s3reader.read(20)
-        assert s3reader.tell() == 40
-        assert s3reader._buffer_start == initial_buffer_start  # Buffer not reloaded
-        assert s3reader._buffer_end == initial_buffer_end
-        assert first_read + second_read == total_data[:40]
+    assert bytes_read == buf_size
+    assert buf == total_data[:buf_size]
 
-        # Seek within buffer range
-        s3reader.seek(20, SEEK_CUR)
-        assert s3reader.tell() == 60
-        # Third read within buffer range
-        third_read = s3reader.read(20)
-        assert s3reader.tell() == 80
-        assert s3reader._buffer_start == initial_buffer_start  # Buffer not reloaded
-        assert s3reader._buffer_end == initial_buffer_end
-        assert third_read == total_data[60:80]
 
-    @given(lists(binary(min_size=100, max_size=150), min_size=8, max_size=12))
-    def test_buffer_reload_on_read_outside_range(self, stream):
-        """Test buffer reload when reading outside current buffer range"""
-        buffer_size = 200
-        total_data = b"".join(stream)
+@given(lists(binary(min_size=50, max_size=100), min_size=5, max_size=10))
+def test_buffer_reuse_sequential_reads(stream):
+    """Test that sequential small reads reuse the buffer efficiently"""
+    buffer_size = 200
+    total_data = b"".join(stream)
 
-        s3reader = create_range_s3reader(stream, buffer_size)
+    s3reader = create_range_s3reader(stream, buffer_size)
 
-        # Load initial buffer at position 0
-        s3reader.read(10)
-        initial_buffer_start = s3reader._buffer_start
-        initial_buffer_end = s3reader._buffer_end
-        assert initial_buffer_start == 0
-        assert initial_buffer_end == min(buffer_size, len(total_data))
+    # First read loads buffer
+    first_read = s3reader.read(20)
+    initial_buffer_start = s3reader._buffer_start
+    initial_buffer_end = s3reader._buffer_end
 
-        # Seek to position outside buffer range
-        outside_position = buffer_size + 20
-        s3reader.seek(outside_position)
-        data = s3reader.read(10)
+    # Verify buffer was loaded
+    assert s3reader.tell() == 20
+    assert initial_buffer_end == min(buffer_size, len(total_data))
+    expected_buffer_data = total_data[:initial_buffer_end]
+    assert s3reader._buffer[: len(expected_buffer_data)] == expected_buffer_data
 
-        # Buffer should be reloaded at new position
-        assert s3reader._buffer_start != initial_buffer_start
-        assert s3reader._buffer_end != initial_buffer_end
-        assert s3reader._buffer_start == outside_position
-        assert s3reader._buffer_end == min(
-            outside_position + buffer_size, len(total_data)
-        )
-        assert data == total_data[outside_position : outside_position + 10]
+    # Second read within buffer range
+    second_read = s3reader.read(20)
+    assert s3reader.tell() == 40
+    assert s3reader._buffer_start == initial_buffer_start  # Buffer not reloaded
+    assert s3reader._buffer_end == initial_buffer_end
+    assert first_read + second_read == total_data[:40]
 
-    @pytest.mark.parametrize(
-        "total_size, buffer_size, read_position, read_size, expected_data_len, expected_data",
-        [
-            # buffer_size > stream size, read near end (20 bytes left)
-            (100, 150, 80, 30, 20, b"A" * 20),
-            # buffer_size > stream size, read at end (5 bytes left)
-            (100, 150, 95, 10, 5, b"A" * 5),
-            # buffer_size < stream size, read past end (10 bytes left)
-            (100, 80, 90, 15, 10, b"A" * 10),
-            # Read exactly at object end (no bytes left)
-            (100, 80, 100, 5, 0, b""),
-        ],
-    )
-    def test_buffer_at_object_end_boundary(
-        self,
-        total_size,
-        buffer_size,
-        read_position,
-        read_size,
-        expected_data_len,
-        expected_data,
-    ):
-        """Test buffer behavior when reading near/at object end"""
-        stream = [b"A" * total_size]
-        s3reader = create_range_s3reader(stream, buffer_size)
+    # Seek within buffer range
+    s3reader.seek(20, SEEK_CUR)
+    assert s3reader.tell() == 60
+    # Third read within buffer range
+    third_read = s3reader.read(20)
+    assert s3reader.tell() == 80
+    assert s3reader._buffer_start == initial_buffer_start  # Buffer not reloaded
+    assert s3reader._buffer_end == initial_buffer_end
+    assert third_read == total_data[60:80]
 
-        s3reader.seek(read_position)
-        data = s3reader.read(read_size)
 
-        # Verify buffer boundaries respect object size
-        if s3reader._enable_buffering and s3reader._buffer_end > 0:
-            assert s3reader._buffer_end <= total_size  # Never exceed object size
-            assert s3reader._buffer_start <= read_position
+@given(lists(binary(min_size=100, max_size=150), min_size=8, max_size=12))
+def test_buffer_reload_on_read_outside_range(stream):
+    """Test buffer reload when reading outside current buffer range"""
+    buffer_size = 200
+    total_data = b"".join(stream)
 
-        # Verify exact expected results
-        assert len(data) == expected_data_len
-        assert data == expected_data
+    s3reader = create_range_s3reader(stream, buffer_size)
+
+    # Load initial buffer at position 0
+    s3reader.read(10)
+    initial_buffer_start = s3reader._buffer_start
+    initial_buffer_end = s3reader._buffer_end
+    assert initial_buffer_start == 0
+    assert initial_buffer_end == min(buffer_size, len(total_data))
+
+    # Seek to position outside buffer range
+    outside_position = buffer_size + 20
+    s3reader.seek(outside_position)
+    data = s3reader.read(10)
+
+    # Buffer should be reloaded at new position
+    assert s3reader._buffer_start != initial_buffer_start
+    assert s3reader._buffer_end != initial_buffer_end
+    assert s3reader._buffer_start == outside_position
+    assert s3reader._buffer_end == min(outside_position + buffer_size, len(total_data))
+    assert data == total_data[outside_position : outside_position + 10]
+
+
+@pytest.mark.parametrize(
+    "total_size, buffer_size, read_position, read_size, expected_data_len, expected_data",
+    [
+        # buffer_size > stream size, read near end (20 bytes left)
+        (100, 150, 80, 30, 20, b"A" * 20),
+        # buffer_size > stream size, read at end (5 bytes left)
+        (100, 150, 95, 10, 5, b"A" * 5),
+        # buffer_size < stream size, read past end (10 bytes left)
+        (100, 80, 90, 15, 10, b"A" * 10),
+        # Read exactly at object end (no bytes left)
+        (100, 80, 100, 5, 0, b""),
+    ],
+)
+def test_buffer_at_object_end_boundary(
+    total_size,
+    buffer_size,
+    read_position,
+    read_size,
+    expected_data_len,
+    expected_data,
+):
+    """Test buffer behavior when reading near/at object end"""
+    stream = [b"A" * total_size]
+    s3reader = create_range_s3reader(stream, buffer_size)
+
+    s3reader.seek(read_position)
+    data = s3reader.read(read_size)
+
+    # Verify buffer boundaries respect object size
+    if s3reader._enable_buffering and s3reader._buffer_end > 0:
+        assert s3reader._buffer_end <= total_size  # Never exceed object size
+        assert s3reader._buffer_start <= read_position
+
+    # Verify exact expected results
+    assert len(data) == expected_data_len
+    assert data == expected_data
