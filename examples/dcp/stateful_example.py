@@ -17,7 +17,7 @@ from torch.distributed.checkpoint.state_dict import (
 from torch.distributed.device_mesh import init_device_mesh
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
-from s3torchconnector import S3ClientConfig
+from s3torchconnector import S3ClientConfig, S3ReaderConstructor
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 
@@ -170,9 +170,15 @@ def run(rank, world_size, region, s3_uri, device="cuda"):
         device, model, rank, world_size
     )
     print(f"Load previously saved checkpoint on rank:{rank}")
+    # Configure S3 reader constructor (sequential or range_based)
+    reader_constructor = S3ReaderConstructor.sequential()
+    # reader_constructor = S3ReaderConstructor.range_based(buffer_size=16 * 1024 * 1024)
     # initialize S3StorageReader with region and bucket name, before passing to dcp.load as reader
     storage_reader = S3StorageReader(
-        region=region, path=s3_uri, s3client_config=s3config
+        region=region,
+        path=s3_uri,
+        s3client_config=s3config,
+        reader_constructor=reader_constructor,
     )
     dcp.load(
         state_dict={"model": modified_model, "optimizer": modified_optim},

@@ -11,7 +11,13 @@ import pytest
 from torch.utils.data import DataLoader, get_worker_info
 from torchdata.datapipes.iter import IterableWrapper
 
-from s3torchconnector import S3IterableDataset, S3MapDataset, S3Reader
+from s3torchconnector import (
+    S3IterableDataset,
+    S3MapDataset,
+    S3Reader,
+    S3ReaderConstructor,
+)
+from s3torchconnector.s3reader import S3ReaderConstructorProtocol
 
 if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture
@@ -22,18 +28,30 @@ from test_common import _get_fork_methods, _read_data, _set_start_method
 start_methods = _get_fork_methods()
 
 
-def from_prefix(cls, image_directory: BucketPrefixFixture, **kwargs):
+def from_prefix(
+    cls,
+    image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
+    **kwargs,
+):
     return cls.from_prefix(
         s3_uri=f"s3://{image_directory.bucket}/{image_directory.prefix}",
         region=image_directory.region,
+        reader_constructor=reader_constructor,
         **kwargs,
     )
 
 
-def from_objects(cls, image_directory: BucketPrefixFixture, **kwargs):
+def from_objects(
+    cls,
+    image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
+    **kwargs,
+):
     return cls.from_objects(
         [f"s3://{image_directory.bucket}/{key}" for key in image_directory],
         region=image_directory.region,
+        reader_constructor=reader_constructor,
         **kwargs,
     )
 
@@ -41,17 +59,26 @@ def from_objects(cls, image_directory: BucketPrefixFixture, **kwargs):
 # Allow us to construct our datasets in tests with either from_prefix or from_objects.
 dataset_builders = (from_prefix, from_objects)
 
-test_args = list(product(sorted(start_methods), dataset_builders))
+# Allow us to construct our datasets in tests with either both reader types.
+reader_constructors = [
+    S3ReaderConstructor.sequential(),  # Sequential Reader
+    S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
+    S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
+]
+test_args = list(product(sorted(start_methods), dataset_builders, reader_constructors))
 
 
-@pytest.mark.parametrize("start_method, dataset_builder", test_args)
+@pytest.mark.parametrize("start_method, dataset_builder, reader_constructor", test_args)
 def test_s3iterable_dataset_multiprocess_torchdata(
     start_method: str,
     dataset_builder: Callable,
     image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     _set_start_method(start_method)
-    dataset = dataset_builder(S3IterableDataset, image_directory)
+    dataset = dataset_builder(
+        S3IterableDataset, image_directory, reader_constructor=reader_constructor
+    )
 
     dataset = IterableWrapper(dataset, deepcopy=False).sharding_filter().map(_read_data)
 
@@ -77,17 +104,19 @@ def test_s3iterable_dataset_multiprocess_torchdata(
     assert uris_seen == {key: 1 for key in image_directory}
 
 
-@pytest.mark.parametrize("start_method, dataset_builder", test_args)
+@pytest.mark.parametrize("start_method, dataset_builder, reader_constructor", test_args)
 def test_s3iterable_dataset_multiprocess(
     start_method: str,
     dataset_builder: Callable,
     image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     _set_start_method(start_method)
     dataset = dataset_builder(
         S3IterableDataset,
         image_directory,
         transform=_extract_object_data,
+        reader_constructor=reader_constructor,
     )
 
     num_workers = 3
@@ -112,17 +141,19 @@ def test_s3iterable_dataset_multiprocess(
         assert dict(s3keys) == {key: num_workers for key in image_directory}
 
 
-@pytest.mark.parametrize("start_method, dataset_builder", test_args)
+@pytest.mark.parametrize("start_method, dataset_builder, reader_constructor", test_args)
 def test_s3mapdataset_multiprocess(
     start_method: str,
     dataset_builder: Callable,
     image_directory: BucketPrefixFixture,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     _set_start_method(start_method)
     dataset = dataset_builder(
         S3MapDataset,
         image_directory,
         transform=_extract_object_data,
+        reader_constructor=reader_constructor,
     )
 
     num_workers = 3
@@ -146,7 +177,6 @@ def test_s3mapdataset_multiprocess(
 
 
 def _extract_object_data(s3reader: S3Reader) -> ((str, bytes), (int, int)):
-    assert s3reader._stream is None
     return _read_data(s3reader), _get_worker_info()
 
 
