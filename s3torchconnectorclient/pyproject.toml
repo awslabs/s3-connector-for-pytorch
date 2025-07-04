@@ -32,7 +32,7 @@ test = [
     "flake8",
     "black",
     "mypy",
-    "Pillow<=11.2.1" # instalation of the newer versions fails in manylinux2014 images
+    "Pillow<=11.2.1" # installation of the newer versions fails in manylinux2014 images
 ]
 
 [tool.setuptools.packages]
