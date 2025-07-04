@@ -33,6 +33,8 @@ class BucketPrefixFixture:
     storage_class: Optional[str] = getenv("CI_STORAGE_CLASS", optional=True)
     endpoint_url: Optional[str] = getenv("CI_CUSTOM_ENDPOINT_URL", optional=True)
     contents: dict = field(default_factory=dict)
+    profile_arn: Optional[str] = getenv("CI_PROFILE_ROLE", optional=True)
+    profile_bucket: Optional[str] = getenv("CI_PROFILE_BUCKET", optional=True)
 
     def __post_init__(self):
         assert self.prefix == "" or self.prefix.endswith("/")

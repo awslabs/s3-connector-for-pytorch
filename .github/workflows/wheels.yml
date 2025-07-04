@@ -12,6 +12,9 @@ env:
   S3_PREFIX: ${{ vars.S3_PREFIX }}
   S3_EXPRESS_BUCKET: ${{ vars.S3_EXPRESS_BUCKET }}
   S3_EXPRESS_REGION: ${{ vars.S3_EXPRESS_REGION }}
+  PROFILE_IAM_ROLE: ${{vars.PROFILE_IAM_ROLE}}
+  S3_PROFILE_BUCKET: ${{vars.S3_PROFILE_BUCKET}}
+  S3_EXPRESS_PROFILE_BUCKET: ${{vars.S3_EXPRESS_PROFILE_BUCKET}}
 
 jobs:
   generate_third_party_licenses:
