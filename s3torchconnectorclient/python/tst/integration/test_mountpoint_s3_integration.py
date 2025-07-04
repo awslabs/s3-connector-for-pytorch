@@ -492,6 +492,9 @@ def test_copy_object_raises_when_source_key_does_not_exist(
 
 
 def test_no_access_objects_without_profile(sample_directory: BucketPrefixFixture):
+    if sample_directory.profile_bucket is None:
+        pytest.skip("No profile bucket configured")
+
     client = MountpointS3Client(
         sample_directory.region,
         TEST_USER_AGENT_PREFIX,
@@ -507,6 +510,9 @@ def test_no_access_objects_without_profile(sample_directory: BucketPrefixFixture
 
 
 def test_access_objects_with_profile(sample_directory: BucketPrefixFixture):
+    if sample_directory.profile_bucket is None:
+        pytest.skip("No profile bucket configured")
+
     try:
         tmp_file = tempfile.NamedTemporaryFile()
         tmp_file.write(

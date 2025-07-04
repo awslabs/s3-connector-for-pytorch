@@ -10,6 +10,9 @@ HELLO_WORLD_DATA = b"Hello, World!\n"
 
 
 def test_no_access_objects_without_profile(empty_directory):
+    if empty_directory.profile_bucket is None:
+        pytest.skip("No profile bucket configured")
+
     client = S3Client(
         empty_directory.region,
     )
