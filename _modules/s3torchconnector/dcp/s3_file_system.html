@@ -1,0 +1,489 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.dcp.s3_file_system &mdash; Amazon S3 Connector for PyTorch 1.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=350a9c04"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.dcp.s3_file_system</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for s3torchconnector.dcp.s3_file_system</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.</span>
+<span class="c1">#  // SPDX-License-Identifier: BSD</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.parse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">s3torchconnectorclient._mountpoint_s3_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Exception</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tenacity</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">retry</span><span class="p">,</span>
+    <span class="n">stop_after_attempt</span><span class="p">,</span>
+    <span class="n">retry_if_exception_type</span><span class="p">,</span>
+    <span class="n">before_sleep_log</span><span class="p">,</span>
+    <span class="n">after_log</span><span class="p">,</span>
+    <span class="n">wait_random_exponential</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributed.checkpoint.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FileSystemReader</span><span class="p">,</span>
+    <span class="n">FileSystemWriter</span><span class="p">,</span>
+    <span class="n">FileSystemBase</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">s3torchconnector._s3client</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">s3torchconnector._s3dataset_common</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_s3_uri</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3ClientConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.s3_prefix_strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3PrefixStrategyBase</span><span class="p">,</span> <span class="n">DefaultPrefixStrategy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._user_agent</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserAgent</span>
+
+<div class="viewcode-block" id="logger">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.logger">[docs]</a>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="S3FileSystem">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3FileSystem</span><span class="p">(</span><span class="n">FileSystemBase</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">s3_client</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3Client</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">user_agent</span> <span class="o">=</span> <span class="n">UserAgent</span><span class="p">([</span><span class="s2">&quot;dcp&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">__version__</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">S3Client</span><span class="p">(</span>
+                <span class="n">region</span><span class="o">=</span><span class="n">region</span><span class="p">,</span> <span class="n">user_agent</span><span class="o">=</span><span class="n">user_agent</span><span class="p">,</span> <span class="n">s3client_config</span><span class="o">=</span><span class="n">s3client_config</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">s3_client</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">s3_client</span>
+        <span class="p">)</span>
+
+    <span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="S3FileSystem.create_stream">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.create_stream">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_stream</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">IOBase</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a stream for reading or writing to S3.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (Union[str, os.PathLike]): The S3 path to read or write.</span>
+<span class="sd">            mode (str): The mode for the stream. Supports &#39;rb&#39; for read mode and &#39;wb&#39; for write mode.</span>
+
+<span class="sd">        Yields:</span>
+<span class="sd">            io.BufferedIOBase: A stream for reading or writing to S3.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the mode is not &#39;rb&#39; or &#39;wb&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path_str</span> <span class="o">=</span> <span class="n">_path_or_str_to_str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">path_str</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;wb&quot;</span><span class="p">:</span>  <span class="c1"># write mode</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;create_stream writable for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path_str</span><span class="p">)</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">stream</span>
+        <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;rb&quot;</span><span class="p">:</span>  <span class="c1"># read mode</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;create_stream readable for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path_str</span><span class="p">)</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">stream</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Invalid </span><span class="si">{</span><span class="n">mode</span><span class="si">=}</span><span class="s2"> mode argument: create_stream only supports rb (read mode) &amp; wb (write mode)&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="S3FileSystem.concat_path">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.concat_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">concat_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Concatenate a suffix to the given path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (Union[str, os.PathLike]): The base path.</span>
+<span class="sd">            suffix (str): The suffix to concatenate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The concatenated path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;concat paths </span><span class="si">%s</span><span class="s2"> and </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
+        <span class="n">path_str</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path_str</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="S3FileSystem.init_path">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.init_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the path for the filesystem.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (Union[str, os.PathLike]): The path to initialize.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Union[str, os.PathLike]: The initialized path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;init_path for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span></div>
+
+
+<div class="viewcode-block" id="S3FileSystem.rename">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.rename">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rename</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">old_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span> <span class="n">new_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rename an object in S3.</span>
+
+<span class="sd">        This is emulated by copying it to a new path and deleting the old path. The deletion part is retried (see also</span>
+<span class="sd">        :func:`S3FileSystem._delete_with_retry`).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            old_path (Union[str, os.PathLike]): The current path of the object.</span>
+<span class="sd">            new_path (Union[str, os.PathLike]): The new path for the object.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the old and new paths point to different buckets.</span>
+<span class="sd">            S3Exception: If there is an error with the S3 client.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;rename </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">old_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">)</span>
+
+        <span class="n">old_path_str</span> <span class="o">=</span> <span class="n">_path_or_str_to_str</span><span class="p">(</span><span class="n">old_path</span><span class="p">)</span>
+        <span class="n">new_path_str</span> <span class="o">=</span> <span class="n">_path_or_str_to_str</span><span class="p">(</span><span class="n">new_path</span><span class="p">)</span>
+
+        <span class="n">old_bucket</span><span class="p">,</span> <span class="n">old_key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">old_path_str</span><span class="p">)</span>
+        <span class="n">escaped_old_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_escape_path</span><span class="p">(</span><span class="n">old_key</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;rename: escaped version of the source key: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">escaped_old_key</span><span class="p">)</span>
+        <span class="n">new_bucket</span><span class="p">,</span> <span class="n">new_key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">new_path_str</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">old_bucket</span> <span class="o">!=</span> <span class="n">new_bucket</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Source and destination buckets cannot be different (rename does not support cross-buckets operations)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">copy_object</span><span class="p">(</span>
+            <span class="n">src_bucket</span><span class="o">=</span><span class="n">old_bucket</span><span class="p">,</span>
+            <span class="n">src_key</span><span class="o">=</span><span class="n">escaped_old_key</span><span class="p">,</span>
+            <span class="n">dst_bucket</span><span class="o">=</span><span class="n">new_bucket</span><span class="p">,</span>
+            <span class="n">dst_key</span><span class="o">=</span><span class="n">new_key</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;rename: copied </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2"> successfully&quot;</span><span class="p">,</span> <span class="n">old_path_str</span><span class="p">,</span> <span class="n">new_path_str</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delete_with_retry</span><span class="p">(</span><span class="n">old_bucket</span><span class="p">,</span> <span class="n">old_key</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;rename: s3://</span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2"> successfully&quot;</span><span class="p">,</span> <span class="n">old_bucket</span><span class="p">,</span> <span class="n">old_key</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="S3FileSystem.mkdir">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.mkdir">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;No-op method for creating directories in S3 (not needed).&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="S3FileSystem.exists">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.exists">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;exists </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+        <span class="n">path_str</span> <span class="o">=</span> <span class="n">_path_or_str_to_str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">path_str</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">head_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">S3Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;Service error: The object was not found&quot;</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="S3FileSystem.rm_file">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.rm_file">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rm_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;remove </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+        <span class="n">path_str</span> <span class="o">=</span> <span class="n">_path_or_str_to_str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">path_str</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">S3Exception</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to remove object from S3&quot;</span><span class="p">)</span></div>
+
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="S3FileSystem.validate_checkpoint_id">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3FileSystem.validate_checkpoint_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_checkpoint_id</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">checkpoint_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;validate_checkpoint_id for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">checkpoint_id</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">checkpoint_id</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">_path_or_str_to_str</span><span class="p">(</span><span class="n">checkpoint_id</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="nd">@retry</span><span class="p">(</span>
+        <span class="n">retry</span><span class="o">=</span><span class="n">retry_if_exception_type</span><span class="p">(</span><span class="n">S3Exception</span><span class="p">),</span>
+        <span class="n">stop</span><span class="o">=</span><span class="n">stop_after_attempt</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+        <span class="n">wait</span><span class="o">=</span><span class="n">wait_random_exponential</span><span class="p">(</span><span class="n">multiplier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+        <span class="n">before_sleep</span><span class="o">=</span><span class="n">before_sleep_log</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">),</span>
+        <span class="n">after</span><span class="o">=</span><span class="n">after_log</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">),</span>
+        <span class="n">reraise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_delete_with_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">old_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wrapper around :func:`S3Client.delete_object` to retry the deletion.</span>
+
+<span class="sd">        Will retry a maximum of 3 times, only for `S3Exception`s, and wait between retries. It will reraise the caught</span>
+<span class="sd">        exception too, and logs retries and final error, if any.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">bucket_name</span><span class="p">,</span> <span class="n">old_key</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_escape_path</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;URL-encodes path segments while preserving &#39;/&#39; separators using urllib.parse.quote().</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            string (str): URL path string to escape</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Path string with each segment percent-encoded, separators preserved</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">string</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">string</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span></div>
+
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributed.checkpoint.planner</span><span class="w"> </span><span class="kn">import</span> <span class="n">SavePlan</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+
+<span class="nd">@dataclass</span>
+<div class="viewcode-block" id="StorageMetadata">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.StorageMetadata">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StorageMetadata</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Metadata for S3 storage prefix.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="StorageMetadata.prefix">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.StorageMetadata.prefix">[docs]</a>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="S3StorageWriter">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageWriter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3StorageWriter</span><span class="p">(</span><span class="n">FileSystemWriter</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prefix_strategy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3PrefixStrategyBase</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize an S3 writer for distributed checkpointing.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            region (str): The AWS region for S3.</span>
+<span class="sd">            path (str): The S3 URI to write checkpoints to.</span>
+<span class="sd">            prefix_strategy: Strategy for generating S3 prefixes.</span>
+<span class="sd">            kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+            <span class="n">sync_files</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+<div class="viewcode-block" id="S3StorageWriter.fs">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageWriter.fs">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fs</span> <span class="o">=</span> <span class="n">S3FileSystem</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">s3client_config</span><span class="o">=</span><span class="n">s3client_config</span><span class="p">)</span>  <span class="c1"># type: ignore</span></div>
+
+<div class="viewcode-block" id="S3StorageWriter.path">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageWriter.path">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs</span><span class="o">.</span><span class="n">init_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="S3StorageWriter.prefix_strategy">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageWriter.prefix_strategy">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix_strategy</span> <span class="o">=</span> <span class="n">prefix_strategy</span> <span class="ow">or</span> <span class="n">DefaultPrefixStrategy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="S3StorageWriter.prepare_global_plan">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageWriter.prepare_global_plan">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prepare_global_plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plans</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SavePlan</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">SavePlan</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prepare save plans with S3-specific storage metadata.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plans: List of save plans to be processed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Modified save plans with S3 storage metadata.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                <span class="n">plan</span><span class="p">,</span> <span class="n">storage_data</span><span class="o">=</span><span class="n">StorageMetadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix_strategy</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">plan</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">plans</span><span class="p">)</span>
+        <span class="p">]</span></div>
+
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="S3StorageWriter.validate_checkpoint_id">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageWriter.validate_checkpoint_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_checkpoint_id</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">checkpoint_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">S3FileSystem</span><span class="o">.</span><span class="n">validate_checkpoint_id</span><span class="p">(</span><span class="n">checkpoint_id</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="S3StorageReader">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageReader">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3StorageReader</span><span class="p">(</span><span class="n">FileSystemReader</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize an S3 reader for distributed checkpointing.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            region (str): The AWS region for S3.</span>
+<span class="sd">            path (Union[str, os.PathLike]): The S3 path to read checkpoints from.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<div class="viewcode-block" id="S3StorageReader.fs">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageReader.fs">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fs</span> <span class="o">=</span> <span class="n">S3FileSystem</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">s3client_config</span><span class="o">=</span><span class="n">s3client_config</span><span class="p">)</span>  <span class="c1"># type: ignore</span></div>
+
+<div class="viewcode-block" id="S3StorageReader.path">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageReader.path">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs</span><span class="o">.</span><span class="n">init_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="S3StorageReader.sync_files">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageReader.sync_files">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sync_files</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="S3StorageReader.validate_checkpoint_id">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_file_system/index.html#s3torchconnector.dcp.S3StorageReader.validate_checkpoint_id">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_checkpoint_id</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">checkpoint_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">S3FileSystem</span><span class="o">.</span><span class="n">validate_checkpoint_id</span><span class="p">(</span><span class="n">checkpoint_id</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_path_or_str_to_str</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">path</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
