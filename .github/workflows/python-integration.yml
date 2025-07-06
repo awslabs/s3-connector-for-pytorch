@@ -32,11 +32,15 @@ jobs:
             region: ${{ vars.S3_REGION }}
             storage-class: ""
             endpoint-url: ${{ vars.S3_CUSTOM_ENDPOINT_URL }}
+            profile-role: ${{ vars.PROFILE_IAM_ROLE }}
+            profile-bucket: ${{ vars.S3_PROFILE_BUCKET }}
           - name: "S3 Express"
             bucket: ${{ vars.S3_EXPRESS_BUCKET }}
             region: ${{ vars.S3_EXPRESS_REGION }}
             storage-class: "EXPRESS_ONEZONE"
             endpoint-url: ""
+            profile-role: ${{ vars.PROFILE_IAM_ROLE }}
+            profile-bucket: ${{ vars.S3_EXPRESS_PROFILE_BUCKET }}
     permissions:
       id-token: write
       contents: read
@@ -88,6 +92,8 @@ jobs:
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
+          CI_PROFILE_ROLE=${{ matrix.test-run.profile-role }} \
+          CI_PROFILE_BUCKET=${{ matrix.test-run.profile-bucket }} \
           pytest s3torchconnector/tst/e2e --ignore-glob '*/**/test_e2e_s3_lightning_checkpoint.py' --ignore-glob '*/**/dcp' --ignore-glob '*/**/test_distributed_training.py' -n auto
 
       - name: s3torchconnector ${{ matrix.test-run.name }} distributed training integration tests
@@ -125,6 +131,8 @@ jobs:
           CI_BUCKET=${{ matrix.test-run.bucket }} \
           CI_STORAGE_CLASS=${{ matrix.test-run.storage-class }} \
           CI_CUSTOM_ENDPOINT_URL=${{ matrix.test-run.endpoint-url }} \
+          CI_PROFILE_ROLE=${{ matrix.test-run.profile-role }} \
+          CI_PROFILE_BUCKET=${{ matrix.test-run.profile-bucket }} \
           pytest s3torchconnectorclient/python/tst/integration -n auto
 
       - name: Save Cargo cache

@@ -6,6 +6,7 @@ import math
 import os
 import pickle
 import sys
+import tempfile
 import uuid
 import random
 import pytest
@@ -31,6 +32,7 @@ log = logging.getLogger(__name__)
 
 HELLO_WORLD_DATA = b"Hello, World!\n"
 TEST_USER_AGENT_PREFIX = "integration-tests"
+TEST_PROFILE_NAME = "test-profile"
 
 
 @pytest.mark.parametrize("force_path_style", [False, True])
@@ -487,6 +489,67 @@ def test_copy_object_raises_when_source_key_does_not_exist(
             dst_bucket=bucket,
             dst_key=full_dst_key,
         )
+
+
+def test_no_access_objects_without_profile(sample_directory: BucketPrefixFixture):
+    if sample_directory.profile_bucket is None:
+        pytest.skip("No profile bucket configured")
+
+    client = MountpointS3Client(
+        sample_directory.region,
+        TEST_USER_AGENT_PREFIX,
+    )
+    filename = f"{sample_directory.prefix}hello_world.txt"
+
+    with pytest.raises(S3Exception):
+        put_stream = client.put_object(
+            sample_directory.profile_bucket,
+            filename,
+        )
+        put_stream.write(HELLO_WORLD_DATA)
+
+
+def test_access_objects_with_profile(sample_directory: BucketPrefixFixture):
+    if sample_directory.profile_bucket is None:
+        pytest.skip("No profile bucket configured")
+
+    try:
+        tmp_file = tempfile.NamedTemporaryFile()
+        tmp_file.write(
+            f"""[profile default]
+aws_access_key_id = {os.getenv("AWS_ACCESS_KEY_ID")}
+aws_secret_access_key = {os.getenv("AWS_SECRET_ACCESS_KEY")}
+aws_session_token = {os.getenv("AWS_SESSION_TOKEN")}
+ 
+[profile {TEST_PROFILE_NAME}]
+role_arn = {sample_directory.profile_arn}
+region = {sample_directory.region}
+source_profile = default""".encode()
+        )
+        tmp_file.flush()
+        os.environ["AWS_CONFIG_FILE"] = tmp_file.name
+
+        client = MountpointS3Client(
+            sample_directory.region,
+            TEST_USER_AGENT_PREFIX,
+            profile=TEST_PROFILE_NAME,
+        )
+        filename = f"{sample_directory.prefix}hello_world.txt"
+        put_stream = client.put_object(
+            sample_directory.profile_bucket,
+            filename,
+        )
+
+        put_stream.write(HELLO_WORLD_DATA)
+        put_stream.close()
+
+        get_stream = client.get_object(
+            sample_directory.profile_bucket,
+            filename,
+        )
+        assert b"".join(get_stream) == HELLO_WORLD_DATA
+    finally:
+        os.environ["AWS_CONFIG_FILE"] = ""
 
 
 def _parse_list_result(stream: ListObjectStream, max_keys: int):

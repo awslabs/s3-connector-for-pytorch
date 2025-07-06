@@ -12,6 +12,9 @@ env:
   S3_PREFIX: ${{ vars.S3_PREFIX }}
   S3_EXPRESS_BUCKET: ${{ vars.S3_EXPRESS_BUCKET }}
   S3_EXPRESS_REGION: ${{ vars.S3_EXPRESS_REGION }}
+  PROFILE_IAM_ROLE: ${{vars.PROFILE_IAM_ROLE}}
+  S3_PROFILE_BUCKET: ${{vars.S3_PROFILE_BUCKET}}
+  S3_EXPRESS_PROFILE_BUCKET: ${{vars.S3_EXPRESS_PROFILE_BUCKET}}
 
 jobs:
   generate_third_party_licenses:
@@ -23,6 +26,7 @@ jobs:
     runs-on: ${{ matrix.builder.runner }}
     needs: generate_third_party_licenses
     strategy:
+      fail-fast: false
       matrix:
         python:
           - cp38
@@ -96,6 +100,8 @@ jobs:
       # Run cibuildwheel manually, as the current runner uses setup-python
       # https://github.com/pypa/cibuildwheel/issues/1623
       - run: >
+          CIBW_MANYLINUX_X86_64_IMAGE=manylinux2014
+          CIBW_MANYLINUX_AARCH64_IMAGE=manylinux2014
           python -m pipx run
           cibuildwheel
           "s3torchconnectorclient"
@@ -114,6 +120,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: generate_third_party_licenses
     strategy:
+      fail-fast: false
       matrix:
         build_target:
           - s3torchconnector
