@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -26,4 +27,4 @@ class S3ClientConfig:
     unsigned: bool = False
     force_path_style: bool = False
     max_attempts: int = 10
-    profile: str = None
+    profile: Optional[str] = None
