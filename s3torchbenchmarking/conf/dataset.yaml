@@ -31,6 +31,12 @@ hydra:
       # Name of a model (valid options: "entitlement", "vit").
       +model: entitlement
       # Kind of the dataloader (valid options: "fsspec", "s3iterabledataset", "mountpoint", "mountpointcache").
+      # For dataloader kind specific options, see specific conf/dataloader/{dataloader-kind}.yaml
       +dataloader: fsspec, s3iterabledataset, mountpoint, mountpointcache
       # Dataset name (corresponds to the name of a folder in S3); will be used to build an S3 URI
       +dataset: 100k_496x387_images
+      # S3 reader sweeps (only applies to s3iterabledataset/s3mapdataset)
+      # s3reader type: sequential or range_based
+      dataloader.s3reader.type: sequential
+      # buffer_size (bytes): only used with range_based s3reader
+      dataloader.s3reader.buffer_size: 8*1024*1024

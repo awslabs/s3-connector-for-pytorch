@@ -20,6 +20,7 @@ from s3torchbenchmarking.models import (
     ModelInterface,
 )
 from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
+from s3torchconnector.s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 
 
@@ -34,6 +35,7 @@ def run_experiment(config: DictConfig) -> dict:
 
     dataset = make_dataset(
         kind=config.dataloader.kind,
+        dataloader_config=config.dataloader,
         sharding=config.sharding,
         prefix_uri=fully_qualified_uri,
         region=config.s3.region,
@@ -90,22 +92,30 @@ def make_mountpoint(
 
 def make_dataset(
     kind: str,
+    dataloader_config,
     sharding: bool,
     prefix_uri: str,
     region: Optional[str],
     load_sample,
     num_workers: int,
-):
+) -> Dataset:
     if kind == "s3iterabledataset":
         if not region:
             raise ValueError("Must provide region for s3iterabledataset")
         return create_s3_iterable_dataset(
-            sharding, prefix_uri, region, load_sample, num_workers
+            sharding,
+            prefix_uri,
+            region,
+            load_sample,
+            num_workers,
+            dataloader_config,
         )
     if kind == "s3mapdataset":
         if not region:
             raise ValueError("Must provide region for s3mapdataset")
-        return create_s3_map_dataset(sharding, prefix_uri, region, load_sample)
+        return create_s3_map_dataset(
+            sharding, prefix_uri, region, load_sample, dataloader_config
+        )
     if kind == "fsspec":
         return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
     if kind == "mountpoint":
@@ -119,10 +129,39 @@ def make_dataset(
     raise Exception(f"Unknown dataset kind {kind}")
 
 
+def make_s3_reader_constructor(
+    s3reader_config: DictConfig,
+) -> S3ReaderConstructorProtocol:
+    s3reader_type = s3reader_config.type
+    if s3reader_type == "sequential":
+        reader_constructor = S3ReaderConstructor.sequential()
+    elif s3reader_type == "range_based":
+        buffer_size_value = s3reader_config.buffer_size
+        if isinstance(buffer_size_value, str):
+            # Safely evaluate simple math expressions (remove access to dangerous functions)
+            buffer_size = int(eval(buffer_size_value, {"__builtins__": {}}, {}))
+        else:
+            buffer_size = int(buffer_size_value)
+        reader_constructor = S3ReaderConstructor.range_based(buffer_size=buffer_size)
+    else:
+        raise ValueError(f"Unknown s3reader type {s3reader_type}")
+
+    return reader_constructor
+
+
 def create_s3_iterable_dataset(
-    sharding: bool, prefix_uri: str, region: str, load_sample, num_workers: int
+    sharding: bool,
+    prefix_uri: str,
+    region: str,
+    load_sample,
+    num_workers: int,
+    dataloader_config: DictConfig,
 ):
-    dataset = S3IterableDataset.from_prefix(prefix_uri, region=region)
+    reader_constructor = make_s3_reader_constructor(dataloader_config.s3reader)
+
+    dataset = S3IterableDataset.from_prefix(
+        prefix_uri, region=region, reader_constructor=reader_constructor
+    )
     dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
 
     if num_workers > 0:
@@ -134,12 +173,23 @@ def create_s3_iterable_dataset(
     return dataset.map(load_sample)
 
 
-def create_s3_map_dataset(sharding: bool, prefix_uri: str, region: str, load_sample):
+def create_s3_map_dataset(
+    sharding: bool,
+    prefix_uri: str,
+    region: str,
+    load_sample,
+    dataloader_config: DictConfig,
+):
+    reader_constructor = make_s3_reader_constructor(dataloader_config.s3reader)
+
     if sharding:
         raise ValueError("Sharding is not supported for s3mapdataset")
     else:
         dataset = S3MapDataset.from_prefix(
-            prefix_uri, region=region, transform=load_sample
+            prefix_uri,
+            region=region,
+            transform=load_sample,
+            reader_constructor=reader_constructor,
         )
     return dataset
 
