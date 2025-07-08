@@ -13,11 +13,17 @@ def test_default():
     assert config.throughput_target_gbps == 10.0
     assert config.force_path_style is False
     assert config.max_attempts == 10
+    assert config.profile is None
 
 
 def test_enable_force_path_style():
     config = S3ClientConfig(force_path_style=True)
     assert config.force_path_style is True
+
+
+def test_change_profile():
+    config = S3ClientConfig(profile="test_profile")
+    assert config.profile == "test_profile"
 
 
 @given(part_size=integers(min_value=5 * MiB, max_value=5 * GiB))
