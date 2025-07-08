@@ -23,19 +23,6 @@ from .test_s3dataset_common import (
 )
 
 
-@pytest.fixture(
-    params=[
-        S3ReaderConstructor.sequential(),  # Sequential Reader
-        S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
-        S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
-    ],
-    scope="module",
-)
-def reader_constructor(request) -> S3ReaderConstructor:
-    """Provide reader constructor (partial(S3Reader)) instances for all supported reader types."""
-    return request.param
-
-
 def test_dataset_creation_from_prefix_with_region(caplog):
     with caplog.at_level(logging.INFO):
         dataset = S3IterableDataset.from_prefix(S3_PREFIX, region=TEST_REGION)

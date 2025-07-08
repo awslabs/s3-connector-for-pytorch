@@ -18,19 +18,6 @@ from s3torchconnector import (
 from s3torchconnector.s3reader import S3ReaderConstructorProtocol
 
 
-@pytest.fixture(
-    params=[
-        S3ReaderConstructor.sequential(),  # Sequential Reader
-        S3ReaderConstructor.range_based(),  # Default range-based reader, with buffer
-        S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
-    ],
-    scope="module",
-)
-def reader_constructor(request) -> S3ReaderConstructor:
-    """Provide reader constructor (partial(S3Reader)) instances for all supported reader types."""
-    return request.param
-
-
 def test_s3iterable_dataset_images_10_from_prefix(
     image_directory, reader_constructor: S3ReaderConstructorProtocol
 ):

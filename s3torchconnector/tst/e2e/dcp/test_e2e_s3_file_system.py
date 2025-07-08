@@ -32,20 +32,6 @@ from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
 
 
-@pytest.fixture(
-    params=[
-        S3ReaderConstructor.sequential(),  # Sequential Reader
-        S3ReaderConstructor.range_based(),  # range-based reader w/ buffer
-        S3ReaderConstructor.range_based(buffer_size=0),  # range-based reader, no buffer
-    ],
-    ids=["sequential", "range_based_buffered", "range_based_unbuffered"],
-    scope="module",
-)
-def reader_constructor(request) -> S3ReaderConstructorProtocol:
-    """Provide reader constructor (partial(S3Reader)) instances for all supported reader types."""
-    return request.param
-
-
 def generate_random_port():
     return random.randint(1, 500)
 
