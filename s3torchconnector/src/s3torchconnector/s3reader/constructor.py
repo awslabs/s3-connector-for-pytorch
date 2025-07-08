@@ -55,6 +55,8 @@ class S3ReaderConstructor:
 
         * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer to reduce S3 API calls for small, sequential reads
         * Large reads (≥ ``buffer_size``): bypass the buffer for direct transfer from S3
+        * Forward overlap reads: Reuses buffered data when reading ranges that extend beyond current buffer, and processes remaining
+        data according to size with logic above.
 
         Configuration Guide:
 

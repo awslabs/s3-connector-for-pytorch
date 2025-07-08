@@ -131,7 +131,7 @@ Amazon S3 Connector for PyTorch supports two types of readers, configurable thro
 
 - Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
 - Prioritizes memory efficiency, with performance gains only for sparse partial reads.
-- Features adaptive buffering:
+- Features adaptive buffering with forward overlap handling:
   - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
   - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
 

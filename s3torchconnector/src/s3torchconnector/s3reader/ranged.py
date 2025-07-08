@@ -21,7 +21,7 @@ class RangedS3Reader(S3Reader):
     """Range-based S3 reader implementation with adaptive buffering.
 
     Performs byte-range requests to read specific portions of S3 objects without
-    downloading the entire file. Includes optional internal buffer to reduce S3 API
+    downloading the entire file. Includes optional adaptive buffer to reduce S3 API
     calls for small, sequential reads while bypassing buffering for large reads.
     Optimal for sparse partial reads of large objects.
 
@@ -29,6 +29,7 @@ class RangedS3Reader(S3Reader):
 
     * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer, copies to user
     * Large reads (>= ``buffer_size``): Direct S3 access, bypass buffer
+    * Forward overlapping reads: Reuses existing buffer data if possible when read range extends beyond current buffer
     * Buffer can be disabled by setting ``buffer_size`` to 0
     * If ``buffer_size`` is None, uses default 8MB buffer
 
@@ -159,8 +160,10 @@ class RangedS3Reader(S3Reader):
         """Reads into a memoryview from a specific byte range.
         Dispatch read request to buffered or unbuffered implementation based on request size.
 
-        - Large requests bypass buffering to speed up data transfer
-        - Small requests use buffering to reduce S3 API calls, anticipating next call
+        - Forward overlap optimization: When read range starts within current buffer and extends beyond it,
+        first uses the overlapped portion from buffer, then processes remaining portion according to size.
+        - Large (remaining) requests (< buffer_size): bypass buffering to speed up data transfer
+        - Small (remaining) requests (>= buffer_size): use buffering to reduce S3 API calls, anticipating next call
 
         Args:
             view: Target memoryview to write data into
@@ -170,12 +173,27 @@ class RangedS3Reader(S3Reader):
         Returns:
             int: Number of bytes read
         """
+
+        bytes_read = 0
+
+        # Forward overlap case: load from overlapped part in buffer first
+        # Only apply when starting within buffer and extending beyond it
+        if self._buffer_start <= start < self._buffer_end < end:
+            # Read overlapped portion from buffer
+            overlap_read = self._read_buffered(view, start, self._buffer_end)
+            # Adjust start and view for the remaining portion
+            start = self._buffer_end
+            view = view[overlap_read:]
+            bytes_read += overlap_read
+
+        # Handle remaining portion / full range based on size
         if end - start >= self._buffer_size or not self._enable_buffering:
             # Large reads: return data directly
-            bytes_read = self._read_unbuffered(view, start, end)
+            bytes_read += self._read_unbuffered(view, start, end)
         else:
             # Small reads: buffer data and return from buffer
-            bytes_read = self._read_buffered(view, start, end)
+            bytes_read += self._read_buffered(view, start, end)
+
         self._position += bytes_read
         return bytes_read
 
