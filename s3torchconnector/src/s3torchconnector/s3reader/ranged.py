@@ -177,8 +177,8 @@ class RangedS3Reader(S3Reader):
         bytes_read = 0
 
         # Forward overlap case: load from overlapped part in buffer first
-        # Only apply when starting within buffer and extending beyond it
-        if self._buffer_start <= start < self._buffer_end < end:
+        # Only apply when starting within buffer and extending beyond it, or exact match
+        if self._buffer_start <= start < self._buffer_end <= end:
             # Read overlapped portion from buffer
             overlap_read = self._read_buffered(view, start, self._buffer_end)
             # Adjust start and view for the remaining portion

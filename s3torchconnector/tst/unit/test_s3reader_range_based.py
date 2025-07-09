@@ -333,34 +333,33 @@ def test_buffer_at_object_end_boundary(
 
 
 @pytest.mark.parametrize(
-    "buffer_size, initial_read_range, second_read_range, should_trigger_overlap_optimization",
+    "buffer_size, second_read_range, scenario",
     [
         # Forward Overlap condition: self._buffer_start <= start < self._buffer_end < end
-        # (start, end being 2nd request range)
-        # Buffer loads [100, 200) from initial read [100, 110)
+        # Fixed initial read [100, 110) will load 100-byte buffer with [100, 200)
         # Forward overlap scenarios
-        (100, (100, 110), (150, 500), True),  # overlap [150,200), remaining [200,500)
-        (100, (100, 110), (199, 201), True),  # overlap [199,200], remaining [200,201)
+        (100, (150, 500), "overlap"),  # overlap [150,200), remaining [200,500)
+        (100, (199, 201), "overlap"),  # overlap [199,200], remaining [200,201)
         # Scenarios that won't trigger forward overlap optimization
-        (100, (100, 110), (120, 180), False),  # entirely within buffer range
-        (100, (100, 110), (250, 500), False),  # complete miss - start > buffer_end
-        (100, (100, 110), (0, 50), False),  # complete miss - end < buffer_start
-        (100, (100, 110), (50, 250), False),  # range spans over buffer range
-        (100, (100, 110), (50, 150), False),  # partial overlap, start < buffer_start
+        (100, (120, 180), "no_new_requests"),  # entirely within buffer range
+        (100, (250, 500), "new_requests"),  # complete miss - start > buffer_end
+        (100, (0, 50), "new_requests"),  # complete miss - end < buffer_start
+        (100, (50, 250), "new_requests"),  # range spans over buffer range
+        (100, (50, 150), "new_requests"),  # partial overlap, start < buffer_start
+        (0, (100, 200), "new_requests"),  # buffer disabled
         # Edge cases
-        (100, (100, 110), (100, 250), True),  # start == buffer_start
-        (100, (100, 110), (150, 200), False),  # end == buffer_end
-        (100, (100, 110), (100, 200), False),  # exact buffer range match
-        (100, (100, 110), (200, 300), False),  # start == buffer_end
-        (100, (100, 110), (0, 100), False),  # end == buffer_start
+        (100, (100, 250), "overlap"),  # start == buffer_start
+        (100, (150, 200), "no_new_requests"),  # end == buffer_end
+        (100, (100, 200), "no_new_requests"),  # exact buffer range match
+        (100, (200, 300), "new_requests"),  # start == buffer_end
+        (100, (0, 100), "new_requests"),  # end == buffer_start
     ],
 )
 @given(lists(binary(min_size=300, max_size=400), min_size=2, max_size=3))
 def test_forward_overlap_optimization(
     buffer_size,
-    initial_read_range,
     second_read_range,
-    should_trigger_overlap_optimization,
+    scenario,
     stream,
 ):
     """Test forward overlap only requests remaining data from stream"""
@@ -374,7 +373,7 @@ def test_forward_overlap_optimization(
     )
 
     # Initial read to set up buffer
-    initial_start, initial_end = initial_read_range
+    initial_start, initial_end = 100, 110
     initial_read_size = initial_end - initial_start
     s3reader.seek(initial_start)
     s3reader.read(initial_read_size)
@@ -382,13 +381,15 @@ def test_forward_overlap_optimization(
     buffer_start = s3reader._buffer_start
     buffer_end = s3reader._buffer_end
     initial_requests = len(stream_requests)
+    if buffer_size > 0:
+        assert buffer_start == initial_start
+        assert buffer_end == buffer_start + buffer_size
 
     # Second read (some with overlap in buffer)
     second_start, second_end = second_read_range
     second_read_size = second_end - second_start
     s3reader.seek(second_start)
     data = s3reader.read(second_read_size)
-
     # Verify correctness
     total_data = b"".join(stream)
     expected = total_data[second_start:second_end]
@@ -396,10 +397,9 @@ def test_forward_overlap_optimization(
 
     # Verify optimization: reader should not request original buffer range for forward overlap condition
     new_requests = stream_requests[initial_requests:]
-    forward_overlap_condition = buffer_start <= second_start < buffer_end < second_end
-    if should_trigger_overlap_optimization:
+    if scenario == "overlap":
         # Forward overlap should occur
-        assert forward_overlap_condition
+        assert buffer_start <= second_start < buffer_end < second_end
         # We always extend beyond buffer_end if this triggers
         assert len(new_requests) > 0
         # New requests from initial buffer end
@@ -407,8 +407,13 @@ def test_forward_overlap_optimization(
         # Assert new requests don't overlap with original buffer
         for start, end in new_requests:
             assert start >= buffer_end
+    elif scenario == "new_requests":
+        assert not buffer_start <= second_start < buffer_end <= second_end
+        assert len(new_requests) > 0
+        # New requests start from second_start, not buffer_end
+        assert new_requests[0][0] == second_start
+    elif scenario == "no_new_requests":
+        assert buffer_start <= second_start <= second_end <= buffer_end
+        assert len(new_requests) == 0
     else:
-        assert not forward_overlap_condition
-        if len(new_requests) > 0:
-            # New requests start from second_start, not buffer_end
-            assert new_requests[0][0] == second_start
+        raise ValueError(f"Unknown scenario: {scenario}")
