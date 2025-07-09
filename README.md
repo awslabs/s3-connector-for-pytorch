@@ -116,92 +116,6 @@ usw2-az1, then the URI used will look like: `s3://my-test-bucket--usw2-az1--x-s3
 prefix for Amazon S3 Express One Zone should end with '/'**), paired with region us-west-2.
 
 
-## Reader Configurations
-
-Amazon S3 Connector for PyTorch supports two types of readers, configurable through `S3ReaderConstructor`.
-
-### Reader Types
-
-#### 1. Sequential Reader (Default)
-
-- Downloads and buffers the entire S3 object in memory.
-- Prioritizes performance over memory usage by buffering entire objects.
-
-#### 2. Range-based Reader
-
-- Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
-- Prioritizes memory efficiency, with performance gains only for sparse partial reads.
-- Features adaptive buffering with forward overlap handling:
-  - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
-  - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
-
-### When to Use Each Reader
-
-- **Sequential Reader**: For processing entire files, and when repeated access to the data is required. Best for most general use cases.
-- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads, and in memory-constrained environments. 
-
-**Note**: S3Reader instances are not thread-safe and should not be shared across threads. For multiprocessing with DataLoader, each worker process creates its own S3Reader instance automatically.
-
-### Examples
-
-Direct method - `S3Client` usage with range-based reader without buffer:
-```py
-# Direct S3Client usage for zero-copy partial reads into pre-allocated buffers, for memory efficiency and fast data transfer
-from s3torchconnector._s3client import S3Client
-
-s3_client = S3Client(region=REGION)
-reader_constructor = S3ReaderConstructor.range_based(
-    buffer_size=0  # No buffer, for direct transfer
-)
-s3reader = s3_client.get_object(
-    bucket="my-bucket", 
-    key="large_object.bin", 
-    reader_constructor=reader_constructor
-)
-
-
-buffer = bytearray(10 * 1024 * 1024)  # 10MB buffer
-s3reader.seek(100 * 1024 * 1024)   # Skip to 100MB offset
-bytes_read = s3reader.readinto(buffer)  # Direct read into buffer
-```
-
-DCP interface - `S3StorageReader` usage with range-based reader with buffer:
-```py
-# Load distributed checkpoint with range-based reader to optimize memory usage for large checkpoint files
-from s3torchconnector.dcp import S3StorageReader
-
-reader_constructor = S3ReaderConstructor.range_based(
-    buffer_size=16*1024*1024  # 16MB buffer
-)
-s3_storage_reader = S3StorageReader(
-    region=REGION, 
-    path=CHECKPOINT_URI,
-    reader_constructor=reader_constructor
-)
-DCP.load(
-    state_dict=model_state_dict,
-    storage_reader=s3_storage_reader,
-)
-```
-
-Dataset interface - `S3MapDataset` usage with sequential reader:
-```py
-# Use sequential reader for optimal performance when reading entire objects
-from s3torchconnector import S3MapDataset, S3ReaderConstructor
-
-dataset = S3MapDataset.from_prefix(
-    DATASET_URI, 
-    region=REGION,
-    reader_constructor=S3ReaderConstructor.sequential()
-)
-
-for item in dataset:
-    content = item.read()
-    ...
-```
-
-For `S3ReaderConstructor` usage details, please refer to the [`S3ReaderConstructor` documentation](https://awslabs.github.io/s3-connector-for-pytorch/autoapi/s3torchconnector/s3reader/constructor/index.html).
-
 ## Distributed checkpoints
 
 ### Overview
@@ -459,6 +373,118 @@ When versioning is enabled on an S3 bucket, deletions insert a delete marker ins
 To enable versioning on an S3 bucket, see [Enabling versioning on buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/manage-versioning-examples.html). Normal Amazon S3 rates apply for every version of an object stored and transferred. To customize your data retention approach and control storage costs for earlier versions of objects, use [object versioning with S3 Lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html).
 
 S3 Versioning and S3 Lifecycle are not supported by S3 Express One Zone.
+
+
+## Direct S3Client Usage
+
+For advanced use cases, you can use the S3Client directly for custom streaming patterns and integration with existing pipelines.
+
+```py
+from s3torchconnector._s3client import S3Client
+
+REGION = "us-east-1"
+BUCKET_NAME = "my-bucket"
+OBJECT_KEY = "large_object.bin"
+
+s3_client = S3Client(region=REGION)
+
+# Writing data to S3
+data = b"content" * 1048576
+s3writer = s3_client.put_object(bucket=BUCKET_NAME, key=OBJECT_KEY)
+s3writer.write(data)
+s3writer.close()
+
+# Reading data from S3
+s3reader = s3_client.get_object(bucket=BUCKET_NAME, key=OBJECT_KEY)
+data = s3reader.read()
+```
+
+## Reader Configurations
+
+Amazon S3 Connector for PyTorch supports two types of readers, configurable through `S3ReaderConstructor`.
+
+### Reader Types
+
+#### 1. Sequential Reader (Default)
+
+- Downloads and buffers the entire S3 object in memory.
+- Prioritizes performance over memory usage by buffering entire objects.
+
+#### 2. Range-based Reader
+
+- Performs byte-range requests to read specific portions of S3 objects without downloading the entire file.
+- Prioritizes memory efficiency, with performance gains only for sparse partial reads.
+- Features adaptive buffering with forward overlap handling:
+  - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
+  - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
+
+### When to Use Each Reader
+
+- **Sequential Reader**: For processing entire files, and when repeated access to the data is required. Best for most general use cases.
+- **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads, and in memory-constrained environments. 
+
+**Note**: S3Reader instances are not thread-safe and should not be shared across threads. For multiprocessing with DataLoader, each worker process creates its own S3Reader instance automatically.
+
+### Examples
+
+Direct method - `S3Client` usage with range-based reader without buffer:
+```py
+# Direct S3Client usage for zero-copy partial reads into pre-allocated buffers, for memory efficiency and fast data transfer
+from s3torchconnector._s3client import S3Client
+from s3torchconnector import S3ReaderConstructor
+
+s3_client = S3Client(region=REGION)
+reader_constructor = S3ReaderConstructor.range_based(
+    buffer_size=0  # No buffer, for direct transfer
+)
+s3reader = s3_client.get_object(
+    bucket=BUCKET_NAME, 
+    key=OBJECT_NAME, 
+    reader_constructor=reader_constructor
+)
+
+buffer = bytearray(10 * 1024 * 1024)  # 10MB buffer
+s3reader.seek(100 * 1024 * 1024)   # Skip to 100MB offset
+bytes_read = s3reader.readinto(buffer)  # Direct read into buffer
+```
+
+DCP interface - `S3StorageReader` usage with range-based reader with buffer:
+```py
+# Load distributed checkpoint with range-based reader to optimize memory usage for large checkpoint files
+from s3torchconnector.dcp import S3StorageReader
+from s3torchconnector import S3ReaderConstructor
+
+reader_constructor = S3ReaderConstructor.range_based(
+    buffer_size=16*1024*1024  # 16MB buffer
+)
+s3_storage_reader = S3StorageReader(
+    region=REGION, 
+    path=CHECKPOINT_URI,
+    reader_constructor=reader_constructor
+)
+DCP.load(
+    state_dict=model_state_dict,
+    storage_reader=s3_storage_reader,
+)
+```
+
+Dataset interface - `S3MapDataset` usage with sequential reader:
+```py
+# Use sequential reader for optimal performance when reading entire objects
+from s3torchconnector import S3MapDataset, S3ReaderConstructor
+
+dataset = S3MapDataset.from_prefix(
+    DATASET_URI, 
+    region=REGION,
+    reader_constructor=S3ReaderConstructor.sequential()
+)
+
+for item in dataset:
+    content = item.read()
+    ...
+```
+
+For `S3ReaderConstructor` usage details, please refer to the [`S3ReaderConstructor` documentation](https://awslabs.github.io/s3-connector-for-pytorch/autoapi/s3torchconnector/s3reader/constructor/index.html).
 
 ## Contributing
 
