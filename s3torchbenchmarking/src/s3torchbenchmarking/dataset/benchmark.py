@@ -34,13 +34,11 @@ def run_experiment(config: DictConfig) -> dict:
     )
 
     dataset = make_dataset(
-        kind=config.dataloader.kind,
         dataloader_config=config.dataloader,
         sharding=config.sharding,
         prefix_uri=fully_qualified_uri,
         region=config.s3.region,
         load_sample=model.load_sample,
-        num_workers=config.dataloader.num_workers,
     )
     dataloader = make_dataloader(
         dataset=dataset,
@@ -91,30 +89,38 @@ def make_mountpoint(
 
 
 def make_dataset(
-    kind: str,
-    dataloader_config,
+    dataloader_config: DictConfig,
     sharding: bool,
     prefix_uri: str,
     region: Optional[str],
     load_sample,
-    num_workers: int,
 ) -> Dataset:
+
+    kind = dataloader_config.kind
+    num_workers = dataloader_config.num_workers
+
     if kind == "s3iterabledataset":
         if not region:
             raise ValueError("Must provide region for s3iterabledataset")
+        if not dataloader_config.get("s3reader"):
+            raise ValueError(f"Must provide s3reader config for {kind}")
+        s3reader_config = dataloader_config.s3reader
         return create_s3_iterable_dataset(
             sharding,
             prefix_uri,
             region,
             load_sample,
             num_workers,
-            dataloader_config,
+            s3reader_config,
         )
     if kind == "s3mapdataset":
         if not region:
             raise ValueError("Must provide region for s3mapdataset")
+        if not dataloader_config.get("s3reader"):
+            raise ValueError(f"Must provide s3reader config for {kind}")
+        s3reader_config = dataloader_config.s3reader
         return create_s3_map_dataset(
-            sharding, prefix_uri, region, load_sample, dataloader_config
+            sharding, prefix_uri, region, load_sample, s3reader_config
         )
     if kind == "fsspec":
         return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
@@ -155,10 +161,9 @@ def create_s3_iterable_dataset(
     region: str,
     load_sample,
     num_workers: int,
-    dataloader_config: DictConfig,
+    s3reader_config: DictConfig,
 ):
-    reader_constructor = make_s3_reader_constructor(dataloader_config.s3reader)
-
+    reader_constructor = make_s3_reader_constructor(s3reader_config)
     dataset = S3IterableDataset.from_prefix(
         prefix_uri, region=region, reader_constructor=reader_constructor
     )
@@ -178,10 +183,9 @@ def create_s3_map_dataset(
     prefix_uri: str,
     region: str,
     load_sample,
-    dataloader_config: DictConfig,
+    s3reader_config: DictConfig,
 ):
-    reader_constructor = make_s3_reader_constructor(dataloader_config.s3reader)
-
+    reader_constructor = make_s3_reader_constructor(s3reader_config)
     if sharding:
         raise ValueError("Sharding is not supported for s3mapdataset")
     else:
