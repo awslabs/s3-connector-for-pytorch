@@ -15,6 +15,10 @@ from s3torchconnector.dcp import (
     S3FileSystem,
     BinaryPrefixStrategy,
 )
+from s3torchconnector.s3reader import (
+    S3ReaderConstructor,
+    S3ReaderConstructorProtocol,
+)
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnectorclient import __version__
@@ -22,6 +26,7 @@ from s3torchconnectorclient import __version__
 import os
 import random
 import platform
+from typing import Optional
 
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
@@ -82,6 +87,7 @@ def multi_process_dcp_save_load(
     tensor_dimensions,
     port_offset,
     prefix_strategy,
+    reader_constructor=None,
 ) -> str:
     region = checkpoint_directory.region
     s3_path_s3storagewriter = f"{checkpoint_directory.s3_uri}checkpoint_s3storagewriter"
@@ -117,6 +123,7 @@ def multi_process_dcp_save_load(
         test_data,
         world_size,
         thread_count,
+        reader_constructor,
     )
 
     return s3_path_s3storagewriter
@@ -124,7 +131,11 @@ def multi_process_dcp_save_load(
 
 def _verify_user_agent(s3fs: S3FileSystem):
     python_version = platform.python_version()
-    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (dcp; {torch.__version__})"
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(
+        s3fs._reader_constructor
+    )
+    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (dcp; {torch.__version__}; md/reader_type#{reader_type_string})"
+    print(expected_user_agent)
     assert s3fs._client.user_agent_prefix == expected_user_agent
 
 
@@ -144,7 +155,14 @@ def dcp_load(loaded_data, reader):
     )
 
 
-def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_count):
+def load_data(
+    region,
+    s3_path_s3storagewriter,
+    test_data,
+    world_size,
+    thread_count,
+    reader_constructor: Optional[S3ReaderConstructorProtocol],
+):
     s3_client = S3Client(region=region)
     bucket, key = parse_s3_uri(s3_path_s3storagewriter)
     list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
@@ -162,6 +180,7 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
         S3StorageReader(
             region,
             s3_path_s3storagewriter,
+            reader_constructor=reader_constructor,
         ),
     )
 
@@ -189,10 +208,20 @@ def load_data(region, s3_path_s3storagewriter, test_data, world_size, thread_cou
     ],
 )
 def test_dcp_when_multi_process(
-    checkpoint_directory, tensor_dimensions, thread_count, port_offset
+    checkpoint_directory,
+    tensor_dimensions,
+    thread_count,
+    port_offset,
+    reader_constructor,
 ):
     multi_process_dcp_save_load(
-        3, thread_count, checkpoint_directory, tensor_dimensions, port_offset, None
+        world_size=3,
+        thread_count=thread_count,
+        checkpoint_directory=checkpoint_directory,
+        tensor_dimensions=tensor_dimensions,
+        port_offset=port_offset,
+        prefix_strategy=None,
+        reader_constructor=reader_constructor,
     )
 
 

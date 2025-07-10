@@ -10,7 +10,8 @@ import weakref
 from functools import partial
 from typing import Optional, Any, List
 
-from s3torchconnector import S3Reader, S3Writer
+from s3torchconnector import S3Reader, S3Writer, S3ReaderConstructor
+from s3torchconnector.s3reader.protocol import S3ReaderConstructorProtocol
 from .s3client_config import S3ClientConfig
 
 from s3torchconnectorclient._mountpoint_s3_client import (
@@ -146,7 +147,12 @@ class S3Client:
         )
 
     def get_object(
-        self, bucket: str, key: str, *, object_info: Optional[ObjectInfo] = None
+        self,
+        bucket: str,
+        key: str,
+        *,
+        object_info: Optional[ObjectInfo] = None,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ) -> S3Reader:
         log.debug(f"GetObject s3://{bucket}/{key}, {object_info is None=}")
         if object_info is None:
@@ -154,15 +160,23 @@ class S3Client:
         else:
             get_object_info = partial(_identity, object_info)
 
-        return S3Reader(
-            bucket,
-            key,
+        reader_constructor = reader_constructor or S3ReaderConstructor.default()
+
+        return reader_constructor(
+            bucket=bucket,
+            key=key,
             get_object_info=get_object_info,
             get_stream=partial(self._get_object_stream, bucket, key),
         )
 
-    def _get_object_stream(self, bucket: str, key: str) -> GetObjectStream:
-        return self._client.get_object(bucket, key)
+    def _get_object_stream(
+        self,
+        bucket: str,
+        key: str,
+        start: Optional[int] = None,
+        end: Optional[int] = None,
+    ) -> GetObjectStream:
+        return self._client.get_object(bucket, key, start, end)
 
     def put_object(
         self, bucket: str, key: str, storage_class: Optional[str] = None

@@ -8,6 +8,13 @@ from typing import Union
 import pytest
 
 from s3torchconnector import S3ClientConfig
+from s3torchconnector.s3reader import (
+    S3ReaderConstructor,
+    S3ReaderConstructorProtocol,
+    SequentialS3Reader,
+    RangedS3Reader,
+)
+from s3torchconnector.s3reader.ranged import DEFAULT_BUFFER_SIZE
 from s3torchconnector._s3client import MockS3Client
 from s3torchconnector.dcp.s3_file_system import S3FileSystem
 from s3torchconnectorclient import S3Exception
@@ -247,6 +254,62 @@ def test_custom_config_file_for_writer_and_reader():
 @pytest.mark.parametrize("checkpoint_id", ["foobar", "s3:///"])
 def test_validate_checkpoint_id_returns_false_when_path_is_invalid(checkpoint_id):
     assert S3FileSystem.validate_checkpoint_id(checkpoint_id) is False
+
+
+# Reader Constructor Tests
+def test_s3filesystem_default_reader_constructor():
+    """Test that S3FileSystem uses default reader constructor when none provided."""
+    mock_client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    s3fs = S3FileSystem(TEST_REGION, mock_client)
+
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(
+        s3fs._reader_constructor
+    )
+    assert reader_type_string == "sequential"
+
+
+def test_s3filesystem_reader_constructor_integration(
+    reader_constructor: S3ReaderConstructorProtocol,
+):
+    """Test that S3FileSystem stores reader_constructor and uses it correctly to create functional readers."""
+    mock_client = MockS3Client(TEST_REGION, TEST_BUCKET)
+    mock_client.add_object(TEST_KEY, TEST_DATA)
+    s3fs = S3FileSystem(TEST_REGION, mock_client, reader_constructor=reader_constructor)
+
+    # Verify it stores the constructor correctly
+    assert s3fs._reader_constructor is reader_constructor
+
+    with s3fs.create_stream(TEST_PATH, "rb") as reader:
+
+        # Verify the reader type matches the constructor
+        expected_reader_type = S3ReaderConstructor.get_reader_type_string(
+            reader_constructor
+        )
+        if expected_reader_type == "sequential":
+            assert isinstance(reader, SequentialS3Reader)
+        elif expected_reader_type == "range_based":
+            assert isinstance(reader, RangedS3Reader)
+            # For range-based, verify buffer configuration
+            expected_buffer_size = reader_constructor.keywords["buffer_size"]
+            if expected_buffer_size is None:
+                # None - use default buffer size
+                assert reader._buffer_size == DEFAULT_BUFFER_SIZE
+                assert reader._enable_buffering is True
+            else:
+                # Explicit buffer_size was provided - enable buffer if > 0
+                assert reader._buffer_size == expected_buffer_size
+                assert reader._enable_buffering == (expected_buffer_size > 0)
+        else:
+            raise ValueError(f"Unexpected reader type: {expected_reader_type}")
+
+        # Test partial read
+        data = reader.read(5)
+        assert data == TEST_DATA[:5]
+
+        # Test seek and full read
+        reader.seek(0)
+        data_again = reader.read()
+        assert data_again == TEST_DATA
 
 
 def _build_s3_uri(bucket: str, key: str) -> str:

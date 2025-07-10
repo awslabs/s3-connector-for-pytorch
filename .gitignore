@@ -79,3 +79,6 @@ s3torchconnectorclient/**/*.rs.bk
 
 # JetBrains
 .idea/
+
+# Sphinx documentation
+s3torchconnector/docs/

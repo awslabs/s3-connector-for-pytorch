@@ -9,7 +9,8 @@ import hypothesis.strategies as st
 from hypothesis import given, assume
 from unittest.mock import patch, MagicMock
 
-from s3torchconnector import S3IterableDataset, S3Reader
+from s3torchconnector import S3IterableDataset, S3Reader, S3ReaderConstructor
+from s3torchconnector.s3reader import S3ReaderConstructorProtocol
 from s3torchconnector._s3client import MockS3Client
 
 from .test_s3dataset_common import (
@@ -18,6 +19,7 @@ from .test_s3dataset_common import (
     S3_PREFIX,
     TEST_REGION,
     TEST_ENDPOINT,
+    READER_TYPE_STRING_TO_CLASS,
 )
 
 
@@ -37,6 +39,44 @@ def test_dataset_creation_from_objects_with_region(caplog):
     assert "Building S3IterableDataset from_objects" in caplog.text
 
 
+def test_default_reader_type_from_prefix():
+    dataset = S3IterableDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(
+        dataset._reader_constructor
+    )
+    assert reader_type_string == "sequential"
+
+
+def test_default_reader_type_from_objects():
+    dataset = S3IterableDataset.from_objects([], region=TEST_REGION)
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(
+        dataset._reader_constructor
+    )
+    assert reader_type_string == "sequential"
+
+
+def test_dataset_creation_from_prefix_with_reader_constructor(
+    reader_constructor: S3ReaderConstructorProtocol,
+):
+    dataset = S3IterableDataset.from_prefix(
+        S3_PREFIX,
+        region=TEST_REGION,
+        reader_constructor=reader_constructor,
+    )
+    assert dataset._reader_constructor == reader_constructor
+
+
+def test_dataset_creation_from_objects_with_reader_constructor(
+    reader_constructor: S3ReaderConstructorProtocol,
+):
+    dataset = S3IterableDataset.from_objects(
+        [],
+        region=TEST_REGION,
+        reader_constructor=reader_constructor,
+    )
+    assert dataset._reader_constructor == reader_constructor
+
+
 @pytest.mark.parametrize(
     "keys, expected_keys",
     [
@@ -49,9 +89,12 @@ def test_dataset_creation_from_objects_with_region(caplog):
 def test_dataset_creation_from_objects(
     keys: Iterable[str],
     expected_keys: Sequence[str],
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     object_uris = [f"{S3_PREFIX}/{key}" for key in keys]
-    dataset = S3IterableDataset.from_objects(object_uris, region=TEST_REGION)
+    dataset = S3IterableDataset.from_objects(
+        object_uris, region=TEST_REGION, reader_constructor=reader_constructor
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -78,9 +121,14 @@ def test_dataset_creation_from_objects(
     ],
 )
 def test_dataset_creation_from_prefix(
-    keys: Iterable[str], prefix: str, expected_keys: Sequence[str]
+    keys: Iterable[str],
+    prefix: str,
+    expected_keys: Sequence[str],
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
-    dataset = S3IterableDataset.from_prefix(s3_uri=prefix, region=TEST_REGION)
+    dataset = S3IterableDataset.from_prefix(
+        s3_uri=prefix, region=TEST_REGION, reader_constructor=reader_constructor
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -115,12 +163,16 @@ def test_dataset_creation_from_prefix(
     ],
 )
 def test_transform_from_prefix(
-    key: str, transform: Callable[[S3Reader], Any], expected: Any
+    key: str,
+    transform: Callable[[S3Reader], Any],
+    expected: Any,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     dataset = S3IterableDataset.from_prefix(
         S3_PREFIX,
         region=TEST_REGION,
         transform=transform,
+        reader_constructor=reader_constructor,
     )
 
     # use mock client for unit testing
@@ -152,7 +204,10 @@ def test_transform_from_prefix(
     ],
 )
 def test_transform_from_objects(
-    key: str, transform: Callable[[S3Reader], Any], expected: Any
+    key: str,
+    transform: Callable[[S3Reader], Any],
+    expected: Any,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     object_uris = f"{S3_PREFIX}/{key}"
 
@@ -160,6 +215,7 @@ def test_transform_from_objects(
         object_uris,
         region=TEST_REGION,
         transform=transform,
+        reader_constructor=reader_constructor,
     )
 
     # use mock client for unit testing
@@ -184,9 +240,14 @@ def test_transform_from_objects(
     ],
 )
 def test_iteration_multiple_times(
-    keys: Iterable[str], prefix: str, expected_keys: Sequence[str]
+    keys: Iterable[str],
+    prefix: str,
+    expected_keys: Sequence[str],
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
-    dataset = S3IterableDataset.from_prefix(prefix, region=TEST_REGION)
+    dataset = S3IterableDataset.from_prefix(
+        prefix, region=TEST_REGION, reader_constructor=reader_constructor
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, keys)
@@ -205,8 +266,12 @@ def test_dataset_creation_from_prefix_with_region_and_endpoint():
     assert dataset.endpoint == TEST_ENDPOINT
 
 
-def test_from_prefix_seek_no_head():
-    dataset = S3IterableDataset.from_prefix(S3_PREFIX, region=TEST_REGION)
+def test_from_prefix_seek_no_head(reader_constructor: S3ReaderConstructorProtocol):
+    dataset = S3IterableDataset.from_prefix(
+        S3_PREFIX,
+        region=TEST_REGION,
+        reader_constructor=reader_constructor,
+    )
 
     # use mock client for unit testing
     client = _create_mock_client_with_dummy_objects(TEST_BUCKET, ["foo"])
@@ -239,16 +304,17 @@ def _num_workers_per_rank_strategy(draw):
     return world_size, num_workers_per_rank
 
 
+# Put patch decorators before @given and @parametrize
+@patch("torch.distributed.get_world_size")
+@patch("torch.distributed.get_rank")
+@patch("torch.distributed.is_initialized")
+@patch("torch.utils.data.get_worker_info")
 @given(
     keys_for_prefix1=keys_strategy,
     keys_for_prefix2=keys_strategy,
     create_from_prefix=create_from_prefix_strategy,
     world_size_and_num_workers=_num_workers_per_rank_strategy(),
 )
-@patch("torch.distributed.get_world_size")
-@patch("torch.distributed.get_rank")
-@patch("torch.distributed.is_initialized")
-@patch("torch.utils.data.get_worker_info")
 def test_dataset_creation_against_multiple_workers(
     get_worker_info_mock,
     is_initialized_mock,
@@ -258,6 +324,7 @@ def test_dataset_creation_against_multiple_workers(
     keys_for_prefix2,
     create_from_prefix,
     world_size_and_num_workers,
+    reader_constructor: S3ReaderConstructorProtocol,
 ):
     """Test the iterating over S3IterableDataset with different numbers of ranks/workers when sharding is enabled.
 
@@ -270,6 +337,7 @@ def test_dataset_creation_against_multiple_workers(
         keys_for_prefix2 (list): A list of strings representing keys for the second prefix, should be ignored with .from_prefix
         create_from_prefix (bool): Whether to create the dataset from a prefix or a list of object URIs.
         world_size_and_num_workers (tuple): A tuple containing world_size and num_workers for each rank.
+        reader_type (ReaderType): S3Reader ReaderType
     """
     prefix1 = "obj"
     prefix2 = "test"
@@ -306,13 +374,17 @@ def test_dataset_creation_against_multiple_workers(
                     s3_uri=f"{S3_PREFIX}/{prefix1}",
                     region=TEST_REGION,
                     enable_sharding=True,
+                    reader_constructor=reader_constructor,
                 )
             else:
                 dataset = S3IterableDataset.from_objects(
                     object_uris=object_uris,
                     region=TEST_REGION,
                     enable_sharding=True,
+                    reader_constructor=reader_constructor,
                 )
+
+            assert dataset._reader_constructor == reader_constructor
 
             client = _create_mock_client_with_dummy_objects(TEST_BUCKET, all_keys)
             dataset._client = client
@@ -353,6 +425,24 @@ def test_dataset_creation_against_multiple_workers(
     ), "The number of keys should be evenly distributed across ranks, with a difference of at most 1"
 
 
+def test_user_agent_includes_dataset_and_reader_type(
+    reader_constructor: S3ReaderConstructorProtocol,
+):
+    """Test that user agent includes dataset type and reader type."""
+    dataset = S3IterableDataset.from_prefix(
+        S3_PREFIX, region=TEST_REGION, reader_constructor=reader_constructor
+    )
+    dataset._get_client()
+
+    user_agent = dataset._client.user_agent_prefix
+
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(reader_constructor)
+    # expect: sequential / range_based
+
+    assert "md/dataset#iterable" in user_agent
+    assert f"md/reader_type#{reader_type_string}" in user_agent
+
+
 def _verify_dataset(
     dataset: S3IterableDataset,
     expected_keys: Sequence[str],
@@ -367,13 +457,14 @@ def _verify_dataset(
             assert data is not None
             assert data.bucket == TEST_BUCKET
             assert data.key == expected_keys[index]
+            reader_type_string = S3ReaderConstructor.get_reader_type_string(
+                dataset._reader_constructor
+            )
+            assert isinstance(data, READER_TYPE_STRING_TO_CLASS[reader_type_string])
             assert object_info_check(data)
-            assert data._stream is None
-            data.prefetch()
-            assert data._stream is not None
-            for content in data._stream:
-                expected_content = (
-                    f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
-                )
-                assert content == expected_content
+            expected_content = (
+                f"{TEST_BUCKET}-{expected_keys[index]}-dummyData".encode()
+            )
+            content = data.read()
+            assert content == expected_content
         assert count == len(expected_keys)

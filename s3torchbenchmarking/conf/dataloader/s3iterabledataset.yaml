@@ -1,3 +1,8 @@
 kind: s3iterabledataset
 batch_size: 128
 num_workers: 8
+s3reader:
+  # s3reader type: sequential or range_based
+  type: sequential # default
+  # buffer_size (bytes): only used with range_based s3reader type
+  buffer_size: 8*1024*1024 # default

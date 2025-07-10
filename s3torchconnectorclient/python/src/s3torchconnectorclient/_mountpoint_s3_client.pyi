@@ -28,7 +28,13 @@ class MountpointS3Client:
         force_path_style: Optional[bool] = False,
         max_attempts: int = 10,
     ): ...
-    def get_object(self, bucket: str, key: str) -> GetObjectStream: ...
+    def get_object(
+        self,
+        bucket: str,
+        key: str,
+        start: Optional[int] = None,
+        end: Optional[int] = None,
+    ) -> GetObjectStream: ...
     def put_object(
         self, bucket: str, key: str, storage_class: Optional[str] = None
     ) -> PutObjectStream: ...

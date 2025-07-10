@@ -7,9 +7,11 @@ import logging
 import torch.utils.data
 import torch
 
-from . import S3Reader
+from . import S3Reader, S3ReaderConstructor
+from .s3reader import S3ReaderConstructorProtocol
 from ._s3bucket_key_data import S3BucketKeyData
 from ._s3client import S3Client, S3ClientConfig
+from ._user_agent import UserAgent
 from ._s3dataset_common import (
     identity,
     get_objects_from_uris,
@@ -34,6 +36,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
         enable_sharding: bool = False,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ):
         self._get_dataset_objects = get_dataset_objects
         self._transform = transform
@@ -42,6 +45,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         self._s3client_config = s3client_config
         self._client = None
         self._enable_sharding = enable_sharding
+        self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
 
         self._rank = 0
         self._world_size = 1
@@ -67,6 +71,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
         enable_sharding: bool = False,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI(s) provided.
 
@@ -77,6 +82,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
           enable_sharding: If True, shard the dataset across multiple workers for parallel data loading. If False (default), each worker loads the entire dataset independently.
+          reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
+            e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -92,6 +99,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             transform=transform,
             s3client_config=s3client_config,
             enable_sharding=enable_sharding,
+            reader_constructor=reader_constructor,
         )
 
     @classmethod
@@ -104,6 +112,7 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
         transform: Callable[[S3Reader], Any] = identity,
         s3client_config: Optional[S3ClientConfig] = None,
         enable_sharding: bool = False,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ):
         """Returns an instance of S3IterableDataset using the S3 URI provided.
 
@@ -114,6 +123,8 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
           transform: Optional callable which is used to transform an S3Reader into the desired type.
           s3client_config: Optional S3ClientConfig with parameters for S3 client.
           enable_sharding: If True, shard the dataset across multiple workers for parallel data loading. If False (default), each worker loads the entire dataset independently.
+          reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
+            e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
 
         Returns:
             S3IterableDataset: An IterableStyle dataset created from S3 objects.
@@ -129,13 +140,22 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
             transform=transform,
             s3client_config=s3client_config,
             enable_sharding=enable_sharding,
+            reader_constructor=reader_constructor,
         )
 
     def _get_client(self):
         if self._client is None:
+            reader_type_string = S3ReaderConstructor.get_reader_type_string(
+                self._reader_constructor
+            )
             self._client = S3Client(
                 self.region,
                 endpoint=self.endpoint,
+                user_agent=UserAgent(
+                    comments=[
+                        f"md/dataset#iterable md/reader_type#{reader_type_string}"
+                    ]
+                ),
                 s3client_config=self._s3client_config,
             )
         return self._client
@@ -143,7 +163,10 @@ class S3IterableDataset(torch.utils.data.IterableDataset):
     def _get_transformed_object(self, bucket_key: S3BucketKeyData) -> Any:
         return self._transform(
             self._get_client().get_object(
-                bucket_key.bucket, bucket_key.key, object_info=bucket_key.object_info
+                bucket_key.bucket,
+                bucket_key.key,
+                object_info=bucket_key.object_info,
+                reader_constructor=self._reader_constructor,
             )
         )
 
