@@ -1,15 +1,18 @@
-## TBD
+## v1.4.2 (July 14, 2025)
 
 ### New features
-* Implement range-based S3 Reader for byte range requests, enabling efficient random read patterns (#339)
+* Implement range-based S3 Reader for efficient partial read patterns (#339)
+* Implemented AWS profile credentials support as part of S3ClientConfig (#341)
 
 ### Bug fixes
 * Enable multiple CRT clients per process with different configs (#340)
 
 ### Other changes
+* Expose configuration needed for testing profile credentials (#344)
+* Keep usage of manylinux_2014 for wider suport of glibc (#342, #343)
 
 ### Breaking changes
-
+* No breaking changes.
 
 ## v1.4.1 (May 20, 2025)
 
