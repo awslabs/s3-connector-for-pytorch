@@ -10,6 +10,7 @@
 ### Other changes
 * Expose configuration needed for testing profile credentials (#344)
 * Keep usage of manylinux_2014 for wider suport of glibc (#342, #343)
+* Upload image directories once per session to mitigate CI/CD S3Express boto3 400 errors (#347)
 
 ### Breaking changes
 * No breaking changes.

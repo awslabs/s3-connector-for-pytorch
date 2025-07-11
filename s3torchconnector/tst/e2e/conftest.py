@@ -4,11 +4,15 @@
 import io
 import os
 import random
+from datetime import datetime
 
 import boto3
 import numpy as np
 from PIL import Image
 import pytest
+
+# Create a session-level timestamp for unique S3 prefixes
+session_datetime = datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 def getenv(var: str, optional: bool = False) -> str:
@@ -120,21 +124,21 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
     assert prefix == "" or prefix.endswith("/")
 
     nonce = random.randrange(2**64)
-    prefix = f"{prefix}{name}/{nonce}/"
+    prefix = f"{prefix}{session_datetime}-{name}-{nonce}/"
 
     return BucketPrefixFixture(
         region, bucket, prefix, storage_class, profile_arn, profile_bucket
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def image_directory(request) -> BucketPrefixFixture:
     NUM_IMAGES = 10
     IMAGE_SIZE = 100
-    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, request.node.name)
+    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, "images")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def image_directory_for_dp(request) -> BucketPrefixFixture:
     """When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
     If the total number of images cannot be evenly divided by the number of workers,
@@ -144,12 +148,12 @@ def image_directory_for_dp(request) -> BucketPrefixFixture:
     """
     NUM_IMAGES = 36
     IMAGE_SIZE = 100
-    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, request.node.name)
+    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, "images_distributed")
 
 
-def _create_image_directory_fixture(num_image: int, image_size: int, node_name: str):
+def _create_image_directory_fixture(num_image: int, image_size: int, name: str):
     """Create a bucket/prefix fixture that contains a directory of random JPG image files."""
-    fixture = get_test_bucket_prefix(f"{node_name}/image_directory")
+    fixture = get_test_bucket_prefix(name)
     for i in range(num_image):
         data = np.random.randint(0, 256, image_size * image_size * 3, np.uint8)
         data = data.reshape(image_size, image_size, 3)
