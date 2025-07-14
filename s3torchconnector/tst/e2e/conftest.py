@@ -11,8 +11,7 @@ import numpy as np
 from PIL import Image
 import pytest
 
-# Create a session-level timestamp for unique S3 prefixes
-session_datetime = datetime.now().strftime("%Y%m%d-%H%M%S")
+SESSION_DATETIME = datetime.now().strftime("%Y%m%dT%H%M%S")
 
 
 def getenv(var: str, optional: bool = False) -> str:
@@ -124,7 +123,7 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
     assert prefix == "" or prefix.endswith("/")
 
     nonce = random.randrange(2**64)
-    prefix = f"{prefix}{session_datetime}-{name}-{nonce}/"
+    prefix = f"{prefix}{name}/{SESSION_DATETIME}-{nonce}/"
 
     return BucketPrefixFixture(
         region, bucket, prefix, storage_class, profile_arn, profile_bucket
@@ -132,14 +131,14 @@ def get_test_bucket_prefix(name: str) -> BucketPrefixFixture:
 
 
 @pytest.fixture(scope="session")
-def image_directory(request) -> BucketPrefixFixture:
+def image_directory() -> BucketPrefixFixture:
     NUM_IMAGES = 10
     IMAGE_SIZE = 100
-    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, "images")
+    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, "image_directory")
 
 
 @pytest.fixture(scope="session")
-def image_directory_for_dp(request) -> BucketPrefixFixture:
+def image_directory_for_dp() -> BucketPrefixFixture:
     """When conducting distributed training tests, be cautious about the number of files (images) in the test dataset.
     If the total number of images cannot be evenly divided by the number of workers,
     the DistributedSampler will duplicate a subset of the images across workers to ensure an equal
@@ -148,7 +147,7 @@ def image_directory_for_dp(request) -> BucketPrefixFixture:
     """
     NUM_IMAGES = 36
     IMAGE_SIZE = 100
-    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, "images_distributed")
+    return _create_image_directory_fixture(NUM_IMAGES, IMAGE_SIZE, "image_directory_dp")
 
 
 def _create_image_directory_fixture(num_image: int, image_size: int, name: str):
@@ -171,9 +170,9 @@ def _create_image_directory_fixture(num_image: int, image_size: int, name: str):
 
 @pytest.fixture
 def checkpoint_directory(request) -> BucketPrefixFixture:
-    return get_test_bucket_prefix(f"{request.node.name}/checkpoint_directory")
+    return get_test_bucket_prefix(f"{request.node.name}-checkpoint_directory")
 
 
 @pytest.fixture
 def empty_directory(request) -> BucketPrefixFixture:
-    return get_test_bucket_prefix(f"{request.node.name}/empty_directory")
+    return get_test_bucket_prefix(f"{request.node.name}-empty_directory")
