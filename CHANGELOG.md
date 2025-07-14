@@ -1,3 +1,14 @@
+## TBD
+
+### New features
+
+### Bug fixes
+
+### Other changes
+* Upload image directories once per session to mitigate CI/CD S3Express boto3 400 errors (#347)
+
+### Breaking changes
+
 ## v1.4.2 (July 14, 2025)
 
 ### New features
@@ -10,7 +21,6 @@
 ### Other changes
 * Expose configuration needed for testing profile credentials (#344)
 * Keep usage of manylinux_2014 for wider suport of glibc (#342, #343)
-* Upload image directories once per session to mitigate CI/CD S3Express boto3 400 errors (#347)
 
 ### Breaking changes
 * No breaking changes.
