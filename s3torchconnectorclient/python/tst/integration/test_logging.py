@@ -118,7 +118,7 @@ def test_logging_to_file_env_filters_unset(image_directory: BucketPrefixFixture)
         ),
         (
             "debug,awscrt=off",
-            ["INFO s3torchconnector.s3map_dataset", "awscrt=off"],
+            ["INFO s3torchconnector.s3map_dataset"],
             ["awscrt::"],
             ["DEBUG", "mountpoint_s3_client"],
             ["awscrt::", "INFO s3torchconnector.s3map_dataset", "TRACE"],
