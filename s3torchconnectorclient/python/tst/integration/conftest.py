@@ -4,6 +4,7 @@
 import io
 import os
 import random
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -11,6 +12,8 @@ import boto3
 import numpy as np
 from PIL import Image
 import pytest
+
+SESSION_DATETIME = datetime.now().strftime("%Y%m%dT%H%M%S")
 
 
 def getenv(var: str, optional: bool = False) -> str:
@@ -42,7 +45,7 @@ class BucketPrefixFixture:
         self.s3 = session.client("s3")
 
         nonce = random.randrange(2**64)
-        self.prefix = f"{self.prefix}{self.name}/{nonce}/"
+        self.prefix = f"{self.prefix}{self.name}/{SESSION_DATETIME}-{nonce}/"
 
     @property
     def s3_uri(self):
@@ -89,12 +92,12 @@ def get_test_copy_bucket_fixture(name: str) -> CopyBucketFixture:
     return copy_bucket_fixture
 
 
-@pytest.fixture
-def image_directory(request) -> BucketPrefixFixture:
+@pytest.fixture(scope="session")
+def image_directory() -> BucketPrefixFixture:
     """Create a bucket/prefix fixture that contains a directory of random JPG image files."""
     NUM_IMAGES = 10
     IMAGE_SIZE = 100
-    fixture = BucketPrefixFixture(f"{request.node.name}/image_directory")
+    fixture = BucketPrefixFixture(f"image_directory_client")
     for i in range(NUM_IMAGES):
         data = np.random.randint(0, 256, IMAGE_SIZE * IMAGE_SIZE * 3, np.uint8)
         data = data.reshape(IMAGE_SIZE, IMAGE_SIZE, 3)
@@ -112,28 +115,28 @@ def image_directory(request) -> BucketPrefixFixture:
 
 @pytest.fixture
 def sample_directory(request) -> BucketPrefixFixture:
-    fixture = BucketPrefixFixture(f"{request.node.name}/sample_files")
+    fixture = BucketPrefixFixture(f"{request.node.name}-sample_files")
     fixture.add("hello_world.txt", b"Hello, World!\n")
     return fixture
 
 
 @pytest.fixture
 def put_object_tests_directory(request) -> BucketPrefixFixture:
-    fixture = BucketPrefixFixture(f"{request.node.name}/put_integration_tests")
+    fixture = BucketPrefixFixture(f"{request.node.name}-put_integration_tests")
     fixture.add("to_overwrite.txt", b"before")
     return fixture
 
 
 @pytest.fixture
 def checkpoint_directory(request) -> BucketPrefixFixture:
-    return BucketPrefixFixture(f"{request.node.name}/checkpoint_directory")
+    return BucketPrefixFixture(f"{request.node.name}-checkpoint_directory")
 
 
 @pytest.fixture
 def empty_directory(request) -> BucketPrefixFixture:
-    return BucketPrefixFixture(f"{request.node.name}/empty_directory")
+    return BucketPrefixFixture(f"{request.node.name}-empty_directory")
 
 
 @pytest.fixture
 def copy_directory(request) -> CopyBucketFixture:
-    return get_test_copy_bucket_fixture(f"{request.node.name}/copy_directory")
+    return get_test_copy_bucket_fixture(f"{request.node.name}-copy_directory")
