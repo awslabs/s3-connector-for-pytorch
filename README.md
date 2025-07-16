@@ -29,7 +29,7 @@ pip install s3torchconnector
 ```
 
 Amazon S3 Connector for PyTorch supports pre-build wheels via Pip only for Linux and MacOS for now. For other platforms,
-see [DEVELOPMENT](DEVELOPMENT.md) for build instructions.
+see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for build instructions.
 
 ### Configuration
 
@@ -46,7 +46,7 @@ on Unix or macOS.
 ### Examples
 
 [API docs](http://awslabs.github.io/s3-connector-for-pytorch) are showing API of the public components. 
-End to end example of how to use `s3torchconnector` can be found under the [examples](examples) directory.
+End to end example of how to use `s3torchconnector` can be found under the [examples](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples) directory.
 
 #### Sample Examples
 
@@ -143,7 +143,7 @@ pip install s3torchconnector[dcp]
 ### Sample Example
 
 End-to-end examples for using distributed checkpoints with S3 Connector for PyTorch 
-can be found in the [examples/dcp](examples/dcp) directory.
+can be found in the [examples/dcp](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples/dcp) directory.
 
 ```py
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
@@ -348,7 +348,7 @@ pip install s3torchconnector[lightning]
 
 ### Examples
 
-End to end examples for the Pytorch Lightning integration can be found in the [examples/lightning](examples/lightning)
+End to end examples for the Pytorch Lightning integration can be found in the [examples/lightning](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples/lightning)
 directory.
 
 ```py
@@ -488,11 +488,11 @@ For `S3ReaderConstructor` usage details, please refer to the [`S3ReaderConstruct
 
 ## Contributing
 
-We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](CONTRIBUTING.md) for more
+We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/CONTRIBUTING.md) for more
 information on how to report bugs or submit pull requests.
 
 ### Development
-See [DEVELOPMENT](DEVELOPMENT.md) for information about code style, development process, and guidelines.
+See [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for information about code style, development process, and guidelines.
 
 ### Compatibility with other storage services
 S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in Amazon S3. 
@@ -507,9 +507,9 @@ If you discover a potential security issue in this project we ask that you notif
 ### Code of conduct
 
 This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
-See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for more details.
+See [CODE_OF_CONDUCT.md](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/CODE_OF_CONDUCT.md) for more details.
 
 ## License
 
-Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](LICENSE) file.
+Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/LICENSE) file.
 
