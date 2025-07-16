@@ -35,13 +35,17 @@ see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/
 
 To use `s3torchconnector`, AWS credentials must be provided through one of the following methods:
 
-- If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to 
-that role.
-- Install and configure [`awscli`](https://aws.amazon.com/cli/) and run `aws configure`.
-- Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` 
-on Unix or macOS.
-- Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
-- Pass the name of the desired profile that you have configured in `~/.aws/config` and `~/.aws/credentials` to the `S3ClientConfig` object.
+- **EC2 Instance Role**: If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to that role.
+- **AWS CLI**: Install and configure [`awscli`](https://aws.amazon.com/cli/) and run `aws configure`.
+- **AWS Credential Files**: Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` on Unix or macOS.
+- **Environment Variables**: Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
+
+To use a specific AWS profile configured in `~/.aws/config` and `~/.aws/credentials`, you can either:
+
+- Set environment variable `AWS_PROFILE=custom-profile`, or 
+- Pass the profile name to the `S3ClientConfig` object, e.g. `S3ClientConfig(profile="custom-profile")`.
+
+For a more detailed configuration guide, see [AWS CLI docs](https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html).
 
 ### Examples
 
