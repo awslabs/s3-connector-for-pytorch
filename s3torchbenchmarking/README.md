@@ -15,7 +15,7 @@ performance impact to the end-to-end training process.
     - Measure performance in data fetching and indexing
 2. **PyTorch's Distributed Checkpointing (DCP) benchmarks**
     - Assess our connector's performance versus PyTorch's default distributed checkpointing mechanism
-    - For detailed information, refer to the one of dedicated [DCP using DDP `README`](src/s3torchbenchmarking/dcp_ddp/README.md)
+    - For detailed information, refer to [DCP using DDP `README`](src/s3torchbenchmarking/dcp_ddp/README.md)
 or [DCP using FSDP `README`](src/s3torchbenchmarking/dcp_fsdp/README.md)
 3. **PyTorch Lightning Checkpointing benchmarks**
     - Evaluate our connector within the PyTorch Lightning framework
@@ -96,7 +96,7 @@ s3torch-datagen -n 100k --shard-size 128MiB --s3-bucket my-bucket --region us-ea
 ## Running the benchmarks
 
 You can run the different benchmarks by editing their corresponding config files, then running one of those shell
-script (specifically, you must provide a value for all keys marked with `???`):
+scripts (specifically, you must provide a value for all keys marked with `???`):
 
 ```shell
 # Dataset benchmarks
@@ -105,22 +105,24 @@ vim ./conf/dataset.yaml           # 1. edit config
 
 # PyTorch Checkpointing benchmarks
 vim ./conf/pytorch_checkpointing.yaml # 1. edit config
-./utils/run_checkpoints_benchmarks.sh # 2. run scenario
+./utils/run_checkpoint_benchmarks.sh # 2. run scenario
 
 # PyTorch Lightning Checkpointing benchmarks
 vim ./conf/lightning_checkpointing.yaml # 1. edit config
-./utils/run_lighning_benchmarks.sh      # 2. run scenario
+./utils/run_lightning_benchmarks.sh      # 2. run scenario
 
 # PyTorch’s Distributed Checkpointing (DCP) benchmarks
-vim ./conf/dcp.yaml           # 1. edit config
+vim ./conf/dcp_ddp.yaml           # 1. edit config
+vim ./conf/dcp_fsdp.yaml
 ./utils/run_dcp_ddp_benchmarks.sh # 2. run scenario
+./utils/run_dcp_fsdp_benchmarks.sh
 ```
 
 > [!NOTE]
 > Ensure the bucket is in the same region as the EC2 instance, to eliminate network latency effects in your
 > measurements.
 
-Each of those scripts rely on Hydra config files, located under the [`conf`](conf) directory. You may edit those as you
+Each of those scripts relies on Hydra config files, located under the [`conf`](conf) directory. You may edit those as you
 see fit to configure the runs: in particular, parameters under the `hydra.sweeper.params` path will create as many jobs
 as the cartesian product of those.
 
@@ -145,7 +147,7 @@ Benchmark results are organized as follows, inside a default `./multirun` direct
         │   └── job_results.json
         ├── 1
         │   ├── benchmark.log
-        │   └── job_resutls.json
+        │   └── job_results.json
         ├── multirun.yaml
         └── run_results.json
 ```
@@ -158,7 +160,7 @@ Each run directory contains job subdirectories (e.g., `0`, `1`, etc.), correspon
 
 ### Experiment reporting
 
-Experiments will report various metrics, such as throughput and processed time — the exact types vary per scenarios.
+Experiments will report various metrics, such as throughput and processed time — the exact types vary per scenario.
 Results are stored in two locations:
 
 1. In the job subdirectories:

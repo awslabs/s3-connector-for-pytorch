@@ -28,7 +28,7 @@ Amazon S3, without first saving to local storage.
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports pre-build wheels via Pip only for Linux and MacOS for now. For other platforms,
+Amazon S3 Connector for PyTorch supports pre-built wheels via Pip only for Linux and MacOS for now. For other platforms,
 see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for build instructions.
 
 ### Configuration
@@ -76,7 +76,7 @@ for item in iterable_dataset:
 # This process might take some time and may give the impression of being unresponsive.
 map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
 
-# Randomly access to an item in map_dataset.
+# Randomly access an item in map_dataset.
 item = map_dataset[0]
 
 # Learn about bucket, key, and content of the object
@@ -340,7 +340,7 @@ dataloader = DataLoader(dataset, sampler=sampler, num_workers=4)
 
 Amazon S3 Connector for PyTorch includes an integration for PyTorch Lightning, featuring S3LightningCheckpoint, an 
 implementation of Lightning's CheckpointIO. This allows users to make use of Amazon S3 Connector for PyTorch's S3 
-checkpointing functionality with Pytorch Lightning.
+checkpointing functionality with PyTorch Lightning.
 
 ### Getting Started
 
@@ -352,7 +352,7 @@ pip install s3torchconnector[lightning]
 
 ### Examples
 
-End to end examples for the Pytorch Lightning integration can be found in the [examples/lightning](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples/lightning)
+End to end examples for the PyTorch Lightning integration can be found in the [examples/lightning](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples/lightning)
 directory.
 
 ```py

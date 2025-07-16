@@ -3,8 +3,7 @@
 To develop `s3torchconnector`, you need to have Python, `pip` and `python-venv` installed. 
 
 `s3torchconnector` uses `s3torchconnectorclient` as the underlying S3 Connector. `s3torchconnectorclient` is a 
-Python wrapper around MountpointS3Client that uses S3 CRT to optimize performance of S3 read/write
-.
+Python wrapper around MountpointS3Client that uses S3 CRT to optimize performance of S3 read/write.
 Since MountpointS3Client is implemented in Rust, for development and building from source, you will need to install 
 `clang`, `cmake` and rust compiler (as detailed below). 
 
@@ -19,7 +18,7 @@ sudo apt install python3-pip
 ```shell
   git clone git@github.com:awslabs/s3-connector-for-pytorch.git
 ```
-#### Create  a Python virtual environment
+#### Create a Python virtual environment
 ```shell
   cd /path/to/your/project
   python3 -m venv virtual-env
@@ -154,7 +153,7 @@ Using S3ClientConfig you can set up the following parameters for the underlying 
 
 * `max_attempts(int)`: Number of retries for retriable errors
 
-For example this can be passed in like: 
+For example, this can be passed in like: 
 ```py
 from s3torchconnector import S3MapDataset, S3ClientConfig
 
