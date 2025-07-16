@@ -122,3 +122,9 @@ before-all = [
     "sudo installer -pkg /tmp/Python3129.pkg -target /",
     "sh '/Applications/Python 3.12/Install Certificates.command'"
 ]
+
+[[tool.cibuildwheel.overrides]]
+select = "cp313*"
+before-build = [
+    "python -m pip install torch>=2.6.0 --extra-index-url https://download.pytorch.org/whl/cpu"
+]

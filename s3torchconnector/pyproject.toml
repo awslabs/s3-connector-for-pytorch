@@ -23,7 +23,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "torch >= 2.0.1, != 2.5.0",
+    "torch >= 2.0.1, != 2.5.0; python_version < '3.13'",
+    "torch >= 2.6.0; python_version >= '3.13'", # python 3.13 supports torch 2.6.0+, see https://github.com/pytorch/pytorch/blob/main/RELEASE.md#release-compatibility-matrix
     "s3torchconnectorclient == 1.4.2",
 ]
 
