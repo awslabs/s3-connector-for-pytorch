@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "s3torchconnectorclient"
 version = "1.4.2"
 description = "Internal S3 client implementation for s3torchconnector"
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.8,<3.14"
 readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Topic :: Utilities"
