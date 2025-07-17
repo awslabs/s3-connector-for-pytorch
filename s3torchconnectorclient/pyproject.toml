@@ -80,6 +80,9 @@ build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*", "cp313*"]
 skip = "*musllinux* *i686 cp313-macosx_x86_64*"
 
 [tool.cibuildwheel.linux]
+# Python 3.8-3.12: Use manylinux2014 (glibc 2.17)
+manylinux-x86_64-image = "manylinux2014"
+manylinux-aarch64-image = "manylinux2014"
 before-all = [
   "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
   "bash -c 'platform=$(uname -p); if [ \"$platform\" == \"aarch64\" ]; then sed -i \"s|centos/7|altarch/7|g\" /etc/yum.repos.d/*.repo; fi'",
@@ -94,7 +97,38 @@ before-all = [
   "yum install -y devtoolset-10-gcc-c++",
   "yum install -y llvm-toolset-7.0-clang"
 ]
-environment = { PATH="/opt/rh/llvm-toolset-7.0/root/usr/bin:/opt/rh/devtoolset-10/root/usr/bin:$HOME/.cargo/bin:$PATH", LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7.0/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib", CC="/opt/rh/devtoolset-10/root/usr/bin/gcc", CXX="/opt/rh/devtoolset-10/root/usr/bin/g++" }
+[tool.cibuildwheel.linux.environment]
+PATH = "/opt/rh/llvm-toolset-7.0/root/usr/bin:/opt/rh/devtoolset-10/root/usr/bin:$HOME/.cargo/bin:$PATH"
+LD_LIBRARY_PATH = "/opt/rh/llvm-toolset-7.0/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib"
+CC = "/opt/rh/devtoolset-10/root/usr/bin/gcc"
+CXX = "/opt/rh/devtoolset-10/root/usr/bin/g++"
+
+[[tool.cibuildwheel.overrides]]
+# Python 3.13: Use manylinux_2_28 (glibc 2.28)
+select = "cp313-*manylinux*"
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+before-all = [
+  "yum -y update",
+  "yum -y install openssl3 openssl3-devel",
+  "yum install -y gcc-toolset-10-gcc",
+  "yum install -y gcc-toolset-10-gcc-c++",
+  "yum install -y clang clang-devel llvm-toolset",
+  "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
+  "bash -c 'platform=$(uname -p); if [ \"$platform\" == \"aarch64\" ]; then sed -i \"s|centos/7|altarch/7|g\" /etc/yum.repos.d/*.repo; fi'",
+  "yum install -y fuse",
+  "yum install -y fuse-devel",
+  "yum install -y make",
+  "yum install -y git",
+  "yum install -y pkgconfig",
+  "yum install -y tar",
+  "yum install -y wget"
+]
+[tool.cibuildwheel.overrides.environment]
+PATH = "/usr/lib64/ccache:/usr/lib64/llvm:/opt/rh/gcc-toolset-10/root/usr/bin:$HOME/.cargo/bin:$PATH"
+LD_LIBRARY_PATH = "/usr/lib64/llvm:/opt/rh/gcc-toolset-10/root/usr/lib64:/opt/rh/gcc-toolset-10/root/usr/lib:$LD_LIBRARY_PATH"
+CC = "/opt/rh/gcc-toolset-10/root/usr/bin/gcc"
+CXX = "/opt/rh/gcc-toolset-10/root/usr/bin/g++"
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.12" }
