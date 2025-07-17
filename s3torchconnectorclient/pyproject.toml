@@ -122,3 +122,12 @@ before-all = [
     "sudo installer -pkg /tmp/Python3129.pkg -target /",
     "sh '/Applications/Python 3.12/Install Certificates.command'"
 ]
+
+[[tool.cibuildwheel.overrides]]
+# Same issue as above - Using CPython 3.13.1 for MacOS to mitigate resource tracker hanging issue
+select = "cp313-macosx*"
+before-all = [
+    "curl -o /tmp/Python3131.pkg https://www.python.org/ftp/python/3.13.1/python-3.13.1-macos11.pkg", 
+    "sudo installer -pkg /tmp/Python3131.pkg -target /",
+    "sh '/Applications/Python 3.13/Install Certificates.command'"
+]
