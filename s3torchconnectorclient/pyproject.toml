@@ -76,8 +76,8 @@ environment-pass = [
     "S3_EXPRESS_PROFILE_BUCKET"
 ]
 before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
-build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*"]
-skip = "*musllinux* *i686"
+build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*", "cp313*"]
+skip = "*musllinux* *i686 cp313-macosx_x86_64*"
 
 [tool.cibuildwheel.linux]
 before-all = [
