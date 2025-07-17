@@ -28,25 +28,29 @@ Amazon S3, without first saving to local storage.
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports pre-build wheels via Pip only for Linux and MacOS for now. For other platforms,
-see [DEVELOPMENT](DEVELOPMENT.md) for build instructions.
+Amazon S3 Connector for PyTorch supports pre-built wheels via Pip only for Linux and MacOS for now. For other platforms,
+see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for build instructions.
 
 ### Configuration
 
 To use `s3torchconnector`, AWS credentials must be provided through one of the following methods:
 
-- If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to 
-that role.
-- Install and configure [`awscli`](https://aws.amazon.com/cli/) and run `aws configure`.
-- Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` 
-on Unix or macOS.
-- Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
-- Pass the name of the desired profile that you have configured in `~/.aws/config` and `~/.aws/credentials` to the `S3ClientConfig` object.
+- **EC2 Instance Role**: If you are using this library on an EC2 instance, specify an IAM role and then give the EC2 instance access to that role.
+- **AWS CLI**: Install and configure [`awscli`](https://aws.amazon.com/cli/) and run `aws configure`.
+- **AWS Credential Files**: Set credentials in the AWS credentials profile file on the local system, located at: `~/.aws/credentials` on Unix or macOS.
+- **Environment Variables**: Set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
+
+To use a specific AWS profile configured in `~/.aws/config` and `~/.aws/credentials`, you can either:
+
+- Set environment variable `AWS_PROFILE=custom-profile`, or 
+- Pass the profile name to the `S3ClientConfig` object, e.g. `S3ClientConfig(profile="custom-profile")`.
+
+For a more detailed configuration guide, see [AWS CLI docs](https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html).
 
 ### Examples
 
 [API docs](http://awslabs.github.io/s3-connector-for-pytorch) are showing API of the public components. 
-End to end example of how to use `s3torchconnector` can be found under the [examples](examples) directory.
+End to end example of how to use `s3torchconnector` can be found under the [examples](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples) directory.
 
 #### Sample Examples
 
@@ -72,7 +76,7 @@ for item in iterable_dataset:
 # This process might take some time and may give the impression of being unresponsive.
 map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION)
 
-# Randomly access to an item in map_dataset.
+# Randomly access an item in map_dataset.
 item = map_dataset[0]
 
 # Learn about bucket, key, and content of the object
@@ -143,7 +147,7 @@ pip install s3torchconnector[dcp]
 ### Sample Example
 
 End-to-end examples for using distributed checkpoints with S3 Connector for PyTorch 
-can be found in the [examples/dcp](examples/dcp) directory.
+can be found in the [examples/dcp](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples/dcp) directory.
 
 ```py
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
@@ -336,7 +340,7 @@ dataloader = DataLoader(dataset, sampler=sampler, num_workers=4)
 
 Amazon S3 Connector for PyTorch includes an integration for PyTorch Lightning, featuring S3LightningCheckpoint, an 
 implementation of Lightning's CheckpointIO. This allows users to make use of Amazon S3 Connector for PyTorch's S3 
-checkpointing functionality with Pytorch Lightning.
+checkpointing functionality with PyTorch Lightning.
 
 ### Getting Started
 
@@ -348,7 +352,7 @@ pip install s3torchconnector[lightning]
 
 ### Examples
 
-End to end examples for the Pytorch Lightning integration can be found in the [examples/lightning](examples/lightning)
+End to end examples for the PyTorch Lightning integration can be found in the [examples/lightning](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/examples/lightning)
 directory.
 
 ```py
@@ -488,11 +492,11 @@ For `S3ReaderConstructor` usage details, please refer to the [`S3ReaderConstruct
 
 ## Contributing
 
-We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](CONTRIBUTING.md) for more
+We welcome contributions to Amazon S3 Connector for PyTorch. Please see [CONTRIBUTING](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/CONTRIBUTING.md) for more
 information on how to report bugs or submit pull requests.
 
 ### Development
-See [DEVELOPMENT](DEVELOPMENT.md) for information about code style, development process, and guidelines.
+See [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for information about code style, development process, and guidelines.
 
 ### Compatibility with other storage services
 S3 Connector for PyTorch delivers high throughput for PyTorch training jobs that access or store data in Amazon S3. 
@@ -507,9 +511,9 @@ If you discover a potential security issue in this project we ask that you notif
 ### Code of conduct
 
 This project has adopted the [Amazon Open Source Code of Conduct](https://aws.github.io/code-of-conduct).
-See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for more details.
+See [CODE_OF_CONDUCT.md](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/CODE_OF_CONDUCT.md) for more details.
 
 ## License
 
-Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](LICENSE) file.
+Amazon S3 Connector for PyTorch has a BSD 3-Clause License, as found in the [LICENSE](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/LICENSE) file.
 
