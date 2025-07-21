@@ -37,4 +37,4 @@ export PROFILE_IAM_ROLE=${PROFILE_IAM_ROLE}
 export S3_PROFILE_BUCKET=${S3_PROFILE_BUCKET}
 export S3_EXPRESS_PROFILE_BUCKET=${S3_EXPRESS_PROFILE_BUCKET}
 
-CIBW_MANYLINUX_X86_64_IMAGE=manylinux2014 CIBW_MANYLINUX_AARCH64_IMAGE=manylinux2014 cibuildwheel --output-dir wheelhouse --platform linux s3torchconnectorclient
+cibuildwheel --output-dir wheelhouse --platform linux s3torchconnectorclient

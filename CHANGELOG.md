@@ -1,6 +1,7 @@
 ## TBD
 
 ### New features
+* Add support for Python 3.13 
 
 ### Bug fixes
 
