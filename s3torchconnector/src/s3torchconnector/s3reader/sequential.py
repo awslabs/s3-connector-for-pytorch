@@ -1,6 +1,8 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import os
+import logging
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
@@ -12,6 +14,8 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
 )
 from .s3reader import S3Reader
+
+log = logging.getLogger(__name__)
 
 
 class SequentialS3Reader(S3Reader):
@@ -32,6 +36,7 @@ class SequentialS3Reader(S3Reader):
             raise ValueError("Bucket should be specified")
         self._bucket = bucket
         self._key = key
+        self._filename = os.path.basename(self._key)
         self._get_object_info = get_object_info
         self._get_stream = get_stream
         self._stream: Optional[Iterator[bytes]] = None
@@ -39,6 +44,7 @@ class SequentialS3Reader(S3Reader):
         self._size: Optional[int] = None
         # Invariant: _position == _buffer._tell() unless _position_at_end()
         self._position = 0
+        self._pid: int = os.getpid()
 
     @property
     def bucket(self) -> str:
@@ -73,6 +79,9 @@ class SequentialS3Reader(S3Reader):
             int : numer of bytes read or zero, if no bytes available
         """
         buf_size = len(buf)
+        log.debug(
+            f"file={self._filename}, pid={self._pid}, type=readinto, position={self._position}, size={buf_size}"
+        )
         if self._position_at_end() or buf_size == 0:
             # If no bytes are available or no place to write data, zero should be returned
             return 0
@@ -108,6 +117,11 @@ class SequentialS3Reader(S3Reader):
 
         if size is not None and not isinstance(size, int):
             raise TypeError(f"argument should be integer or None, not {type(size)!r}")
+
+        log.debug(
+            f"file={self._filename}, pid={self._pid}, type=read, position={self._position}, size={size}"
+        )
+
         if self._position_at_end():
             # Invariant: if we're at EOF, it doesn't matter what `size` is, we'll always return no data and have no
             # side effect.
