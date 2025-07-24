@@ -337,10 +337,47 @@ class S3StorageReader(FileSystemReader):
         self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
         self.path = self.fs.init_path(path)
         self.sync_files = False
+        self._pid: int = os.getpid()
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
+
+    def read_data(self, plan, planner):
+        """Add debug logging to extract tensor read patterns, overriding original read_data method."""
+
+        # Start Label
+        logger.debug(
+            f"pid={self._pid}, type=tensor_info_start, plan_items={len(plan.items)}"
+        )
+
+        for read_item in plan.items:
+            # Extract item storage metadata
+            storage_metadata = self.storage_data[read_item.storage_index]
+
+            filename = os.path.basename(storage_metadata.relative_path)
+            storage_offset = storage_metadata.offset
+            storage_length = storage_metadata.length
+
+            # Extract tensor type without disclosing fqn (model, optimizer, etc.)
+            tensor_fqn = read_item.storage_index.fqn
+            tensor_type = tensor_fqn.split(".")[0] if "." in tensor_fqn else tensor_fqn
+
+            logger.debug(
+                f"file={filename}, pid={self._pid}, type=tensor_info, "
+                f"tensor_type={tensor_type}, storage_offset={storage_offset}, "
+                f"storage_length={storage_length}"
+            )
+
+        # Call original read_data method
+        result = super().read_data(plan, planner)
+
+        # End label
+        logger.debug(
+            f"pid={self._pid}, type=tensor_info_end, plan_items={len(plan.items)}"
+        )
+
+        return result
 
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
