@@ -7,7 +7,7 @@ import os
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Union, Optional
+from typing import Generator, Union, Optional, Callable, Any
 from typing import List
 
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
@@ -252,7 +252,7 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan
+from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
 import dataclasses
 from dataclasses import dataclass
 
@@ -264,6 +264,21 @@ class StorageMetadata:
     prefix: str
 
 
+from torch.distributed.checkpoint.filesystem import (
+    _split_by_size_and_type as original_split,
+)
+
+
+def _ordered_split_by_size_and_type(
+    bins: int, items: List[Any], sort_key: Optional[Callable] = None
+) -> List[List[Any]]:
+    buckets = original_split(bins, items)
+    if sort_key:
+        for bucket in buckets:
+            bucket.sort(key=sort_key)
+    return buckets
+
+
 class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
@@ -271,6 +286,7 @@ class S3StorageWriter(FileSystemWriter):
         path: str,
         s3client_config: Optional[S3ClientConfig] = None,
         prefix_strategy: Optional[S3PrefixStrategyBase] = None,
+        sort_key: Optional[Callable] = None,
         **kwargs,
     ) -> None:
         """
@@ -292,6 +308,16 @@ class S3StorageWriter(FileSystemWriter):
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
         self.prefix_strategy = prefix_strategy or DefaultPrefixStrategy()
+        self.sort_key = sort_key
+
+        if self.sort_key:
+            # Replace the original split function with ours that will sort tensors/weights
+            import torch.distributed.checkpoint.filesystem as fs_module
+            from functools import partial
+
+            fs_module._split_by_size_and_type = partial(
+                _ordered_split_by_size_and_type, sort_key=sort_key
+            )
 
     def prepare_global_plan(self, plans: List[SavePlan]) -> List[SavePlan]:
         """
@@ -378,6 +404,11 @@ class S3StorageReader(FileSystemReader):
         )
 
         return result
+
+    def prepare_local_plan(self, plan: LoadPlan) -> LoadPlan:
+        # Sort items in plan based on their offset in checkpoints shards
+        plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+        return plan
 
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
