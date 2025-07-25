@@ -1,14 +1,14 @@
-## TBD
+## v1.4.3 (July 25, 2025)
 
 ### New features
-* Add support for Python 3.13 
-
-### Bug fixes
+* Add support for Python 3.13 (#350)
 
 ### Other changes
-* Upload image directories once per session to mitigate CI/CD S3Express boto3 400 errors (#347)
+* Modify test fixtures to mitigate CI/CD S3Express boto3 400 errors (#347)
+* Add profile config guide and improve docs (#349)
 
 ### Breaking changes
+* No breaking changes.
 
 ## v1.4.2 (July 14, 2025)
 
