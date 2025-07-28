@@ -392,7 +392,8 @@ class S3StorageWriter(FileSystemWriter):
         # Add duplication info to metadata
         if metadata.storage_meta is None:
             metadata.storage_meta = StorageMeta()
-
+        if not hasattr(metadata.storage_meta, 'modules') or metadata.storage_meta.modules is None:
+            metadata.storage_meta.modules = []
         # Add num_copies info to modules list
         metadata.storage_meta.modules.append(f"num_copies={self.num_copies}")
             
@@ -480,7 +481,8 @@ class S3StorageReader(FileSystemReader):
             self.rank = 0
             
         if self.num_copies > 1:
-            self.assigned_copy = self.rank 
+            self.assigned_copy = self.rank % self.num_copies
+
             logger.debug(f"Worker rank {self.rank} assigned to copy {self.assigned_copy}")
         
     def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future:
