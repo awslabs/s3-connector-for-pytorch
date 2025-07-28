@@ -45,7 +45,7 @@ def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
     elif cfg.checkpoint.storage == "s3":
         uri = build_checkpoint_uri(cfg.s3.uri, suffix)
         logger.info("Saving checkpoint to %s (S3)...", uri)
-        return S3StorageWriter(cfg.s3.region, uri, thread_count=cfg.thread_count, num_copies =cfg.num_of_copies)
+        return S3StorageWriter(cfg.s3.region, uri, thread_count=cfg.thread_count)
     raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
 
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=fsdp-2x2
 #SBATCH --partition=train
-#SBATCH --nodes=10
+#SBATCH --nodes=100
 #SBATCH --ntasks-per-node=1    # ONE torchrun per node
 #SBATCH --cpus-per-task=16
 #-------------------------------------------------
@@ -25,5 +25,5 @@ srun torchrun \
    --rdzv_id=$SLURM_JOB_ID \
   load3.py \
    --backend gloo \
-   --uri s3://shadow-copies-fsdp/ \
-   --region us-east-2
+   --uri <bucket> \
+   --region us-east-2 \
