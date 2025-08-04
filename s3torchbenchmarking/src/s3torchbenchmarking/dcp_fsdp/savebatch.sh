@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=fsdp-2x2
 #SBATCH --partition=train
-#SBATCH --nodes=60
+#SBATCH --nodes=50
+
 #SBATCH --ntasks-per-node=1    # ONE torchrun per node
 #SBATCH --cpus-per-task=16
 #-------------------------------------------------
@@ -27,7 +28,12 @@ srun torchrun \
    --rdzv_backend=c10d \
    --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
    --rdzv_id=$SLURM_JOB_ID \
-  load3.py \
+  save.py \
    --backend gloo \
    --uri s3:/// \
-   --region us-east-2 \
+   --region us-east-2 
+~                                                                                                                                                                                                                       
+~                                                                                                                                                                                                                       
+~                                                                                                                                                                                                                       
+~                                                                                                                                                                                                                       
+~                                      

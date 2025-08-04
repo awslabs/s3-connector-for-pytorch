@@ -61,7 +61,9 @@ def get_writer(region: str, uri: str, suffix: str) -> S3StorageWriter:
     return S3StorageWriter(region, uri, s3client_config=S3ClientConfig(
         part_size=5*1024*1024,
         throughput_target_gbps=300
-    ), num_copies = 10)
+    ), num_copies = 20)
+
+
 def get_reader(region:str, uri: str, suffix: str) -> FileSystemReader:
     uri = build_checkpoint_uri(uri, suffix)
     logger.info("Loading checkpoint from %s (S3)...", uri)
@@ -206,44 +208,14 @@ def run_fsdp_repeated_load(
 
         # Load the checkpoint we just saved using multiple workers
         dist.barrier()
-        start_load = perf_counter()
-        storage_reader = get_reader(region, uri, new_suffix)
-        sleep(300)
-        # Configure multiple workers for loading
-        print("got up to here")
-        try:
-            with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
-                dcp.load(state_dict, storage_reader=storage_reader)
-
-            end_load = perf_counter()
-            load_time = end_load - start_load
-            load_times.append(load_time)
-            total_requests += 1
-
-        except Exception as e:
-            failed_operations += 1
-            if rank == 0:
-                print(f"Failed to load checkpoint: {e}")
-
-        if delay_between_loads > 0:
-            sleep(delay_between_loads)
-        sleep(300)
-    # Final statistics
-    dist.barrier()
 
     if rank == 0:
         total_save_time = sum(save_times)
-        total_load_time = sum(load_times)
         avg_save_time = total_save_time / len(save_times) if save_times else 0
-        avg_load_time = total_load_time / len(load_times) if load_times else 0
 
         print(f"\n=== Test Results ===")
         print(f"Total iterations: {num_iterations}")
-        print(f"Successful operations: {len(load_times)}")
-        print(f"Failed operations: {failed_operations}")
         print(f"Average save time: {avg_save_time:.3f}s")
-        print(f"Average load time: {avg_load_time:.3f}s")
-        print(f"Total time: {(total_save_time + total_load_time):.3f}s")
 
         # Calculate approximate S3 request rates
 
@@ -258,7 +230,7 @@ if __name__ == "__main__":
     parser.add_argument("--uri", type=str, required=True)
     
     # New arguments for repeated loading
-    parser.add_argument("--iterations", type=int, default=2, 
+    parser.add_argument("--iterations", type=int, default=1, 
                        help="Number of times to repeat the load operation")
     parser.add_argument("--delay", type=float, default=0.0,
                        help="Seconds to wait between load operations (0 for max throughput)")
@@ -304,6 +276,4 @@ if __name__ == "__main__":
         delay_between_loads=args.delay) 
     if dist.is_initialized():
            dist.destroy_process_group()
-
-
 
