@@ -11,7 +11,6 @@ These benchmarks specifically use Fully Sharded Data Parallel (FSDP), which is P
 #### Individual Operation Scripts
 - **[`save.py`](save.py)** - Performs repeated checkpoint saving operations to S3 with stress testing capabilities
 - **[`load.py`](load.py)** - Loads existing checkpoints from S3 with specified suffix
-- **[`newload.py`](newload.py)** - Alternative checkpoint loading implementation with enhanced error handling
 - **[`save_and_load.py`](save_and_load.py)** - Combined save and load operations with performance metrics and timing analysis
 
 #### Benchmark and Utility Scripts
@@ -23,7 +22,7 @@ These benchmarks specifically use Fully Sharded Data Parallel (FSDP), which is P
 
 #### Primary Batch Scripts
 - **[`savebatch.sh`](savebatch.sh)** - Slurm batch script for distributed checkpoint saving operations (pairs with `save.py`)
-- **[`loadbatch.sh`](loadbatch.sh)** - Slurm batch script for distributed checkpoint loading operations (pairs with `newload.py`)
+- **[`loadbatch.sh`](loadbatch.sh)** - Slurm batch script for distributed checkpoint loading operations (pairs with `load.py`)
 - **[`batch.sh`](batch.sh)** - General-purpose Slurm batch script for combined save/load operations (pairs with `save_and_load.py`)
 - **[`waitbatch.sh`](waitbatch.sh)** - Slurm batch script to maintain cluster nodes in idle state (pairs with `wait.py`)
 
