@@ -16,6 +16,7 @@ These benchmarks test both "save" and "load" mechanisms of PyTorch DCP (`torch.d
 - Checkpoint loading throughput (in MiB/s)
 - Checkpoint "corrected" load durations (in seconds), which exclude the influence of process setup and model loading to device
 
+
 #### Benchmark and Utility Scripts
 - **[`benchmark.py`](benchmark.py)** - Main benchmarking framework using Hydra configuration for comprehensive performance testing
 - **[`wait.py`](wait.py)** - Utility script to keep cluster nodes busy with minimal resource usage during testing
@@ -47,9 +48,14 @@ The load configuration includes a `checkpoint.suffix` parameter that specifies w
 
 #### Primary Batch Scripts
 - **[`savebatch.sh`](savebatch.sh)** - Slurm batch script for distributed checkpoint saving operations (pairs with `save.py`)
-- **[`loadbatch.sh`](loadbatch.sh)** - Slurm batch script for distributed checkpoint loading operations (pairs with `newload.py`)
+- **[`loadbatch.sh`](loadbatch.sh)** - Slurm batch script for distributed checkpoint loading operations (pairs with `load.py`)
 - **[`batch.sh`](batch.sh)** - General-purpose Slurm batch script for combined save/load operations (pairs with `save_and_load.py`)
 - **[`waitbatch.sh`](waitbatch.sh)** - Slurm batch script to maintain cluster nodes in idle state (pairs with `wait.py`)
+
+#### Individual Operation Scripts
+- **[`save.py`](save.py)** - Performs repeated checkpoint saving operations to S3 with stress testing capabilities
+- **[`load.py`](load.py)** - Loads existing checkpoints from S3 with specified suffix
+- **[`save_and_load.py`](save_and_load.py)** - Combined save and load operations with performance metrics and timing analysis
 
 ### Prerequisites
 Before running the batch scripts, ensure you have:
