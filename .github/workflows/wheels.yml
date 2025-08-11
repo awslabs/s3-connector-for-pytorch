@@ -73,7 +73,7 @@ jobs:
           # extend role time out to 2 hours
           role-duration-seconds: 7200
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -135,7 +135,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
