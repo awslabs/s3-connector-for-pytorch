@@ -6,13 +6,14 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Optional, List
-
+import os
 import hydra
 import torchdata  # type: ignore
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
+from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
-
 from s3torchbenchmarking.benchmark_utils import ExperimentResult
 from s3torchbenchmarking.models import (
     Entitlement,
@@ -26,29 +27,71 @@ import torch
 import logging
 logger = logging.getLogger(__name__)
 
+def init_distributed(config: DictConfig):
+    if torch.cuda.device_count() > 1:
+        if not dist.is_initialized():
+            # torchrun sets these environment variables automatically
+            dist.init_process_group(backend="nccl")
+            
+            # Set device for this process
+            local_rank = int(os.environ.get('LOCAL_RANK', '0'))
+            torch.cuda.set_device(local_rank)
+            
+            logging.info(f"Initialized DDP: rank {dist.get_rank()}/{dist.get_world_size()} on GPU {local_rank}")
+        atexit.register(cleanup_distributed)
+
+
+        
+def cleanup_distributed():
+    """Cleanup distributed training"""
+    if dist.is_initialized():
+        dist.destroy_process_group()
+        logging.info("Cleaned up distributed training")
+        
+        
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
-    model = make_model(config)
+    init_distributed(config)
+    
+    num_gpus = torch.cuda.device_count()
+    world_size = dist.get_world_size() if dist.is_initialized else 1
+    rank = dist.get_rank() if dist.is_initialized else 0
+    
+    logging.info(f"CUDA available: {torch.cuda.is_available()}")
+    logging.info(f"CUDA version: {torch.version.cuda}")
+    logging.info(f"GPU count: {num_gpus}")
+    logging.info(f"World size: {world_size}")
+    logging.info(f"Rank: {rank}")
+    
+        # Validation and warnings
+    if num_gpus > 1 and world_size == 1:
+        logging.warning(f"Multiple GPUs detected ({num_gpus}) but running in single-GPU mode. Consider using torchrun for distributed training.")
+    elif num_gpus > 1 and world_size > 1:
+        logging.info(f"Multi-GPU distributed training: {world_size} processes across {num_gpus} GPUs")
+    elif num_gpus <= 1:
+        logging.info("Single GPU or CPU-only training")
+    
 
+    model = make_model(config)
+ 
+ 
     fully_qualified_uri = (
         "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/")
     )
-    num_of_gpus = torch.cuda.device_count()
-    logging.info(f"CUDA available: {torch.cuda.is_available()}")
-    logging.info(f"CUDA version: {torch.version.cuda}")
-    logging.info(f"GPU count: {torch.cuda.device_count()}")
-
-    logging.info(f"Using {num_of_gpus} GPUs")
-    dataset = make_dataset(
+    dataset, sampler = make_dataset(
         dataloader_config=config.dataloader,
         sharding=config.sharding,
         prefix_uri=fully_qualified_uri,
         region=config.s3.region,
         load_sample=model.load_sample,
     )
+    
+    validate_dataset_coverage(dataset, sampler, world_size, rank)
+
     dataloader = make_dataloader(
         dataset=dataset,
+        sampler=sampler,
         num_workers=config.dataloader.num_workers,
         batch_size=config.dataloader.batch_size,
     )
@@ -102,7 +145,8 @@ def make_dataset(
     region: Optional[str],
     load_sample,
 ) -> Dataset:
-
+    world_size = dist.get_world_size() if dist.is_initialized else 1
+    rank = dist.get_rank() if dist.is_initialized else 0
     kind = dataloader_config.kind
     num_workers = dataloader_config.num_workers
 
@@ -119,7 +163,9 @@ def make_dataset(
             load_sample,
             num_workers,
             s3reader_config,
-        )
+            world_size,
+            rank,
+        ), None
     if kind == "s3mapdataset":
         if not region:
             raise ValueError("Must provide region for s3mapdataset")
@@ -127,18 +173,18 @@ def make_dataset(
             raise ValueError(f"Must provide s3reader config for {kind}")
         s3reader_config = dataloader_config.s3reader
         return create_s3_map_dataset(
-            sharding, prefix_uri, region, load_sample, s3reader_config
+            sharding, prefix_uri, region, load_sample, s3reader_config, world_size, rank
         )
     if kind == "fsspec":
-        return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
+        return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers), None
     if kind == "mountpoint":
         return create_mountpoint_dataset(
             sharding, prefix_uri, load_sample, num_workers, False
-        )
+        ), None
     if kind == "mountpointcache":
         return create_mountpoint_dataset(
             sharding, prefix_uri, load_sample, num_workers, True
-        )
+        ), None
     raise Exception(f"Unknown dataset kind {kind}")
 
 
@@ -169,11 +215,13 @@ def create_s3_iterable_dataset(
     load_sample,
     num_workers: int,
     s3reader_config: DictConfig,
+    world_size: int = 1,
+    rank: int = 0,
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
+    enable_sharding = world_size > 1 or num_workers > 0
     dataset = S3IterableDataset.from_prefix(
-        prefix_uri, region=region, reader_constructor=reader_constructor
-    )
+        prefix_uri, region=region, reader_constructor=reader_constructor, enable_sharding= enable_sharding)
     dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
 
     if num_workers > 0:
@@ -191,18 +239,24 @@ def create_s3_map_dataset(
     region: str,
     load_sample,
     s3reader_config: DictConfig,
+    world_size: int = 1,
+    rank: int = 0,
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
     if sharding:
         raise ValueError("Sharding is not supported for s3mapdataset")
-    else:
-        dataset = S3MapDataset.from_prefix(
+    
+    dataset = S3MapDataset.from_prefix(
             prefix_uri,
             region=region,
             transform=load_sample,
             reader_constructor=reader_constructor,
         )
-    return dataset
+    if world_size > 1:
+        logger.info("Initialized")
+        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank)
+        return dataset, sampler
+    return dataset, None
 
 
 def create_mountpoint_dataset(
@@ -232,10 +286,11 @@ def create_fsspec_dataset(
     return dataset.map(load_sample)
 
 
-def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int):
+def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler = None):
     return DataLoader(
         dataset=dataset,
         batch_size=batch_size,
+        sampler = sampler,
         shuffle=False,
         drop_last=False,
         num_workers=num_workers,
@@ -248,6 +303,33 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int):
 # Since both S3Reader and StreamWrapper are File-Like Objects this transformation is straightforward
 def tar_to_tuple(s3object: S3Reader):
     return s3object.key, StreamWrapper(s3object)
+
+def validate_dataset_coverage(dataset, sampler, world_size, rank):
+    """Validate that the entire dataset is covered across all processes without duplication"""
+    if world_size <= 1:
+        logging.info("Single process - no dataset coverage validation needed")
+        return
+    
+    # For S3MapDataset with DistributedSampler
+    if hasattr(dataset, '__len__') and sampler is not None:
+        total_samples = len(dataset)
+        sampler_indices = list(sampler)
+        expected_samples_per_rank = total_samples // world_size
+        
+        logging.info(f"Rank {rank}: Dataset size={total_samples}, Sampler indices={len(sampler_indices)}")
+        logging.info(f"Rank {rank}: Expected samples per rank: {expected_samples_per_rank}")
+        
+        if len(sampler_indices) != expected_samples_per_rank:
+            logging.warning(f"Rank {rank}: Expected {expected_samples_per_rank} samples, got {len(sampler_indices)}")
+        else:
+            logging.info(f"Rank {rank}: Dataset coverage validation passed")
+    
+    # For S3IterableDataset (built-in sharding)
+    elif hasattr(dataset, '_enable_sharding'):
+        logging.info(f"Rank {rank}: S3IterableDataset with built-in sharding - coverage handled internally")
+    
+    else:
+        logging.info(f"Rank {rank}: Dataset type doesn't support coverage validation")
 
 
 if __name__ == "__main__":
