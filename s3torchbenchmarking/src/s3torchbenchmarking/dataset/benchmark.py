@@ -22,7 +22,9 @@ from s3torchbenchmarking.models import (
 from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
 from s3torchconnector.s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
-
+import torch
+import logging
+logger = logging.getLogger(__name__)
 
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
@@ -32,7 +34,12 @@ def run_experiment(config: DictConfig) -> dict:
     fully_qualified_uri = (
         "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/")
     )
+    num_of_gpus = torch.cuda.device_count()
+    logging.info(f"CUDA available: {torch.cuda.is_available()}")
+    logging.info(f"CUDA version: {torch.version.cuda}")
+    logging.info(f"GPU count: {torch.cuda.device_count()}")
 
+    logging.info(f"Using {num_of_gpus} GPUs")
     dataset = make_dataset(
         dataloader_config=config.dataloader,
         sharding=config.sharding,
