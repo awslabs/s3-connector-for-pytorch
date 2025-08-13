@@ -144,31 +144,49 @@ class ModelInterface(ABC):
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
-
+        
+        # Only monitor resources on rank 0 to avoid duplicate monitoring
+        rank = dist.get_rank() if dist.is_initialized() else 0
+        
         epoch_durations_s: List[float] = []
-
-        with ResourceMonitor() as monitor:
-            num_samples = 0
-            checkpoint_times = []
-            begin_training = perf_counter()
-            for epoch in range(epochs):
-                begin_epoch = time.perf_counter()
+        
+        # Only create ResourceMonitor on rank 0
+        monitor = ResourceMonitor() if rank == 0 else None
+        
+        if monitor:
+            monitor.start()
+        
+        num_samples = 0
+        checkpoint_times = []
+        begin_training = perf_counter()
+        
+        for epoch in range(epochs):
+            begin_epoch = time.perf_counter()
+            if rank == 0:  # Only log from rank 0
                 logger.info("Epoch #%i/%i", epoch, epochs - 1)
-                for batch_idx, (data, target) in enumerate(dataloader):
+            for batch_idx, (data, target) in enumerate(dataloader):
+                if rank == 0:
                     logger.debug("Batch #%i", batch_idx)
-                    result = self.train_batch(batch_idx, data, target)
-                    num_samples += len(data)
-                    if result:
-                        checkpoint_times.append(result)
-                epoch_durations_s.append(time.perf_counter() - begin_epoch)
-            training_duration_s = time.perf_counter() - begin_training
+                result = self.train_batch(batch_idx, data, target)
+                num_samples += len(data)
+                if result:
+                    checkpoint_times.append(result)
+            epoch_durations_s.append(time.perf_counter() - begin_epoch)
+        
+        training_duration_s = time.perf_counter() - begin_training
+        
+        if monitor:
+            monitor.stop()
+            utilization = monitor.resource_data
+        else:
+            utilization = {}
 
         return {
             "training_duration_s": training_duration_s,
             "epoch_durations_s": epoch_durations_s,
             "volume": num_samples,
             "checkpoint_times": checkpoint_times,
-            "utilization": monitor.resource_data,
+            "utilization": utilization,
         }
 
     @abstractmethod

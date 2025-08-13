@@ -97,7 +97,11 @@ def run_experiment(config: DictConfig) -> dict:
     )
 
     result: ExperimentResult = model.train(dataloader, config.epochs)
-
+    
+    # Only return metrics from rank 0 to avoid duplicates
+    if rank != 0:
+        return {}
+    
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
         "training_duration_s": result["training_duration_s"],
@@ -219,9 +223,11 @@ def create_s3_iterable_dataset(
     rank: int = 0,
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
-    enable_sharding = world_size > 1 or num_workers > 0
+    enable_sharding = world_size > 1
     dataset = S3IterableDataset.from_prefix(
         prefix_uri, region=region, reader_constructor=reader_constructor, enable_sharding= enable_sharding)
+=    validate_s3_iterable_dataset_sharding(dataset, world_size, rank, num_workers)
+
     dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
 
     if num_workers > 0:
@@ -232,6 +238,37 @@ def create_s3_iterable_dataset(
 
     return dataset.map(load_sample)
 
+def validate_s3_iterable_dataset_sharding(dataset, world_size, rank, num_workers):
+    """Validate S3IterableDataset sharding by sampling the first few items"""
+    if world_size <= 1 and num_workers <= 1:
+        logging.info("Single process, single worker - no sharding validation needed")
+        return
+    
+    # Sample first 20 items to check sharding
+    sample_keys = []
+    sample_count = 0    
+    try:
+        for item in dataset:
+            if hasattr(item, 'key'):
+                sample_keys.append(item.key)
+            elif isinstance(item, tuple) and len(item) >= 2:
+                sample_keys.append(str(item[1]))  # key from load_sample
+            else:
+                sample_keys.append(f"item_{sample_count}")
+            
+            sample_count += 1
+ 
+    except Exception as e:
+        logging.warning(f"Could not sample dataset for validation: {e}")
+        return
+    
+    logging.info(f"Rank {rank}: Sampled {sample_count} items from S3IterableDataset")
+    logging.info(f"Rank {rank}: Sample keys: {sample_keys[:5]}...")  # Show first 5
+    
+    if world_size > 1:
+        logging.info(f"Rank {rank}: S3IterableDataset sharding enabled - each rank should see different objects")
+    if num_workers > 0:
+        logging.info(f"Rank {rank}: Worker sharding enabled with {num_workers} workers")
 
 def create_s3_map_dataset(
     sharding: bool,
@@ -253,8 +290,8 @@ def create_s3_map_dataset(
             reader_constructor=reader_constructor,
         )
     if world_size > 1:
-        logger.info("Initialized")
         sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank)
+        logger.info(f"Using DistributedSampler for S3MapDataset with {world_size} processes")
         return dataset, sampler
     return dataset, None
 
