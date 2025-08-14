@@ -311,6 +311,9 @@ class S3StorageWriter(FileSystemWriter):
         self.sort_key = sort_key
 
         if self.sort_key:
+            logger.debug(
+                "Enabling custom tensor ordering for distributed checkpoint save"
+            )
             # Replace the original split function with ours that will sort tensors/weights
             import torch.distributed.checkpoint.filesystem as fs_module
             from functools import partial
@@ -407,6 +410,9 @@ class S3StorageReader(FileSystemReader):
 
     def prepare_local_plan(self, plan: LoadPlan) -> LoadPlan:
         # Sort items in plan based on their offset in checkpoints shards
+        logger.debug(
+            f"Ordering {len(plan.items)} distributed checkpoint items by storage offset for sequential access"
+        )
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
         return plan
 
