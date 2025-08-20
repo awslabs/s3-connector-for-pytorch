@@ -45,7 +45,6 @@ def run_ddp_process(rank, world_size, config, results_file):
     )
     torch.cuda.set_device(rank)
     init_distributed(rank, world_size)
-    print(f"Setted up rank {rank}")
     try:
         result = run_benchmark_experiment(config)
         
@@ -63,8 +62,6 @@ def run_experiment(config: DictConfig) -> dict:
     
     num_gpus = torch.cuda.device_count()
     if num_gpus > 1 and not dist.is_initialized():
-        print(f"Starting DDP training with {num_gpus} GPUs")
-        # Create temporary file for results
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
             results_file = f.name
         try:
@@ -112,19 +109,16 @@ def run_benchmark_experiment(config: DictConfig):
         dataset=dataset,
         sampler=sampler,
         num_workers=config.dataloader.num_workers,
-        batch_size=config.dataloader.batch_size,
+        batch_size=config.dataloader.batch_size,  
     )
     if dist.is_available and dist.is_initialized():
         device_id = torch.cuda.current_device()
-        print(f"Device_id {device_id}")
         model.model = model.model.to(device_id)
         model.device = torch.device(f"cuda:{device_id}")
-
         model.model = torch.nn.parallel.DistributedDataParallel(model.model, device_ids=[rank], output_device=rank)
         # Recreate optimizer AFTER DDP wrapping
         model._optimizer = None  # Clear cached optimizer
         model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001)
-
     dist.barrier()
     result: ExperimentResult = model.train(dataloader, config.epochs)
     
@@ -181,8 +175,8 @@ def make_dataset(
     region: Optional[str],
     load_sample,
 ) -> Dataset:
-    world_size = dist.get_world_size() if dist.is_initialized else 1
-    rank = dist.get_rank() if dist.is_initialized else 0
+    world_size = dist.get_world_size() if dist.is_initialized() else 1
+    rank = dist.get_rank() if dist.is_initialized() else 0
     kind = dataloader_config.kind
     num_workers = dataloader_config.num_workers
 
@@ -258,50 +252,17 @@ def create_s3_iterable_dataset(
     enable_sharding = world_size > 1
     logging.info(f"Enabled sharding:  {enable_sharding}, because world_size is {world_size}")
     dataset = S3IterableDataset.from_prefix(
-        prefix_uri, region=region, reader_constructor=reader_constructor, enable_sharding= enable_sharding)
-    validate_s3_iterable_dataset_sharding(dataset, world_size, rank, num_workers)
-
+        prefix_uri, region=region, reader_constructor=reader_constructor, enable_sharding = enable_sharding)
     dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
 
-    if num_workers > 0:
+    # We don't include when using DDP as this means it's already sharded by iter in S3IterableDataset
+    if num_workers > 0 and not dist.is_initialized():
         dataset = dataset.sharding_filter()
     if sharding:
         dataset = dataset.map(tar_to_tuple)
         dataset = dataset.load_from_tar()
 
     return dataset.map(load_sample)
-
-def validate_s3_iterable_dataset_sharding(dataset, world_size, rank, num_workers):
-    """Validate S3IterableDataset sharding by sampling the first few items"""
-    if world_size <= 1 and num_workers <= 1:
-        logging.info("Single process, single worker - no sharding validation needed")
-        return
-    
-    # Sample first 20 items to check sharding
-    sample_keys = []
-    sample_count = 0    
-    try:
-        for item in dataset:
-            if hasattr(item, 'key'):
-                sample_keys.append(item.key)
-            elif isinstance(item, tuple) and len(item) >= 2:
-                sample_keys.append(str(item[1]))  # key from load_sample
-            else:
-                sample_keys.append(f"item_{sample_count}")
-            
-            sample_count += 1
- 
-    except Exception as e:
-        logging.warning(f"Could not sample dataset for validation: {e}")
-        return
-    
-    logging.info(f"Rank {rank}: Sampled {sample_count} items from S3IterableDataset")
-    logging.info(f"Rank {rank}: Sample keys: {sample_keys[:5]}...")  # Show first 5
-    
-    if world_size > 1:
-        logging.info(f"Rank {rank}: S3IterableDataset sharding enabled - each rank should see different objects")
-    if num_workers > 0:
-        logging.info(f"Rank {rank}: Worker sharding enabled with {num_workers} workers")
 
 def create_s3_map_dataset(
     sharding: bool,
@@ -362,11 +323,11 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler
         batch_size=batch_size,
         sampler = sampler,
         shuffle=False,
-        drop_last=True,
+        drop_last=False,
         num_workers=num_workers,
         collate_fn=default_collate,
         pin_memory=False,
-        multiprocessing_context='fork',  # Change from 'spawn' to 'fork'
+        multiprocessing_context='fork'# Change from 'spawn' to 'fork'
         )
 
 
@@ -399,7 +360,6 @@ def validate_dataset_coverage(dataset, sampler, world_size, rank):
     # For S3IterableDataset (built-in sharding)
     elif hasattr(dataset, '_enable_sharding'):
         logging.info(f"Rank {rank}: S3IterableDataset with built-in sharding - coverage handled internally")
-    
     else:
         logging.info(f"Rank {rank}: Dataset type doesn't support coverage validation")
 
