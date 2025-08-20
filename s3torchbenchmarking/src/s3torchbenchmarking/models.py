@@ -39,7 +39,6 @@ from .lightning_checkpointing.sample_counter import SampleCounter
 
 logger = logging.getLogger(__name__)
 
-
 class BenchmarkModel:
     """Utility class around a :class:`torch.nn.Module`, with an additional metadata layer.
 
@@ -142,6 +141,20 @@ class ModelInterface(ABC):
     def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
         raise NotImplementedError
 
+    def capped_loader(self, loader):
+        """Cap the number of steps in the loader to the minimum number of steps across all ranks"""
+        if not dist.is_initialized():
+            return loader
+        local = sum(1 for _ in loader)
+        world = dist.get_world_size()
+        counts = [None] * world
+        dist.all_gather_object(counts, local)
+        min_steps = min(counts)
+        
+        it = iter(loader)
+        for _ in range(min_steps):
+            yield next(it)
+
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
         
@@ -160,19 +173,29 @@ class ModelInterface(ABC):
         checkpoint_times = []
         begin_training = perf_counter()
         
-        for epoch in range(epochs):
-            begin_epoch = time.perf_counter()
-            if rank == 0:  # Only log from rank 0
-                logger.info("Epoch #%i/%i", epoch, epochs - 1)
-            for batch_idx, (data, target) in enumerate(dataloader):
-                if rank == 0:
-                    logger.debug("Batch #%i", batch_idx)
-                result = self.train_batch(batch_idx, data, target)
-                num_samples += len(data)
-                if result:
-                    checkpoint_times.append(result)
-            epoch_durations_s.append(time.perf_counter() - begin_epoch)
-        
+        if dist.is_initialized():
+            context_manager = self.model.join(
+                divide_by_initial_world_size=True,
+                enable=True,
+                throw_on_early_termination=False
+            )
+        else:
+            from contextlib import nullcontext
+            context_manager = nullcontext()
+        with context_manager:
+            for epoch in range(epochs):
+                begin_epoch = time.perf_counter()
+                if rank == 0:  # Only log from rank 0
+                    logger.info("Epoch #%i/%i", epoch, epochs - 1)
+                for batch_idx, (data, target) in enumerate(self.capped_loader(dataloader)):
+                    if rank == 0:
+                        logger.debug("Batch #%i", batch_idx)
+                    result = self.train_batch(batch_idx, data, target)
+                    num_samples += len(data)
+                    if result:
+                        checkpoint_times.append(result)
+                epoch_durations_s.append(time.perf_counter() - begin_epoch)
+            
         training_duration_s = time.perf_counter() - begin_training
         
         if monitor:
