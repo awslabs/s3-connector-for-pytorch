@@ -366,7 +366,5 @@ def validate_dataset_coverage(dataset, sampler, world_size, rank):
 
 if __name__ == "__main__":    
     os.environ['OMP_NUM_THREADS'] = '1'
-    os.environ['MKL_NUM_THREADS'] = '1'
-    os.environ['NCCL_P2P_DISABLE'] = '1'
-        
+    os.environ['MKL_NUM_THREADS'] = '1'        
     run_experiment()
