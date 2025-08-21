@@ -39,6 +39,7 @@ from .lightning_checkpointing.sample_counter import SampleCounter
 
 logger = logging.getLogger(__name__)
 
+
 class BenchmarkModel:
     """Utility class around a :class:`torch.nn.Module`, with an additional metadata layer.
 
@@ -150,44 +151,47 @@ class ModelInterface(ABC):
         counts = [None] * world
         dist.all_gather_object(counts, local)
         min_steps = min(counts)
-        
+
         it = iter(loader)
         for _ in range(min_steps):
             yield next(it)
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
-        
+
         # Only monitor resources on rank 0 to avoid duplicate monitoring
         rank = dist.get_rank() if dist.is_initialized() else 0
-        
+
         epoch_durations_s: List[float] = []
-        
+
         # Only create ResourceMonitor on rank 0
         monitor = ResourceMonitor() if rank == 0 else None
-        
+
         if monitor:
             monitor.start()
-        
+
         num_samples = 0
         checkpoint_times = []
         begin_training = perf_counter()
-        
+
         if dist.is_initialized():
             context_manager = self.model.join(
                 divide_by_initial_world_size=True,
                 enable=True,
-                throw_on_early_termination=False
+                throw_on_early_termination=False,
             )
         else:
             from contextlib import nullcontext
+
             context_manager = nullcontext()
         with context_manager:
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
                 if rank == 0:  # Only log from rank 0
                     logger.info("Epoch #%i/%i", epoch, epochs - 1)
-                for batch_idx, (data, target) in enumerate(self.capped_loader(dataloader)):
+                for batch_idx, (data, target) in enumerate(
+                    self.capped_loader(dataloader)
+                ):
                     if rank == 0:
                         logger.debug("Batch #%i", batch_idx)
                     result = self.train_batch(batch_idx, data, target)
@@ -195,9 +199,9 @@ class ModelInterface(ABC):
                     if result:
                         checkpoint_times.append(result)
                 epoch_durations_s.append(time.perf_counter() - begin_epoch)
-            
+
         training_duration_s = time.perf_counter() - begin_training
-        
+
         if monitor:
             monitor.stop()
             utilization = monitor.resource_data
