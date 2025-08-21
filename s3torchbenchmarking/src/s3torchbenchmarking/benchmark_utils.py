@@ -65,9 +65,7 @@ class ResourceMonitor:
     Set sleep_time_s carefully to avoid perf degradations.
     """
 
-    def __init__(
-        self, sleep_time_s: float = 0.05, chunk_size: int = 25_000
-    ):
+    def __init__(self, sleep_time_s: float = 0.05, chunk_size: int = 25_000):
         self.monitor_thread = None
         self._utilization: Dict[str, Distribution] = defaultdict(
             lambda: Distribution(chunk_size)
