@@ -20,11 +20,14 @@ Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
 
 import sys
+
 logging.basicConfig(
     stream=sys.stdout,
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
 )
 logging.getLogger().setLevel(logging.DEBUG)
+
+
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
@@ -38,7 +41,7 @@ def run_ddp(
     rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
     cfg: DictConfig,
     proxy_model: BenchmarkModel,
-    suffix: str, 
+    suffix: str,
     load_timestamps: Queue,
 ) -> None:
     """Execute the actual code for checkpoint loading.

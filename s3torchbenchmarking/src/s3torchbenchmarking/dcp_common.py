@@ -31,7 +31,6 @@ def setup(backend: str, world_size: int, rank: int) -> None:
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
     dist.init_process_group(backend, world_size=world_size, rank=rank)
 
 
@@ -62,6 +61,7 @@ def get_reader(cfg: DictConfig, suffix: str) -> FileSystemReader:
         logger.info("Loading checkpoint from %s (S3)...", uri)
         return S3StorageReader(cfg.s3.region, uri)
     raise ValueError(f"Storage reader {cfg.checkpoint.storage} not supported")
+
 
 def benchmark_common_runner(
     cfg: DictConfig,
