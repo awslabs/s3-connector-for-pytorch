@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
     """DCP benchmarks entry point."""
-    return benchmark_common_runner(cfg, run_fsdp, (cfg,))
+    return benchmark_common_runner(cfg, run_fsdp_save, (cfg,))
 
 
-def run_fsdp(
+def run_fsdp_save(
     rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
     cfg: DictConfig,
     suffix,
