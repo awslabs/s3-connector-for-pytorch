@@ -10,20 +10,40 @@ where memory requirements per GPU are manageable.
 
 ### Purpose
 
-These benchmarks focus on testing the "save" mechanism of PyTorch DCP (`torch.distributed.checkpoint.save`). The primary
-objectives are to evaluate the `s3torchconnector` library's performance against other libraries and local storage
-options, by measuring the following metrics:
+These benchmarks test both "save" and "load" mechanisms of PyTorch DCP (`torch.distributed.checkpoint.save` and `torch.distributed.checkpoint.load`). The primary objectives are to evaluate the `s3torchconnector` library's performance against other libraries and local storage options, by measuring the following metrics:
 
-- Checkpoint saving throughput (in MiB/s);
-- Checkpoint "corrected" save durations (in seconds), which exclude the influence of model load duration on the device.
+**Save Benchmarks:**
+- Checkpoint saving throughput (in MiB/s)
+- Checkpoint "corrected" save durations (in seconds), which exclude the influence of model load duration on the device
+
+**Load Benchmarks:**
+- Checkpoint loading throughput (in MiB/s)
+- Checkpoint "corrected" load durations (in seconds), which exclude the influence of process setup and model loading to device
 
 ### Configuration
 
-The benchmark runs can be customized through the [`dcp_ddp.yaml`](../../../conf/dcp_ddp.yaml) file.
+The benchmark runs can be customized through configuration files:
+
+- **Save benchmarks**: [`dcp_ddp.yaml`](../../../conf/dcp_ddp.yaml)
+- **Load benchmarks**: [`dcp_ddp_load.yaml`](../../../conf/dcp_ddp_load.yaml)
+
+The load configuration includes a `checkpoint.suffix` parameter that specifies which saved checkpoint to load.
 
 > [!IMPORTANT]
 > A `+path` option is passed to the running script ([`run_dcp_ddp_benchmarks.sh`](../../../utils/run_dcp_ddp_benchmarks.sh)),
 > and will be used only if `checkpoint.storage` key includes `disk`.
+
+### Usage
+
+**Save benchmarks (default):**
+```bash
+./utils/run_dcp_ddp_benchmarks.sh
+```
+
+**Load benchmarks:**
+```bash
+./utils/run_dcp_ddp_benchmarks.sh -l
+```
 
 ### References
 
