@@ -34,10 +34,10 @@ def run_benchmark(cfg: DictConfig) -> dict:
     """DCP benchmarks entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
 
-    return benchmark_common_runner(cfg, run_ddp, (cfg, benchmark_model))
+    return benchmark_common_runner(cfg, run_ddp_load, (cfg, benchmark_model))
 
 
-def run_ddp(
+def run_ddp_load(
     rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
     cfg: DictConfig,
     proxy_model: BenchmarkModel,
