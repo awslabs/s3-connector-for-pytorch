@@ -4,10 +4,11 @@
 
 set -euo pipefail
 
-while getopts "s:d:" opt; do
+while getopts "s:d:l" opt; do
   case $opt in
   s) scenario=$OPTARG ;; # name of the scenario
   d) nvme_dir=$OPTARG ;; # mount point dir for saving checkpoints (will use NVMe drive)
+  l) load_mode=true ;; # flag for modifying benchmarks to use load instead of save
   *) ;;
   esac
 done
@@ -19,5 +20,11 @@ if [[ -n $nvme_dir ]]; then
   ./utils/prepare_nvme.sh "$nvme_dir"
 fi
 
+
 # Run benchmarks; will write to DynamoDB table, if specified in the config (in `conf/aws/dynamodb.yaml`)
-python ./src/s3torchbenchmarking/"$scenario"/benchmark.py -cd conf -cn "$scenario" +path="$nvme_dir" "$@"
+# Use load_benchmark.py if -l flag is provided, otherwise use default benchmark.py
+if [[ "${load_mode:-}" == "true" ]]; then
+  python ./src/s3torchbenchmarking/"$scenario"/load_benchmark.py -cd conf -cn "${scenario}_load" +path="$nvme_dir" "$@"
+else
+  python ./src/s3torchbenchmarking/"$scenario"/benchmark.py -cd conf -cn "$scenario" +path="$nvme_dir" "$@"
+fi

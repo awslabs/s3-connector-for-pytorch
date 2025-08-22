@@ -14,13 +14,14 @@ import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 from torch import multiprocessing as mp
-from torch.distributed.checkpoint import FileSystemWriter
+from torch.distributed.checkpoint import FileSystemWriter, FileSystemReader
+
 
 from s3torchbenchmarking.benchmark_utils import (
     build_random_suffix,
     build_checkpoint_uri,
 )
-from s3torchconnector.dcp import S3StorageWriter
+from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ def setup(backend: str, world_size: int, rank: int) -> None:
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
     dist.init_process_group(backend, world_size=world_size, rank=rank)
 
 
@@ -48,6 +50,18 @@ def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
         return S3StorageWriter(cfg.s3.region, uri, thread_count=cfg.thread_count)
     raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
 
+
+def get_reader(cfg: DictConfig, suffix: str) -> FileSystemReader:
+    """Instantiate a checkpoint reader based on the input config."""
+    if cfg.checkpoint.storage == "disk":
+        local_path = Path(cfg.path) / suffix
+        logger.info("Loading checkpoint from %s (disk)...", local_path)
+        return dcp.FileSystemReader(local_path)
+    elif cfg.checkpoint.storage == "s3":
+        uri = build_checkpoint_uri(cfg.s3.uri, suffix)
+        logger.info("Loading checkpoint from %s (S3)...", uri)
+        return S3StorageReader(cfg.s3.region, uri)
+    raise ValueError(f"Storage reader {cfg.checkpoint.storage} not supported")
 
 def benchmark_common_runner(
     cfg: DictConfig,

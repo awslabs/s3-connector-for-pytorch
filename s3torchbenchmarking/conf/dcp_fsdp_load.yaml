@@ -1,0 +1,39 @@
+defaults:
+  - hydra/callbacks/collate_results
+  - aws/dynamodb # save run results to DynamoDB -- comment me if not required
+  - _self_
+
+# S3 bucket to use to save checkpoints.
+# NOTE: a non-existing bucket will fail the benchmarks.
+s3:
+  region:  # e.g., eu-west-1
+  uri:   # e.g., s3://my-bucket/
+# Number of iterations for "saving" a model's checkpoint.
+# NOTE: this does not affect model training, as no actual training occurs in these benchmarks.
+epochs: 4
+
+hydra:
+  mode: MULTIRUN
+  sweep:
+    dir: multirun/${hydra.job.config_name}/${now:%Y-%m-%d_%H-%M-%S}
+  sweeper:
+    params:
+      # Short name of a pre-trained llama v2 model (valid options: "L7b", "L13b", "L30b", "L65b", "L70b").
+      +model: L7b, L13b, L30b
+      # Type of Torch distributed backend (valid options: "nccl", "gloo").
+      +backend: nccl
+      # Number of workers.
+      +world_size: 4
+      # Number of threads to use for saving the checkpoints.
+      +thread_count: 4
+      # Checkpoint storage location (valid options: "disk", "s3").
+      +checkpoint.storage: disk, s3
+      # Sharding strategy (valid options: "full", "hybrid").
+      +checkpoint.sharding_strategy: full
+      # Controls whether files are forcibly synced to disk (only relevant for "disk" storage).
+      # NOTE: We disabled this option to improve performance since FSDP checkpointing with
+      # forced syncing (maximum durability) was significantly slower than storage throughput.
+      # This setting has no effect when using "s3" storage.
+      +checkpoint.sync_files: false
+      +checkpoint.suffix: 
+
