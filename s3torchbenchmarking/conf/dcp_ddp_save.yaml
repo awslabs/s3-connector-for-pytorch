@@ -6,8 +6,8 @@ defaults:
 # S3 bucket to use to save checkpoints.
 # NOTE: a non-existing bucket will fail the benchmarks.
 s3:
-  region: ??? # e.g., eu-west-1
-  uri: ???    # e.g., s3://my-bucket/
+  region: # e.g., eu-west-1
+  uri:  # e.g., s3://my-bucket/
 # Number of iterations for "saving" a model's checkpoint.
 # NOTE: this does not affect model training, as no actual training occurs in these benchmarks.
 epochs: 4
