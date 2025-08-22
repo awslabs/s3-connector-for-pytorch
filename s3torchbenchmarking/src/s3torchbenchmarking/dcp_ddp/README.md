@@ -38,11 +38,12 @@ The load configuration includes a `checkpoint.suffix` parameter that specifies w
 **Save benchmarks (default):**
 ```bash
 ./utils/run_dcp_ddp_benchmarks.sh
+./utils/run_dcp_ddp_benchmarks.sh --save
 ```
 
 **Load benchmarks:**
 ```bash
-./utils/run_dcp_ddp_benchmarks.sh -l
+./utils/run_dcp_ddp_benchmarks.sh --load
 ```
 
 ### References
