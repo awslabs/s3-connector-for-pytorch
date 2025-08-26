@@ -6,8 +6,8 @@ defaults:
 # S3 bucket to use to save checkpoints.
 # NOTE: a non-existing bucket will fail the benchmarks.
 s3:
-  region: # e.g., eu-west-1
-  uri:  # e.g., s3://my-bucket/
+  region: ??? # e.g., eu-west-1
+  uri: ??? # e.g., s3://my-bucket/
 # Number of iterations for "saving" a model's checkpoint.
 # NOTE: this does not affect model training, as no actual training occurs in these benchmarks.
 epochs: 4
@@ -23,8 +23,8 @@ hydra:
       # Type of Torch distributed backend (valid options: "nccl", "gloo").
       +backend: nccl
       # Number of workers.
-      +world_size: 4
+      +world_size: 8
       # Number of threads to use for saving the checkpoints.
-      +thread_count: 4
+      +thread_count: 8
       # Checkpoint storage location (valid options: "disk", "s3").
       +checkpoint.storage: disk, s3
