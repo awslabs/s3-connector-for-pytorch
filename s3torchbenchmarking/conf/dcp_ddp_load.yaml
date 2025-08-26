@@ -19,7 +19,7 @@ hydra:
   sweeper:
     params:
       # Short name of a pre-trained model (from Hugging Face), listed in `models.py`.
-      +model: vit-base, T0_3B
+      +model: ???
       # Type of Torch distributed backend (valid options: "nccl", "gloo").
       +backend: nccl
       # Number of workers.
