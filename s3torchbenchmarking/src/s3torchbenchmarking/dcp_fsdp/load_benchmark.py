@@ -40,7 +40,7 @@ def run_fsdp_load(
     suffix: str,
     load_timestamps: Queue,
 ):
-    """Execute the actual code for checkpoint saving.
+    """Execute the actual code for checkpoint loading.
 
     This function is meant to be executed in subprocesses."""
     setup(cfg.backend, world_size=cfg.world_size, rank=rank)
