@@ -49,8 +49,7 @@ def run_ddp_load(
     This function is meant to be executed in subprocesses."""
     begin_process = perf_counter()
     # Override random suffix with suffix from config
-    suffix = cfg.checkpoint.suffix
-    storage_reader = get_reader(cfg, suffix)
+    storage_reader = get_reader(cfg)
     model_size = proxy_model.size
     model = proxy_model.model
 
