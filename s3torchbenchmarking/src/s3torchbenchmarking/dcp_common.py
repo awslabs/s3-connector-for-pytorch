@@ -50,8 +50,9 @@ def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
     raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
 
 
-def get_reader(cfg: DictConfig, suffix: str) -> FileSystemReader:
+def get_reader(cfg: DictConfig) -> FileSystemReader:
     """Instantiate a checkpoint reader based on the input config."""
+    suffix = cfg.checkpoint.suffix
     if cfg.checkpoint.storage == "disk":
         local_path = Path(cfg.path) / suffix
         logger.info("Loading checkpoint from %s (disk)...", local_path)

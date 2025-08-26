@@ -27,12 +27,6 @@ Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
 import sys
 
-logging.basicConfig(
-    stream=sys.stdout,
-    format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
-)
-logging.getLogger().setLevel(logging.DEBUG)
-
 
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
@@ -120,9 +114,7 @@ def run_fsdp_load(
             "model": model.state_dict(),
         }
 
-    # Get reader with the provided suffix
-    suffix = cfg.checkpoint.suffix
-    storage_reader = get_reader(cfg, suffix)
+    storage_reader = get_reader(cfg)
 
     # Align all workers to start loading at the same time
     dist.barrier()
