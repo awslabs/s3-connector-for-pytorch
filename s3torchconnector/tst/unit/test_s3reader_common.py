@@ -304,6 +304,26 @@ def test_seeks_end(reader_implementation: Type[S3Reader]):
     assert s3reader.readinto(buf) == 0
 
 
+def test_seekable(reader_implementation: Type[S3Reader]):
+    s3reader = reader_implementation(
+        TEST_BUCKET,
+        TEST_KEY,
+        lambda: None,
+        lambda: iter([]),
+    )
+    assert s3reader.seekable()
+
+
+def test_readable(reader_implementation: Type[S3Reader]):
+    s3reader = reader_implementation(
+        TEST_BUCKET,
+        TEST_KEY,
+        lambda: None,
+        lambda: iter([]),
+    )
+    assert s3reader.readable()
+
+
 def test_not_writable(reader_implementation: Type[S3Reader]):
     s3reader = reader_implementation(
         TEST_BUCKET,

@@ -1,3 +1,8 @@
+## TBD
+
+### Bug fixes
+* Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
+
 ## v1.4.3 (July 25, 2025)
 
 ### New features
