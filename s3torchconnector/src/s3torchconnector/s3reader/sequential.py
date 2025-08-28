@@ -173,6 +173,9 @@ class SequentialS3Reader(S3Reader):
         if offset > self._buffer_size():
             self._prefetch_to_offset(offset)
 
+        if self._size is not None:
+            offset = min(offset, self._size)
+
         self._position = self._buffer.seek(offset)
         return self._position
 
