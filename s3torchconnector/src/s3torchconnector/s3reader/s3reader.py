@@ -41,6 +41,13 @@ class S3Reader(ABC, io.BufferedIOBase):
     def readinto(self, buf) -> int:
         pass
 
+    def seekable(self) -> bool:
+        """
+        Returns:
+            bool: Return whether object supports seek operations.
+        """
+        return True
+
     def readable(self) -> bool:
         """
         Returns:
