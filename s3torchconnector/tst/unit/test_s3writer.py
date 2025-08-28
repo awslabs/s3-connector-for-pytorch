@@ -56,6 +56,30 @@ def test_s3writer_tell(stream_and_lengths: Tuple[List[bytes], List[int]]):
             assert bytewriter.tell() == s3writer.tell()
 
 
+def test_s3writer_closed_property():
+    """Test that closed property reflects the writer's state."""
+    writer = S3Writer(MOCK_STREAM)
+    assert not writer.closed
+    writer.close()
+    assert writer.closed
+
+
+def test_s3writer_not_writable_after_closed():
+    """Test that writable() returns False after writer is closed."""
+    writer = S3Writer(MOCK_STREAM)
+    assert writer.writable()
+    writer.close()
+    assert not writer.writable()
+
+
+def test_s3writer_write_when_closed():
+    """Test that write() raises ValueError via _checkClosed() when writer is closed"""
+    writer = S3Writer(MOCK_STREAM)
+    writer.close()
+    with pytest.raises(ValueError):
+        writer.write(b"test")
+
+
 def test_multiple_close_calls():
     """Test that multiple calls to close() only close the stream once."""
     MOCK_STREAM.reset_mock()
@@ -67,7 +91,7 @@ def test_multiple_close_calls():
     writer.close()
 
     MOCK_STREAM.close.assert_called_once()
-    assert writer._closed
+    assert writer.closed
 
 
 def test_concurrent_close_calls():
@@ -86,7 +110,7 @@ def test_concurrent_close_calls():
         thread.join()
 
     MOCK_STREAM.close.assert_called_once()
-    assert writer._closed
+    assert writer.closed
 
 
 def test_exit_without_exception():
