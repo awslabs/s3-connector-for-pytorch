@@ -51,7 +51,9 @@ class S3Writer(io.BufferedIOBase):
 
         Raises:
             S3Exception: An error occurred accessing S3.
+            ValueError: If the writer is closed.
         """
+        self._checkClosed()  # from python/cpython/Lib/_pyio.py
         if isinstance(data, memoryview):
             data = data.tobytes()
         self.stream.write(data)
@@ -69,6 +71,14 @@ class S3Writer(io.BufferedIOBase):
                 self._closed = True
                 self.stream.close()
 
+    @property
+    def closed(self) -> bool:
+        """
+        Returns:
+            bool: Return whether the object is closed.
+        """
+        return self._closed
+
     def flush(self):
         """No-op"""
         pass
@@ -83,9 +93,9 @@ class S3Writer(io.BufferedIOBase):
     def writable(self) -> bool:
         """
         Returns:
-            bool: Return whether object was opened for writing.
+            bool: Return whether object is open for writing.
         """
-        return True
+        return not self.closed
 
     def tell(self) -> int:
         """
