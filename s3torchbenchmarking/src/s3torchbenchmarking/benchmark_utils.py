@@ -82,12 +82,9 @@ class ResourceMonitor:
 
             if monitor_gpu:
                 for gpu_id in range(self.num_of_gpus):
-                    gpu_info = nvmlDeviceGetUtilizationRates(
-                        nvmlDeviceGetHandleByIndex(gpu_id)
-                    )
-                    gpu_mem_info = nvmlDeviceGetMemoryInfo(
-                        nvmlDeviceGetHandleByIndex(gpu_id)
-                    )
+                    nvml_device_handle = nvmlDeviceGetHandleByIndex(gpu_id)
+                    gpu_info = nvmlDeviceGetUtilizationRates(nvml_device_handle)
+                    gpu_mem_info = nvmlDeviceGetMemoryInfo(nvml_device_handle)
                     self._utilization[f"gpu_{gpu_id}_mem"].add(gpu_info.gpu)
                     self._utilization[f"gpu_{gpu_id}_util"].add(
                         gpu_mem_info.used / gpu_mem_info.total * 100
