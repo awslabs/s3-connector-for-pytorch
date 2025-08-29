@@ -13,11 +13,19 @@ import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 from torch.nn.parallel import DistributedDataParallel
 
-from s3torchbenchmarking.dcp_common import setup, get_writer, benchmark_common_runner
+from s3torchbenchmarking.dcp_common import setup, get_reader, benchmark_common_runner
 from s3torchbenchmarking.models import get_benchmark_model, BenchmarkModel
 
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
+
+import sys
+
+logging.basicConfig(
+    stream=sys.stdout,
+    format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
+)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
@@ -26,22 +34,22 @@ def run_benchmark(cfg: DictConfig) -> dict:
     """DCP benchmarks entry point."""
     benchmark_model = get_benchmark_model(cfg.model)
 
-    return benchmark_common_runner(cfg, run_ddp, (cfg, benchmark_model))
+    return benchmark_common_runner(cfg, run_ddp_load, (cfg, benchmark_model))
 
 
-def run_ddp(
+def run_ddp_load(
     rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
     cfg: DictConfig,
     proxy_model: BenchmarkModel,
     suffix: str,
-    save_timestamps: Queue,
+    load_timestamps: Queue,
 ) -> None:
-    """Execute the actual code for checkpoint saving.
+    """Execute the actual code for checkpoint loading.
 
     This function is meant to be executed in subprocesses."""
     begin_process = perf_counter()
-
-    storage_writer = get_writer(cfg, suffix)
+    # Override random suffix with suffix from config
+    storage_reader = get_reader(cfg)
     model_size = proxy_model.size
     model = proxy_model.model
 
@@ -59,13 +67,13 @@ def run_ddp(
 
     state_dict = model.state_dict()
 
-    begin_save = perf_counter()  # also "end_process"
-    dcp.save(state_dict, storage_writer=storage_writer)
-    end_save = perf_counter()
+    begin_load = perf_counter()  # also "end_process"
+    dcp.load(state_dict, storage_reader=storage_reader)
+    end_load = perf_counter()
 
-    # Record the save times excluding the influence of the process setup and model loading to device.
-    save_timestamps.put(
-        (begin_process, end_save - (begin_save - begin_process), model_size)
+    # Record the load times excluding the influence of the process setup and model loading to device.
+    load_timestamps.put(
+        (begin_process, end_load - (begin_load - begin_process), model_size)
     )
 
     dist.destroy_process_group()
