@@ -5,35 +5,99 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional, List
-
+from typing import Optional, List, Tuple
+import os
 import hydra
 import torchdata  # type: ignore
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
+from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
-
 from s3torchbenchmarking.benchmark_utils import ExperimentResult
 from s3torchbenchmarking.models import (
     Entitlement,
     ViT,
     ModelInterface,
 )
+
 from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
 from s3torchconnector.s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
+import torch
+import logging
+import torch.multiprocessing as mp
+import json
+import tempfile
+
+logger = logging.getLogger(__name__)
+
+def init_distributed(rank=0, world_size=1):
+    """Initialize DDP Process group"""
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+
+def run_ddp_process(rank, world_size, config, results_file):
+    """DDP Process function"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format=f"[Rank {rank}] %(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    init_distributed(rank, world_size)
+    try:
+        result = run_benchmark_experiment(config)
+
+        # Only rank 0 writes results
+        if rank == 0 and result:
+            with open(results_file, "w") as f:
+                json.dump(result, f)
+    finally:
+        dist.destroy_process_group()
 
 
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
+
+    num_gpus = torch.cuda.device_count()
+    if num_gpus > 1 and not dist.is_initialized():
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            results_file = f.name
+        try:
+            mp.spawn(
+                run_ddp_process,
+                args=(num_gpus, config, results_file),
+                nprocs=num_gpus,
+                join=True,
+            )
+            # Read results from file
+            if os.path.exists(results_file):
+                with open(results_file, "r") as f:
+                    return json.load(f)
+            else:
+                return {"metrics": "DDP training completed - no results file"}
+
+        finally:
+            # Cleanup
+            if os.path.exists(results_file):
+                os.unlink(results_file)
+    else:
+        return run_benchmark_experiment(config)
+
+
+def run_benchmark_experiment(config: DictConfig):
+    num_gpus = torch.cuda.device_count()
+    world_size = dist.get_world_size() if dist.is_initialized() else 1
+    rank = dist.get_rank() if dist.is_initialized() else 0
+
     model = make_model(config)
 
     fully_qualified_uri = (
-        "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/")
+        "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/") + "/"
     )
-
-    dataset = make_dataset(
+    dataset, sampler = make_dataset(
         dataloader_config=config.dataloader,
         sharding=config.sharding,
         prefix_uri=fully_qualified_uri,
@@ -42,11 +106,27 @@ def run_experiment(config: DictConfig) -> dict:
     )
     dataloader = make_dataloader(
         dataset=dataset,
+        sampler=sampler,
         num_workers=config.dataloader.num_workers,
         batch_size=config.dataloader.batch_size,
     )
-
+    if dist.is_available() and dist.is_initialized():
+        torch.cuda.set_device(rank)  # ← relocate from run_ddp_process()
+        device_id = torch.cuda.current_device()
+        if model.model != None:
+            model.model = model.model.to(device_id)
+            model.device = torch.device(f"cuda:{device_id}")
+            model.model = torch.nn.parallel.DistributedDataParallel(
+                model.model, device_ids=[rank], output_device=rank
+            )
+            # Recreate optimizer AFTER DDP wrapping
+            model._optimizer = None  # Clear cached optimizer
+            model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001) 
     result: ExperimentResult = model.train(dataloader, config.epochs)
+
+    # Only return metrics from rank 0 to avoid duplicates
+    if rank != 0:
+        return {}
 
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
@@ -59,12 +139,13 @@ def run_experiment(config: DictConfig) -> dict:
 
 def make_model(config: DictConfig) -> ModelInterface:
     if config.model == "entitlement":
-        return Entitlement()
+        model = Entitlement()
     elif config.model == "vit":
         num_labels = int(config.get("num_labels", 1000))
-        return ViT(num_labels, config.checkpoint)
+        model = ViT(num_labels, config.checkpoint)
     else:
         raise Exception(f"Unknown model {config.model}")
+    return model
 
 
 def make_mountpoint(
@@ -95,7 +176,8 @@ def make_dataset(
     region: Optional[str],
     load_sample,
 ) -> Dataset:
-
+    world_size = dist.get_world_size() if dist.is_initialized() else 1
+    rank = dist.get_rank() if dist.is_initialized() else 0
     kind = dataloader_config.kind
     num_workers = dataloader_config.num_workers
 
@@ -105,13 +187,18 @@ def make_dataset(
         if not dataloader_config.get("s3reader"):
             raise ValueError(f"Must provide s3reader config for {kind}")
         s3reader_config = dataloader_config.s3reader
-        return create_s3_iterable_dataset(
-            sharding,
-            prefix_uri,
-            region,
-            load_sample,
-            num_workers,
-            s3reader_config,
+        return (
+            create_s3_iterable_dataset(
+                sharding,
+                prefix_uri,
+                region,
+                load_sample,
+                num_workers,
+                s3reader_config,
+                world_size,
+                rank,
+            ),
+            None,
         )
     if kind == "s3mapdataset":
         if not region:
@@ -120,17 +207,26 @@ def make_dataset(
             raise ValueError(f"Must provide s3reader config for {kind}")
         s3reader_config = dataloader_config.s3reader
         return create_s3_map_dataset(
-            sharding, prefix_uri, region, load_sample, s3reader_config
+            sharding, prefix_uri, region, load_sample, s3reader_config, world_size, rank
         )
     if kind == "fsspec":
-        return create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers)
+        return (
+            create_fsspec_dataset(sharding, prefix_uri, load_sample, num_workers),
+            None,
+        )
     if kind == "mountpoint":
-        return create_mountpoint_dataset(
-            sharding, prefix_uri, load_sample, num_workers, False
+        return (
+            create_mountpoint_dataset(
+                sharding, prefix_uri, load_sample, num_workers, False
+            ),
+            None,
         )
     if kind == "mountpointcache":
-        return create_mountpoint_dataset(
-            sharding, prefix_uri, load_sample, num_workers, True
+        return (
+            create_mountpoint_dataset(
+                sharding, prefix_uri, load_sample, num_workers, True
+            ),
+            None,
         )
     raise Exception(f"Unknown dataset kind {kind}")
 
@@ -162,14 +258,24 @@ def create_s3_iterable_dataset(
     load_sample,
     num_workers: int,
     s3reader_config: DictConfig,
+    world_size: int = 1,
+    rank: int = 0,
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
+    enable_sharding = world_size > 1
+    logging.info(
+        f"Enabled sharding:  {enable_sharding}, because world_size is {world_size}"
+    )
     dataset = S3IterableDataset.from_prefix(
-        prefix_uri, region=region, reader_constructor=reader_constructor
+        prefix_uri,
+        region=region,
+        reader_constructor=reader_constructor,
+        enable_sharding=enable_sharding,
     )
     dataset = torchdata.datapipes.iter.IterableWrapper(dataset)
 
-    if num_workers > 0:
+    # We don't include when using DDP as this means it's already sharded by iter in S3IterableDataset
+    if num_workers > 0 and not dist.is_initialized():
         dataset = dataset.sharding_filter()
     if sharding:
         dataset = dataset.map(tar_to_tuple)
@@ -184,18 +290,31 @@ def create_s3_map_dataset(
     region: str,
     load_sample,
     s3reader_config: DictConfig,
+    world_size: int = 1,
+    rank: int = 0,
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
     if sharding:
         raise ValueError("Sharding is not supported for s3mapdataset")
-    else:
-        dataset = S3MapDataset.from_prefix(
-            prefix_uri,
-            region=region,
-            transform=load_sample,
-            reader_constructor=reader_constructor,
+
+    dataset = S3MapDataset.from_prefix(
+        prefix_uri,
+        region=region,
+        transform=load_sample,
+        reader_constructor=reader_constructor,
+    )
+    dataset_size = len(dataset)
+    logger.info(f"Rank {rank}: Total dataset size: {dataset_size}")
+    
+    if world_size > 1:
+        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, drop_last=False, shuffle=False)
+        samples_per_rank = len(sampler)
+        total_samples_across_ranks = samples_per_rank * world_size
+        logger.info(
+            f"Rank {rank}: DistributedSampler created with {samples_per_rank} samples per rank, {total_samples_across_ranks} total across all ranks"
         )
-    return dataset
+        return dataset, sampler
+    return dataset, None
 
 
 def create_mountpoint_dataset(
@@ -225,14 +344,19 @@ def create_fsspec_dataset(
     return dataset.map(load_sample)
 
 
-def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int):
+def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler=None):
     return DataLoader(
         dataset=dataset,
         batch_size=batch_size,
+        sampler=sampler,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         num_workers=num_workers,
         collate_fn=default_collate,
+        pin_memory=False,
+        persistent_workers=True,
+        prefetch_factor=2 if num_workers > 0 else None, 
+        multiprocessing_context="fork"
     )
 
 
@@ -244,4 +368,8 @@ def tar_to_tuple(s3object: S3Reader):
 
 
 if __name__ == "__main__":
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ['NCCL_P2P_DISABLE'] = "1"
+
     run_experiment()

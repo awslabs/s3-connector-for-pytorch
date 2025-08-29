@@ -142,6 +142,19 @@ class ModelInterface(ABC):
     def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
         raise NotImplementedError
 
+    def capped_loader(self, loader):
+        """Cap the number of steps in the loader to the minimum number of steps across all ranks"""
+        if not dist.is_initialized():
+            return loader
+        local = sum(1 for _ in loader)
+        world = dist.get_world_size()
+        counts = [None] * world
+        dist.all_gather_object(counts, local)
+        min_steps = min(counts)
+
+        it = iter(loader)
+        for _ in range(min_steps):
+            yield next(it)
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
 
@@ -154,12 +167,21 @@ class ModelInterface(ABC):
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
                 logger.info("Epoch #%i/%i", epoch, epochs - 1)
-                for batch_idx, (data, target) in enumerate(dataloader):
-                    logger.debug("Batch #%i", batch_idx)
-                    result = self.train_batch(batch_idx, data, target)
-                    num_samples += len(data)
-                    if result:
-                        checkpoint_times.append(result)
+                batch_count = 0
+                try:
+                    for batch_idx, (data, target) in enumerate(self.capped_loader(dataloader)):
+                        logger.debug("Batch #%i", batch_idx)
+                        result = self.train_batch(batch_idx, data, target)
+                        num_samples += len(data)
+                        batch_count += 1
+                        if batch_count % 1000 == 0:
+                            logger.info(f"Processed {batch_count} batches, {num_samples} samples")
+                        if result:
+                            checkpoint_times.append(result)
+                except Exception as e:
+                    logger.error(f"Error in training loop at batch {batch_count}: {e}")
+                    raise
+                logger.info(f"Epoch {epoch} completed with {batch_count} batches")
                 epoch_durations_s.append(time.perf_counter() - begin_epoch)
             training_duration_s = time.perf_counter() - begin_training
 
@@ -185,11 +207,16 @@ class Entitlement(ModelInterface):
 
     def __init__(self, num_labels: Optional[int] = None):
         self.num_labels = num_labels
+        self.model = None
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        buffer = data.read()
-        return len(buffer), key
+        try:
+            buffer = data.read()
+            return len(buffer), key
+        except Exception as e:
+            logger.warning(f"Failed to read sample {key}: {e}")
+            return 0, key
 
     def train_batch(self, batch_idx: int, data, target):
         pass
@@ -234,7 +261,11 @@ class ViT(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        img = Image.open(data)
+        if isinstance(data, S3Reader):
+            from io import BytesIO
+            img = Image.open(BytesIO(data.read()))
+        else:
+            img = Image.open(data)
         target = self._get_random_label()
         if self.transform:
             img = self.transform(img)
