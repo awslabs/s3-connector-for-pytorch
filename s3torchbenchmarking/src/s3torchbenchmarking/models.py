@@ -155,65 +155,42 @@ class ModelInterface(ABC):
         it = iter(loader)
         for _ in range(min_steps):
             yield next(it)
-
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
 
-        # Only monitor resources on rank 0 to avoid duplicate monitoring
-        rank = dist.get_rank() if dist.is_initialized() else 0
-
         epoch_durations_s: List[float] = []
 
-        # Only create ResourceMonitor on rank 0
-        monitor = ResourceMonitor() if rank == 0 else None
-
-        if monitor:
-            monitor.start()
-
-        num_samples = 0
-        checkpoint_times = []
-        begin_training = perf_counter()
-
-        if dist.is_initialized():
-            context_manager = self.model.join(
-                divide_by_initial_world_size=True,
-                enable=True,
-                throw_on_early_termination=False,
-            )
-        else:
-            from contextlib import nullcontext
-
-            context_manager = nullcontext()
-        with context_manager:
+        with ResourceMonitor() as monitor:
+            num_samples = 0
+            checkpoint_times = []
+            begin_training = perf_counter()
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
-                if rank == 0:  # Only log from rank 0
-                    logger.info("Epoch #%i/%i", epoch, epochs - 1)
-                for batch_idx, (data, target) in enumerate(
-                    self.capped_loader(dataloader)
-                ):
-                    if rank == 0:
+                logger.info("Epoch #%i/%i", epoch, epochs - 1)
+                batch_count = 0
+                try:
+                    for batch_idx, (data, target) in enumerate(self.capped_loader(dataloader)):
                         logger.debug("Batch #%i", batch_idx)
-                    result = self.train_batch(batch_idx, data, target)
-                    num_samples += len(data)
-                    if result:
-                        checkpoint_times.append(result)
+                        result = self.train_batch(batch_idx, data, target)
+                        num_samples += len(data)
+                        batch_count += 1
+                        if batch_count % 1000 == 0:
+                            logger.info(f"Processed {batch_count} batches, {num_samples} samples")
+                        if result:
+                            checkpoint_times.append(result)
+                except Exception as e:
+                    logger.error(f"Error in training loop at batch {batch_count}: {e}")
+                    raise
+                logger.info(f"Epoch {epoch} completed with {batch_count} batches")
                 epoch_durations_s.append(time.perf_counter() - begin_epoch)
-
-        training_duration_s = time.perf_counter() - begin_training
-
-        if monitor:
-            monitor.stop()
-            utilization = monitor.resource_data
-        else:
-            utilization = {}
+            training_duration_s = time.perf_counter() - begin_training
 
         return {
             "training_duration_s": training_duration_s,
             "epoch_durations_s": epoch_durations_s,
             "volume": num_samples,
             "checkpoint_times": checkpoint_times,
-            "utilization": utilization,
+            "utilization": monitor.resource_data,
         }
 
     @abstractmethod
@@ -230,11 +207,16 @@ class Entitlement(ModelInterface):
 
     def __init__(self, num_labels: Optional[int] = None):
         self.num_labels = num_labels
+        self.model = None
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        buffer = data.read()
-        return len(buffer), key
+        try:
+            buffer = data.read()
+            return len(buffer), key
+        except Exception as e:
+            logger.warning(f"Failed to read sample {key}: {e}")
+            return 0, key
 
     def train_batch(self, batch_idx: int, data, target):
         pass
@@ -279,7 +261,11 @@ class ViT(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        img = Image.open(data)
+        if isinstance(data, S3Reader):
+            from io import BytesIO
+            img = Image.open(BytesIO(data.read()))
+        else:
+            img = Image.open(data)
         target = self._get_random_label()
         if self.transform:
             img = self.transform(img)

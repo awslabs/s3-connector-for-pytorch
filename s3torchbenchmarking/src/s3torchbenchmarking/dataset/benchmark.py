@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import os
 import hydra
 import torchdata  # type: ignore
@@ -32,7 +32,6 @@ import tempfile
 
 logger = logging.getLogger(__name__)
 
-
 def init_distributed(rank=0, world_size=1):
     """Initialize DDP Process group"""
     os.environ["MASTER_ADDR"] = "localhost"
@@ -46,7 +45,6 @@ def run_ddp_process(rank, world_size, config, results_file):
         level=logging.INFO,
         format=f"[Rank {rank}] %(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    torch.cuda.set_device(rank)
     init_distributed(rank, world_size)
     try:
         result = run_benchmark_experiment(config)
@@ -97,7 +95,7 @@ def run_benchmark_experiment(config: DictConfig):
     model = make_model(config)
 
     fully_qualified_uri = (
-        "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/")
+        "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/") + "/"
     )
     dataset, sampler = make_dataset(
         dataloader_config=config.dataloader,
@@ -106,24 +104,24 @@ def run_benchmark_experiment(config: DictConfig):
         region=config.s3.region,
         load_sample=model.load_sample,
     )
-    validate_dataset_coverage(dataset, sampler, world_size, rank)
     dataloader = make_dataloader(
         dataset=dataset,
         sampler=sampler,
         num_workers=config.dataloader.num_workers,
         batch_size=config.dataloader.batch_size,
     )
-    if dist.is_available and dist.is_initialized():
+    if dist.is_available() and dist.is_initialized():
+        torch.cuda.set_device(rank)  # ← relocate from run_ddp_process()
         device_id = torch.cuda.current_device()
-        model.model = model.model.to(device_id)
-        model.device = torch.device(f"cuda:{device_id}")
-        model.model = torch.nn.parallel.DistributedDataParallel(
-            model.model, device_ids=[rank], output_device=rank
-        )
-        # Recreate optimizer AFTER DDP wrapping
-        model._optimizer = None  # Clear cached optimizer
-        model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001)
-    dist.barrier()
+        if model.model != None:
+            model.model = model.model.to(device_id)
+            model.device = torch.device(f"cuda:{device_id}")
+            model.model = torch.nn.parallel.DistributedDataParallel(
+                model.model, device_ids=[rank], output_device=rank
+            )
+            # Recreate optimizer AFTER DDP wrapping
+            model._optimizer = None  # Clear cached optimizer
+            model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001) 
     result: ExperimentResult = model.train(dataloader, config.epochs)
 
     # Only return metrics from rank 0 to avoid duplicates
@@ -305,10 +303,15 @@ def create_s3_map_dataset(
         transform=load_sample,
         reader_constructor=reader_constructor,
     )
+    dataset_size = len(dataset)
+    logger.info(f"Rank {rank}: Total dataset size: {dataset_size}")
+    
     if world_size > 1:
-        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank)
+        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, drop_last=False, shuffle=False)
+        samples_per_rank = len(sampler)
+        total_samples_across_ranks = samples_per_rank * world_size
         logger.info(
-            f"Using DistributedSampler for S3MapDataset with {world_size} processes"
+            f"Rank {rank}: DistributedSampler created with {samples_per_rank} samples per rank, {total_samples_across_ranks} total across all ranks"
         )
         return dataset, sampler
     return dataset, None
@@ -347,11 +350,13 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler
         batch_size=batch_size,
         sampler=sampler,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         num_workers=num_workers,
         collate_fn=default_collate,
         pin_memory=False,
-        multiprocessing_context="fork",  # Change from 'spawn' to 'fork'
+        persistent_workers=True,
+        prefetch_factor=2 if num_workers > 0 else None, 
+        multiprocessing_context="fork"
     )
 
 
@@ -362,42 +367,9 @@ def tar_to_tuple(s3object: S3Reader):
     return s3object.key, StreamWrapper(s3object)
 
 
-def validate_dataset_coverage(dataset, sampler, world_size, rank):
-    """Validate that the entire dataset is covered across all processes without duplication"""
-    if world_size <= 1:
-        logging.info("Single process - no dataset coverage validation needed")
-        return
-
-    # For S3MapDataset with DistributedSampler
-    if hasattr(dataset, "__len__") and sampler is not None:
-        total_samples = len(dataset)
-        sampler_indices = list(sampler)
-        expected_samples_per_rank = total_samples // world_size
-
-        logging.info(
-            f"Rank {rank}: Dataset size={total_samples}, Sampler indices={len(sampler_indices)}"
-        )
-        logging.info(
-            f"Rank {rank}: Expected samples per rank: {expected_samples_per_rank}"
-        )
-
-        if len(sampler_indices) != expected_samples_per_rank:
-            logging.warning(
-                f"Rank {rank}: Expected {expected_samples_per_rank} samples, got {len(sampler_indices)}"
-            )
-        else:
-            logging.info(f"Rank {rank}: Dataset coverage validation passed")
-
-    # For S3IterableDataset (built-in sharding)
-    elif hasattr(dataset, "_enable_sharding"):
-        logging.info(
-            f"Rank {rank}: S3IterableDataset with built-in sharding - coverage handled internally"
-        )
-    else:
-        logging.info(f"Rank {rank}: Dataset type doesn't support coverage validation")
-
-
 if __name__ == "__main__":
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ['NCCL_P2P_DISABLE'] = "1"
+
     run_experiment()
