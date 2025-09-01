@@ -39,29 +39,13 @@ def init_distributed(rank=0, world_size=1):
     dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
 
-def run_ddp_process(rank, world_size, config, results_file):
-    """DDP Process function"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format=f"[Rank {rank}] %(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    init_distributed(rank, world_size)
-    try:
-        result = run_benchmark_experiment(config)
-
-        # Only rank 0 writes results
-        if rank == 0 and result:
-            with open(results_file, "w") as f:
-                json.dump(result, f)
-    finally:
-        dist.destroy_process_group()
-
-
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
 
     num_gpus = torch.cuda.device_count()
+    # In the case of multiple GPU training we run run_ddp_process using mp.spawn for each of the ranks, which calls run_benchmark_experiment separately
+    # If single-rank training then it defaults to run_benchmark_experiment   
     if num_gpus > 1 and not dist.is_initialized():
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             results_file = f.name
@@ -86,6 +70,23 @@ def run_experiment(config: DictConfig) -> dict:
     else:
         return run_benchmark_experiment(config)
 
+
+def run_ddp_process(rank, world_size, config, results_file):
+    """DDP Process function for running with Multiple GPUs, this runs the benchmark and then saves results into a file"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format=f"[Rank {rank}] %(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    init_distributed(rank, world_size)
+    try:
+        result = run_benchmark_experiment(config)
+
+        # Only rank 0 writes results
+        if rank == 0 and result:
+            with open(results_file, "w") as f:
+                json.dump(result, f)
+    finally:
+        dist.destroy_process_group()
 
 def run_benchmark_experiment(config: DictConfig):
     num_gpus = torch.cuda.device_count()

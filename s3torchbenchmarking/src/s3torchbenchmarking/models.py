@@ -145,7 +145,8 @@ class ModelInterface(ABC):
     def capped_loader(self, loader):
         """Cap the number of steps in the loader to the minimum number of steps across all ranks"""
         if not dist.is_initialized():
-            return loader
+            yield from loader
+            return
         local = sum(1 for _ in loader)
         world = dist.get_world_size()
         counts = [None] * world
@@ -155,6 +156,7 @@ class ModelInterface(ABC):
         it = iter(loader)
         for _ in range(min_steps):
             yield next(it)
+            
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
 
@@ -261,11 +263,8 @@ class ViT(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        if isinstance(data, S3Reader):
-            from io import BytesIO
-            img = Image.open(BytesIO(data.read()))
-        else:
-            img = Image.open(data)
+
+        img = Image.open(data)
         target = self._get_random_label()
         if self.transform:
             img = self.transform(img)
