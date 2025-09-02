@@ -44,11 +44,14 @@ def init_distributed(rank=0, world_size=1):
 def run_experiment(config: DictConfig) -> dict:
 
     num_gpus = config.num_gpus if hasattr(config, 'num_gpus') else torch.cuda.device_count()
-    
-    # Set visible devices to limit GPU usage
+    # Cap number of GPUs to max number of GPUs
+    num_gpus = min(num_gpus, torch.cuda.device_count())
+    # Set visible devices to limit GPU usage, this allows calls to torch.cuda.device_count 
+    # to use the inputted GPU count
     if num_gpus < torch.cuda.device_count():
         os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, range(num_gpus)))
         torch.cuda.empty_cache()
+        
     # In the case of multiple GPU training we run run_ddp_process using mp.spawn for each of the ranks, which calls run_benchmark_experiment separately
     # If single-rank training then it defaults to run_benchmark_experiment   
     if num_gpus > 1 and not dist.is_initialized():
@@ -76,12 +79,10 @@ def run_experiment(config: DictConfig) -> dict:
         return run_benchmark_experiment(config)
 
 
+
+# DDP Process function for running only in multi-GPU cases
 def run_ddp_process(rank, world_size, config, results_file):
-    """DDP Process function for running with Multiple GPUs, this runs the benchmark and then saves results into a file"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format=f"[Rank {rank}] %(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    
     init_distributed(rank, world_size)
     try:
         result = run_benchmark_experiment(config)
@@ -109,14 +110,14 @@ def run_ddp_process(rank, world_size, config, results_file):
         dist.destroy_process_group()
 
 def run_benchmark_experiment(config: DictConfig):
-    world_size = dist.get_world_size() if dist.is_initialized() else 1
+    
     rank = dist.get_rank() if dist.is_initialized() else 0
-
     model = make_model(config)
 
     fully_qualified_uri = (
         "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/") + "/"
     )
+    # We always return sample from make_dataset which could be None
     dataset, sampler = make_dataset(
         dataloader_config=config.dataloader,
         sharding=config.sharding,
@@ -131,8 +132,9 @@ def run_benchmark_experiment(config: DictConfig):
         batch_size=config.dataloader.batch_size,
     )
     if dist.is_available() and dist.is_initialized():
-        torch.cuda.set_device(rank)  # ← relocate from run_ddp_process()
+        torch.cuda.set_device(rank) 
         device_id = torch.cuda.current_device()
+        
         if model.model != None:
             model.model = model.model.to(device_id)
             model.device = torch.device(f"cuda:{device_id}")
@@ -142,13 +144,14 @@ def run_benchmark_experiment(config: DictConfig):
             # Recreate optimizer AFTER DDP wrapping
             model._optimizer = None  # Clear cached optimizer
             model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001) 
+            
     result: ExperimentResult = model.train(dataloader, config.epochs)
 
     
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
         "training_duration_s": result["training_duration_s"],
-        "volume_mibs": result["volume"], 
+        "volume_mibs": result["volume"], # Includes number of samples for context on how many images were processed in total
         "epoch_durations_s": result["epoch_durations_s"],
         "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
     }
@@ -157,13 +160,12 @@ def run_benchmark_experiment(config: DictConfig):
 
 def make_model(config: DictConfig) -> ModelInterface:
     if config.model == "entitlement":
-        model = Entitlement()
+        return Entitlement()
     elif config.model == "vit":
         num_labels = int(config.get("num_labels", 1000))
-        model = ViT(num_labels, config.checkpoint)
+        return ViT(num_labels, config.checkpoint)
     else:
         raise Exception(f"Unknown model {config.model}")
-    return model
 
 
 def make_mountpoint(
@@ -193,7 +195,8 @@ def make_dataset(
     prefix_uri: str,
     region: Optional[str],
     load_sample,
-) -> Dataset:
+) -> Tuple[Dataset, Optional[DistributedSampler]]:
+    
     world_size = dist.get_world_size() if dist.is_initialized() else 1
     rank = dist.get_rank() if dist.is_initialized() else 0
     kind = dataloader_config.kind
@@ -212,7 +215,7 @@ def make_dataset(
                 load_sample,
                 num_workers,
                 s3reader_config,
-                world_size            ),
+                world_size),
             None,
         )
     if kind == "s3mapdataset":
@@ -316,16 +319,9 @@ def create_s3_map_dataset(
         transform=load_sample,
         reader_constructor=reader_constructor,
     )
-    dataset_size = len(dataset)
-    logger.info(f"Rank {rank}: Total dataset size: {dataset_size}")
-    
+    dataset_size = len(dataset)    
     if world_size > 1:
         sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, drop_last=False, shuffle=False)
-        samples_per_rank = len(sampler)
-        total_samples_across_ranks = samples_per_rank * world_size
-        logger.info(
-            f"Rank {rank}: DistributedSampler created with {samples_per_rank} samples per rank, {total_samples_across_ranks} total across all ranks"
-        )
         return dataset, sampler
     return dataset, None
 
@@ -381,8 +377,4 @@ def tar_to_tuple(s3object: S3Reader):
 
 
 if __name__ == "__main__":
-    os.environ["OMP_NUM_THREADS"] = "1"
-    os.environ["MKL_NUM_THREADS"] = "1"
-    os.environ['NCCL_P2P_DISABLE'] = "1"
-
     run_experiment()
