@@ -43,7 +43,12 @@ def init_distributed(rank=0, world_size=1):
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
 
-    num_gpus = torch.cuda.device_count()
+    num_gpus = config.num_gpus if hasattr(config, 'num_gpus') else torch.cuda.device_count()
+    
+    # Set visible devices to limit GPU usage
+    if num_gpus < torch.cuda.device_count():
+        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, range(num_gpus)))
+        torch.cuda.empty_cache()
     # In the case of multiple GPU training we run run_ddp_process using mp.spawn for each of the ranks, which calls run_benchmark_experiment separately
     # If single-rank training then it defaults to run_benchmark_experiment   
     if num_gpus > 1 and not dist.is_initialized():
@@ -81,15 +86,29 @@ def run_ddp_process(rank, world_size, config, results_file):
     try:
         result = run_benchmark_experiment(config)
 
-        # Only rank 0 writes results
+        # Gather metrics from all ranks
+        all_metrics = [None] * world_size
+        dist.all_gather_object(all_metrics, result["metrics"])
+        
+        # Only rank 0 aggregates and writes results
         if rank == 0 and result:
+            # Aggregate metrics
+            total_volume = sum(m.get("volume_mibs", 0) for m in all_metrics)
+            avg_training_duration = sum(m["training_duration_s"] for m in all_metrics) / world_size
+            
+            aggregated_metrics = {
+                "throughput_mibs": total_volume / avg_training_duration if avg_training_duration > 0 else 0,
+                "training_duration_s": avg_training_duration,
+                "volume_mibs": total_volume,
+                "per_rank_metrics": all_metrics
+            }
+            
             with open(results_file, "w") as f:
-                json.dump(result, f)
+                json.dump({"metrics": aggregated_metrics}, f)
     finally:
         dist.destroy_process_group()
 
 def run_benchmark_experiment(config: DictConfig):
-    num_gpus = torch.cuda.device_count()
     world_size = dist.get_world_size() if dist.is_initialized() else 1
     rank = dist.get_rank() if dist.is_initialized() else 0
 
@@ -125,13 +144,11 @@ def run_benchmark_experiment(config: DictConfig):
             model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001) 
     result: ExperimentResult = model.train(dataloader, config.epochs)
 
-    # Only return metrics from rank 0 to avoid duplicates
-    if rank != 0:
-        return {}
-
+    
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
         "training_duration_s": result["training_duration_s"],
+        "volume_mibs": result["volume"], 
         "epoch_durations_s": result["epoch_durations_s"],
         "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
     }
@@ -181,7 +198,6 @@ def make_dataset(
     rank = dist.get_rank() if dist.is_initialized() else 0
     kind = dataloader_config.kind
     num_workers = dataloader_config.num_workers
-
     if kind == "s3iterabledataset":
         if not region:
             raise ValueError("Must provide region for s3iterabledataset")
@@ -196,9 +212,7 @@ def make_dataset(
                 load_sample,
                 num_workers,
                 s3reader_config,
-                world_size,
-                rank,
-            ),
+                world_size            ),
             None,
         )
     if kind == "s3mapdataset":
@@ -259,9 +273,7 @@ def create_s3_iterable_dataset(
     load_sample,
     num_workers: int,
     s3reader_config: DictConfig,
-    world_size: int = 1,
-    rank: int = 0,
-):
+    world_size: int = 1):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
     enable_sharding = world_size > 1
     logging.info(
