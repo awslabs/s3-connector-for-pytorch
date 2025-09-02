@@ -156,7 +156,7 @@ class ModelInterface(ABC):
         it = iter(loader)
         for _ in range(min_steps):
             yield next(it)
-            
+
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
 
@@ -171,13 +171,17 @@ class ModelInterface(ABC):
                 logger.info("Epoch #%i/%i", epoch, epochs - 1)
                 batch_count = 0
                 try:
-                    for batch_idx, (data, target) in enumerate(self.capped_loader(dataloader)):
+                    for batch_idx, (data, target) in enumerate(
+                        self.capped_loader(dataloader)
+                    ):
                         logger.debug("Batch #%i", batch_idx)
                         result = self.train_batch(batch_idx, data, target)
                         num_samples += len(data)
                         batch_count += 1
                         if batch_count % 1000 == 0:
-                            logger.info(f"Processed {batch_count} batches, {num_samples} samples")
+                            logger.info(
+                                f"Processed {batch_count} batches, {num_samples} samples"
+                            )
                         if result:
                             checkpoint_times.append(result)
                 except Exception as e:
