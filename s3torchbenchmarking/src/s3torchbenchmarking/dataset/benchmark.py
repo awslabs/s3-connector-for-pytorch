@@ -32,6 +32,7 @@ import tempfile
 
 logger = logging.getLogger(__name__)
 
+
 def init_distributed(rank=0, world_size=1):
     """Initialize DDP Process group"""
     os.environ["MASTER_ADDR"] = "localhost"
@@ -43,17 +44,19 @@ def init_distributed(rank=0, world_size=1):
 @hydra.main(version_base=None)
 def run_experiment(config: DictConfig) -> dict:
 
-    num_gpus = config.num_gpus if hasattr(config, 'num_gpus') else torch.cuda.device_count()
+    num_gpus = (
+        config.num_gpus if hasattr(config, "num_gpus") else torch.cuda.device_count()
+    )
     # Cap number of GPUs to max number of GPUs
     num_gpus = min(num_gpus, torch.cuda.device_count())
-    # Set visible devices to limit GPU usage, this allows calls to torch.cuda.device_count 
+    # Set visible devices to limit GPU usage, this allows calls to torch.cuda.device_count
     # to use the inputted GPU count
     if num_gpus < torch.cuda.device_count():
-        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, range(num_gpus)))
+        os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, range(num_gpus)))
         torch.cuda.empty_cache()
-        
+
     # In the case of multiple GPU training we run run_ddp_process using mp.spawn for each of the ranks, which calls run_benchmark_experiment separately
-    # If single-rank training then it defaults to run_benchmark_experiment   
+    # If single-rank training then it defaults to run_benchmark_experiment
     if num_gpus > 1 and not dist.is_initialized():
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             results_file = f.name
@@ -79,10 +82,9 @@ def run_experiment(config: DictConfig) -> dict:
         return run_benchmark_experiment(config)
 
 
-
 # DDP Process function for running only in multi-GPU cases
 def run_ddp_process(rank, world_size, config, results_file):
-    
+
     init_distributed(rank, world_size)
     try:
         result = run_benchmark_experiment(config)
@@ -90,27 +92,34 @@ def run_ddp_process(rank, world_size, config, results_file):
         # Gather metrics from all ranks
         all_metrics = [None] * world_size
         dist.all_gather_object(all_metrics, result["metrics"])
-        
+
         # Only rank 0 aggregates and writes results
         if rank == 0 and result:
             # Aggregate metrics
             total_volume = sum(m.get("volume_mibs", 0) for m in all_metrics)
-            avg_training_duration = sum(m["training_duration_s"] for m in all_metrics) / world_size
-            
+            avg_training_duration = (
+                sum(m["training_duration_s"] for m in all_metrics) / world_size
+            )
+
             aggregated_metrics = {
-                "throughput_mibs": total_volume / avg_training_duration if avg_training_duration > 0 else 0,
+                "throughput_mibs": (
+                    total_volume / avg_training_duration
+                    if avg_training_duration > 0
+                    else 0
+                ),
                 "training_duration_s": avg_training_duration,
                 "volume_mibs": total_volume,
-                "per_rank_metrics": all_metrics
+                "per_rank_metrics": all_metrics,
             }
-            
+
             with open(results_file, "w") as f:
                 json.dump({"metrics": aggregated_metrics}, f)
     finally:
         dist.destroy_process_group()
 
+
 def run_benchmark_experiment(config: DictConfig):
-    
+
     rank = dist.get_rank() if dist.is_initialized() else 0
     model = make_model(config)
 
@@ -132,9 +141,9 @@ def run_benchmark_experiment(config: DictConfig):
         batch_size=config.dataloader.batch_size,
     )
     if dist.is_available() and dist.is_initialized():
-        torch.cuda.set_device(rank) 
+        torch.cuda.set_device(rank)
         device_id = torch.cuda.current_device()
-        
+
         if model.model != None:
             model.model = model.model.to(device_id)
             model.device = torch.device(f"cuda:{device_id}")
@@ -143,15 +152,16 @@ def run_benchmark_experiment(config: DictConfig):
             )
             # Recreate optimizer AFTER DDP wrapping
             model._optimizer = None  # Clear cached optimizer
-            model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001) 
-            
+            model.optimizer = torch.optim.Adam(model.model.parameters(), lr=0.001)
+
     result: ExperimentResult = model.train(dataloader, config.epochs)
 
-    
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
         "training_duration_s": result["training_duration_s"],
-        "volume_mibs": result["volume"], # Includes number of samples for context on how many images were processed in total
+        "volume_mibs": result[
+            "volume"
+        ],  # Includes number of samples for context on how many images were processed in total
         "epoch_durations_s": result["epoch_durations_s"],
         "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
     }
@@ -196,7 +206,7 @@ def make_dataset(
     region: Optional[str],
     load_sample,
 ) -> Tuple[Dataset, Optional[DistributedSampler]]:
-    
+
     world_size = dist.get_world_size() if dist.is_initialized() else 1
     rank = dist.get_rank() if dist.is_initialized() else 0
     kind = dataloader_config.kind
@@ -215,7 +225,8 @@ def make_dataset(
                 load_sample,
                 num_workers,
                 s3reader_config,
-                world_size),
+                world_size,
+            ),
             None,
         )
     if kind == "s3mapdataset":
@@ -276,7 +287,8 @@ def create_s3_iterable_dataset(
     load_sample,
     num_workers: int,
     s3reader_config: DictConfig,
-    world_size: int = 1):
+    world_size: int = 1,
+):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
     enable_sharding = world_size > 1
     logging.info(
@@ -319,9 +331,11 @@ def create_s3_map_dataset(
         transform=load_sample,
         reader_constructor=reader_constructor,
     )
-    dataset_size = len(dataset)    
+    dataset_size = len(dataset)
     if world_size > 1:
-        sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, drop_last=False, shuffle=False)
+        sampler = DistributedSampler(
+            dataset, num_replicas=world_size, rank=rank, drop_last=False, shuffle=False
+        )
         return dataset, sampler
     return dataset, None
 
@@ -364,8 +378,8 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler
         collate_fn=default_collate,
         pin_memory=False,
         persistent_workers=True,
-        prefetch_factor=2 if num_workers > 0 else None, 
-        multiprocessing_context="fork"
+        prefetch_factor=2 if num_workers > 0 else None,
+        multiprocessing_context="fork",
     )
 
 

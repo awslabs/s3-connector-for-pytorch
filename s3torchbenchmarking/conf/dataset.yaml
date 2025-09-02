@@ -40,3 +40,4 @@ hydra:
       dataloader.s3reader.type: sequential
       # buffer_size (bytes): only used with range_based s3reader
       dataloader.s3reader.buffer_size: 8*1024*1024
+      +num_gpus: 1
