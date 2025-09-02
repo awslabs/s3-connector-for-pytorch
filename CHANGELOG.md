@@ -32,6 +32,9 @@
 ### Breaking changes
 * No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [DCPOptimizedS3Reader Errors](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors) for more details.
 
+### Other changes
+* Extended benchmarks to support multi-GPU Dataloading
+
 ## v1.4.3 (July 25, 2025)
 
 ### New features
