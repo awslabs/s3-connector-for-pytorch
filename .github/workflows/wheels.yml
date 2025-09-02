@@ -89,6 +89,12 @@ jobs:
         run: |
           mkdir -p /Users/runner/hostedtoolcache
 
+      # Create debug logs directory for macOS ARM64
+      - name: Create debug logs directory
+        if: ${{ matrix.builder.kind == 'macosx' && matrix.builder.arch == 'arm64' }}
+        run: |
+          mkdir -p /tmp/s3torchconnector-logs
+
       # actions/setup-python doesn't yet support ARM
       # https://github.com/actions/setup-python/issues/678
       - name: Setup Python
@@ -120,6 +126,16 @@ jobs:
         with:
           path: "./wheelhouse/*.whl"
           name: wheels-${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}
+
+      # Upload debug logs for macOS ARM64 builds (even if tests fail)
+      - name: Upload debug logs
+        if: ${{ always() && matrix.builder.kind == 'macosx' && matrix.builder.arch == 'arm64' }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: "/tmp/s3torchconnector-logs/*"
+          name: debug-logs-${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}
+          if-no-files-found: ignore
+          retention-days: 1
 
   build_source_wheels:
     name: Build source wheels for ${{ matrix.build_target }}
