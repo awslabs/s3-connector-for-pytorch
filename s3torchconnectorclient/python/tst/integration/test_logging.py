@@ -163,6 +163,9 @@ def test_logging_to_file(
         assert all(s not in log_files_content for s in file_should_not_contain)
 
 
+@pytest.mark.xfail(
+    reason="tracing-subscriber 0.3.20 EnvFilter parsing regression - see tokio-rs/tracing#3371"
+)
 def test_invalid_logging(image_directory):
     out, err = _start_subprocess(image_directory, debug_logs_config="invalid123.&/?")
     assert (

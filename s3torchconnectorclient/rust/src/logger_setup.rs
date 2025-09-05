@@ -127,6 +127,7 @@ mod tests {
         }
 
         #[test]
+        #[ignore = "tracing-subscriber 0.3.20 EnvFilter parsing regression - see tokio-rs/tracing#3371"]
         fn test_invalid_logging_level() {
             pyo3::prepare_freethreaded_python();
             env::set_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR, "invalid123.&/?");
