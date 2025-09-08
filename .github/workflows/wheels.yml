@@ -93,7 +93,7 @@ jobs:
       # https://github.com/actions/setup-python/issues/678
       - name: Setup Python
         if: ${{ matrix.builder.arch != 'aarch64' }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
