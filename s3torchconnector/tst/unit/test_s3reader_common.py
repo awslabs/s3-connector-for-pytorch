@@ -207,7 +207,6 @@ def test_s3reader_seek_beyond_eof_different_positions(
     stream, positions = stream_and_positions
     s3reader = create_s3reader(stream, reader_implementation)
 
-    bytesio = BytesIO(b"".join(stream))
     stream_length = sum(map(len, stream))
     assume(stream_length > 0)
 
@@ -215,7 +214,6 @@ def test_s3reader_seek_beyond_eof_different_positions(
         # +1 ensures beyond EOF, since we only get _size in sequential reader when reading beyond eof
         beyond_eof_pos = pos + stream_length + 1
         s3reader.seek(beyond_eof_pos, whence)
-        bytesio.seek(beyond_eof_pos, whence)
 
         assert s3reader.tell() == stream_length
         assert s3reader._size == stream_length
