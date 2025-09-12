@@ -19,7 +19,7 @@ READER_CONSTRUCTORS = [
 
 @pytest.fixture(
     params=READER_CONSTRUCTORS,
-    ids=["sequential", "range_based_buffered", "range_based_unbuffered"],
+    ids=["sequential", "range_based_with_buffer", "range_based_no_buffer"],
     scope="module",
 )
 def reader_constructor(request) -> S3ReaderConstructorProtocol:
