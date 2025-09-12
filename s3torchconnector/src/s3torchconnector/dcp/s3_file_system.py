@@ -7,7 +7,7 @@ import os
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Union, Optional
+from typing import Generator, Union, Optional, Callable, Any
 from typing import List
 
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
@@ -252,7 +252,7 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan
+from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
 import dataclasses
 from dataclasses import dataclass
 
@@ -264,6 +264,21 @@ class StorageMetadata:
     prefix: str
 
 
+from torch.distributed.checkpoint.filesystem import (
+    _split_by_size_and_type as original_split,
+)
+
+
+def _ordered_split_by_size_and_type(
+    bins: int, items: List[Any], sort_key: Optional[Callable] = None
+) -> List[List[Any]]:
+    buckets = original_split(bins, items)
+    if sort_key:
+        for bucket in buckets:
+            bucket.sort(key=sort_key)
+    return buckets
+
+
 class S3StorageWriter(FileSystemWriter):
     def __init__(
         self,
@@ -271,6 +286,7 @@ class S3StorageWriter(FileSystemWriter):
         path: str,
         s3client_config: Optional[S3ClientConfig] = None,
         prefix_strategy: Optional[S3PrefixStrategyBase] = None,
+        sort_key: Optional[Callable] = None,
         **kwargs,
     ) -> None:
         """
@@ -292,6 +308,19 @@ class S3StorageWriter(FileSystemWriter):
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
         self.prefix_strategy = prefix_strategy or DefaultPrefixStrategy()
+        self.sort_key = sort_key
+
+        if self.sort_key:
+            logger.debug(
+                "Enabling custom tensor ordering for distributed checkpoint save"
+            )
+            # Replace the original split function with ours that will sort tensors/weights
+            import torch.distributed.checkpoint.filesystem as fs_module
+            from functools import partial
+
+            fs_module._split_by_size_and_type = partial(
+                _ordered_split_by_size_and_type, sort_key=sort_key
+            )
 
     def prepare_global_plan(self, plans: List[SavePlan]) -> List[SavePlan]:
         """
@@ -337,10 +366,55 @@ class S3StorageReader(FileSystemReader):
         self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
         self.path = self.fs.init_path(path)
         self.sync_files = False
+        self._pid: int = os.getpid()
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
+
+    def read_data(self, plan, planner):
+        """Add debug logging to extract tensor read patterns, overriding original read_data method."""
+
+        # Start Label
+        logger.debug(
+            f"pid={self._pid}, type=tensor_info_start, plan_items={len(plan.items)}"
+        )
+
+        for read_item in plan.items:
+            # Extract item storage metadata
+            storage_metadata = self.storage_data[read_item.storage_index]
+
+            filename = os.path.basename(storage_metadata.relative_path)
+            storage_offset = storage_metadata.offset
+            storage_length = storage_metadata.length
+
+            # Extract tensor type without disclosing fqn (model, optimizer, etc.)
+            tensor_fqn = read_item.storage_index.fqn
+            tensor_type = tensor_fqn.split(".")[0] if "." in tensor_fqn else tensor_fqn
+
+            logger.debug(
+                f"file={filename}, pid={self._pid}, type=tensor_info, "
+                f"tensor_type={tensor_type}, storage_offset={storage_offset}, "
+                f"storage_length={storage_length}"
+            )
+
+        # Call original read_data method
+        result = super().read_data(plan, planner)
+
+        # End label
+        logger.debug(
+            f"pid={self._pid}, type=tensor_info_end, plan_items={len(plan.items)}"
+        )
+
+        return result
+
+    def prepare_local_plan(self, plan: LoadPlan) -> LoadPlan:
+        # Sort items in plan based on their offset in checkpoints shards
+        logger.debug(
+            f"Ordering {len(plan.items)} distributed checkpoint items by storage offset for sequential access"
+        )
+        plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+        return plan
 
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
