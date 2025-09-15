@@ -177,7 +177,6 @@ class ModelInterface(ABC):
             except:
                 batch = None
                 flag.zero_()
-            # We know there's multiple gpus in this case
             dist.all_reduce(flag, op=dist.ReduceOp.MIN)
             if int(flag.item()) == 1:
                 yield batch
