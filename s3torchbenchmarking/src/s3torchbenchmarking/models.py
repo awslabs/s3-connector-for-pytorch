@@ -20,6 +20,7 @@ from omegaconf import DictConfig
 from torch.nn import Module
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2  # type: ignore
+import itertools
 from transformers import (  # type: ignore
     ViTForImageClassification,
     ViTModel,
@@ -147,15 +148,42 @@ class ModelInterface(ABC):
         if not dist.is_initialized():
             yield from loader
             return
-        local = sum(1 for _ in loader)
         world = dist.get_world_size()
-        counts = [None] * world
-        dist.all_gather_object(counts, local)
-        min_steps = min(counts)
-
+        
+        try:
+            local_steps = len(loader)        # in the case of map style datasets we can use len as we know the size of the loader
+        except TypeError:
+            local_steps = None
+            
+        if local_steps is not None:
+            counts = [None] * world
+            dist.all_gather_object(counts, local_steps)
+            min_steps = min(counts)
+            yield from itertools.islice(loader, min_steps) 
+            return
+        
+        # In the case of iterable datasets we need to to use iter
         it = iter(loader)
-        for _ in range(min_steps):
-            yield next(it)
+        # Use cuda with nccl if available for the purpose of using dist.all_reduce
+        dev = torch.device("cuda", torch.cuda.current_device() if torch.cuda.is_available() else torch.device("cpu")) 
+        
+        # We use torch tensors as it's faster to reduce and serialize
+        flag = torch.zeros(1, device = dev, dtype = torch.int32)
+        while True:
+            # Pull out one batch one at at time, if it works on all ranks then we yield else stop
+            try:
+                batch = next(it)
+                flag.fill_(1)
+            except:
+                batch = None
+                flag.zero_()
+            # We know there's multiple gpus in this case
+            dist.all_reduce(flag, op=dist.ReduceOp.MIN)
+            if int(flag.item()) == 1:
+                yield batch
+            else:
+                break
+
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
@@ -333,7 +361,6 @@ class LightningAdapter(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         _, data = super().load_sample(sample)
-
         return self.sample_transformer(data), self._get_random_label()
 
     def _get_random_label(self):
