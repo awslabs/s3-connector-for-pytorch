@@ -151,7 +151,8 @@ class ModelInterface(ABC):
         world = dist.get_world_size()
         
         try:
-            local_steps = len(loader)        # in the case of map style datasets we can use len as we know the size of the loader
+            # For map style datasets we can use len as we know the size of the loader
+            local_steps = len(loader)
         except TypeError:
             local_steps = None
             
@@ -162,23 +163,24 @@ class ModelInterface(ABC):
             yield from itertools.islice(loader, min_steps) 
             return
         
-        # In the case of iterable datasets we need to to use iter
+        # In the case of iterable datasets we can't use len() so need to to use iter
         it = iter(loader)
         # Use cuda with nccl if available for the purpose of using dist.all_reduce
-        dev = torch.device("cuda", torch.cuda.current_device() if torch.cuda.is_available() else torch.device("cpu")) 
-        
-        # We use torch tensors as it's faster to reduce and serialize
-        flag = torch.zeros(1, device = dev, dtype = torch.int32)
         while True:
             # Pull out one batch one at at time, if it works on all ranks then we yield else stop
             try:
                 batch = next(it)
-                flag.fill_(1)
+                pulled_batch = 1
             except:
                 batch = None
-                flag.zero_()
-            dist.all_reduce(flag, op=dist.ReduceOp.MIN)
-            if int(flag.item()) == 1:
+                pulled_batch = 0
+                
+            flags = [None] * world
+            # We use all_gather_objects as the objects are of small size and the serialization
+            # overhead is too small to use dist.all_reduce_objectss
+            dist.all_gather_object(flags, pulled_batch)
+            
+            if all(flags):
                 yield batch
             else:
                 break
