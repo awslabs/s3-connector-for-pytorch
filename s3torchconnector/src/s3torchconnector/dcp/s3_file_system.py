@@ -271,6 +271,7 @@ class S3StorageWriter(FileSystemWriter):
         path: str,
         s3client_config: Optional[S3ClientConfig] = None,
         prefix_strategy: Optional[S3PrefixStrategyBase] = None,
+        thread_count: int = 1,
         **kwargs,
     ) -> None:
         """
@@ -287,6 +288,7 @@ class S3StorageWriter(FileSystemWriter):
         super().__init__(
             path=path,
             sync_files=False,  # FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)
+            thread_count=thread_count,
             **kwargs,
         )
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
