@@ -1,36 +1,44 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import atexit
+import json
+import logging
+import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Optional, List, Tuple
-import os
+
 import hydra
+import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
 import torchdata  # type: ignore
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torch.utils.data.distributed import DistributedSampler
-import torch.distributed as dist
 from torchdata.datapipes.utils import StreamWrapper  # type: ignore
+
 from s3torchbenchmarking.benchmark_utils import ExperimentResult
 from s3torchbenchmarking.models import (
     Entitlement,
     ViT,
     ModelInterface,
 )
-
 from s3torchconnector import S3MapDataset, S3Reader, S3IterableDataset
 from s3torchconnector.s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
-import torch
-import logging
-import torch.multiprocessing as mp
-import json
-import tempfile
 
 logger = logging.getLogger(__name__)
+import sys
+logging.basicConfig(
+  level=logging.INFO,
+  format="%(asctime)s [%(levelname)s] %(message)s",
+  handlers=[
+    logging.StreamHandler(sys.stdout)
+  ]
+)
 
 
 def init_distributed(rank=0, world_size=1):
@@ -110,6 +118,7 @@ def run_ddp_process(rank, world_size, config, results_file):
                 "training_duration_s": avg_training_duration,
                 "volume_mibs": total_volume,
                 "per_rank_metrics": all_metrics,
+                "longest_training_time": max(m["training_duration_s"] for m in all_metrics)
             }
 
             with open(results_file, "w") as f:
