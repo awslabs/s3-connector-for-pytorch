@@ -195,13 +195,13 @@ the load across multiple S3 partitions.
 
 ### Available Strategies
 
-#### Shadow Copies
+#### 1. Shadow Copies
 
 Automatically duplicates checkpoints across different S3 prefixes during teh save process. A metadata file records the number of copies.
 During load, each worker is assigned a specific copy to load from using round-robin, thereby increasing the S3 throttling limit. This is especially needed for workloads
 where each worker needs to load the entire model.
 
-**For saving**
+For saving:
 ```py
 writer = S3StorageWriter(
     region=REGION,
@@ -211,7 +211,7 @@ writer = S3StorageWriter(
 dcp.save(state_dict, storage_writer = writer)
 ```
 
-**For loading (no change, automatically detected)**
+For loading (no change, automatically detected):
 ```
 reader = S3StorageReader(
     region=REGION,
@@ -237,7 +237,7 @@ CHECKPOINT_URI
         └── ...
 ```
 
-#### 1. RoundRobinPrefixStrategy
+#### 2. RoundRobinPrefixStrategy
 Distributes checkpoints across specified prefixes in a round-robin fashion, ideal for balancing data across multiple storage locations.
 
 ```py
@@ -283,7 +283,7 @@ CHECKPOINT_URI
         └── ...
 ```
 
-#### 2. BinaryPrefixStrategy
+#### 3. BinaryPrefixStrategy
 
 Generates binary (base-2) prefixes for optimal partitioning in distributed environments.
 
@@ -311,7 +311,7 @@ s3://my-bucket/checkpoints/
 └── ...
 ```
 
-#### 3. HexPrefixStrategy
+#### 4. HexPrefixStrategy
 
 Uses hexadecimal (base-16) prefixes for a balance of efficiency and readability.
 ```py
