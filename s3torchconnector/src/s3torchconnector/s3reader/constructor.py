@@ -2,11 +2,12 @@
 #  // SPDX-License-Identifier: BSD
 
 from functools import partial
-from typing import Optional
+from typing import Optional, List
 
 from .protocol import S3ReaderConstructorProtocol
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
+from .list_of_ranges import ListOfRangesS3Reader, RangeRequest
 
 
 class S3ReaderConstructor:
@@ -24,7 +25,10 @@ class S3ReaderConstructor:
     """
 
     @staticmethod
-    def sequential() -> S3ReaderConstructorProtocol:
+    def sequential(
+        start_offset: Optional[int] = None,
+        end_offset: Optional[int] = None,
+    ) -> S3ReaderConstructorProtocol:
         """Creates a constructor for sequential readers
 
         Returns:
@@ -35,7 +39,12 @@ class S3ReaderConstructor:
             reader_constructor = S3ReaderConstructor.sequential()
 
         """
-        return partial(SequentialS3Reader)
+        # TODO update docstrings (after implementation fixed)
+        return partial(
+            SequentialS3Reader,
+            start_offset=start_offset,
+            end_offset=end_offset,
+        )
 
     @staticmethod
     def range_based(buffer_size: Optional[int] = None) -> S3ReaderConstructorProtocol:
@@ -79,6 +88,12 @@ class S3ReaderConstructor:
         return partial(RangedS3Reader, buffer_size=buffer_size)
 
     @staticmethod
+    def list_of_ranges(ranges: List[RangeRequest]) -> S3ReaderConstructorProtocol:
+        """Creates a constructor for ListOfRangesS3Reader with specific ranges"""
+        # TODO update docstring
+        return partial(ListOfRangesS3Reader, ranges=ranges)
+
+    @staticmethod
     def default() -> S3ReaderConstructorProtocol:
         """Creates default reader constructor (sequential)
 
@@ -104,5 +119,7 @@ class S3ReaderConstructor:
             return "range_based"
         elif constructor.func == SequentialS3Reader:
             return "sequential"
+        elif constructor.func == ListOfRangesS3Reader:
+            return "list_of_ranges"
         else:
             return "unknown"
