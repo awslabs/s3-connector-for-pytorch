@@ -1,6 +1,8 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import os
+import logging
 import io
 from functools import cached_property
 from io import SEEK_CUR, SEEK_END, SEEK_SET
@@ -12,6 +14,35 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
 )
 from .s3reader import S3Reader
+
+log = logging.getLogger(__name__)
+
+
+class _OffsetReaderView:
+    """Wrapper that translates absolute positions to buffer-relative positions"""
+
+    def __init__(self, buffer: io.BytesIO, start_offset: int = 0):
+        self._buffer = buffer
+        self._start_offset = start_offset
+
+    def seek(self, offset: int, whence: int = SEEK_SET) -> int:
+        if whence == SEEK_SET:
+            buffer_pos = offset - self._start_offset
+            return self._buffer.seek(buffer_pos) + self._start_offset
+        else:
+            return self._buffer.seek(offset, whence) + self._start_offset
+
+    def tell(self) -> int:
+        return self._buffer.tell() + self._start_offset
+
+    def read(self, size=-1):
+        return self._buffer.read(size)
+
+    def readinto(self, buf):
+        return self._buffer.readinto(buf)
+
+    def write(self, data):
+        return self._buffer.write(data)
 
 
 class SequentialS3Reader(S3Reader):
@@ -26,19 +57,32 @@ class SequentialS3Reader(S3Reader):
         bucket: str,
         key: str,
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
-        get_stream: Callable[[], GetObjectStream],
+        get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
+        start_offset: Optional[int] = None,
+        end_offset: Optional[int] = None,
     ):
         if not bucket:
             raise ValueError("Bucket should be specified")
         self._bucket = bucket
         self._key = key
+        self._filename = os.path.basename(self._key)
         self._get_object_info = get_object_info
         self._get_stream = get_stream
         self._stream: Optional[Iterator[bytes]] = None
-        self._buffer = io.BytesIO()
+        self._raw_buffer = io.BytesIO()
+        self._buffer = _OffsetReaderView(self._raw_buffer, start_offset or 0)
         self._size: Optional[int] = None
         # Invariant: _position == _buffer._tell() unless _position_at_end()
-        self._position = 0
+        self._position = start_offset or 0
+        self._pid: int = os.getpid()
+
+        self._start_offset = start_offset
+        self._end_offset = end_offset
+
+        # Log start of reading for tracking
+        log.debug(
+            f"file={self._filename}, pid={self._pid}, type=read_initialized, start_offset={start_offset}, end_offset={end_offset}"
+        )
 
     @property
     def bucket(self) -> str:
@@ -60,7 +104,10 @@ class SequentialS3Reader(S3Reader):
         """
 
         if self._stream is None:
-            self._stream = self._get_stream()
+            if self._start_offset is not None or self._end_offset is not None:
+                self._stream = self._get_stream(self._start_offset, self._end_offset)
+            else:
+                self._stream = self._get_stream()
 
     def readinto(self, buf) -> int:
         """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
@@ -73,6 +120,9 @@ class SequentialS3Reader(S3Reader):
             int : numer of bytes read or zero, if no bytes available
         """
         buf_size = len(buf)
+        log.debug(
+            f"file={self._filename}, pid={self._pid}, type=readinto, position={self._position}, size={buf_size}"
+        )
         if self._position_at_end() or buf_size == 0:
             # If no bytes are available or no place to write data, zero should be returned
             return 0
@@ -108,6 +158,11 @@ class SequentialS3Reader(S3Reader):
 
         if size is not None and not isinstance(size, int):
             raise TypeError(f"argument should be integer or None, not {type(size)!r}")
+
+        log.debug(
+            f"file={self._filename}, pid={self._pid}, type=read, position={self._position}, size={size}"
+        )
+
         if self._position_at_end():
             # Invariant: if we're at EOF, it doesn't matter what `size` is, we'll always return no data and have no
             # side effect.
@@ -200,14 +255,15 @@ class SequentialS3Reader(S3Reader):
             # We can never be special cased to EOF if we never saw how long it is.
             # If we _are_ at EOF, we'll just not take the early exits.
             return False
-        return self._position == self._size
+        end_pos = min(self._end_offset, self._size) if self._end_offset else self._size
+        return self._position >= end_pos
 
     def _buffer_size(self) -> int:
-        cur_pos = self._buffer.tell()
-        self._buffer.seek(0, SEEK_END)
-        buffer_size = self._buffer.tell()
-        self._buffer.seek(cur_pos)
-        return buffer_size
+        cur_pos = self._raw_buffer.tell()
+        self._raw_buffer.seek(0, SEEK_END)
+        buffer_size = self._raw_buffer.tell()
+        self._raw_buffer.seek(cur_pos)
+        return buffer_size + (self._start_offset or 0)
 
     def tell(self) -> int:
         """
