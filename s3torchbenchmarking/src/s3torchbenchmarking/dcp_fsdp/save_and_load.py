@@ -74,12 +74,9 @@ def get_reader(region: str, uri: str, suffix: str) -> FileSystemReader:
 @record
 def run_fsdp_repeated_load(
     rank: int,
-    world_size: int,
-    thread_count: int,
     backend: str,
     region: str,
     uri: str,
-    suffix: str,
     model_name: str = "L7b",
     checkpoint_sharding_strategy: str = "hybrid",
     num_iterations: int = 2,
@@ -263,23 +260,10 @@ if __name__ == "__main__":
         help="Number of times to repeat the load operation",
     )
     parser.add_argument(
-        "--delay",
-        type=float,
-        default=0.0,
-        help="Seconds to wait between load operations (0 for max throughput)",
-    )
-    parser.add_argument(
-        "--concurrent",
-        action="store_true",
-        help="Don't synchronize between ranks for maximum concurrency",
-    )
-    parser.add_argument(
         "--model", type=str, default="L7b", help="Model name to use for benchmarking"
     )
 
     args = parser.parse_args()
-
-    print("@Started backend")
     backend = args.backend
 
     world_size = int(os.environ["WORLD_SIZE"])
@@ -297,7 +281,6 @@ if __name__ == "__main__":
 
     region = args.region
     uri = args.uri
-    suffix = ""
     # Add new argument for number of workers
     checkpoint_sharding_strategy = "hybrid"
 
@@ -305,13 +288,10 @@ if __name__ == "__main__":
 
     # [Rest of the main block remains the same, but add workers parameter to function call]
     run_fsdp_repeated_load(
-        rank,
-        world_size,
-        thread_count,
-        backend,
-        region,
-        uri,
-        suffix,
+        rank=rank,
+        backend=backend,
+        region=region,
+        uri=uri,
         checkpoint_sharding_strategy=checkpoint_sharding_strategy,
         num_iterations=args.iterations,
         delay_between_loads=args.delay,
