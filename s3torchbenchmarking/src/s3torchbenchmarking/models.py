@@ -149,20 +149,20 @@ class ModelInterface(ABC):
             yield from loader
             return
         world = dist.get_world_size()
-        
+
         try:
             # For map style datasets we can use len as we know the size of the loader
             local_steps = len(loader)
         except TypeError:
             local_steps = None
-            
+
         if local_steps is not None:
             counts = [None] * world
             dist.all_gather_object(counts, local_steps)
             min_steps = min(counts)
-            yield from itertools.islice(loader, min_steps) 
+            yield from itertools.islice(loader, min_steps)
             return
-        
+
         # In the case of iterable datasets we can't use len() so need to to use iter
         it = iter(loader)
         # Use cuda with nccl if available for the purpose of using dist.all_reduce
@@ -174,17 +174,16 @@ class ModelInterface(ABC):
             except:
                 batch = None
                 pulled_batch = 0
-                
+
             flags = [None] * world
             # We use all_gather_objects as the objects are of small size and the serialization
             # overhead is too small to use dist.all_reduce_objectss
             dist.all_gather_object(flags, pulled_batch)
-            
+
             if all(flags):
                 yield batch
             else:
                 break
-
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
