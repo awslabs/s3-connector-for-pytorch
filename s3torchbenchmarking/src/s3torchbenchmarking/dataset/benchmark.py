@@ -32,12 +32,11 @@ from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 
 logger = logging.getLogger(__name__)
 import sys
+
 logging.basicConfig(
-  level=logging.INFO,
-  format="%(asctime)s [%(levelname)s] %(message)s",
-  handlers=[
-    logging.StreamHandler(sys.stdout)
-  ]
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 
@@ -118,7 +117,9 @@ def run_ddp_process(rank, world_size, config, results_file):
                 "training_duration_s": avg_training_duration,
                 "volume_mibs": total_volume,
                 "per_rank_metrics": all_metrics,
-                "longest_training_time": max(m["training_duration_s"] for m in all_metrics)
+                "longest_training_time": max(
+                    m["training_duration_s"] for m in all_metrics
+                ),
             }
 
             with open(results_file, "w") as f:
