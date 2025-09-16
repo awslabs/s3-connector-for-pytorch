@@ -48,6 +48,7 @@ def get_writer(cfg: DictConfig, suffix: str) -> FileSystemWriter:
         return S3StorageWriter(cfg.s3.region, uri, thread_count=cfg.thread_count)
     raise ValueError(f"Storage writer {cfg.checkpoint.storage} not supported")
 
+
 def get_reader(cfg: DictConfig, suffix: str) -> FileSystemReader:
     """Instantiate a checkpoint reader based on the input config."""
     if cfg.checkpoint.storage == "disk":

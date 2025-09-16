@@ -23,18 +23,31 @@ from s3torchbenchmarking.models import get_benchmark_model
 from s3torchbenchmarking.benchmark_utils import build_checkpoint_uri
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
+
 
 def get_reader(region: str, uri: str, suffix: str) -> S3StorageReader:
     uri = build_checkpoint_uri(uri, suffix)
     logger.info("Loading checkpoint from %s (S3)...", uri)
-    return S3StorageReader(region, uri, s3client_config=S3ClientConfig(
-        part_size=5*1024*1024,
-        throughput_target_gbps=300
-    ))
+    return S3StorageReader(
+        region,
+        uri,
+        s3client_config=S3ClientConfig(
+            part_size=5 * 1024 * 1024, throughput_target_gbps=300
+        ),
+    )
+
 
 @record
-def run_fsdp_load(rank, world_size, backend, region, uri, suffix, model_name="L7b", checkpoint_sharding_strategy="hybrid"):
+def run_fsdp_load(
+    rank,
+    world_size,
+    backend,
+    region,
+    uri,
+    suffix,
+    model_name="L7b",
+    checkpoint_sharding_strategy="hybrid",
+):
     if rank == 0:
         logger.info("Creating model")
         model_proxy = get_benchmark_model(model_name)
@@ -53,18 +66,30 @@ def run_fsdp_load(rank, world_size, backend, region, uri, suffix, model_name="L7
     if backend == "nccl":
         device_id = rank % torch.cuda.device_count()
         torch.cuda.set_device(device_id)
-        param_init_fn = lambda module: module.to_empty(device=torch.device("cuda"), recurse=False)
+        param_init_fn = lambda module: module.to_empty(
+            device=torch.device("cuda"), recurse=False
+        )
     else:
         device_id = rank % torch.cpu.device_count()
         torch.cpu.set_device(device_id)
-        param_init_fn = lambda module: module.to_empty(device=torch.device("cpu"), recurse=False)
+        param_init_fn = lambda module: module.to_empty(
+            device=torch.device("cpu"), recurse=False
+        )
 
-    sharding_strategy = ShardingStrategy.HYBRID_SHARD if checkpoint_sharding_strategy == "hybrid" else ShardingStrategy.FULL_SHARD
+    sharding_strategy = (
+        ShardingStrategy.HYBRID_SHARD
+        if checkpoint_sharding_strategy == "hybrid"
+        else ShardingStrategy.FULL_SHARD
+    )
 
     model = FSDP(
         model,
         auto_wrap_policy=gpt_auto_wrap_policy,
-        device_id=torch.cuda.current_device() if backend == "nccl" else torch.cpu.current_device(),
+        device_id=(
+            torch.cuda.current_device()
+            if backend == "nccl"
+            else torch.cpu.current_device()
+        ),
         use_orig_params=False,
         sharding_strategy=sharding_strategy,
         sync_module_states=True if backend == "nccl" else False,
@@ -86,6 +111,7 @@ def run_fsdp_load(rank, world_size, backend, region, uri, suffix, model_name="L7
     if rank == 0:
         print(f"Load time: {end_load - start_load:.3f}s")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", type=str, default="nccl", choices=["nccl", "gloo"])
@@ -95,13 +121,15 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="L7b")
     args = parser.parse_args()
 
-    world_size = int(os.environ['WORLD_SIZE'])
+    world_size = int(os.environ["WORLD_SIZE"])
     rank = int(os.environ["RANK"])
-    
+
     if not dist.is_initialized():
         dist.init_process_group(args.backend, rank=rank, world_size=world_size)
 
-    run_fsdp_load(rank, world_size, args.backend, args.region, args.uri, args.suffix, args.model)
-    
+    run_fsdp_load(
+        rank, world_size, args.backend, args.region, args.uri, args.suffix, args.model
+    )
+
     if dist.is_initialized():
         dist.destroy_process_group()

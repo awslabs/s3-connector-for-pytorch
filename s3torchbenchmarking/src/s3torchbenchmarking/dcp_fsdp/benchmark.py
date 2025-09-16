@@ -12,7 +12,6 @@ import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 import torch
 import torch.distributed as dist
-import torch.utils.data
 
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import ShardingStrategy
@@ -20,7 +19,7 @@ from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 
-from s3torchbenchmarking.dcp_common import setup, benchmark_common_runner, get_writer, get_reader
+from s3torchbenchmarking.dcp_common import setup, benchmark_common_runner, get_writer
 from s3torchbenchmarking.models import get_benchmark_model
 
 Timestamps = Tuple[float, float]
@@ -129,7 +128,6 @@ def run_fsdp(
     save_timestamps.put((begin_save, end_save, model_size))
     dist.destroy_process_group()
 
-    
 
 if __name__ == "__main__":
     run_benchmark()

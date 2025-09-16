@@ -26,11 +26,14 @@ from s3torchbenchmarking.models import get_benchmark_model
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
 import sys
+
 logging.basicConfig(
     stream=sys.stdout,
     format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
 )
 logging.getLogger().setLevel(logging.DEBUG)
+
+
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
     """DCP load benchmarks entry point."""
@@ -50,7 +53,7 @@ def run_fsdp_load(
     suffix = "2025-06-12-16-01-rhTn"
     if rank == 0:
         logger.info("Creating Model")
-    
+
     # Instantiate model on CPU on rank=0 only to prevent CPU OOM
     if rank == 0:
         model_proxy = get_benchmark_model(cfg.model)
@@ -118,35 +121,36 @@ def run_fsdp_load(
 
     # Get reader with the provided suffix
     storage_reader = get_reader(cfg, suffix)
-    
+
     # Align all workers to start loading at the same time
     dist.barrier()
     begin_load = perf_counter()
     dcp.load(state_dict, storage_reader=storage_reader)
     end_load = perf_counter()
-    
+
     if rank == 0:
         logger.info(f"The total size of model is {model_size}")
-        
+
         # Create a reference model for comparison
         ref_model_proxy = get_benchmark_model(cfg.model)
         ref_model = ref_model_proxy.model
-        
+
         # Compare model structure
         loaded_params = sum(p.numel() for p in model.parameters())
         ref_params = sum(p.numel() for p in ref_model.parameters())
-        
+
         # Compare model structure
         loaded_layers = len(list(model.modules()))
         ref_layers = len(list(ref_model.modules()))
-        
+
         logger.info(f"Loaded model parameters: {loaded_params}")
         logger.info(f"Reference model parameters: {ref_params}")
         logger.info(f"Loaded model layers: {loaded_layers}")
         logger.info(f"Reference model layers: {ref_layers}")
-        logger.info(f"Structure match: {loaded_params == ref_params and loaded_layers == ref_layers}")
+        logger.info(
+            f"Structure match: {loaded_params == ref_params and loaded_layers == ref_layers}"
+        )
 
-        
     # Record the load times
     load_timestamps.put((begin_load, end_load, model_size))
     dist.destroy_process_group()
