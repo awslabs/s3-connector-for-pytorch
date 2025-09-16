@@ -22,8 +22,8 @@ srun torchrun \
    --rdzv_backend=c10d \
    --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
    --rdzv_id=$SLURM_JOB_ID \
-  newload.py \
+  load.py \
    --backend gloo \
-   --uri s3:/// \
-   --region us-east-2 \
-   --suffix 2025-07-31-15-57-b4ce
+   --uri ??? \
+   --region ???\
+   --suffix ???
