@@ -441,7 +441,7 @@ def test_save_async_with_copies(checkpoint_directory, num_of_copies):
     list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
 
     assert list_result_s3storagewriter is not None
-    assert len(list_result_s3storagewriter[0].object_info) == num_of_copies
+    assert len(list_result_s3storagewriter[0].object_info) == num_of_copies + 1 # including metadata
 
     # Verify we can load the data correctly
     sd = {"random": torch.zeros(10)}
@@ -452,7 +452,7 @@ def test_save_async_with_copies(checkpoint_directory, num_of_copies):
     # Check that the copies were created with the expected structure
     if num_of_copies == 1:
         return
-    for i in range(NUM_OF_COPIES):
+    for i in range(num_of_copies):
         copy_prefix = f"copy-{i}"
         copy_objects = list(s3_client.list_objects(bucket, f"{key}/{copy_prefix}/"))
         assert copy_objects is not None
