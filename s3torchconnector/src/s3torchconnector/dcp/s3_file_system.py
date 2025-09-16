@@ -375,7 +375,7 @@ class S3StorageWriter(FileSystemWriter):
 
         return self._write_data(planner, file_queue)
 
-    def finish(self, metadata: Metadata, results: List[list[WriteResult]]) -> None:
+    def finish(self, metadata: Metadata, results: List[List[WriteResult]]) -> None:
         """
         Finish the checkpointing process and save the number of copies in metadata
 
