@@ -7,6 +7,7 @@ import os
 import pickle
 import queue
 import urllib.parse
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Union, Optional, cast
@@ -22,6 +23,7 @@ from torch.distributed.checkpoint.planner import (
     LoadPlan,
     LoadPlanner,
 )
+import torch
 import torch.distributed as dist
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
@@ -37,8 +39,6 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemWriter,
     FileSystemBase,
 )
-import torch
-import sys
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
@@ -48,10 +48,7 @@ from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    stream=sys.stdout,
-    format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
-)
+
 _metadata_fn: str = ".metadata"
 
 logging.getLogger().setLevel(logging.DEBUG)

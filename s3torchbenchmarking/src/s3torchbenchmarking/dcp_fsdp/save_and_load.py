@@ -72,7 +72,7 @@ def get_reader(region: str, uri: str, suffix: str) -> FileSystemReader:
 
 
 @record
-def run_fsdp_repeated_load(
+def run_fsdp_repeated_save_load(
     rank: int,
     backend: str,
     region: str,
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # [Rest of the main block remains the same, but add workers parameter to function call]
-    run_fsdp_repeated_load(
+    run_fsdp_repeated_save_load(
         rank=rank,
         backend=backend,
         region=region,
