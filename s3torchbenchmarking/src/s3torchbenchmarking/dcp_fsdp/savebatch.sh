@@ -30,8 +30,8 @@ srun torchrun \
    --rdzv_id=$SLURM_JOB_ID \
   save.py \
    --backend gloo \
-   --uri s3:/// \
-   --region us-east-2 
+   --uri ??? \
+   --region ???
 ~                                                                                                                                                                                                                       
 ~                                                                                                                                                                                                                       
 ~                                                                                                                                                                                                                       

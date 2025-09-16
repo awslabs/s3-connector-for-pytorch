@@ -276,4 +276,3 @@ if __name__ == "__main__":
         delay_between_loads=args.delay) 
     if dist.is_initialized():
            dist.destroy_process_group()
-
