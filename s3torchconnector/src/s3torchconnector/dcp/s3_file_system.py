@@ -7,7 +7,7 @@ import os
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Union, Optional
+from typing import Generator, Union, Optional, Dict
 from typing import List
 
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
@@ -56,6 +56,7 @@ class S3FileSystem(FileSystemBase):
         """
         self._path: Union[str, os.PathLike] = ""
         self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
+        self.file_ranges: Optional[Dict[str, List[RangeRequest]]] = None
 
         # Get reader type string for user agent
         reader_type_string = S3ReaderConstructor.get_reader_type_string(
@@ -75,7 +76,10 @@ class S3FileSystem(FileSystemBase):
 
     @contextmanager
     def create_stream(
-        self, path: Union[str, os.PathLike], mode: str
+        self,
+        path: Union[str, os.PathLike],
+        mode: str,
+        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ) -> Generator[io.IOBase, None, None]:
         """
         Create a stream for reading or writing to S3.
@@ -99,8 +103,17 @@ class S3FileSystem(FileSystemBase):
                 yield stream
         elif mode == "rb":  # read mode
             logger.debug("create_stream readable for %s", path_str)
+            relative_path = os.path.relpath(path, self._path)
+            if self.file_ranges and relative_path in self.file_ranges:
+                ranges = self.file_ranges[relative_path]
+                # ! Force use list_of_ranges reader for now
+                # TODO: (Important) improve this by passing in ranges parameter properly
+                reader_constructor = S3ReaderConstructor.list_of_ranges(ranges)
+
+            # Use provided reader_constructor or fall back to default
+            constructor = reader_constructor or self._reader_constructor
             with self._client.get_object(
-                bucket, key, reader_constructor=self._reader_constructor
+                bucket, key, reader_constructor=constructor
             ) as stream:
                 yield stream
         else:
@@ -318,6 +331,17 @@ class S3StorageWriter(FileSystemWriter):
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
+import io
+from typing import Dict, List, Optional
+from dataclasses import dataclass
+
+import torch
+from torch.distributed.checkpoint.filesystem import FileSystemReader
+from torch.distributed.checkpoint.planner import LoadPlan
+
+from s3torchconnector.s3reader.list_of_ranges import RangeRequest
+
+
 class S3StorageReader(FileSystemReader):
     def __init__(
         self,
@@ -355,6 +379,22 @@ class S3StorageReader(FileSystemReader):
         Returns:
             LoadPlan: The same plan with items sorted by storage offset.
         """
+
+        # Calculate ranges per file
+        per_file_ranges = {}
+        for read_item in plan.items:
+            item_md = self.storage_data[read_item.storage_index]
+            path = item_md.relative_path
+            if path not in per_file_ranges:
+                per_file_ranges[path] = []
+            per_file_ranges[path].append(
+                RangeRequest(start=item_md.offset, end=item_md.offset + item_md.length)
+            )
+
+        # Store ranges in filesystem
+        # TODO find a better place to handle this information
+        self.fs.file_ranges = per_file_ranges
+
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
         return plan
