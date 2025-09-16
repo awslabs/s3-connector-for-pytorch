@@ -6,28 +6,26 @@ import functools
 from time import perf_counter
 from typing import Tuple
 import os
+import socket
 import argparse
 import uuid
 from datetime import datetime
 
-from s3torchconnector._s3client.s3client_config import S3ClientConfig
 import torch.distributed.checkpoint as dcp
 import torch
 import torch.distributed as dist
 from torch.distributed.elastic.multiprocessing.errors import record
-
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import ShardingStrategy
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
-from torch.distributed.checkpoint import FileSystemReader
 
-from s3torchconnector.dcp import S3StorageReader
 from s3torchbenchmarking.models import get_benchmark_model
 from s3torchbenchmarking.benchmark_utils import (
     build_checkpoint_uri,
 )
+from s3torchconnector._s3client.s3client_config import S3ClientConfig
 from s3torchconnector.dcp import S3StorageWriter  # Add this import
 
 
@@ -56,32 +54,15 @@ def get_writer(region: str, uri: str, suffix: str) -> S3StorageWriter:
     )
 
 
-def get_reader(region: str, uri: str, suffix: str) -> FileSystemReader:
-    uri = build_checkpoint_uri(uri, suffix)
-    logger.info("Loading checkpoint from %s (S3)...", uri)
-    return S3StorageReader(
-        region,
-        uri,
-        s3client_config=S3ClientConfig(
-            part_size=5 * 1024 * 1024, throughput_target_gbps=300
-        ),
-    )
-
-
 @record
-def run_fsdp_repeated_load(
+def run_fsdp_save(
     rank: int,
-    world_size: int,
-    thread_count: int,
     backend: str,
     region: str,
     uri: str,
-    suffix: str,
     model_name: str = "L7b",
     checkpoint_sharding_strategy: str = "hybrid",
     num_iterations: int = 2,
-    delay_between_loads: float = 0.0,
-    concurrent_loads: bool = False,
 ) -> None:
     """Execute repeated checkpoint saving and loading to stress test S3."""
     # [Previous initialization code remains the same until after FSDP wrapping]
@@ -89,9 +70,7 @@ def run_fsdp_repeated_load(
     dist.barrier()
 
     if rank == 0:
-        logger.info(f"Starting repeated load test: {num_iterations} iterations")
-        logger.info(f"Delay between loads: {delay_between_loads}s")
-        logger.info(f"Concurrent loads: {concurrent_loads}")
+        logger.info(f"Starting repeated Save test: {num_iterations} iterations")
 
     # Model setup (same as original)
     if rank == 0:
@@ -103,7 +82,6 @@ def run_fsdp_repeated_load(
             model_proxy = get_benchmark_model(model_name)
             model = model_proxy.model
 
-    model_size = model_proxy.size
     model_name = model_proxy.name
     if rank == 0:
         logger.info(f"Model {model_name} created")
@@ -159,10 +137,7 @@ def run_fsdp_repeated_load(
             "model": model.state_dict(),
         }
 
-    load_times = []
     save_times = []
-    total_requests = 0
-    failed_operations = 0
 
     for iteration in range(num_iterations):
         if rank == 0:
@@ -180,10 +155,6 @@ def run_fsdp_repeated_load(
         # Broadcast the suffix from rank 0 to all ranks
         dist.broadcast_object_list(object_list, src=0)
         new_suffix = object_list[0]  # Get the broadcasted suffix
-
-        # Save checkpoint with new prefix
-        if not concurrent_loads:
-            dist.barrier()
 
         if rank == 0:
             print(f"Saving checkpoint with prefix: {new_suffix}")
@@ -230,29 +201,16 @@ if __name__ == "__main__":
         help="Number of times to repeat the load operation",
     )
     parser.add_argument(
-        "--delay",
-        type=float,
-        default=0.0,
-        help="Seconds to wait between load operations (0 for max throughput)",
-    )
-    parser.add_argument(
-        "--concurrent",
-        action="store_true",
-        help="Don't synchronize between ranks for maximum concurrency",
-    )
-    parser.add_argument(
         "--model", type=str, default="L7b", help="Model name to use for benchmarking"
     )
 
     args = parser.parse_args()
 
-    print("@Started backend")
     backend = args.backend
 
     world_size = int(os.environ["WORLD_SIZE"])
     rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
-    import socket
 
     print(
         f"Starting on host {socket.gethostname()} with global rank {rank}, local_rank {local_rank}, world_size {world_size}"
@@ -264,24 +222,19 @@ if __name__ == "__main__":
 
     region = args.region
     uri = args.uri
-    suffix = ""
     # Add new argument for number of workers
     checkpoint_sharding_strategy = "hybrid"
 
     args = parser.parse_args()
 
     # [Rest of the main block remains the same, but add workers parameter to function call]
-    run_fsdp_repeated_load(
-        rank,
-        world_size,
-        thread_count,
-        backend,
-        region,
-        uri,
-        suffix,
+    run_fsdp_save(
+        rank=rank,
+        backend=backend,
+        region=region,
+        uri=uri,
         checkpoint_sharding_strategy=checkpoint_sharding_strategy,
         num_iterations=args.iterations,
-        delay_between_loads=args.delay,
     )
     if dist.is_initialized():
         dist.destroy_process_group()
