@@ -411,7 +411,11 @@ def test_round_binary_prefix_strategy(
         assert set(list_result) == {"epoch_4"}
 
 
-def test_save_async_with_copies(checkpoint_directory):
+@pytest.mark.parametrize(
+    "num_of_copies",
+    [1,2,4,8]
+)
+def test_save_async_with_copies(checkpoint_directory, num_of_copies):
     """Testing that save_async works correctly even with multiple copies
 
     Args:
@@ -426,7 +430,7 @@ def test_save_async_with_copies(checkpoint_directory):
     future = dcp.async_save(
         {"random": t1},
         storage_writer=S3StorageWriter(
-            region, s3_uri, overwrite=False, num_copies=NUM_OF_COPIES
+            region, s3_uri, overwrite=False, num_copies=num_of_copies
         ),
     )
 
@@ -437,7 +441,7 @@ def test_save_async_with_copies(checkpoint_directory):
     list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
 
     assert list_result_s3storagewriter is not None
-    assert len(list_result_s3storagewriter[0].object_info) == NUM_OF_COPIES
+    assert len(list_result_s3storagewriter[0].object_info) == num_of_copies
 
     # Verify we can load the data correctly
     sd = {"random": torch.zeros(10)}
@@ -446,6 +450,8 @@ def test_save_async_with_copies(checkpoint_directory):
     print("Test passed: Async save was successful.")
 
     # Check that the copies were created with the expected structure
+    if num_of_copies == 1:
+        return
     for i in range(NUM_OF_COPIES):
         copy_prefix = f"copy-{i}"
         copy_objects = list(s3_client.list_objects(bucket, f"{key}/{copy_prefix}/"))
