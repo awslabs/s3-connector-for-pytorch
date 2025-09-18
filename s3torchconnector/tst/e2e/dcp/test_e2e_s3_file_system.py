@@ -411,10 +411,7 @@ def test_round_binary_prefix_strategy(
         assert set(list_result) == {"epoch_4"}
 
 
-@pytest.mark.parametrize(
-    "num_of_copies",
-    [1,2,4,8]
-)
+@pytest.mark.parametrize("num_of_copies", [1, 2, 4, 8])
 def test_save_async_with_copies(checkpoint_directory, num_of_copies):
     """Testing that save_async works correctly even with multiple copies
 
@@ -441,7 +438,9 @@ def test_save_async_with_copies(checkpoint_directory, num_of_copies):
     list_result_s3storagewriter = list(s3_client.list_objects(bucket, f"{key}/"))
 
     assert list_result_s3storagewriter is not None
-    assert len(list_result_s3storagewriter[0].object_info) == num_of_copies + 1 # including metadata
+    assert (
+        len(list_result_s3storagewriter[0].object_info) == num_of_copies + 1
+    )  # including metadata
 
     # Verify we can load the data correctly
     sd = {"random": torch.zeros(10)}
