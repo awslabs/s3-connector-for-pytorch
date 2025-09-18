@@ -12,7 +12,6 @@ import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 import torch
 import torch.distributed as dist
-import torch.utils.data
 
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import ShardingStrategy

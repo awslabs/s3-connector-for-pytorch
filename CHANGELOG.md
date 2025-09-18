@@ -4,6 +4,9 @@
 * Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
 * Override S3Writer closed property and block writes after close (#360)
 
+## New features
+* Shadow Copies Implemented
+
 ## v1.4.3 (July 25, 2025)
 
 ### New features
