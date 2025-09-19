@@ -196,7 +196,7 @@ class ModelInterface(ABC):
             begin_training = perf_counter()
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
-                if dist.get_rank() == 0:
+                if not dist.is_initialized() or dist.get_rank() == 0:
                     logger.info(f"Epoch #{epoch}/{epochs - 1}")
                 batch_count = 0
                 try:
