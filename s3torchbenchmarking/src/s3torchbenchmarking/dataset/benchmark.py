@@ -294,7 +294,7 @@ def create_s3_iterable_dataset(
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
     enable_sharding = world_size > 1
-    logging.info(
+    logger.info(
         f"Enabled sharding:  {enable_sharding}, because world_size is {world_size}"
     )
     dataset = S3IterableDataset.from_prefix(
