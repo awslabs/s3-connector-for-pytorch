@@ -31,6 +31,13 @@ from s3torchconnector.s3reader import S3ReaderConstructor, S3ReaderConstructorPr
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 
 logger = logging.getLogger(__name__)
+import sys
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 
 
 def init_distributed(rank=0, world_size=1):
@@ -47,8 +54,19 @@ def run_experiment(config: DictConfig) -> dict:
     num_gpus = (
         config.num_gpus if hasattr(config, "num_gpus") else torch.cuda.device_count()
     )
-    # Cap number of GPUs to max number of GPUs
-    num_gpus = min(num_gpus, torch.cuda.device_count())
+    if num_gpus <= 0 or type(num_gpus) != int:
+        raise ValueError(
+            "Invalid number of GPUs detected. Please specify a number of GPUs to use."
+        )
+    elif num_gpus > torch.cuda.device_count():
+        raise ValueError(
+            f"Number of GPUs specified ({num_gpus}) exceeds number of GPUs available ({torch.cuda.device_count()})"
+        )
+
+    if (
+        config.model == "entitlement"
+    ):  # To prevent multiple processes and inconsistencies with benchmarking for entitlement we use one GPU for entitlement (no training)
+        num_gpus = 1
     # Set visible devices to limit GPU usage, this allows calls to torch.cuda.device_count
     # to use the inputted GPU count
     if num_gpus < torch.cuda.device_count():
