@@ -196,13 +196,13 @@ class ModelInterface(ABC):
             begin_training = perf_counter()
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
-                logger.info("Epoch #%i/%i", epoch, epochs - 1)
+                logger.info(f"Epoch #{epoch}/{epochs - 1}", epoch, epochs - 1)
                 batch_count = 0
                 try:
                     for batch_idx, (data, target) in enumerate(
                         self.capped_loader(dataloader)
                     ):
-                        logger.debug("Batch #%i", batch_idx)
+                        logger.debug(f"Batch #{batch_idx}")
                         result = self.train_batch(batch_idx, data, target)
                         num_samples += len(data)
                         batch_count += 1
@@ -295,7 +295,6 @@ class ViT(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-
         img = Image.open(data)
         target = self._get_random_label()
         if self.transform:
