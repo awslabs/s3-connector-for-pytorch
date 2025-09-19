@@ -31,13 +31,6 @@ from s3torchconnector.s3reader import S3ReaderConstructor, S3ReaderConstructorPr
 from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 
 logger = logging.getLogger(__name__)
-import sys
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
 
 
 def init_distributed(rank=0, world_size=1):
