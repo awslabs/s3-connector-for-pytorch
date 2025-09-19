@@ -389,7 +389,9 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler
         pin_memory=False,
         persistent_workers=True,
         prefetch_factor=2 if num_workers > 0 else None,
-        multiprocessing_context="fork",
+        # We use fork here when using multiple GPUs otherwise this will cause a hang
+        # otherwise we use spawn
+        multiprocessing_context="fork" if torch.cuda.is_available() and torch.cuda.device_count() > 0 else "spawn",
     )
 
 
