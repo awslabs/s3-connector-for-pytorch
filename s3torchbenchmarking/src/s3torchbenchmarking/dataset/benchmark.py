@@ -33,7 +33,6 @@ from s3torchconnector._s3dataset_common import parse_s3_uri  # type: ignore
 logger = logging.getLogger(__name__)
 
 
-
 def init_distributed(rank=0, world_size=1):
     """Initialize DDP Process group"""
     os.environ["MASTER_ADDR"] = "localhost"
@@ -385,7 +384,11 @@ def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler
         prefetch_factor=2 if num_workers > 0 else None,
         # We use fork here when using multiple GPUs otherwise this will cause a hang
         # otherwise we use spawn
-        multiprocessing_context="fork" if torch.cuda.is_available() and torch.cuda.device_count() > 0 else "spawn",
+        multiprocessing_context=(
+            "fork"
+            if torch.cuda.is_available() and torch.cuda.device_count() > 0
+            else "spawn"
+        ),
     )
 
 
