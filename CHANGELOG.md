@@ -5,6 +5,9 @@
 * Override S3Writer closed property and block writes after close (#360)
 * Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
 
+### Other changes
+* Extended benchmarks to support multi-GPU Dataloading
+
 ## v1.4.3 (July 25, 2025)
 
 ### New features
