@@ -18,6 +18,6 @@ def test_s3storage_writer_thread_count(thread_count):
     assert storage_writer.thread_count == thread_count
 
 
-def test_s3storage_writer_thread_count_none_defaults_to_one():
+def test_s3storage_writer_thread_count_defaults_to_one():
     storage_writer = S3StorageWriter(region=TEST_REGION, path=TEST_PATH)
     assert storage_writer.thread_count == 1

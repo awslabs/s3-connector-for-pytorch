@@ -283,7 +283,7 @@ class S3StorageWriter(FileSystemWriter):
             s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
             prefix_strategy (Optional[S3PrefixStrategyBase]): Optional strategy for generating S3 prefixes to
                 optimize checkpoint organization and prevent throttling.
-            thread_count (int): Number of IO threads to use to write. We default to 1 emulating Pytorch defaults
+            thread_count (int): Number of IO threads to use to write. Defaults to 1 (Pytorch Default)
             kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
