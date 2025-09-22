@@ -32,8 +32,3 @@ srun torchrun \
    --backend gloo \
    --uri ??? \
    --region ???
-~                                                                                                                                                                                                                       
-~                                                                                                                                                                                                                       
-~                                                                                                                                                                                                                       
-~                                                                                                                                                                                                                       
-~                                      
