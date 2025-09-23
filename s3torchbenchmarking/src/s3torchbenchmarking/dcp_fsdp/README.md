@@ -24,7 +24,7 @@ These benchmarks test both "save" and "load" mechanisms of PyTorch DCP (`torch.d
 
 The benchmark runs can be customized through configuration files:
 
-- **Save benchmarks**: [`dcp_fsdp.yaml`](../../../conf/dcp_fsdp.yaml)
+- **Save benchmarks**: [`dcp_fsdp_save.yaml`](../../../conf/dcp_fsdp.yaml)
 - **Load benchmarks**: [`dcp_fsdp_load.yaml`](../../../conf/dcp_fsdp_load.yaml)
 
 The load configuration includes a `checkpoint.suffix` parameter that specifies which saved checkpoint to load.

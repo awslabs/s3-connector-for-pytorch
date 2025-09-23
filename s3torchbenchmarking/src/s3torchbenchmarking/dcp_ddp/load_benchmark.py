@@ -19,15 +19,6 @@ from s3torchbenchmarking.models import get_benchmark_model, BenchmarkModel
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
 
-import sys
-
-logging.basicConfig(
-    stream=sys.stdout,
-    format="%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s",
-)
-logging.getLogger().setLevel(logging.DEBUG)
-
-
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
