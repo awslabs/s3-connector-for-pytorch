@@ -7,6 +7,7 @@
 
 ### Other changes
 * Extended benchmarks to support multi-GPU Dataloading
+* Added thread_count parameter to S3StorageWriter 
 
 ## v1.4.3 (July 25, 2025)
 

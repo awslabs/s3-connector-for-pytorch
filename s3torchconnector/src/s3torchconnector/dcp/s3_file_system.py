@@ -271,6 +271,7 @@ class S3StorageWriter(FileSystemWriter):
         path: str,
         s3client_config: Optional[S3ClientConfig] = None,
         prefix_strategy: Optional[S3PrefixStrategyBase] = None,
+        thread_count: int = 1,
         **kwargs,
     ) -> None:
         """
@@ -282,11 +283,13 @@ class S3StorageWriter(FileSystemWriter):
             s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
             prefix_strategy (Optional[S3PrefixStrategyBase]): Optional strategy for generating S3 prefixes to
                 optimize checkpoint organization and prevent throttling.
+            thread_count (int): Number of IO threads to use to write. Defaults to 1 (Pytorch Default)
             kwargs (dict): Keyword arguments to pass to the parent :class:`FileSystemWriter`.
         """
         super().__init__(
             path=path,
             sync_files=False,  # FIXME: setting this to True makes the run to fail (L#333: `os.fsync(stream.fileno())`)
+            thread_count=thread_count,
             **kwargs,
         )
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
