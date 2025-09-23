@@ -28,3 +28,4 @@ hydra:
       +thread_count: 8
       # Checkpoint storage location (valid options: "disk", "s3").
       +checkpoint.storage: disk, s3
+

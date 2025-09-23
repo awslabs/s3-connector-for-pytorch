@@ -29,3 +29,4 @@ hydra:
       # Checkpoint storage location (valid options: "disk", "s3").
       +checkpoint.storage: disk, s3
       +checkpoint.suffix: ???
+
