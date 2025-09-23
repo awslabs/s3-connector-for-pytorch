@@ -16,9 +16,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Prepare NVMe drive
-[[ -n ${nvme_dir:-} ]] && ./utils/prepare_nvme.sh "$nvme_dir"
+# Prepare NVMe drive mount
+if [[ -n $nvme_dir ]]; then
+  ./utils/prepare_nvme.sh "$nvme_dir"
+fi
 
+
+# Determine script and config
 case $mode in
   load) script="load_benchmark.py"; config="${scenario}_load" ;;
   save) script="save_benchmark.py"; config="${scenario}_save" ;;
@@ -31,4 +35,5 @@ case $mode in
     fi ;;
 esac
 
+# Run benchmarks; will write to DynamoDB table, if specified in the config (in `conf/aws/dynamodb.yaml`)
 python "./src/s3torchbenchmarking/$scenario/$script" -cd conf -cn "$config" +path="$nvme_dir" "$@"
