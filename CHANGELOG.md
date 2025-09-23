@@ -5,6 +5,9 @@
 * Override S3Writer closed property and block writes after close (#360)
 * Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
 
+### Other changes
+* Added thread_count parameter to S3StorageWriter 
+
 ## v1.4.3 (July 25, 2025)
 
 ### New features

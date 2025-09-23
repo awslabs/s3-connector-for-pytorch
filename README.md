@@ -162,7 +162,11 @@ REGION = "us-east-1"
 model = torchvision.models.resnet18()
 
 # Save distributed checkpoint to S3
-s3_storage_writer = S3StorageWriter(region=REGION, path=CHECKPOINT_URI)
+s3_storage_writer = S3StorageWriter(
+    region=REGION, 
+    path=CHECKPOINT_URI,
+    thread_count=8, # optional; number of IO threads to use to write
+) 
 DCP.save(
     state_dict=model.state_dict(),
     storage_writer=s3_storage_writer,
