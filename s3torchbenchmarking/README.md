@@ -112,10 +112,14 @@ vim ./conf/lightning_checkpointing.yaml # 1. edit config
 ./utils/run_lightning_benchmarks.sh      # 2. run scenario
 
 # PyTorch’s Distributed Checkpointing (DCP) benchmarks
-vim ./conf/dcp_ddp.yaml           # 1. edit config
+vim ./conf/dcp_ddp.yaml                   # 1. edit config
 vim ./conf/dcp_fsdp.yaml
-./utils/run_dcp_ddp_benchmarks.sh # 2. run scenario
+# Saving Checkpoint
+./utils/run_dcp_ddp_benchmarks.sh         # 2. run scenario for saving checkpoint
 ./utils/run_dcp_fsdp_benchmarks.sh
+# Loading Checkpoint
+./utils/run_ddp_benchmarks.sh             # 2. run scenario for loading checkpoint
+./utils/run_dcp_fsdp_benchmarks.sh --load 
 ```
 
 > [!NOTE]
