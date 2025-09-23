@@ -20,6 +20,7 @@ from omegaconf import DictConfig
 from torch.nn import Module
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2  # type: ignore
+import itertools
 from transformers import (  # type: ignore
     ViTForImageClassification,
     ViTModel,
@@ -142,6 +143,48 @@ class ModelInterface(ABC):
     def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
         raise NotImplementedError
 
+    def capped_loader(self, loader):
+        """Cap the number of steps in the loader to the minimum number of steps across all ranks"""
+        if not dist.is_initialized():
+            yield from loader
+            return
+        world = dist.get_world_size()
+
+        try:
+            # For map style datasets we can use len as we know the size of the loader
+            local_steps = len(loader)
+        except TypeError:
+            local_steps = None
+
+        if local_steps is not None:
+            counts = [None] * world
+            dist.all_gather_object(counts, local_steps)
+            min_steps = min(counts)
+            yield from itertools.islice(loader, min_steps)
+            return
+
+        # In the case of iterable datasets we can't use len() so need to to use iter
+        it = iter(loader)
+        # Use cuda with nccl if available for the purpose of using dist.all_reduce
+        while True:
+            # Pull out one batch one at at time, if it works on all ranks then we yield else stop
+            try:
+                batch = next(it)
+                pulled_batch = 1
+            except:
+                batch = None
+                pulled_batch = 0
+
+            flags = [None] * world
+            # We use all_gather_objects as the objects are of small size and the serialization
+            # overhead is too small to use dist.all_reduce_objectss
+            dist.all_gather_object(flags, pulled_batch)
+
+            if all(flags):
+                yield batch
+            else:
+                break
+
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
 
@@ -153,13 +196,27 @@ class ModelInterface(ABC):
             begin_training = perf_counter()
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
-                logger.info("Epoch #%i/%i", epoch, epochs - 1)
-                for batch_idx, (data, target) in enumerate(dataloader):
-                    logger.debug("Batch #%i", batch_idx)
-                    result = self.train_batch(batch_idx, data, target)
-                    num_samples += len(data)
-                    if result:
-                        checkpoint_times.append(result)
+                if not dist.is_initialized() or dist.get_rank() == 0:
+                    logger.info(f"Epoch #{epoch}/{epochs - 1}")
+                batch_count = 0
+                try:
+                    for batch_idx, (data, target) in enumerate(
+                        self.capped_loader(dataloader)
+                    ):
+                        logger.debug(f"Batch #{batch_idx}")
+                        result = self.train_batch(batch_idx, data, target)
+                        num_samples += len(data)
+                        batch_count += 1
+                        if batch_count % 1000 == 0:
+                            logger.info(
+                                f"Processed {batch_count} batches, {num_samples} samples"
+                            )
+                        if result:
+                            checkpoint_times.append(result)
+                except Exception as e:
+                    logger.error(f"Error in training loop at batch {batch_count}: {e}")
+                    raise
+                logger.info(f"Epoch {epoch} completed with {batch_count} batches")
                 epoch_durations_s.append(time.perf_counter() - begin_epoch)
             training_duration_s = time.perf_counter() - begin_training
 
@@ -185,11 +242,16 @@ class Entitlement(ModelInterface):
 
     def __init__(self, num_labels: Optional[int] = None):
         self.num_labels = num_labels
+        self.model = None
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        buffer = data.read()
-        return len(buffer), key
+        try:
+            buffer = data.read()
+            return len(buffer), key
+        except Exception as e:
+            logger.warning(f"Failed to read sample {key}: {e}")
+            return 0, key
 
     def train_batch(self, batch_idx: int, data, target):
         pass
@@ -299,7 +361,6 @@ class LightningAdapter(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         _, data = super().load_sample(sample)
-
         return self.sample_transformer(data), self._get_random_label()
 
     def _get_random_label(self):

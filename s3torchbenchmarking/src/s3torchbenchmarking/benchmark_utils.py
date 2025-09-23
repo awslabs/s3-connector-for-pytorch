@@ -65,16 +65,14 @@ class ResourceMonitor:
     Set sleep_time_s carefully to avoid perf degradations.
     """
 
-    def __init__(
-        self, sleep_time_s: float = 0.05, gpu_device: int = 0, chunk_size: int = 25_000
-    ):
+    def __init__(self, sleep_time_s: float = 0.05, chunk_size: int = 25_000):
         self.monitor_thread = None
         self._utilization: Dict[str, Distribution] = defaultdict(
             lambda: Distribution(chunk_size)
         )
         self.stop_event = threading.Event()
         self.sleep_time_s = sleep_time_s
-        self.gpu_device = gpu_device
+        self.num_of_gpus = torch.cuda.device_count() if monitor_gpu else 0
         self.chunk_size = chunk_size
 
     def _monitor(self):
@@ -83,16 +81,14 @@ class ResourceMonitor:
             self._utilization["cpu_mem"].add(psutil.virtual_memory().percent)
 
             if monitor_gpu:
-                gpu_info = nvmlDeviceGetUtilizationRates(
-                    nvmlDeviceGetHandleByIndex(self.gpu_device)
-                )
-                gpu_mem_info = nvmlDeviceGetMemoryInfo(
-                    nvmlDeviceGetHandleByIndex(self.gpu_device)
-                )
-                self._utilization["gpu_util"].add(gpu_info.gpu)
-                self._utilization["gpu_mem"].add(
-                    gpu_mem_info.used / gpu_mem_info.total * 100
-                )
+                for gpu_id in range(self.num_of_gpus):
+                    nvml_device_handle = nvmlDeviceGetHandleByIndex(gpu_id)
+                    gpu_info = nvmlDeviceGetUtilizationRates(nvml_device_handle)
+                    gpu_mem_info = nvmlDeviceGetMemoryInfo(nvml_device_handle)
+                    self._utilization[f"gpu_{gpu_id}_mem"].add(gpu_info.gpu)
+                    self._utilization[f"gpu_{gpu_id}_util"].add(
+                        gpu_mem_info.used / gpu_mem_info.total * 100
+                    )
             time.sleep(self.sleep_time_s)
 
     @property
