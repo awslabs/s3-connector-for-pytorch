@@ -7,6 +7,7 @@
 
 ### Other changes
 * Added benchmark to run DCP Loading Workloads
+* Added thread_count parameter to S3StorageWriter 
 
 ## v1.4.3 (July 25, 2025)
 
