@@ -12,7 +12,7 @@ import torch.distributed.checkpoint as dcp
 from omegaconf import DictConfig
 import torch
 import torch.distributed as dist
-import torch.utils.data
+import os
 
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import ShardingStrategy
@@ -20,33 +20,34 @@ from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 
-from s3torchbenchmarking.dcp_common import setup, benchmark_common_runner, get_writer
+from s3torchbenchmarking.dcp_common import setup, benchmark_common_runner, get_reader
 from s3torchbenchmarking.models import get_benchmark_model
 
 Timestamps = Tuple[float, float]
 logger = logging.getLogger(__name__)
+import sys
 
 
-# TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
 @hydra.main(version_base=None)
 def run_benchmark(cfg: DictConfig) -> dict:
-    """DCP benchmarks entry point."""
-    return benchmark_common_runner(cfg, run_fsdp, (cfg,))
+    """DCP load benchmarks entry point."""
+    return benchmark_common_runner(cfg, run_fsdp_load, (cfg,))
 
 
-def run_fsdp(
-    rank: int,  # needs to be passed first (provided by `multiprocessing.spawn` automatically)
+def run_fsdp_load(
+    rank: int,
     cfg: DictConfig,
-    suffix,
-    save_timestamps: Queue,
-) -> None:
-    """Execute the actual code for checkpoint saving.
+    suffix: str,
+    load_timestamps: Queue,
+):
+    """Execute the actual code for checkpoint loading.
 
     This function is meant to be executed in subprocesses."""
     setup(cfg.backend, world_size=cfg.world_size, rank=rank)
 
     if rank == 0:
         logger.info("Creating Model")
+
     # Instantiate model on CPU on rank=0 only to prevent CPU OOM
     # (e.g. 70B * 4 bytes * 8 processes > 2T RAM available on P5)
     if rank == 0:
@@ -61,9 +62,6 @@ def run_fsdp(
             model = model_proxy.model
 
     model_size = model_proxy.size
-    model_name = model_proxy.name
-    if rank == 0:
-        logger.info(f"Model {model_name} created")
 
     transformer_layer = LlamaDecoderLayer
     gpt_auto_wrap_policy = functools.partial(
@@ -110,23 +108,24 @@ def run_fsdp(
     if rank == 0:
         logger.info("Wrapped model with FSDP")
 
-    # torch.cuda.empty_cache()
+    # Prepare state dict for loading
     with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
         state_dict = {
             "model": model.state_dict(),
         }
 
-    storage_writer = get_writer(cfg, suffix)
-    # align all workers to start checkpointing at the same time
+    storage_reader = get_reader(cfg)
+
+    # Align all workers to start loading at the same time
     dist.barrier()
-    begin_save = perf_counter()
-    dcp.save(state_dict, storage_writer=storage_writer)
-    end_save = perf_counter()
+    begin_load = perf_counter()
+    dcp.load(state_dict, storage_reader=storage_reader)
+    end_load = perf_counter()
 
     if rank == 0:
         logger.info(f"The total size of model is {model_size}")
     # Record the save times excluding the influence of the process setup and model loading to device.
-    save_timestamps.put((begin_save, end_save, model_size))
+    load_timestamps.put((begin_load, end_load, model_size))
     dist.destroy_process_group()
 
 
