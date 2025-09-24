@@ -36,6 +36,7 @@ MOCK_STREAM = Mock(GetObjectStream)
             *args, **kwargs, buffer_size=0
         ),  # No buffer
     ],
+    ids=["sequential", "range_based_with_buffer", "range_based_no_buffer"],
     scope="module",
 )
 def reader_implementation(request) -> Type[S3Reader]:
@@ -173,6 +174,56 @@ def test_s3reader_seek(
         assert s3reader.tell() == bytesio.tell()
 
 
+@pytest.mark.parametrize("whence", [SEEK_SET, SEEK_CUR, SEEK_END])
+def test_s3reader_seek_beyond_eof(reader_implementation: Type[S3Reader], whence):
+    """Test seek beyond EOF clamps to object size correctly, for all 3 seek modes"""
+    stream = [b"12345"]
+    s3reader = create_s3reader(stream, reader_implementation)
+
+    s3reader.seek(2)  # Position at 2
+
+    # SEEK_SET: seek to 10; SEEK_CUR: seek to 12; SEEK_END: seek to 15
+    pos = s3reader.seek(10, whence)
+
+    # Should clamp to object size
+    assert pos == 5
+    assert s3reader.tell() == 5
+
+    # All reader types should set _size correctly in all cases
+    assert s3reader._size == 5
+
+
+@pytest.mark.parametrize("whence", [SEEK_SET, SEEK_CUR, SEEK_END])
+@given(bytestream_and_positions())
+def test_s3reader_seek_beyond_eof_different_positions(
+    whence,
+    reader_implementation: Type[S3Reader],
+    stream_and_positions: Tuple[List[bytes], List[int]],
+):
+    """
+    Test seek beyond EOF clamps to object size correctly.
+    Since we use `pos + stream_length + 1`, we will seek beyond eof for all 3 seek modes.
+    """
+    stream, positions = stream_and_positions
+    stream_length = sum(map(len, stream))
+    assume(stream_length > 0)
+
+    for pos in positions:
+        s3reader = create_s3reader(stream, reader_implementation)
+
+        # +1 ensures beyond EOF, since we only get _size in sequential reader when reading beyond eof
+        beyond_eof_pos = pos + stream_length + 1
+        seek_return = s3reader.seek(beyond_eof_pos, whence)
+
+        # Verify seek beyond EOF sets position to EOF
+        assert s3reader.tell() == seek_return == stream_length
+        assert s3reader._size == stream_length
+
+        # Verify seeking back into file still works
+        seek_return = s3reader.seek(pos)
+        assert s3reader.tell() == seek_return == pos
+
+
 @given(bytestream_and_positions())
 def test_s3reader_read_with_sizes(
     reader_implementation: Type[S3Reader],
@@ -209,9 +260,11 @@ def test_read_with_negative(
     [
         ("Zero-length read from start", 0, 0, [b"0123456789ABCDEF"], b"", 0),
         ("Zero-length read from middle", 5, 0, [b"0123456789ABCDEF"], b"", 5),
+        ("Zero-length read from EOF", 16, 0, [b"0123456789ABCDEF"], b"", 16),
         ("Read near EOF", 10, 10, [b"0123456789ABCDEF"], b"ABCDEF", 16),
         ("Read beyond EOF", 16, 10, [b"0123456789ABCDEF"], b"", 16),
         ("Read from empty file", 0, 10, [], b"", 0),
+        ("Seek beyond EOF then read", 20, 10, [b"0123456789ABCDEF"], b"", 16),
     ],
 )
 def test_s3reader_read_edge_cases(
@@ -237,9 +290,11 @@ def test_s3reader_read_edge_cases(
     [
         ("Zero-length readinto from start", 0, 0, [b"0123456789ABCDEF"], 0, 0),
         ("Zero-length readinto from middle", 5, 0, [b"0123456789ABCDEF"], 0, 5),
+        ("Zero-length read from EOF", 16, 0, [b"0123456789ABCDEF"], 0, 16),
         ("Readinto near EOF", 10, 10, [b"0123456789ABCDEF"], 6, 16),
         ("Readinto beyond EOF", 16, 10, [b"0123456789ABCDEF"], 0, 16),
         ("Readinto from empty file", 0, 10, [], 0, 0),
+        ("Seek beyond EOF then read", 20, 10, [b"0123456789ABCDEF"], 0, 16),
     ],
 )
 def test_s3reader_readinto_edge_cases(
