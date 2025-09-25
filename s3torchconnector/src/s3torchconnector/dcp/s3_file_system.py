@@ -272,8 +272,6 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-
-
 @dataclass
 class StorageMetadata:
     """Metadata for S3 storage prefix."""
@@ -460,10 +458,14 @@ class S3StorageReader(FileSystemReader):
             Metadata: The metadata for the checkpoint.
         """
         metadata = super().read_metadata()
-        
+
         # Default to 1 copy
         self.num_copies = 1
-        if metadata.storage_meta and hasattr(metadata.storage_meta, 'modules') and metadata.storage_meta.modules:
+        if (
+            metadata.storage_meta
+            and hasattr(metadata.storage_meta, "modules")
+            and metadata.storage_meta.modules
+        ):
             for module in metadata.storage_meta.modules:
                 if module.startswith("num_copies="):
                     print("Contains metadata")

@@ -74,8 +74,8 @@ def run(
             thread_count=threads,
             path=s3_path_s3storagewriter,
             overwrite=True,
-            prefix_strategy=prefix_strategy
-            ),
+            prefix_strategy=prefix_strategy,
+        ),
     )
 
     cleanup()
