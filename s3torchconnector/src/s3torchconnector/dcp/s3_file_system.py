@@ -495,7 +495,7 @@ class S3StorageReader(FileSystemReader):
                 f"Worker rank {self.rank} assigned to copy {self.assigned_copy}"
             )
 
-    def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future:
+    def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future[None]:
         """Read data from assigned copy
 
         Args:
