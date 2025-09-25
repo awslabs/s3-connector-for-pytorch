@@ -16,7 +16,8 @@ from torch import Future
 from torch.distributed.checkpoint.metadata import Metadata, StorageMeta
 from torch.distributed.checkpoint.storage import WriteResult
 from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
-
+import dataclasses
+from dataclasses import dataclass
 from torch.distributed.checkpoint.planner import (
     SavePlan,
     SavePlanner,
@@ -39,6 +40,8 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemWriter,
     FileSystemBase,
 )
+from torch.distributed.checkpoint.planner import SavePlan
+
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
@@ -50,8 +53,6 @@ from .._user_agent import UserAgent
 logger = logging.getLogger(__name__)
 
 _metadata_fn: str = ".metadata"
-
-logging.getLogger().setLevel(logging.DEBUG)
 DEFAULT_SUFFIX = ".distcp"
 
 
@@ -271,9 +272,6 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan
-import dataclasses
-from dataclasses import dataclass, field
 
 
 @dataclass
@@ -352,8 +350,6 @@ class S3StorageWriter(FileSystemWriter):
             return file_name
 
         file_queue: queue.Queue = queue.Queue()
-        from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
-
         for copy in range(self.num_copies):
             if self.single_file_per_rank:
                 for bucket in _split_by_size_and_type(self.thread_count, plan.items):

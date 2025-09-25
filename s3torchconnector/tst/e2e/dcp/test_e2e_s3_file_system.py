@@ -32,8 +32,6 @@ from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
 import concurrent
 
-NUM_OF_COPIES = 1
-
 
 def generate_random_port():
     return random.randint(1, 500)
@@ -76,9 +74,8 @@ def run(
             thread_count=threads,
             path=s3_path_s3storagewriter,
             overwrite=True,
-            prefix_strategy=prefix_strategy,
-            num_copies=NUM_OF_COPIES,
-        ),
+            prefix_strategy=prefix_strategy
+            ),
     )
 
     cleanup()
