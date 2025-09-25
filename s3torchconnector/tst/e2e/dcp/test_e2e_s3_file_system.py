@@ -124,9 +124,8 @@ def multi_process_dcp_save_load(
         test_data,
         world_size,
         thread_count,
-        reader_constructor,
-        num_copies=NUM_OF_COPIES,
-    )
+        reader_constructor
+        )
 
     return s3_path_s3storagewriter
 
