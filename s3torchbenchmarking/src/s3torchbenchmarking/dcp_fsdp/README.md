@@ -18,8 +18,8 @@ These benchmarks test both "save" and "load" mechanisms of PyTorch DCP (`torch.d
 
 
 #### Benchmark and Utility Scripts
-- **[`benchmark.py`](benchmark.py)** - Main benchmarking framework using Hydra configuration for comprehensive performance testing
-- **[`wait.py`](wait.py)** - Utility script to keep cluster nodes busy with minimal resource usage during testing
+- **[`save_benchmark.py`](benchmark.py)** - Main benchmarking framework using Hydra configuration for comprehensive performance testing of saving checkpoints
+- **[`load_benchmark.py`](benchmark.py)** - Main benchmarking framework using Hydra configuration for comprehensive performance testing of loading checkpoints
 - **[`llama_model_config.py`](llama_model_config.py)** - Model configuration definitions for LLaMA models used in benchmarks
 
 The benchmark runs can be customized through configuration files:
@@ -34,7 +34,7 @@ The load configuration includes a `checkpoint.suffix` parameter that specifies w
 
 **Save benchmarks (default):**
 ```bash
-./utils/run_dcp_fsdp_benchmarks.sh
+./utils/run_dcp_fsdp_benchmarks.sh 
 ./utils/run_dcp_fsdp_benchmarks.sh --save
 ```
 
