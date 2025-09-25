@@ -12,6 +12,9 @@
 ## New features
 * Shadow Copies Implemented
 
+## New features
+* Shadow Copies Implemented
+
 ## v1.4.3 (July 25, 2025)
 
 ### New features
