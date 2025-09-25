@@ -7,12 +7,12 @@ import os
 import pickle
 import queue
 import urllib.parse
-import sys
+
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Union, Optional, cast
 from typing import List
-from torch import Future
+from torch.futures import Future
 from torch.distributed.checkpoint.metadata import Metadata, StorageMeta
 from torch.distributed.checkpoint.storage import WriteResult
 from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
