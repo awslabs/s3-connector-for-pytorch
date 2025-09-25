@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "s3torchbenchmarking"
 version = "0.0.1"
 description = "Tools to run and compare benchmarks against various PyTorch connectors like the s3torchconnector."
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.8,<3.14"
 readme = "README.md"
 dependencies = [
     "s3torchconnector[lightning,dcp]",
