@@ -461,12 +461,16 @@ class S3StorageReader(FileSystemReader):
             Metadata: The metadata for the checkpoint.
         """
         metadata = super().read_metadata()
-        logger.debug(f"Storage metadata: {metadata.storage_meta}")
-        self.num_copies = int(metadata.storage_meta.modules[0].split("=")[1])
+        
+        # Default to 1 copy
+        self.num_copies = 1
+        if metadata.storage_meta and hasattr(metadata.storage_meta, 'modules') and metadata.storage_meta.modules:
+            for module in metadata.storage_meta.modules:
+                if module.startswith("num_copies="):
+                    print("Contains metadata")
+                    self.num_copies = int(module.split("=")[1])
+                    break
         logger.debug(f"Num of copies: {self.num_copies}")
-        # Log all the important info of metadata
-        # logger.debug(f"Metadata: {metadata}")
-
         return metadata
 
     def set_up_storage_reader(self, metadata, is_coordinator):

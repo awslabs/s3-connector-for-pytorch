@@ -10,8 +10,8 @@ import argparse
 import uuid
 from datetime import datetime
 
-import torch.distributed.checkpoint as dcp
 import torch
+import torch.distributed.checkpoint as dcp
 import torch.distributed as dist
 from torch.distributed.elastic.multiprocessing.errors import record
 
