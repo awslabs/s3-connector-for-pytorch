@@ -193,7 +193,7 @@ the load across multiple S3 partitions.
 
 #### 1. Shadow Copies
 
-Automatically duplicates checkpoints across different S3 prefixes during teh save process. A metadata file records the number of copies.
+Automatically duplicates checkpoints across different S3 prefixes during the save process. A metadata file records the number of copies.
 During load, each worker is assigned a specific copy to load from using round-robin, thereby increasing the S3 throttling limit. This is especially needed for workloads
 where each worker needs to load the entire model.
 
@@ -202,7 +202,7 @@ For saving:
 writer = S3StorageWriter(
     region=REGION,
     path="CHECKPOINT_URI",
-    num_copies = 8 # Creates 10 copies
+    num_copies = 8 # Creates 8 copies
 )
 dcp.save(state_dict, storage_writer = writer)
 ```
