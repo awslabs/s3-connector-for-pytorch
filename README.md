@@ -195,6 +195,7 @@ the load across multiple S3 partitions.
 
 ### Available Strategies
 
+
 #### 1. RoundRobinPrefixStrategy
 Distributes checkpoints across specified prefixes in a round-robin fashion, ideal for balancing data across multiple storage locations.
 
@@ -296,6 +297,49 @@ s3://my-bucket/checkpoints/
 └── ...
 ```
 
+### Additional Distribution Strategies for Reducing Throttling
+
+#### Shadow Copies
+
+Automatically duplicates checkpoints across different S3 prefixes during the save process. A metadata file records the number of copies.
+During load, each worker is assigned a specific copy to load from using round-robin, thereby increasing the S3 throttling limit. This is especially needed for workloads
+where each worker needs to load the entire model.
+
+For saving:
+```py
+writer = S3StorageWriter(
+    region=REGION,
+    path="CHECKPOINT_URI",
+    num_copies = 8 # Creates 8 copies
+)
+dcp.save(state_dict, storage_writer = writer)
+```
+
+For loading (no change, automatically detected):
+```
+reader = S3StorageReader(
+    region=REGION,
+    path="CHECKPOINT_URI"
+)
+dcp.load(state_dict = state_dict, storage_reader = reader)
+```
+
+**Output Structure**
+```
+CHECKPOINT_URI
+├── copy-1/
+│   └── ├── __0_0.distcp
+│       ├── __1_0.distcp
+│       └── ...
+├── copy-2/
+│   └── ├── __0_0.distcp
+│       ├── __1_0.distcp
+│       └── ...
+└── copy-3/
+    └── ├── __0_0.distcp
+        ├── __0_1.distcp
+        └── ...
+```
 ### Creating Custom Strategies
 
 You can implement custom prefix strategies by extending the S3PrefixStrategyBase class:

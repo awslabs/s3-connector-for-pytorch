@@ -4,12 +4,28 @@
 import io
 import logging
 import os
+import pickle
+import queue
 import urllib.parse
+
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Union, Optional
+from typing import Generator, Union, Optional, cast
 from typing import List
-
+from torch.futures import Future
+from torch.distributed.checkpoint.metadata import Metadata, StorageMeta
+from torch.distributed.checkpoint.storage import WriteResult
+from torch.distributed.checkpoint.filesystem import _split_by_size_and_type
+import dataclasses
+from dataclasses import dataclass
+from torch.distributed.checkpoint.planner import (
+    SavePlan,
+    SavePlanner,
+    LoadPlan,
+    LoadPlanner,
+)
+import torch
+import torch.distributed as dist
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
     retry,
@@ -24,7 +40,8 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemWriter,
     FileSystemBase,
 )
-import torch
+from torch.distributed.checkpoint.planner import SavePlan
+
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
@@ -34,6 +51,9 @@ from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
 
 logger = logging.getLogger(__name__)
+
+_metadata_fn: str = ".metadata"
+DEFAULT_SUFFIX = ".distcp"
 
 
 class S3FileSystem(FileSystemBase):
@@ -252,11 +272,6 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan
-import dataclasses
-from dataclasses import dataclass
-
-
 @dataclass
 class StorageMetadata:
     """Metadata for S3 storage prefix."""
@@ -272,6 +287,7 @@ class S3StorageWriter(FileSystemWriter):
         s3client_config: Optional[S3ClientConfig] = None,
         prefix_strategy: Optional[S3PrefixStrategyBase] = None,
         thread_count: int = 1,
+        num_copies: int = 1,
         **kwargs,
     ) -> None:
         """
@@ -294,6 +310,7 @@ class S3StorageWriter(FileSystemWriter):
         )
         self.fs = S3FileSystem(region, s3client_config=s3client_config)  # type: ignore
         self.path = self.fs.init_path(path)
+        self.num_copies = num_copies
         self.prefix_strategy = prefix_strategy or DefaultPrefixStrategy()
 
     def prepare_global_plan(self, plans: List[SavePlan]) -> List[SavePlan]:
@@ -312,6 +329,91 @@ class S3StorageWriter(FileSystemWriter):
             )
             for idx, plan in enumerate(plans)
         ]
+
+    def write_data(
+        self,
+        plan: SavePlan,
+        planner: SavePlanner,
+    ):
+        if self.num_copies <= 1:
+            return super().write_data(plan, planner)
+
+        storage_plan = plan.storage_data
+        file_count = 0
+
+        def gen_file():
+            nonlocal file_count
+            file_name = f"{storage_plan.prefix}{file_count}{DEFAULT_SUFFIX}"
+            file_count += 1
+            return file_name
+
+        file_queue: queue.Queue = queue.Queue()
+        for copy in range(self.num_copies):
+            if self.single_file_per_rank:
+                for bucket in _split_by_size_and_type(self.thread_count, plan.items):
+                    file_name = gen_file()
+                    # Store just the copy prefix in the relative path
+                    relative_path = f"copy-{copy}/{file_name}"
+                    # Full path for the actual file
+                    full_path = self.fs.concat_path(self.path, relative_path)
+                    # Put the tuple in the queue with the correct relative path
+                    file_queue.put((full_path, file_name, bucket))
+                file_count = 0
+            else:
+                for item in plan.items:
+                    file_name = gen_file()
+                    # Store just the copy prefix in the relative path
+                    relative_path = f"copy-{copy}/{file_name}"
+                    # Full path for the actual file
+                    full_path = self.fs.concat_path(self.path, relative_path)
+                    # Put the tuple in the queue with the correct relative path
+                    file_queue.put((full_path, relative_path, [item]))
+                file_count = 0
+
+        return self._write_data(planner, file_queue)
+
+    def finish(self, metadata: Metadata, results: List[List[WriteResult]]) -> None:
+        """
+        Finish the checkpointing process and save the number of copies in metadata
+
+        Args:
+            metadata: Metadata for the checkpoint.
+            results: List of write results for each rank.
+        """
+        # Process results normally
+        storage_md = {}
+        for wr_list in results:
+            storage_md.update({wr.index: wr.storage_data for wr in wr_list})
+
+        metadata.storage_data = storage_md
+        # Add duplication info to metadata
+        if metadata.storage_meta is None:
+            metadata.storage_meta = StorageMeta()
+        if (
+            not hasattr(metadata.storage_meta, "modules")
+            or metadata.storage_meta.modules is None
+        ):
+            metadata.storage_meta.modules = []
+        # Add num_copies info to modules list
+        metadata.storage_meta.modules.append(f"num_copies={self.num_copies}")
+
+        # Replace the storage_meta with our extended version
+        logging.debug("storage_data: updated METADATA %s", metadata.storage_meta)
+
+        tmp_path = cast(Path, self.fs.concat_path(self.path, f"{_metadata_fn}.tmp"))
+        with self.fs.create_stream(tmp_path, "wb") as metadata_file:
+            pickle.dump(metadata, metadata_file)
+            if self.sync_files:
+                try:
+                    os.fsync(metadata_file.fileno())
+                except (AttributeError, io.UnsupportedOperation):
+                    os.sync()
+
+        # delete in-case other checkpoints were present.
+        if self.fs.exists(self.metadata_path):
+            self.fs.rm_file(self.metadata_path)
+
+        self.fs.rename(tmp_path, self.metadata_path)
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
@@ -340,10 +442,95 @@ class S3StorageReader(FileSystemReader):
         self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
         self.path = self.fs.init_path(path)
         self.sync_files = False
+        self.num_copies = 1
+        self.assigned_copy = None
+        self.rank = None
 
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
+
+    def read_metadata(self) -> Metadata:
+        """
+        Read the metadata from the checkpoint directory including the number of copies present
+
+        Returns:
+            Metadata: The metadata for the checkpoint.
+        """
+        metadata = super().read_metadata()
+
+        # Default to 1 copy
+        self.num_copies = 1
+        if (
+            metadata.storage_meta
+            and hasattr(metadata.storage_meta, "modules")
+            and metadata.storage_meta.modules
+        ):
+            for module in metadata.storage_meta.modules:
+                if module.startswith("num_copies="):
+                    print("Contains metadata")
+                    self.num_copies = int(module.split("=")[1])
+                    break
+        logger.debug(f"Num of copies: {self.num_copies}")
+        return metadata
+
+    def set_up_storage_reader(self, metadata, is_coordinator):
+        """
+        Assigns each worker a specific copy based on its rank where num_copies equals the total rank, each rank get its own dedictaed copy
+        """
+        super().set_up_storage_reader(metadata, is_coordinator)
+
+        try:
+            if dist.is_initialized():
+                self.rank = dist.get_rank()
+            else:
+                self.rank = 0
+        except Exception:
+            self.rank = 0
+
+        if self.num_copies > 1:
+            self.assigned_copy = self.rank % self.num_copies
+
+            logger.debug(
+                f"Worker rank {self.rank} assigned to copy {self.assigned_copy}"
+            )
+
+    def read_data(self, plan: LoadPlan, planner: LoadPlanner) -> Future[None]:
+        """Read data from assigned copy
+
+        Args:
+            plan (LoadPlan): Load plan for reading
+            planner (LoadPlanner): Load planner for reading
+
+        Returns:
+            Future: Completes when reading operations is done
+        """
+        logger.debug(
+            f"Rank {self.rank}: Reading data from assigned copy {self.assigned_copy}"
+        )
+        logger.debug(f"Number of copies: {self.num_copies}")
+        if self.num_copies <= 1 or self.assigned_copy is None:
+            logger.debug(
+                f"Using default path for reading: num_copies={self.num_copies}, assigned_copy={self.assigned_copy}"
+            )
+            return super().read_data(plan, planner)
+
+        original_path = self.path
+        logger.debug(f"Rank {self.rank}: Original path for reading: {original_path}")
+
+        try:
+            copy_path = self.fs.concat_path(self.path, f"copy-{self.assigned_copy}")
+            logger.debug(f"Rank {self.rank}: Reading from copy path: {copy_path}")
+            self.path = copy_path
+            return super().read_data(plan, planner)
+        except Exception as e:
+            logger.error(
+                f"Rank {self.rank}: Error reading from copy {self.assigned_copy}: {e}"
+            )
+            raise
+        finally:
+            logger.debug(f"Rank {self.rank}: Restoring original path: {original_path}")
+            self.path = original_path
 
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:

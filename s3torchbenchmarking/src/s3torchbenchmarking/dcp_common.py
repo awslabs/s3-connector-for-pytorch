@@ -16,7 +16,6 @@ from omegaconf import DictConfig
 from torch import multiprocessing as mp
 from torch.distributed.checkpoint import FileSystemWriter, FileSystemReader
 
-
 from s3torchbenchmarking.benchmark_utils import (
     build_random_suffix,
     build_checkpoint_uri,
