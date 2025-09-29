@@ -348,10 +348,10 @@ class S3StorageReader(FileSystemReader):
     def prepare_local_plan(self, plan: LoadPlan) -> LoadPlan:
         """
         Sort load items by storage offset for sequential access optimization.
-        
+
         Args:
             plan (LoadPlan): The load plan from PyTorch DCP.
-            
+
         Returns:
             LoadPlan: The same plan with items sorted by storage offset.
         """
