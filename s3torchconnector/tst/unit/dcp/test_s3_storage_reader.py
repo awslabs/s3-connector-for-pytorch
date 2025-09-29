@@ -36,7 +36,9 @@ def load_plan_with_offsets(draw):
         # Mock storage info
         storage_data[metadata_index] = Mock(
             offset=offset,
-            length=draw(integers(1000, 50000)), # DCP requires length - use random integers
+            length=draw(
+                integers(1000, 50000)
+            ),  # DCP requires length - use random integers
             relative_path=f"__{draw(integers(0, 7))}_0.distcp",
         )
 
@@ -74,16 +76,18 @@ def test_s3storage_reader_dcp_load_uses_load_ordering(loadplan_and_storagedata):
     load_plan, storage_data = loadplan_and_storagedata
 
     # Skip test cases where input is already sorted
-    original_offsets = [storage_data[item.storage_index].offset for item in load_plan.items]
+    original_offsets = [
+        storage_data[item.storage_index].offset for item in load_plan.items
+    ]
     assume(original_offsets != sorted(original_offsets))
     assume(len(original_offsets) > 0)
 
     # Minimal tensor metadata to satisfy DCP's validation requirements
     state_dict_metadata: Dict[str, Any] = {
         f"item{i}": TensorStorageMetadata(
-            properties=Mock(dtype=torch.float32), # tensor type validation
-            size=torch.Size([10]), # memory allocation
-            chunks=[ # chunk info for distributed loading
+            properties=Mock(dtype=torch.float32),  # tensor type validation
+            size=torch.Size([10]),  # memory allocation
+            chunks=[  # chunk info for distributed loading
                 ChunkStorageMetadata(offsets=torch.Size([0]), sizes=torch.Size([10]))
             ],
         )
@@ -94,8 +98,8 @@ def test_s3storage_reader_dcp_load_uses_load_ordering(loadplan_and_storagedata):
     s3_storage_reader = S3StorageReader(TEST_REGION, TEST_PATH)
     s3_storage_reader.read_metadata = Mock(
         return_value=Metadata(
-            state_dict_metadata=state_dict_metadata, # Real dict for DCP iteration
-            storage_data=storage_data, # Our test data with random offsets
+            state_dict_metadata=state_dict_metadata,  # Real dict for DCP iteration
+            storage_data=storage_data,  # Our test data with random offsets
         )
     )
     s3_storage_reader.read_data = Mock()
@@ -103,14 +107,16 @@ def test_s3storage_reader_dcp_load_uses_load_ordering(loadplan_and_storagedata):
     # Create state_dict matching the metadata structure
     state_dict = {f"item{i}": torch.zeros(10) for i in range(len(load_plan.items))}
 
-    # 1. In torch/distributed/checkpoint/state_dict_loader.py: dcp.load() calls _load_state_dict; 
-    # 2. According to torch/distributed/checkpoint/storage.py StorageWriter docstring, _load_state_dict() calls: 
+    # 1. In torch/distributed/checkpoint/state_dict_loader.py: dcp.load() calls _load_state_dict;
+    # 2. According to torch/distributed/checkpoint/storage.py StorageWriter docstring, _load_state_dict() calls:
     #    read_metadata() > set_up_storage_reader() > prepare_local_plan() > prepare_global_plan() > read_data()
     dcp.load(state_dict, storage_reader=s3_storage_reader)
 
     # When read_data is called, verify prepare_local_plan was called and sorted the items
     sorted_plan = s3_storage_reader.read_data.call_args[0][0]  # First arg is the plan
-    sorted_offsets = [storage_data[item.storage_index].offset for item in sorted_plan.items]
+    sorted_offsets = [
+        storage_data[item.storage_index].offset for item in sorted_plan.items
+    ]
     assert sorted_offsets == sorted(sorted_offsets)
 
     # Verify Load Ordering keeps items the same
