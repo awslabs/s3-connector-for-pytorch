@@ -43,7 +43,14 @@ def load_plan_with_offsets(draw):
         )
 
         items.append(
-            Mock(spec=ReadItem, storage_index=metadata_index, type=LoadItemType.TENSOR)
+            ReadItem(
+                storage_index=metadata_index,
+                type=LoadItemType.TENSOR,
+                dest_index=metadata_index,
+                dest_offsets=torch.Size([0]),
+                storage_offsets=torch.Size([0]),
+                lengths=torch.Size([10]),
+            )
         )
 
     return LoadPlan(items), storage_data  # type: ignore
@@ -58,29 +65,25 @@ def test_s3storage_reader_prepare_local_plan(loadplan_and_storagedata):
     s3_storage_reader.storage_data = storage_data
 
     sorted_plan = s3_storage_reader.prepare_local_plan(load_plan)
-    offsets = [storage_data[item.storage_index].offset for item in sorted_plan.items]
+    sorted_offsets = [
+        storage_data[item.storage_index].offset for item in sorted_plan.items
+    ]
+
+    # Verify return type
+    assert isinstance(sorted_plan, LoadPlan)
 
     # Verify Load Ordering sorts offsets
-    assert offsets == sorted(offsets)
+    assert sorted_offsets == sorted(sorted_offsets)
 
     # Verify Load Ordering keeps items the same
     assert len(sorted_plan.items) == len(load_plan.items)
-    assert {item.storage_index for item in sorted_plan.items} == {
-        item.storage_index for item in load_plan.items
-    }
+    assert set(sorted_plan.items) == set(load_plan.items)
 
 
 @given(load_plan_with_offsets())
 def test_s3storage_reader_dcp_load_uses_load_ordering(loadplan_and_storagedata):
     """Test that DCP automatically calls our load ordering optimization via prepare_local_plan."""
     load_plan, storage_data = loadplan_and_storagedata
-
-    # Skip test cases where input is already sorted
-    original_offsets = [
-        storage_data[item.storage_index].offset for item in load_plan.items
-    ]
-    assume(original_offsets != sorted(original_offsets))
-    assume(len(original_offsets) > 0)
 
     # Minimal tensor metadata to satisfy DCP's validation requirements
     state_dict_metadata: Dict[str, Any] = {
@@ -117,10 +120,13 @@ def test_s3storage_reader_dcp_load_uses_load_ordering(loadplan_and_storagedata):
     sorted_offsets = [
         storage_data[item.storage_index].offset for item in sorted_plan.items
     ]
+
+    # Verify return type
+    assert isinstance(sorted_plan, LoadPlan)
+
+    # Verify Load Ordering sorts offsets
     assert sorted_offsets == sorted(sorted_offsets)
 
     # Verify Load Ordering keeps items the same
     assert len(sorted_plan.items) == len(load_plan.items)
-    assert {item.storage_index for item in sorted_plan.items} == {
-        item.storage_index for item in load_plan.items
-    }
+    assert set(sorted_plan.items) == set(load_plan.items)
