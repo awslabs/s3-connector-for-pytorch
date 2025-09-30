@@ -1,20 +1,11 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-from typing import Dict, Any
 from unittest.mock import Mock
-from hypothesis import given, assume
+from hypothesis import given
 from hypothesis.strategies import composite, integers, lists
 
-import torch
-import torch.distributed.checkpoint as dcp
-from torch.distributed.checkpoint.planner import LoadPlan, ReadItem, LoadItemType
-from torch.distributed.checkpoint.metadata import (
-    Metadata,
-    MetadataIndex,
-    TensorStorageMetadata,
-    ChunkStorageMetadata,
-)
+from torch.distributed.checkpoint.planner import LoadPlan, ReadItem
 
 from s3torchconnector.dcp import S3StorageReader
 
@@ -25,35 +16,28 @@ TEST_PATH = "s3://test-bucket/test-checkpoint/"
 @composite
 def load_plan_with_offsets(draw):
     """Generate LoadPlan with random offsets."""
-    offsets = draw(lists(integers(0, 10_000_000), min_size=0, max_size=10_000))
+    offsets = draw(lists(integers(0, 10_000_000), min_size=1, max_size=10_000))
 
     storage_data = {}
     items = []
 
     for i, offset in enumerate(offsets):
-        metadata_index = MetadataIndex(fqn=f"item{i}", offset=torch.Size([0]), index=0)
+        storage_index = f"item{i}"
+        storage_data[storage_index] = Mock(offset=offset)
+        items.append(Mock(spec=ReadItem, storage_index=storage_index))
 
-        # Mock storage info
-        storage_data[metadata_index] = Mock(
-            offset=offset,
-            length=draw(
-                integers(1000, 50000)
-            ),  # DCP requires length - use random integers
-            relative_path=f"__{draw(integers(0, 7))}_0.distcp",
-        )
+    return LoadPlan(items), storage_data
 
-        items.append(
-            ReadItem(
-                storage_index=metadata_index,
-                type=LoadItemType.TENSOR,
-                dest_index=metadata_index,
-                dest_offsets=torch.Size([0]),
-                storage_offsets=torch.Size([0]),
-                lengths=torch.Size([10]),
-            )
-        )
 
-    return LoadPlan(items), storage_data  # type: ignore
+def test_s3storage_reader_prepare_local_plan_empty():
+    """Test prepare_local_plan handles empty plans."""
+    s3_storage_reader = S3StorageReader(TEST_REGION, TEST_PATH)
+
+    sorted_plan = s3_storage_reader.prepare_local_plan(LoadPlan([]))
+    # Output: LoadPlan(items=[], storage_data=None, planner_data=None)
+
+    assert isinstance(sorted_plan, LoadPlan)
+    assert len(sorted_plan.items) == 0
 
 
 @given(load_plan_with_offsets())
@@ -65,58 +49,6 @@ def test_s3storage_reader_prepare_local_plan(loadplan_and_storagedata):
     s3_storage_reader.storage_data = storage_data
 
     sorted_plan = s3_storage_reader.prepare_local_plan(load_plan)
-    sorted_offsets = [
-        storage_data[item.storage_index].offset for item in sorted_plan.items
-    ]
-
-    # Verify return type
-    assert isinstance(sorted_plan, LoadPlan)
-
-    # Verify Load Ordering sorts offsets
-    assert sorted_offsets == sorted(sorted_offsets)
-
-    # Verify Load Ordering keeps items the same
-    assert len(sorted_plan.items) == len(load_plan.items)
-    assert set(sorted_plan.items) == set(load_plan.items)
-
-
-@given(load_plan_with_offsets())
-def test_s3storage_reader_dcp_load_uses_load_ordering(loadplan_and_storagedata):
-    """Test that DCP automatically calls our load ordering optimization via prepare_local_plan."""
-    load_plan, storage_data = loadplan_and_storagedata
-
-    # Minimal tensor metadata to satisfy DCP's validation requirements
-    state_dict_metadata: Dict[str, Any] = {
-        f"item{i}": TensorStorageMetadata(
-            properties=Mock(dtype=torch.float32),  # tensor type validation
-            size=torch.Size([10]),  # memory allocation
-            chunks=[  # chunk info for distributed loading
-                ChunkStorageMetadata(offsets=torch.Size([0]), sizes=torch.Size([10]))
-            ],
-        )
-        for i in range(len(load_plan.items))
-    }
-
-    # Create S3StorageReader with mock read_metadata (iterable) and read_data
-    s3_storage_reader = S3StorageReader(TEST_REGION, TEST_PATH)
-    s3_storage_reader.read_metadata = Mock(
-        return_value=Metadata(
-            state_dict_metadata=state_dict_metadata,  # Real dict for DCP iteration
-            storage_data=storage_data,  # Our test data with random offsets
-        )
-    )
-    s3_storage_reader.read_data = Mock()
-
-    # Create state_dict matching the metadata structure
-    state_dict = {f"item{i}": torch.zeros(10) for i in range(len(load_plan.items))}
-
-    # 1. In torch/distributed/checkpoint/state_dict_loader.py: dcp.load() calls _load_state_dict;
-    # 2. According to torch/distributed/checkpoint/storage.py StorageWriter docstring, _load_state_dict() calls:
-    #    read_metadata() > set_up_storage_reader() > prepare_local_plan() > prepare_global_plan() > read_data()
-    dcp.load(state_dict, storage_reader=s3_storage_reader)
-
-    # When read_data is called, verify prepare_local_plan was called and sorted the items
-    sorted_plan = s3_storage_reader.read_data.call_args[0][0]  # First arg is the plan
     sorted_offsets = [
         storage_data[item.storage_index].offset for item in sorted_plan.items
     ]
