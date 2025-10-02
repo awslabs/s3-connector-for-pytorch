@@ -5,26 +5,41 @@ import pytest
 from unittest.mock import patch
 
 import torch
+import torch.nn as nn
 import torch.distributed.checkpoint as dcp
-import torchvision.models as models
 
 from s3torchconnector import S3ReaderConstructor
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector.s3reader.sequential import SequentialS3Reader
 
 
-@pytest.mark.parametrize(
-    "model",
-    [
-        torch.nn.Sequential(
-            torch.nn.Linear(5, 5),
-            torch.nn.Linear(20, 20),
-            torch.nn.Linear(10, 10),
-        ),
-        models.resnet18(pretrained=False),
-    ],
+SIMPLE_MODEL = torch.nn.Sequential(
+    nn.Linear(5, 5),
+    nn.Linear(20, 20),
+    nn.Linear(10, 10),
 )
-def test_prepare_local_plan_sorts_by_storage_offset(checkpoint_directory, model):
+
+
+class NeuralNetwork(nn.Module):
+    """NeuralNetwork from PyTorch quickstart tutorial."""
+
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(28 * 28, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 10),
+        )
+
+
+LARGER_MODEL = NeuralNetwork()
+
+
+@pytest.mark.parametrize("model", [SIMPLE_MODEL, LARGER_MODEL])
+def test_dcp_load_reads_tensors_in_sequential_order(checkpoint_directory, model):
     """
     Test that prepare_local_plan allows dcp.load() to read items in offset order.
 
