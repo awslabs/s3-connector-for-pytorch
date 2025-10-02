@@ -73,6 +73,4 @@ def test_prepare_local_plan_sorts_by_storage_offset(checkpoint_directory, model)
     assert len(loaded_state_dict) == len(state_dict)
     assert loaded_state_dict.keys() == state_dict.keys()
     for key in state_dict:
-        assert torch.equal(loaded_state_dict[key], state_dict[key]), f"Tensor mismatch for {key}"
-
-
+        assert torch.equal(loaded_state_dict[key], state_dict[key])
