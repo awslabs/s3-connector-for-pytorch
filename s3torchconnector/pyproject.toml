@@ -65,6 +65,7 @@ dcp-test = [
     "s3torchconnector[dcp]",
     "pytest",
     "importlib_metadata; python_version == '3.9'",
+    "torchvision",
 ]
 
 [tool.setuptools.packages]
