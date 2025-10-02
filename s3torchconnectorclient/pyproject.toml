@@ -33,7 +33,6 @@ test = [
     "flake8",
     "black",
     "mypy",
-    "torchvision",
     "Pillow<=11.2.1" # installation of the newer versions fails in manylinux2014 images
 ]
 
