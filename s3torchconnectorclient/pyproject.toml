@@ -33,6 +33,7 @@ test = [
     "flake8",
     "black",
     "mypy",
+    "torchvision",
     "Pillow<=11.2.1" # installation of the newer versions fails in manylinux2014 images
 ]
 
@@ -142,8 +143,8 @@ inherit.test-command = "append"
 test-command = [
     "python -m pip install -e '{package}/../s3torchconnector[dcp-test]'",
     "pytest {package}/../s3torchconnector/tst/unit/dcp",
-    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest -s {package}/../s3torchconnector/tst/e2e/dcp/test_e2e_s3_file_system.py",
-    "AWS_DEFAULT_REGION=${S3_EXPRESS_REGION} CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest -s {package}/../s3torchconnector/tst/e2e/dcp/test_e2e_s3_file_system.py",
+    "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} pytest -s {package}/../s3torchconnector/tst/e2e/dcp",
+    "AWS_DEFAULT_REGION=${S3_EXPRESS_REGION} CI_STORAGE_CLASS=EXPRESS_ONEZONE CI_REGION=${S3_EXPRESS_REGION} CI_BUCKET=${S3_EXPRESS_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL='' pytest -s {package}/../s3torchconnector/tst/e2e/dcp",
 ]
 
 [[tool.cibuildwheel.overrides]]
