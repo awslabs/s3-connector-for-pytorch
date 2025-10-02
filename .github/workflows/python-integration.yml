@@ -139,7 +139,6 @@ jobs:
         if: matrix.runner != 'macos-13'
         run: |
           python -m pip install './s3torchconnector[dcp-test]'
-          python -m pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu
       - name: Run s3torchconnector DCP e2e tests
         if: matrix.runner != 'macos-13'
         run: |
