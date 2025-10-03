@@ -73,7 +73,8 @@ jobs:
     name: Rust tests
     strategy:
       matrix:
-        runner: [ubuntu-22.04, macos-13]
+        # macos-15-intel planned to end August 2027
+        runner: [ubuntu-22.04, macos-15-intel]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
