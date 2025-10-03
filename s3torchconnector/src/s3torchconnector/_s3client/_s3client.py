@@ -7,6 +7,7 @@ import gc
 import threading
 import traceback
 import weakref
+import platform
 from functools import partial
 from typing import Optional, Any, List
 
@@ -78,8 +79,13 @@ def _after_fork_handler():
 
 # register the handler to release the S3 client and wait for background threads to join before fork happens
 # As fork will not inherit any background threads. Wait for them to join to avoid crashes or hangs.
-os.register_at_fork(before=_before_fork_handler, after_in_child=_after_fork_handler)
-
+# Temporary workaround: disable fork handlers on macOS due to DNS corruption
+# TODO: Investigate better solution
+if platform.system() != "Darwin":
+    os.register_at_fork(before=_before_fork_handler, after_in_child=_after_fork_handler)
+else:
+    log.warning("Fork handlers disabled on macOS due to DNS resolution issues. "
+                "Use multiprocessing with 'spawn' method to avoid potential crashes.")
 
 class S3Client:
     def __init__(
