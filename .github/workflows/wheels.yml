@@ -49,17 +49,18 @@ jobs:
 #          - runner: ubuntu-20.04
 #            kind: manylinux
 #            arch: x86_64
-          - runner: macos-13
+          # macos-15-intel planned to end August 2027
+          - runner: macos-15-intel
             kind: macosx
             arch: x86_64
           - runner: macos-14
             kind: macosx
             arch: arm64
-        # cp313 macos-13 (x86_64) is not supported by PyTorch
+        # cp313 macos-15-intel (x86_64) is not supported by PyTorch
         exclude:
           - python: cp313
             builder:
-              runner: macos-13
+              runner: macos-15-intel
               kind: macosx
               arch: x86_64
 
