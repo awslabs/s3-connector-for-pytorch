@@ -46,6 +46,9 @@ class MountpointS3Client:
     def copy_object(
         self, src_bucket: str, src_key: str, dst_bucket: str, dst_key: str
     ) -> None: ...
+    def get_ranges_parallel(
+        self, ranges: List[tuple[str, str, int, int]], buffers: List
+    ) -> None: ...
 
 class MockMountpointS3Client:
     throughput_target_gbps: float

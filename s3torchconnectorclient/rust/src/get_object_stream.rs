@@ -4,7 +4,7 @@
  */
 
 use pyo3::types::PyBytes;
-use pyo3::{pyclass, pymethods, Bound, PyRef, PyRefMut, PyResult};
+use pyo3::{pyclass, pymethods, Bound, PyRef, PyRefMut, PyResult, Python};
 use mountpoint_s3_client::types::GetBodyPart;
 
 use crate::exception::S3Exception;
@@ -31,6 +31,11 @@ impl GetObjectStream {
             bucket,
             key,
         }
+    }
+
+    // Add a public method to get the next part for use in get_ranges_parallel
+    pub(crate) fn get_next_part(&mut self, py: Python) -> PyResult<Option<GetBodyPart>> {
+        (self.next_part)(py)
     }
 }
 
