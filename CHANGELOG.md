@@ -1,11 +1,12 @@
 ## TBD
 
 ### Bug fixes
-* Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
 * Override S3Writer closed property and block writes after close (#360)
 * Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
 
 ### Other changes
+* Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
+* Add load ordering optimization to S3StorageReader for sequential access patterns (#372)
 * Add benchmark to run DCP Loading Workloads (#357)
 * Add thread_count parameter to S3StorageWriter (#370)
 

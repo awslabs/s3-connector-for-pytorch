@@ -252,7 +252,7 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan
+from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
 import dataclasses
 from dataclasses import dataclass
 
@@ -344,6 +344,20 @@ class S3StorageReader(FileSystemReader):
     @classmethod
     def validate_checkpoint_id(cls, checkpoint_id: Union[str, os.PathLike]) -> bool:
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
+
+    def prepare_local_plan(self, plan: LoadPlan) -> LoadPlan:
+        """
+        Sort load items by storage offset for sequential access optimization.
+
+        Args:
+            plan (LoadPlan): The load plan from PyTorch DCP.
+
+        Returns:
+            LoadPlan: The same plan with items sorted by storage offset.
+        """
+        # Sort items in plan based on their offset in checkpoints shards
+        plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+        return plan
 
 
 def _path_or_str_to_str(path: Union[str, os.PathLike]) -> str:
