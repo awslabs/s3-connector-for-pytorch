@@ -28,7 +28,11 @@ import torch
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
-from ..s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
+from ..s3reader import (
+    S3ReaderConstructor,
+    DCPListOfRangesConstructor,
+    S3ReaderConstructorProtocol,
+)
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
@@ -79,7 +83,6 @@ class S3FileSystem(FileSystemBase):
         self,
         path: Union[str, os.PathLike],
         mode: str,
-        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
     ) -> Generator[io.IOBase, None, None]:
         """
         Create a stream for reading or writing to S3.
@@ -102,18 +105,8 @@ class S3FileSystem(FileSystemBase):
             with self._client.put_object(bucket, key) as stream:
                 yield stream
         elif mode == "rb":  # read mode
-            logger.debug("create_stream readable for %s", path_str)
-            relative_path = os.path.relpath(path, self._path)
-            if self.file_ranges and relative_path in self.file_ranges:
-                ranges = self.file_ranges[relative_path]
-                # ! Force use list_of_ranges reader for now
-                # TODO: (Important) improve this by passing in ranges parameter properly
-                reader_constructor = S3ReaderConstructor.list_of_ranges(ranges)
-
-            # Use provided reader_constructor or fall back to default
-            constructor = reader_constructor or self._reader_constructor
             with self._client.get_object(
-                bucket, key, reader_constructor=constructor
+                bucket, key, reader_constructor=self._reader_constructor
             ) as stream:
                 yield stream
         else:
@@ -380,20 +373,21 @@ class S3StorageReader(FileSystemReader):
             LoadPlan: The same plan with items sorted by storage offset.
         """
 
-        # Calculate ranges per file
-        per_file_ranges = {}
-        for read_item in plan.items:
-            item_md = self.storage_data[read_item.storage_index]
-            path = item_md.relative_path
-            if path not in per_file_ranges:
-                per_file_ranges[path] = []
-            per_file_ranges[path].append(
-                RangeRequest(start=item_md.offset, end=item_md.offset + item_md.length)
-            )
-
-        # Store ranges in filesystem
-        # TODO find a better place to handle this information
-        self.fs.file_ranges = per_file_ranges
+        # Inject ranges if using DCP list-of-ranges reader constructor
+        if isinstance(self.fs._reader_constructor, DCPListOfRangesConstructor):
+            # Calculate ranges per file
+            per_file_ranges = {}
+            for read_item in plan.items:
+                item_md = self.storage_data[read_item.storage_index]
+                path = item_md.relative_path
+                if path not in per_file_ranges:
+                    per_file_ranges[path] = []
+                per_file_ranges[path].append(
+                    RangeRequest(
+                        start=item_md.offset, end=item_md.offset + item_md.length
+                    )
+                )
+            self.fs._reader_constructor.set_file_ranges(per_file_ranges)
 
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
