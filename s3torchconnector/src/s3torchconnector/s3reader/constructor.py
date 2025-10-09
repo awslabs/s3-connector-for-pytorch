@@ -2,11 +2,33 @@
 #  // SPDX-License-Identifier: BSD
 
 from functools import partial
-from typing import Optional
+from typing import Optional, List, Dict
 
+from .s3reader import S3Reader
 from .protocol import S3ReaderConstructorProtocol
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
+from .list_of_ranges import ListOfRangesS3Reader, RangeRequest
+
+
+class DCPListOfRangesConstructor:
+    def __init__(self) -> None:
+        self._file_ranges: Dict[str, List[RangeRequest]] = {}
+
+    def set_file_ranges(self, file_ranges: Dict[str, List[RangeRequest]]) -> None:
+        self._file_ranges = file_ranges
+
+    def __call__(
+        self, bucket: str, key: str, get_object_info, get_stream, **kwargs
+    ) -> S3Reader:
+        if self._file_ranges:
+            # TODO: Check if using filename only works with prefix strategies
+            filename = key.split("/")[-1]
+            return ListOfRangesS3Reader(
+                bucket, key, self._file_ranges[filename], get_object_info, get_stream
+            )
+        # Fallback to SequentialS3Reader if no file_ranges yet (e.g. when reading .metadata)
+        return SequentialS3Reader(bucket, key, get_object_info, get_stream, **kwargs)
 
 
 class S3ReaderConstructor:
@@ -24,7 +46,10 @@ class S3ReaderConstructor:
     """
 
     @staticmethod
-    def sequential() -> S3ReaderConstructorProtocol:
+    def sequential(
+        start_offset: Optional[int] = None,
+        end_offset: Optional[int] = None,
+    ) -> S3ReaderConstructorProtocol:
         """Creates a constructor for sequential readers
 
         Returns:
@@ -35,7 +60,12 @@ class S3ReaderConstructor:
             reader_constructor = S3ReaderConstructor.sequential()
 
         """
-        return partial(SequentialS3Reader)
+        # TODO update docstrings (after implementation fixed)
+        return partial(
+            SequentialS3Reader,
+            start_offset=start_offset,
+            end_offset=end_offset,
+        )
 
     @staticmethod
     def range_based(buffer_size: Optional[int] = None) -> S3ReaderConstructorProtocol:
@@ -79,6 +109,18 @@ class S3ReaderConstructor:
         return partial(RangedS3Reader, buffer_size=buffer_size)
 
     @staticmethod
+    def list_of_ranges(ranges: List[RangeRequest]) -> S3ReaderConstructorProtocol:
+        """Creates a constructor for ListOfRangesS3Reader with specific ranges"""
+        # TODO update docstring
+        return partial(ListOfRangesS3Reader, ranges=ranges)
+
+    @staticmethod
+    def dcp_list_of_ranges() -> S3ReaderConstructorProtocol:
+        """Creates a DCP-optimized constructor that uses ListOfRanges when ranges are available"""
+        # TODO update docstring
+        return DCPListOfRangesConstructor()
+
+    @staticmethod
     def default() -> S3ReaderConstructorProtocol:
         """Creates default reader constructor (sequential)
 
@@ -97,12 +139,15 @@ class S3ReaderConstructor:
                 S3ReaderConstructor.default()
             )
 
-        if not isinstance(constructor, partial):
+        if isinstance(constructor, DCPListOfRangesConstructor):
+            return "dcp_list_of_ranges"
+        elif not isinstance(constructor, partial):
             return "unknown"
-
-        if constructor.func == RangedS3Reader:
+        elif constructor.func == RangedS3Reader:
             return "range_based"
         elif constructor.func == SequentialS3Reader:
             return "sequential"
+        elif constructor.func == ListOfRangesS3Reader:
+            return "list_of_ranges"
         else:
             return "unknown"

@@ -7,7 +7,7 @@ import os
 import urllib.parse
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, Union, Optional
+from typing import Generator, Union, Optional, Dict
 from typing import List
 
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
@@ -28,7 +28,11 @@ import torch
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
-from ..s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
+from ..s3reader import (
+    S3ReaderConstructor,
+    DCPListOfRangesConstructor,
+    S3ReaderConstructorProtocol,
+)
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
@@ -56,6 +60,7 @@ class S3FileSystem(FileSystemBase):
         """
         self._path: Union[str, os.PathLike] = ""
         self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
+        self.file_ranges: Optional[Dict[str, List[RangeRequest]]] = None
 
         # Get reader type string for user agent
         reader_type_string = S3ReaderConstructor.get_reader_type_string(
@@ -75,7 +80,9 @@ class S3FileSystem(FileSystemBase):
 
     @contextmanager
     def create_stream(
-        self, path: Union[str, os.PathLike], mode: str
+        self,
+        path: Union[str, os.PathLike],
+        mode: str,
     ) -> Generator[io.IOBase, None, None]:
         """
         Create a stream for reading or writing to S3.
@@ -98,7 +105,6 @@ class S3FileSystem(FileSystemBase):
             with self._client.put_object(bucket, key) as stream:
                 yield stream
         elif mode == "rb":  # read mode
-            logger.debug("create_stream readable for %s", path_str)
             with self._client.get_object(
                 bucket, key, reader_constructor=self._reader_constructor
             ) as stream:
@@ -318,6 +324,17 @@ class S3StorageWriter(FileSystemWriter):
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
+import io
+from typing import Dict, List, Optional
+from dataclasses import dataclass
+
+import torch
+from torch.distributed.checkpoint.filesystem import FileSystemReader
+from torch.distributed.checkpoint.planner import LoadPlan
+
+from s3torchconnector.s3reader.list_of_ranges import RangeRequest
+
+
 class S3StorageReader(FileSystemReader):
     def __init__(
         self,
@@ -337,7 +354,11 @@ class S3StorageReader(FileSystemReader):
                 e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
         """
         super().__init__(path)
-        self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
+        self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment]
+            region,
+            s3client_config=s3client_config,
+            reader_constructor=reader_constructor,
+        )
         self.path = self.fs.init_path(path)
         self.sync_files = False
 
@@ -355,8 +376,28 @@ class S3StorageReader(FileSystemReader):
         Returns:
             LoadPlan: The same plan with items sorted by storage offset.
         """
+
+        # Inject ranges if using DCP list-of-ranges reader constructor
+        if isinstance(self.fs._reader_constructor, DCPListOfRangesConstructor):
+            # Calculate ranges per file
+            per_file_ranges: Dict[str, List[RangeRequest]] = {}
+            for read_item in plan.items:
+                item_md = self.storage_data[read_item.storage_index]
+                path = item_md.relative_path
+                if path not in per_file_ranges:
+                    per_file_ranges[path] = []
+                per_file_ranges[path].append(
+                    RangeRequest(
+                        start=item_md.offset, end=item_md.offset + item_md.length
+                    )
+                )
+            self.fs._reader_constructor.set_file_ranges(per_file_ranges)
+
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+        logger.info(
+            f"Sorted {len(plan.items)} items in load plan based on offset in checkpoint shards"
+        )
         return plan
 
 
