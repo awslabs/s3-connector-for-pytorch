@@ -354,7 +354,11 @@ class S3StorageReader(FileSystemReader):
                 e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
         """
         super().__init__(path)
-        self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
+        self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment]
+            region,
+            s3client_config=s3client_config,
+            reader_constructor=reader_constructor,
+        )
         self.path = self.fs.init_path(path)
         self.sync_files = False
 
@@ -376,7 +380,7 @@ class S3StorageReader(FileSystemReader):
         # Inject ranges if using DCP list-of-ranges reader constructor
         if isinstance(self.fs._reader_constructor, DCPListOfRangesConstructor):
             # Calculate ranges per file
-            per_file_ranges = {}
+            per_file_ranges: Dict[str, List[RangeRequest]] = {}
             for read_item in plan.items:
                 item_md = self.storage_data[read_item.storage_index]
                 path = item_md.relative_path
@@ -391,6 +395,9 @@ class S3StorageReader(FileSystemReader):
 
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+        logger.info(
+            f"Sorted {len(plan.items)} items in load plan based on offset in checkpoint shards"
+        )
         return plan
 
 

@@ -107,7 +107,7 @@ class SequentialS3Reader(S3Reader):
             if self._start_offset is not None or self._end_offset is not None:
                 self._stream = self._get_stream(self._start_offset, self._end_offset)
             else:
-                self._stream = self._get_stream()
+                self._stream = self._get_stream(None, None)
 
     def readinto(self, buf) -> int:
         """Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
