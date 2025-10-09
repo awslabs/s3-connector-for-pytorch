@@ -1,7 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-import os
 import logging
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Union, Dict
@@ -53,8 +52,7 @@ class ListOfRangesS3Reader(S3Reader):
         # Calculate range groups using coalescing logic
         self._range_groups = self._calculate_range_groups(ranges, max_gap_size)
 
-        # Pre-create all readers and prefetch immediately
-        # TODO - judge if this is beneficial or not.
+        # Pre-create all readers
         self._group_readers: Dict[int, SequentialS3Reader] = {}
         for i, group in enumerate(self._range_groups):
             reader = SequentialS3Reader(
@@ -65,16 +63,11 @@ class ListOfRangesS3Reader(S3Reader):
                 start_offset=group.start,
                 end_offset=group.end,
             )
+            # TODO - judge if this is beneficial or not.
             reader.prefetch()  # Batch prefetch all ranges
             self._group_readers[i] = reader
 
-        # Pre-calculate request-to-reader mapping
-        self._request_to_reader: Dict[int, int] = {}
-        for i, group in enumerate(self._range_groups):
-            for request in group.requests:
-                self._request_to_reader[request.start] = i
-
-        self._current_position = 0
+        self._position: int = 0
 
     @property
     def bucket(self) -> str:
@@ -92,6 +85,7 @@ class ListOfRangesS3Reader(S3Reader):
         if not ranges:
             return []
 
+        # TODO: could be pre-sorted in prepare_local_plan for dcp.load
         sorted_ranges = sorted(ranges, key=lambda r: r.start)
         groups = []
         current_group = [sorted_ranges[0]]
@@ -117,48 +111,41 @@ class ListOfRangesS3Reader(S3Reader):
         group_end = max(r.end for r in ranges)
         return RangeGroup(start=group_start, end=group_end, requests=ranges)
 
-    def get_reader_for_request(
-        self, request_start: int
-    ) -> Optional[SequentialS3Reader]:
-        """O(1) lookup using pre-calculated mapping."""
-        reader_idx = self._request_to_reader.get(request_start)
-        return self._group_readers.get(reader_idx) if reader_idx is not None else None
-
     def _find_reader_for_offset(self, offset: int) -> Optional[SequentialS3Reader]:
         """Find reader that contains the given offset."""
-        # TODO: improve logic using binary search
-        for reader in self._group_readers.values():
-            if reader._start_offset <= offset < reader._end_offset:
-                return reader
-            elif reader._start_offset > offset:
-                break  # Early termination since readers are ordered
+        for i, group in enumerate(self._range_groups):
+            if group.start <= offset < group.end:
+                self._current_reader_index = i
+                return self._group_readers[i]
+            if group.start > offset:  # TODO handle this case properly by raising errors
+                break
         return None
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
-        self._current_position = offset
+        self._position = offset
         reader = self._find_reader_for_offset(offset)
         if not reader:
-            return self._current_position
-        reader.seek(offset, whence)
+            return self._position
+        return reader.seek(offset, whence)
 
     def read(self, size: Optional[int] = None) -> bytes:
-        reader = self._find_reader_for_offset(self._current_position)
+        reader = self._find_reader_for_offset(self._position)
         if not reader:
             return b""
         data = reader.read(size)
-        self._current_position += len(data)
+        self._position += len(data)
         return data
 
     def readinto(self, buf) -> int:
-        reader = self._find_reader_for_offset(self._current_position)
+        reader = self._find_reader_for_offset(self._position)
         if not reader:
             return 0
         bytes_read = reader.readinto(buf)
-        self._current_position += bytes_read
+        self._position += bytes_read
         return bytes_read
 
     def tell(self) -> int:
-        return self._current_position
+        return self._position
 
     def close(self) -> None:
         for reader in self._group_readers.values():
