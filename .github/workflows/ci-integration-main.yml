@@ -5,6 +5,7 @@ on:
     branches: [ "main", "feature/*", "workflow/*" ]
   merge_group:
     types: [ "checks_requested" ]
+  workflow_dispatch:
 
 permissions:
   id-token: write
