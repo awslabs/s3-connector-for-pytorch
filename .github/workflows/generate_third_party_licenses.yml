@@ -10,6 +10,9 @@ on:
         description: "The created artifact name for ORT results"
         value: ${{ jobs.generate_third_party_licenses.outputs.artifact_name }}
 
+permissions:
+  contents: read
+
 jobs:
   generate_third_party_licenses:
     name: Generate NOTICE_DEFAULT file

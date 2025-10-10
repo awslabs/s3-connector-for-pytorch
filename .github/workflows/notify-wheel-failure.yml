@@ -6,6 +6,9 @@ on:
       - Build Wheels
     types: [completed]
 
+permissions:
+  contents: read
+
 jobs:
   on-failure:
     runs-on: ubuntu-latest
