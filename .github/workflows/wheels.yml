@@ -6,6 +6,10 @@ on:
     branches: [ "dependabot/*", "main", "workflow/*" ]
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   S3_REGION: ${{ vars.S3_REGION }}
   S3_BUCKET: ${{ vars.S3_BUCKET }}
@@ -58,9 +62,6 @@ jobs:
               runner: macos-13
               kind: macosx
               arch: x86_64
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v5

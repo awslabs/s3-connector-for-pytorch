@@ -9,6 +9,10 @@ on:
         required: true
         type: string
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
@@ -63,9 +67,7 @@ jobs:
             python-version: "3.11"
           - runner: macos-14
             python-version: "3.12"
-    permissions:
-      id-token: write
-      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
