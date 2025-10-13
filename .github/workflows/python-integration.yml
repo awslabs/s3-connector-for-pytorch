@@ -102,6 +102,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+          check-latest: true
 
       - name: Install Python dependencies
         run: |

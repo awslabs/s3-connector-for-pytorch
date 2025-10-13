@@ -90,32 +90,18 @@ jobs:
         run: |
           mkdir -p /Users/runner/hostedtoolcache
 
-      # actions/setup-python doesn't yet support ARM
-      # https://github.com/actions/setup-python/issues/678
       - name: Setup Python
-        if: ${{ matrix.builder.arch != 'aarch64' }}
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          check-latest: true
 
-      - name: Install pipx
-        run: |
-          which python
-          which pip
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade pipx
-          python -m pipx ensurepath
-
-      # Run cibuildwheel manually, as the current runner uses setup-python
-      # https://github.com/pypa/cibuildwheel/issues/1623
-      - run: >
-          python -m pipx run
-          cibuildwheel
-          "s3torchconnectorclient"
-          --output-dir "wheelhouse"
-          --only "${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}"
-          2>&1
-        shell: bash
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.2.1
+        with:
+          package-dir: s3torchconnectorclient
+          output-dir: wheelhouse
+          only: ${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}
 
       - uses: actions/upload-artifact@v4
         with:
