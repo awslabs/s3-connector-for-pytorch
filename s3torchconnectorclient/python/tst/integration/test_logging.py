@@ -180,7 +180,7 @@ def _start_subprocess(
     debug_logs_config: str = "",
     logs_directory: str = "",
 ):
-    process = subprocess.Popen(
+    result = subprocess.run(
         [
             sys.executable,
             "-c",
@@ -190,11 +190,10 @@ def _start_subprocess(
             debug_logs_config,
             logs_directory,
         ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
-    return process.communicate()
+    return result.stdout, result.stderr
 
 
 def _read_log_file(log_file: str):
