@@ -46,10 +46,7 @@ class S3ReaderConstructor:
     """
 
     @staticmethod
-    def sequential(
-        start_offset: Optional[int] = None,
-        end_offset: Optional[int] = None,
-    ) -> S3ReaderConstructorProtocol:
+    def sequential() -> S3ReaderConstructorProtocol:
         """Creates a constructor for sequential readers
 
         Returns:
@@ -60,12 +57,7 @@ class S3ReaderConstructor:
             reader_constructor = S3ReaderConstructor.sequential()
 
         """
-        # TODO update docstrings (after implementation fixed)
-        return partial(
-            SequentialS3Reader,
-            start_offset=start_offset,
-            end_offset=end_offset,
-        )
+        return partial(SequentialS3Reader)
 
     @staticmethod
     def range_based(buffer_size: Optional[int] = None) -> S3ReaderConstructorProtocol:
@@ -111,13 +103,13 @@ class S3ReaderConstructor:
     @staticmethod
     def list_of_ranges(ranges: List[RangeRequest]) -> S3ReaderConstructorProtocol:
         """Creates a constructor for ListOfRangesS3Reader with specific ranges"""
-        # TODO update docstring
+        # TODO update docstring, and name
         return partial(ListOfRangesS3Reader, ranges=ranges)
 
     @staticmethod
     def dcp_list_of_ranges() -> S3ReaderConstructorProtocol:
         """Creates a DCP-optimized constructor that uses ListOfRanges when ranges are available"""
-        # TODO update docstring
+        # TODO update docstring, and name
         return DCPListOfRangesConstructor()
 
     @staticmethod
