@@ -3,8 +3,8 @@
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Union, Dict
-from io import SEEK_SET
+from typing import List, Optional, Callable, Union, Dict, Iterator
+from io import SEEK_SET, SEEK_CUR
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -12,13 +12,14 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
 )
 from .s3reader import S3Reader
-from .sequential import SequentialS3Reader
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
 class RangeRequest:
+    """Singular range request; Inclusive start, exclusive end"""
+
     start: int
     end: int
     request_id: Optional[str] = None
@@ -31,6 +32,8 @@ class RangeGroup:
     requests: List[RangeRequest]
 
 
+# TODO: Update name, since it now requires sequential reading and is optimised for DCP
+# TODO: Update docstring to emphasise this requires Load Ordering in prepare_local_plan
 class ListOfRangesS3Reader(S3Reader):
     """Optimized reader with pre-calculated request mapping and batch prefetch."""
 
@@ -42,7 +45,6 @@ class ListOfRangesS3Reader(S3Reader):
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
         max_gap_size: int = 200 * 1024 * 1024,
-        **kwargs,
     ):
         self._bucket = bucket
         self._key = key
@@ -50,22 +52,13 @@ class ListOfRangesS3Reader(S3Reader):
         self._get_stream = get_stream
 
         # Calculate range groups using coalescing logic
-        self._range_groups = self._calculate_range_groups(ranges, max_gap_size)
+        self._range_groups = self._coalesce_ranges(ranges, max_gap_size)
+        self._current_group_idx: int = 0
 
-        # Pre-create all readers
-        self._group_readers: Dict[int, SequentialS3Reader] = {}
-        for i, group in enumerate(self._range_groups):
-            reader = SequentialS3Reader(
-                bucket=bucket,
-                key=key,
-                get_object_info=get_object_info,
-                get_stream=get_stream,
-                start_offset=group.start,
-                end_offset=group.end,
-            )
-            # TODO - judge if this is beneficial or not.
-            reader.prefetch()  # Batch prefetch all ranges
-            self._group_readers[i] = reader
+        # Per-group stream cache
+        self._streams: Dict[int, Iterator[bytes]] = {}
+        self._stream_positions: Dict[int, int] = {}
+        self._stream_buffers: Dict[int, bytes] = {}
 
         self._position: int = 0
 
@@ -77,76 +70,131 @@ class ListOfRangesS3Reader(S3Reader):
     def key(self) -> str:
         return self._key
 
-    def _calculate_range_groups(
+    def seekable(self) -> bool:
+        """Not seekable — torch/distributed/checkpoint/filesystem.py will use read() instead of readinto()."""
+        return False
+
+    def _coalesce_ranges(
         self, ranges: List[RangeRequest], max_gap_size: int
     ) -> List[RangeGroup]:
-        """Coalescing logic - group ranges within max_gap_size."""
-        # TODO: optimise this logic
+        """Coalescing nearby byte ranges within max_gap_size."""
         if not ranges:
             return []
 
-        # TODO: could be pre-sorted in prepare_local_plan for dcp.load
-        sorted_ranges = sorted(ranges, key=lambda r: r.start)
-        groups = []
-        current_group = [sorted_ranges[0]]
+        # TODO: could be pre-sorted in prepare_local_plan (small optimisation)
+        ranges = sorted(ranges, key=lambda r: r.start)
+        groups: List[RangeGroup] = []
+        current = [ranges[0]]
 
-        for i in range(1, len(sorted_ranges)):
-            prev_end = current_group[-1].end
-            curr_start = sorted_ranges[i].start
-
-            if curr_start - prev_end <= max_gap_size:
-                current_group.append(sorted_ranges[i])
+        for r in ranges[1:]:
+            if r.start - current[-1].end <= max_gap_size:
+                current.append(r)
             else:
-                groups.append(self._create_range_group(current_group))
-                current_group = [sorted_ranges[i]]
+                groups.append(RangeGroup(current[0].start, current[-1].end, current))
+                current = [r]
 
-        groups.append(self._create_range_group(current_group))
+        groups.append(RangeGroup(current[0].start, current[-1].end, current))
         return groups
 
-    def _create_range_group(self, ranges: List[RangeRequest]) -> RangeGroup:
-        """Create range group - always succeeds since we only use gap size."""
-        # TODO remove min/max code by tracking incrementally in _calculate_range_groups
-        # * (was kept since it's easier to understand and test)
-        group_start = min(r.start for r in ranges)
-        group_end = max(r.end for r in ranges)
-        return RangeGroup(start=group_start, end=group_end, requests=ranges)
-
-    def _find_reader_for_offset(self, offset: int) -> Optional[SequentialS3Reader]:
-        """Find reader that contains the given offset."""
-        for i, group in enumerate(self._range_groups):
-            if group.start <= offset < group.end:
-                self._current_reader_index = i
-                return self._group_readers[i]
-            if group.start > offset:  # TODO handle this case properly by raising errors
-                break
-        return None
-
-    def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
-        self._position = offset
-        reader = self._find_reader_for_offset(offset)
-        if not reader:
-            return self._position
-        return reader.seek(offset, whence)
+    def _get_stream_for_group(self, idx: int) -> Iterator[bytes]:
+        """
+        Returns a cached iterator for the given range group,
+        or creates a new one if not present.
+        """
+        if idx not in self._streams:
+            group = self._range_groups[idx]
+            stream = self._get_stream(group.start, group.end)
+            self._streams[idx] = stream
+            self._stream_positions[idx] = group.start
+            self._stream_buffers[idx] = b""
+        return self._streams[idx]
 
     def read(self, size: Optional[int] = None) -> bytes:
-        reader = self._find_reader_for_offset(self._position)
-        if not reader:
+        """Reads up to `size` bytes sequentially across grouped ranges."""
+        if not size or size <= 0:
             return b""
-        data = reader.read(size)
-        self._position += len(data)
-        return data
+
+        pos = self._position
+
+        # Find group (with cache)
+        if (
+            self._current_group_idx < len(self._range_groups)
+            and self._range_groups[self._current_group_idx].start
+            <= pos
+            < self._range_groups[self._current_group_idx].end
+        ):
+            group_idx = self._current_group_idx
+        else:
+            # Search for matching group
+            for i, g in enumerate(self._range_groups):
+                if g.start <= pos < g.end:
+                    group_idx = i
+                    self._current_group_idx = group_idx
+                    break
+            else:
+                return b""
+
+        stream = self._get_stream_for_group(group_idx)
+
+        current_pos = self._stream_positions[group_idx]
+        buffer = self._stream_buffers[group_idx]
+        remaining = size
+        chunks: List[bytes] = []
+
+        # 1. Serve from buffered leftover bytes
+        if buffer and current_pos <= pos < current_pos + len(buffer):
+            offset = pos - current_pos
+            end = offset + min(remaining, len(buffer) - offset)
+            chunks.append(buffer[offset:end])
+            remaining -= end - offset
+            current_pos = pos + (end - offset)
+            self._stream_buffers[group_idx] = buffer[end:] if end < len(buffer) else b""
+
+        # 2. Read more data from S3 stream
+        while remaining > 0:
+            try:
+                chunk = next(stream)
+            except StopIteration:
+                break
+
+            # Skip ahead if behind target
+            if current_pos < pos:
+                skip = min(pos - current_pos, len(chunk))
+                chunk = chunk[skip:]
+                current_pos += skip
+
+            # Take needed part of chunk
+            take = min(len(chunk), remaining)
+            chunks.append(chunk[:take])
+            remaining -= take
+            current_pos += take
+
+            # Save leftover bytes
+            if take < len(chunk):
+                self._stream_buffers[group_idx] = chunk[take:]
+                break
+
+        self._stream_positions[group_idx] = current_pos
+        self._position = pos + (size - remaining)
+        return b"".join(chunks)
+
+    def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
+        if whence == SEEK_SET:
+            self._position = offset
+        elif whence == SEEK_CUR:
+            self._position += offset
+        return self._position
 
     def readinto(self, buf) -> int:
-        reader = self._find_reader_for_offset(self._position)
-        if not reader:
-            return 0
-        bytes_read = reader.readinto(buf)
-        self._position += bytes_read
-        return bytes_read
+        data = self.read(len(buf))
+        n = len(data)
+        buf[:n] = data
+        return n
 
     def tell(self) -> int:
         return self._position
 
     def close(self) -> None:
-        for reader in self._group_readers.values():
-            reader.close()
+        self._streams.clear()
+        self._stream_positions.clear()
+        self._stream_buffers.clear()
