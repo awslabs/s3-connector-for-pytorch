@@ -6,7 +6,7 @@ import logging
 import sys
 from io import BytesIO, SEEK_END, SEEK_CUR
 from typing import List, Tuple
-from unittest.mock import Mock
+from unittest.mock import Mock, patch, call
 
 import pytest
 from hypothesis import given, assume
@@ -124,6 +124,31 @@ def test_s3reader_readinto_invalid_buffer(invalid_buf):
         TypeError, match="argument must be a writable bytes-like object"
     ):
         s3reader.readinto(invalid_buf)
+
+
+def test_read_unbuffered_uses_memoryview_for_chunks():
+    """Test that _read_unbuffered uses memoryview to avoid bytes slicing copies"""
+
+    chunk = b"0123456789"
+    mock_stream_getter = Mock(return_value=iter([chunk]))
+    mock_object_info_getter = Mock(return_value=Mock(size=10))
+
+    s3reader = RangedS3Reader(
+        TEST_BUCKET,
+        TEST_KEY,
+        mock_object_info_getter,
+        mock_stream_getter,
+        buffer_size=0,
+    )
+
+    with patch(
+        "s3torchconnector.s3reader.ranged.memoryview", side_effect=memoryview
+    ) as mock_memoryview:
+        buf = bytearray(10)
+        view = memoryview(buf)
+        s3reader._read_unbuffered(view, 0, 10)
+
+    assert call(chunk) in mock_memoryview.call_args_list
 
 
 # Buffer Behaviour Tests
