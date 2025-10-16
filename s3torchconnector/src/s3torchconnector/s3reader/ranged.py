@@ -148,7 +148,8 @@ class RangedS3Reader(S3Reader):
         for chunk in self._get_stream(start, end):
             # Safeguard for buffer overflow (stream size > length)
             chunk_size = min(len(chunk), length - bytes_read)
-            view[bytes_read : bytes_read + chunk_size] = chunk[:chunk_size]
+            chunk_view = memoryview(chunk)
+            view[bytes_read : bytes_read + chunk_size] = chunk_view[:chunk_size]
             bytes_read += chunk_size
             # Exit if finished reading
             if bytes_read == length:
