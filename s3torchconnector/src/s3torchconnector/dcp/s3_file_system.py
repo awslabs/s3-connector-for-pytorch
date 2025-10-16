@@ -30,7 +30,7 @@ from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from ..s3reader import (
     S3ReaderConstructor,
-    DCPListOfRangesConstructor,
+    DCPOptimizedConstructor,
     S3ReaderConstructorProtocol,
 )
 from .. import S3ClientConfig
@@ -378,7 +378,7 @@ class S3StorageReader(FileSystemReader):
         """
 
         # Inject ranges if using DCP list-of-ranges reader constructor
-        if isinstance(self.fs._reader_constructor, DCPListOfRangesConstructor):
+        if isinstance(self.fs._reader_constructor, DCPOptimizedConstructor):
             # Calculate ranges per file
             per_file_ranges: Dict[str, List[RangeRequest]] = {}
             for read_item in plan.items:
