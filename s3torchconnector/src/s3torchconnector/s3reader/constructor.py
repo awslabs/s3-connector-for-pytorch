@@ -8,7 +8,7 @@ from .s3reader import S3Reader
 from .protocol import S3ReaderConstructorProtocol
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
-from .list_of_ranges import DCPOptimizedS3Reader, RangeRequest
+from .dcp_optimized import DCPOptimizedS3Reader, RangeRequest
 
 
 class DCPOptimizedConstructor:
@@ -110,7 +110,7 @@ class S3ReaderConstructor:
     def dcp_optimized(
         max_gap_size: int = 200 * 1024 * 1024,
     ) -> S3ReaderConstructorProtocol:
-        """Creates a DCP-optimized constructor that uses ListOfRanges when ranges are available"""
+        """Creates a DCP-optimized constructor that uses DCPOptimizedS3Reader when ranges are available"""
         # TODO update docstring
         return DCPOptimizedConstructor(max_gap_size=max_gap_size)
 
