@@ -32,9 +32,8 @@ class RangeGroup:
     requests: List[RangeRequest]
 
 
-# TODO: Update name, since it now requires sequential reading and is optimised for DCP
-# TODO: Update docstring to emphasise this requires Load Ordering in prepare_local_plan
-class ListOfRangesS3Reader(S3Reader):
+# TODO: Update docstrings to emphasise this requires Load Ordering in prepare_local_plan
+class DCPOptimizedS3Reader(S3Reader):
     """Optimized reader with pre-calculated request mapping and batch prefetch."""
 
     def __init__(
@@ -52,7 +51,10 @@ class ListOfRangesS3Reader(S3Reader):
         self._get_stream = get_stream
 
         # Calculate range groups using coalescing logic
-        self._range_groups = self._coalesce_ranges(ranges, max_gap_size)
+        if max_gap_size < 0:
+            raise ValueError("max_gap_size must be non-negative")
+        self._max_gap_size = max_gap_size
+        self._range_groups = self._coalesce_ranges(ranges, self._max_gap_size)
         self._current_group_idx: int = 0
 
         # Per-group stream cache

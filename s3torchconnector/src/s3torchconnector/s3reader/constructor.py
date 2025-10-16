@@ -8,12 +8,13 @@ from .s3reader import S3Reader
 from .protocol import S3ReaderConstructorProtocol
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
-from .list_of_ranges import ListOfRangesS3Reader, RangeRequest
+from .list_of_ranges import DCPOptimizedS3Reader, RangeRequest
 
 
-class DCPListOfRangesConstructor:
-    def __init__(self) -> None:
+class DCPOptimizedConstructor:
+    def __init__(self, max_gap_size) -> None:
         self._file_ranges: Dict[str, List[RangeRequest]] = {}
+        self._max_gap_size = max_gap_size
 
     def set_file_ranges(self, file_ranges: Dict[str, List[RangeRequest]]) -> None:
         self._file_ranges = file_ranges
@@ -21,11 +22,16 @@ class DCPListOfRangesConstructor:
     def __call__(
         self, bucket: str, key: str, get_object_info, get_stream, **kwargs
     ) -> S3Reader:
-        if self._file_ranges:
-            # TODO: Check if using filename only works with prefix strategies
-            filename = key.split("/")[-1]
-            return ListOfRangesS3Reader(
-                bucket, key, self._file_ranges[filename], get_object_info, get_stream
+        # TODO: use full key instead to cater for more general scenarios
+        filename = key.split("/")[-1]
+        if self._file_ranges and filename in self._file_ranges:
+            return DCPOptimizedS3Reader(
+                bucket,
+                key,
+                ranges=self._file_ranges[filename],
+                get_object_info=get_object_info,
+                get_stream=get_stream,
+                max_gap_size=self._max_gap_size,
             )
         # Fallback to SequentialS3Reader if no file_ranges yet (e.g. when reading .metadata)
         return SequentialS3Reader(bucket, key, get_object_info, get_stream, **kwargs)
@@ -101,16 +107,12 @@ class S3ReaderConstructor:
         return partial(RangedS3Reader, buffer_size=buffer_size)
 
     @staticmethod
-    def list_of_ranges(ranges: List[RangeRequest]) -> S3ReaderConstructorProtocol:
-        """Creates a constructor for ListOfRangesS3Reader with specific ranges"""
-        # TODO update docstring, and name
-        return partial(ListOfRangesS3Reader, ranges=ranges)
-
-    @staticmethod
-    def dcp_list_of_ranges() -> S3ReaderConstructorProtocol:
+    def dcp_optimized(
+        max_gap_size: int = 200 * 1024 * 1024,
+    ) -> S3ReaderConstructorProtocol:
         """Creates a DCP-optimized constructor that uses ListOfRanges when ranges are available"""
-        # TODO update docstring, and name
-        return DCPListOfRangesConstructor()
+        # TODO update docstring
+        return DCPOptimizedConstructor(max_gap_size=max_gap_size)
 
     @staticmethod
     def default() -> S3ReaderConstructorProtocol:
@@ -131,15 +133,13 @@ class S3ReaderConstructor:
                 S3ReaderConstructor.default()
             )
 
-        if isinstance(constructor, DCPListOfRangesConstructor):
-            return "dcp_list_of_ranges"
+        if isinstance(constructor, DCPOptimizedConstructor):
+            return "dcp_optimized"
         elif not isinstance(constructor, partial):
             return "unknown"
         elif constructor.func == RangedS3Reader:
             return "range_based"
         elif constructor.func == SequentialS3Reader:
             return "sequential"
-        elif constructor.func == ListOfRangesS3Reader:
-            return "list_of_ranges"
         else:
             return "unknown"
