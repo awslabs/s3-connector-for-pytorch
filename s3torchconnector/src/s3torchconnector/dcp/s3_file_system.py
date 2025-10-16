@@ -332,7 +332,7 @@ import torch
 from torch.distributed.checkpoint.filesystem import FileSystemReader
 from torch.distributed.checkpoint.planner import LoadPlan
 
-from s3torchconnector.s3reader.list_of_ranges import RangeRequest
+from s3torchconnector.s3reader.dcp_optimized import RangeRequest
 
 
 class S3StorageReader(FileSystemReader):
@@ -377,7 +377,7 @@ class S3StorageReader(FileSystemReader):
             LoadPlan: The same plan with items sorted by storage offset.
         """
 
-        # Inject ranges if using DCP list-of-ranges reader constructor
+        # Inject ranges if using DCP optimized reader constructor
         if isinstance(self.fs._reader_constructor, DCPOptimizedConstructor):
             # Calculate ranges per file
             per_file_ranges: Dict[str, List[RangeRequest]] = {}
