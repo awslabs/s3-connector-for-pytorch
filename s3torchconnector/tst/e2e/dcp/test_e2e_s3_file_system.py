@@ -212,7 +212,7 @@ def test_dcp_when_multi_process(
     tensor_dimensions,
     thread_count,
     port_offset,
-    reader_constructor,
+    dcp_reader_constructor,
 ):
     multi_process_dcp_save_load(
         world_size=3,
@@ -221,7 +221,7 @@ def test_dcp_when_multi_process(
         tensor_dimensions=tensor_dimensions,
         port_offset=port_offset,
         prefix_strategy=None,
-        reader_constructor=reader_constructor,
+        reader_constructor=dcp_reader_constructor,
     )
 
 
