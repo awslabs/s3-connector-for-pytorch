@@ -15,6 +15,8 @@ from .s3reader import S3Reader
 
 log = logging.getLogger(__name__)
 
+DEFAULT_MAX_GAP_SIZE = 200 * 1024 * 1024  # 200MB
+
 
 @dataclass
 class RangeRequest:
@@ -43,7 +45,7 @@ class DCPOptimizedS3Reader(S3Reader):
         ranges: List[RangeRequest],
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
-        max_gap_size: int = 200 * 1024 * 1024,
+        max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
     ):
         self._bucket = bucket
         self._key = key
