@@ -4,7 +4,7 @@
 import io
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Union, Dict, Iterator
+from typing import List, Optional, Callable, Union, Iterator
 from io import SEEK_SET, SEEK_CUR
 
 from s3torchconnectorclient._mountpoint_s3_client import (
@@ -58,12 +58,14 @@ class DCPOptimizedS3Reader(S3Reader):
             raise ValueError("max_gap_size must be non-negative")
         self._max_gap_size = max_gap_size
         self._range_groups = self._coalesce_ranges(ranges, self._max_gap_size)
-        self._current_group_idx: int = 0
 
-        # Per-group stream cache (from ListOfRangesS3Reader)
-        self._streams: Dict[int, Iterator[bytes]] = {}
-        self._stream_positions: Dict[int, int] = {}
-        self._stream_buffers: Dict[int, bytes] = {}
+        # Single active stream state
+        self._gidx: int = 0  # current group index
+        self._stream: Optional[Iterator[bytes]] = (
+            None  # iterator over bytes for current group
+        )
+        self._stream_pos: int = 0  # absolute position at head of stream
+        self._leftover: bytes = b""  # unconsumed tail of last chunk
 
         # Item-based buffering for seekable support
         self._item_ranges = sorted(ranges, key=lambda r: r.start)
@@ -102,19 +104,6 @@ class DCPOptimizedS3Reader(S3Reader):
         groups.append(RangeGroup(current[0].start, current[-1].end, current))
         return groups
 
-    def _get_stream_for_group(self, idx: int) -> Iterator[bytes]:
-        """
-        Returns a cached iterator for the given range group,
-        or creates a new one if not present.
-        """
-        if idx not in self._streams:
-            group = self._range_groups[idx]
-            stream = self._get_stream(group.start, group.end)
-            self._streams[idx] = stream
-            self._stream_positions[idx] = group.start
-            self._stream_buffers[idx] = b""
-        return self._streams[idx]
-
     def _find_item_for_position(self, pos: int) -> Optional[int]:
         """Find which item contains the given position with fast path optimization."""
         # Check current item first
@@ -144,9 +133,9 @@ class DCPOptimizedS3Reader(S3Reader):
 
     def _load_item_buffer(self, item_idx: int) -> None:
         """Load entire item into buffer using streaming approach."""
-        item_range = self._item_ranges[item_idx]
-        item_data = self._stream_range_data(item_range.start, item_range.end)
-        self._current_item_buffer = io.BytesIO(item_data)
+        item = self._item_ranges[item_idx]
+        data = self._stream_range_data(item.start, item.end)
+        self._current_item_buffer = io.BytesIO(data)
         self._current_item_idx = item_idx
 
     def _stream_range_data(self, start_pos: int, end_pos: int) -> bytes:
@@ -156,27 +145,32 @@ class DCPOptimizedS3Reader(S3Reader):
 
         size = end_pos - start_pos
 
-        # Find group (with cache)
+        # Find group and ensure we have the right stream
         if (
-            self._current_group_idx < len(self._range_groups)
-            and self._range_groups[self._current_group_idx].start
+            self._gidx < len(self._range_groups)
+            and self._range_groups[self._gidx].start
             <= start_pos
-            < self._range_groups[self._current_group_idx].end
+            < self._range_groups[self._gidx].end
         ):
-            group_idx = self._current_group_idx
+            group_idx = self._gidx
         else:
             for i, g in enumerate(self._range_groups):
                 if g.start <= start_pos < g.end:
                     group_idx = i
-                    self._current_group_idx = group_idx
+                    self._gidx = i
                     break
-            else:
+            else:  # executes if the for loop completes witout break
                 return b""
 
-        stream = self._get_stream_for_group(group_idx)
+        # Ensure stream exists for current group
+        if self._stream is None:
+            g = self._range_groups[group_idx]
+            self._stream = self._get_stream(g.start, g.end)
+            self._stream_pos = g.start
+            self._leftover = b""
 
-        current_pos = self._stream_positions[group_idx]
-        buffer = self._stream_buffers[group_idx]
+        current_pos = self._stream_pos
+        buffer = self._leftover
         remaining = size
         chunks: List[bytes] = []
 
@@ -187,12 +181,12 @@ class DCPOptimizedS3Reader(S3Reader):
             chunks.append(buffer[offset:end])
             remaining -= end - offset
             current_pos = start_pos + (end - offset)
-            self._stream_buffers[group_idx] = buffer[end:] if end < len(buffer) else b""
+            buffer = buffer[end:] if end < len(buffer) else b""
 
         # 2. Read more data from S3 stream
         while remaining > 0:
             try:
-                chunk = next(stream)
+                chunk = next(self._stream)
             except StopIteration:
                 break
 
@@ -210,10 +204,11 @@ class DCPOptimizedS3Reader(S3Reader):
 
             # Save leftover bytes
             if take < len(chunk):
-                self._stream_buffers[group_idx] = chunk[take:]
+                buffer = chunk[take:]
                 break
 
-        self._stream_positions[group_idx] = current_pos
+        self._stream_pos = current_pos
+        self._leftover = buffer
         return b"".join(chunks)
 
     def read(self, size: Optional[int] = None) -> bytes:
@@ -264,9 +259,8 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._position
 
     def close(self) -> None:
-        self._streams.clear()
-        self._stream_positions.clear()
-        self._stream_buffers.clear()
+        self._stream = None
+        self._leftover = b""
         if self._current_item_buffer:
             self._current_item_buffer.close()
             self._current_item_buffer = None
