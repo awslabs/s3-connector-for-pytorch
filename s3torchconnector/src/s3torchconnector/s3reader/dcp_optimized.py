@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import io
 import logging
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Union, Dict, Iterator
@@ -59,10 +60,15 @@ class DCPOptimizedS3Reader(S3Reader):
         self._range_groups = self._coalesce_ranges(ranges, self._max_gap_size)
         self._current_group_idx: int = 0
 
-        # Per-group stream cache
+        # Per-group stream cache (from ListOfRangesS3Reader)
         self._streams: Dict[int, Iterator[bytes]] = {}
         self._stream_positions: Dict[int, int] = {}
         self._stream_buffers: Dict[int, bytes] = {}
+
+        # Item-based buffering for seekable support
+        self._item_ranges = sorted(ranges, key=lambda r: r.start)
+        self._current_item_idx: int = 0
+        self._current_item_buffer: Optional[io.BytesIO] = None
 
         self._position: int = 0
 
@@ -73,10 +79,6 @@ class DCPOptimizedS3Reader(S3Reader):
     @property
     def key(self) -> str:
         return self._key
-
-    def seekable(self) -> bool:
-        """Not seekable — torch/distributed/checkpoint/filesystem.py will use read() instead of readinto()."""
-        return False
 
     def _coalesce_ranges(
         self, ranges: List[RangeRequest], max_gap_size: int
@@ -113,25 +115,58 @@ class DCPOptimizedS3Reader(S3Reader):
             self._stream_buffers[idx] = b""
         return self._streams[idx]
 
-    def read(self, size: Optional[int] = None) -> bytes:
-        """Reads up to `size` bytes sequentially across grouped ranges."""
-        if not size or size <= 0:
+    def _find_item_for_position(self, pos: int) -> Optional[int]:
+        """Find which item contains the given position with fast path optimization."""
+        # Check current item first
+        if (
+            self._current_item_idx < len(self._item_ranges)
+            and self._item_ranges[self._current_item_idx].start
+            <= pos
+            < self._item_ranges[self._current_item_idx].end
+        ):
+            return self._current_item_idx
+
+        # Check next item (load ordering assumption)
+        next_idx = self._current_item_idx + 1
+        if (
+            next_idx < len(self._item_ranges)
+            and self._item_ranges[next_idx].start
+            <= pos
+            < self._item_ranges[next_idx].end
+        ):
+            return next_idx
+
+        # Fallback: linear scan (should be rare)
+        for i, item_range in enumerate(self._item_ranges):
+            if item_range.start <= pos < item_range.end:
+                return i
+        return None
+
+    def _load_item_buffer(self, item_idx: int) -> None:
+        """Load entire item into buffer using streaming approach."""
+        item_range = self._item_ranges[item_idx]
+        item_data = self._stream_range_data(item_range.start, item_range.end)
+        self._current_item_buffer = io.BytesIO(item_data)
+        self._current_item_idx = item_idx
+
+    def _stream_range_data(self, start_pos: int, end_pos: int) -> bytes:
+        """Read required range from the active stream."""
+        if start_pos >= end_pos:
             return b""
 
-        pos = self._position
+        size = end_pos - start_pos
 
         # Find group (with cache)
         if (
             self._current_group_idx < len(self._range_groups)
             and self._range_groups[self._current_group_idx].start
-            <= pos
+            <= start_pos
             < self._range_groups[self._current_group_idx].end
         ):
             group_idx = self._current_group_idx
         else:
-            # Search for matching group
             for i, g in enumerate(self._range_groups):
-                if g.start <= pos < g.end:
+                if g.start <= start_pos < g.end:
                     group_idx = i
                     self._current_group_idx = group_idx
                     break
@@ -146,12 +181,12 @@ class DCPOptimizedS3Reader(S3Reader):
         chunks: List[bytes] = []
 
         # 1. Serve from buffered leftover bytes
-        if buffer and current_pos <= pos < current_pos + len(buffer):
-            offset = pos - current_pos
+        if buffer and current_pos <= start_pos < current_pos + len(buffer):
+            offset = start_pos - current_pos
             end = offset + min(remaining, len(buffer) - offset)
             chunks.append(buffer[offset:end])
             remaining -= end - offset
-            current_pos = pos + (end - offset)
+            current_pos = start_pos + (end - offset)
             self._stream_buffers[group_idx] = buffer[end:] if end < len(buffer) else b""
 
         # 2. Read more data from S3 stream
@@ -162,8 +197,8 @@ class DCPOptimizedS3Reader(S3Reader):
                 break
 
             # Skip ahead if behind target
-            if current_pos < pos:
-                skip = min(pos - current_pos, len(chunk))
+            if current_pos < start_pos:
+                skip = min(start_pos - current_pos, len(chunk))
                 chunk = chunk[skip:]
                 current_pos += skip
 
@@ -179,8 +214,27 @@ class DCPOptimizedS3Reader(S3Reader):
                 break
 
         self._stream_positions[group_idx] = current_pos
-        self._position = pos + (size - remaining)
         return b"".join(chunks)
+
+    def read(self, size: Optional[int] = None) -> bytes:
+        if size is not None and size <= 0:
+            return b""
+
+        item_idx = self._find_item_for_position(self._position)
+        if item_idx is None:
+            return b""
+
+        if item_idx != self._current_item_idx or self._current_item_buffer is None:
+            self._load_item_buffer(item_idx)
+
+        item_range = self._item_ranges[self._current_item_idx]
+        local_pos = self._position - item_range.start
+
+        assert self._current_item_buffer is not None
+        self._current_item_buffer.seek(local_pos)
+        data = self._current_item_buffer.read(size)
+        self._position += len(data)
+        return data
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
         if whence == SEEK_SET:
@@ -190,10 +244,21 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._position
 
     def readinto(self, buf) -> int:
-        data = self.read(len(buf))
-        n = len(data)
-        buf[:n] = data
-        return n
+        item_idx = self._find_item_for_position(self._position)
+        if item_idx is None:
+            return 0
+
+        if item_idx != self._current_item_idx or self._current_item_buffer is None:
+            self._load_item_buffer(item_idx)
+
+        item_range = self._item_ranges[self._current_item_idx]
+        local_pos = self._position - item_range.start
+
+        assert self._current_item_buffer is not None
+        self._current_item_buffer.seek(local_pos)
+        bytes_read = self._current_item_buffer.readinto(buf)
+        self._position += bytes_read
+        return bytes_read
 
     def tell(self) -> int:
         return self._position
@@ -202,3 +267,6 @@ class DCPOptimizedS3Reader(S3Reader):
         self._streams.clear()
         self._stream_positions.clear()
         self._stream_buffers.clear()
+        if self._current_item_buffer:
+            self._current_item_buffer.close()
+            self._current_item_buffer = None
