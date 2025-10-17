@@ -2,11 +2,39 @@
 #  // SPDX-License-Identifier: BSD
 
 from functools import partial
-from typing import Optional
+from typing import Optional, List, Dict
 
+from .s3reader import S3Reader
 from .protocol import S3ReaderConstructorProtocol
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
+from .dcp_optimized import DCPOptimizedS3Reader, RangeRequest, DEFAULT_MAX_GAP_SIZE
+
+
+class DCPOptimizedConstructor:
+    def __init__(self, max_gap_size: int = DEFAULT_MAX_GAP_SIZE) -> None:
+        self._file_ranges: Dict[str, List[RangeRequest]] = {}
+        self._max_gap_size = max_gap_size
+
+    def set_file_ranges(self, file_ranges: Dict[str, List[RangeRequest]]) -> None:
+        self._file_ranges = file_ranges
+
+    def __call__(
+        self, bucket: str, key: str, get_object_info, get_stream, **kwargs
+    ) -> S3Reader:
+        # TODO: use full key instead to cater for more general scenarios
+        filename = key.split("/")[-1]
+        if self._file_ranges and filename in self._file_ranges:
+            return DCPOptimizedS3Reader(
+                bucket,
+                key,
+                ranges=self._file_ranges[filename],
+                get_object_info=get_object_info,
+                get_stream=get_stream,
+                max_gap_size=self._max_gap_size,
+            )
+        # Fallback to SequentialS3Reader if no file_ranges yet (e.g. when reading .metadata)
+        return SequentialS3Reader(bucket, key, get_object_info, get_stream, **kwargs)
 
 
 class S3ReaderConstructor:
@@ -79,6 +107,14 @@ class S3ReaderConstructor:
         return partial(RangedS3Reader, buffer_size=buffer_size)
 
     @staticmethod
+    def dcp_optimized(
+        max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
+    ) -> S3ReaderConstructorProtocol:
+        """Creates a DCP-optimized constructor that uses DCPOptimizedS3Reader when ranges are available"""
+        # TODO update docstring
+        return DCPOptimizedConstructor(max_gap_size=max_gap_size)
+
+    @staticmethod
     def default() -> S3ReaderConstructorProtocol:
         """Creates default reader constructor (sequential)
 
@@ -97,10 +133,11 @@ class S3ReaderConstructor:
                 S3ReaderConstructor.default()
             )
 
-        if not isinstance(constructor, partial):
+        if isinstance(constructor, DCPOptimizedConstructor):
+            return "dcp_optimized"
+        elif not isinstance(constructor, partial):
             return "unknown"
-
-        if constructor.func == RangedS3Reader:
+        elif constructor.func == RangedS3Reader:
             return "range_based"
         elif constructor.func == SequentialS3Reader:
             return "sequential"
