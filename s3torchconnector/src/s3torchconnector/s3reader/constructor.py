@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import os.path
 from functools import partial
 from typing import Optional, List, Dict
 
@@ -20,7 +21,7 @@ class DCPOptimizedConstructor:
         self._file_ranges = file_ranges
 
     def __call__(self, bucket: str, key: str, get_object_info, get_stream) -> S3Reader:
-        filename = key.split("/")[-1]
+        filename = os.path.basename(key)
         if self._file_ranges and filename in self._file_ranges:
             return DCPOptimizedS3Reader(
                 bucket,
