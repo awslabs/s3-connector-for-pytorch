@@ -327,6 +327,7 @@ class S3StorageWriter(FileSystemWriter):
 import io
 from typing import Dict, List, Optional
 from dataclasses import dataclass
+from collections import defaultdict
 
 import torch
 from torch.distributed.checkpoint.filesystem import FileSystemReader
@@ -383,16 +384,12 @@ class S3StorageReader(FileSystemReader):
         # Inject ranges if using DCP optimized reader constructor
         if isinstance(self.fs._reader_constructor, DCPOptimizedConstructor):
             # Calculate ranges per file
-            per_file_ranges: Dict[str, List[RangeRequest]] = {}
+            per_file_ranges = defaultdict(list)
             for read_item in plan.items:
                 item_md = self.storage_data[read_item.storage_index]
-                path = item_md.relative_path
-                if path not in per_file_ranges:
-                    per_file_ranges[path] = []
-                per_file_ranges[path].append(
-                    RangeRequest(
-                        start=item_md.offset, end=item_md.offset + item_md.length
-                    )
+                filename = item_md.relative_path.split("/")[-1]
+                per_file_ranges[filename].append(
+                    RangeRequest(item_md.offset, item_md.offset + item_md.length)
                 )
             self.fs._reader_constructor.set_file_ranges(per_file_ranges)
 
