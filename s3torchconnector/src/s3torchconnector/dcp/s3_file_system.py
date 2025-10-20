@@ -388,7 +388,7 @@ class S3StorageReader(FileSystemReader):
             for read_item in plan.items:
                 item_md = self.storage_data[read_item.storage_index]
                 # TODO: write test to check using filename works with S3PrefixStrategy if needed
-                filename = item_md.relative_path.split("/")[-1]
+                filename = os.path.basename(item_md.relative_path)
                 per_file_ranges[filename].append(
                     ItemRange(item_md.offset, item_md.offset + item_md.length)
                 )
