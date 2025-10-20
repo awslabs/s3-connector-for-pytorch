@@ -377,6 +377,9 @@ class S3StorageReader(FileSystemReader):
             LoadPlan: The same plan with items sorted by storage offset.
         """
 
+        # Sort items in plan based on their offset in checkpoints shards
+        plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+
         # Inject ranges if using DCP optimized reader constructor
         if isinstance(self.fs._reader_constructor, DCPOptimizedConstructor):
             # Calculate ranges per file
@@ -393,11 +396,6 @@ class S3StorageReader(FileSystemReader):
                 )
             self.fs._reader_constructor.set_file_ranges(per_file_ranges)
 
-        # Sort items in plan based on their offset in checkpoints shards
-        plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
-        logger.info(
-            f"Sorted {len(plan.items)} items in load plan based on offset in checkpoint shards"
-        )
         return plan
 
 
