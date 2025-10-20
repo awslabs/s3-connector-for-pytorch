@@ -60,7 +60,7 @@ class S3FileSystem(FileSystemBase):
         """
         self._path: Union[str, os.PathLike] = ""
         self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
-        self.file_ranges: Optional[Dict[str, List[RangeRequest]]] = None
+        self.file_ranges: Optional[Dict[str, List[ItemRange]]] = None
 
         # Get reader type string for user agent
         reader_type_string = S3ReaderConstructor.get_reader_type_string(
@@ -333,7 +333,7 @@ import torch
 from torch.distributed.checkpoint.filesystem import FileSystemReader
 from torch.distributed.checkpoint.planner import LoadPlan
 
-from s3torchconnector.s3reader.dcp_optimized import RangeRequest
+from s3torchconnector.s3reader.dcp_optimized import ItemRange
 
 
 class S3StorageReader(FileSystemReader):
@@ -387,9 +387,10 @@ class S3StorageReader(FileSystemReader):
             per_file_ranges = defaultdict(list)
             for read_item in plan.items:
                 item_md = self.storage_data[read_item.storage_index]
+                # TODO: write test to check using filename works with S3PrefixStrategy if needed
                 filename = item_md.relative_path.split("/")[-1]
                 per_file_ranges[filename].append(
-                    RangeRequest(item_md.offset, item_md.offset + item_md.length)
+                    ItemRange(item_md.offset, item_md.offset + item_md.length)
                 )
             self.fs._reader_constructor.set_file_ranges(per_file_ranges)
 
