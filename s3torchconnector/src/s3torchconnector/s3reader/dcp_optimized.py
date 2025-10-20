@@ -20,19 +20,18 @@ DEFAULT_MAX_GAP_SIZE = 32 * 1024 * 1024  # TODO tune this default
 
 
 @dataclass
-class RangeRequest:
-    """Singular range request; Inclusive start, exclusive end"""
+class ItemRange:
+    """Byte range for a ReadItem; Inclusive start, exclusive end"""
 
     start: int
     end: int
-    request_id: Optional[str] = None
 
 
 @dataclass
 class RangeGroup:
     start: int
     end: int
-    requests: List[RangeRequest]
+    requests: List[ItemRange]
 
 
 class DCPOptimizedS3Reader(S3Reader):
@@ -53,7 +52,7 @@ class DCPOptimizedS3Reader(S3Reader):
         self,
         bucket: str,
         key: str,
-        ranges: List[RangeRequest],
+        ranges: List[ItemRange],
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
         max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
@@ -65,7 +64,7 @@ class DCPOptimizedS3Reader(S3Reader):
         self._max_gap_size = max_gap_size
 
         if not ranges:
-            raise ValueError("ranges must be non-empty List[RangeRequest] object")
+            raise ValueError("ranges must be non-empty List[ItemRange] object")
         if max_gap_size < 0:
             raise ValueError("max_gap_size must be non-negative")
 
@@ -97,7 +96,7 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._key
 
     def _coalesce_ranges(
-        self, ranges: List[RangeRequest], max_gap_size: int
+        self, ranges: List[ItemRange], max_gap_size: int
     ) -> List[RangeGroup]:
         """Coalescing nearby byte ranges within max_gap_size."""
         if not ranges:
@@ -130,7 +129,7 @@ class DCPOptimizedS3Reader(S3Reader):
             f"Ensure Load Ordering is applied in prepare_local_plan and access for ranges is sequential."
         )
 
-    def _get_stream_for_item(self, item: RangeRequest) -> None:
+    def _get_stream_for_item(self, item: ItemRange) -> None:
         """Find which RangeGroup contains the given position."""
 
         # Forward search from current RangeGroup (should always be current or next group)
@@ -169,7 +168,7 @@ class DCPOptimizedS3Reader(S3Reader):
         remaining = item.end - item.start
         chunks: List[bytes] = []
 
-        # TODO: check if we want to serve straight into BytesIO object.
+        # TODO: check BytesIO.write() vs b"".join() + BytesIO(data)
 
         # 1. Serve from buffered leftover bytes
         if buffer and current_pos <= item.start < current_pos + len(buffer):
