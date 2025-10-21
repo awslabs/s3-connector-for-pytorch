@@ -1,7 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-import os.path
+import os
 from functools import partial
 from typing import Optional, List, Dict, Any
 from collections import defaultdict
