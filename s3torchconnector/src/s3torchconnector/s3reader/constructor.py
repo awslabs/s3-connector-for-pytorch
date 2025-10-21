@@ -26,7 +26,7 @@ class DCPOptimizedConstructor:
             return DCPOptimizedS3Reader(
                 bucket,
                 key,
-                ranges=self._file_ranges[filename],
+                item_ranges=self._file_ranges[filename],
                 get_object_info=get_object_info,
                 get_stream=get_stream,
                 max_gap_size=self._max_gap_size,
