@@ -3,30 +3,52 @@
 
 import os.path
 from functools import partial
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
+from collections import defaultdict
 
 from .s3reader import S3Reader
-from .protocol import S3ReaderConstructorProtocol
+from .protocol import (
+    S3ReaderConstructorProtocol,
+    DCPS3ReaderConstructorProtocol,
+)
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
 from .dcp_optimized import DCPOptimizedS3Reader, ItemRange, DEFAULT_MAX_GAP_SIZE
 
+from torch.distributed.checkpoint.planner import ReadItem
+from torch.distributed.checkpoint.metadata import MetadataIndex
+from torch.distributed.checkpoint.filesystem import _StorageInfo
+
 
 class DCPOptimizedConstructor:
     def __init__(self, max_gap_size: int = DEFAULT_MAX_GAP_SIZE) -> None:
-        self._file_ranges: Dict[str, List[ItemRange]] = {}
+        self._item_ranges_by_file: Dict[str, List[ItemRange]] = {}
         self._max_gap_size = max_gap_size
 
-    def set_file_ranges(self, file_ranges: Dict[str, List[ItemRange]]) -> None:
-        self._file_ranges = file_ranges
+    def set_item_ranges_by_file(
+        self,
+        plan_items: list[ReadItem],
+        storage_data: dict[MetadataIndex, _StorageInfo],
+    ) -> None:
+        # TODO: Check if we want to return DCPOptimizedConstructor for immutability here instead
+        if not plan_items:
+            return
+        self._item_ranges_by_file = defaultdict(list)
+        for read_item in plan_items:
+            item_md = storage_data[read_item.storage_index]
+            # TODO: write test to check using filename works with S3PrefixStrategy
+            filename = os.path.basename(item_md.relative_path)
+            self._item_ranges_by_file[filename].append(
+                ItemRange(item_md.offset, item_md.offset + item_md.length)
+            )
 
     def __call__(self, bucket: str, key: str, get_object_info, get_stream) -> S3Reader:
         filename = os.path.basename(key)
-        if self._file_ranges and filename in self._file_ranges:
+        if self._item_ranges_by_file and filename in self._item_ranges_by_file:
             return DCPOptimizedS3Reader(
                 bucket,
                 key,
-                item_ranges=self._file_ranges[filename],
+                item_ranges=self._item_ranges_by_file[filename],
                 get_object_info=get_object_info,
                 get_stream=get_stream,
                 max_gap_size=self._max_gap_size,
@@ -107,7 +129,7 @@ class S3ReaderConstructor:
     @staticmethod
     def dcp_optimized(
         max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
-    ) -> S3ReaderConstructorProtocol:
+    ) -> DCPS3ReaderConstructorProtocol:
         """Creates a DCPOptimizedConstructor that uses DCPOptimizedS3Reader when ranges are available"""
         # TODO update docstring with guide and requirements to use this reader for DCP
         return DCPOptimizedConstructor(max_gap_size=max_gap_size)
