@@ -1,15 +1,18 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import dataclasses
 import io
 import logging
 import os
 import urllib.parse
+from collections import defaultdict
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, Union, Optional, Dict
-from typing import List
+from typing import Generator, Union, Optional, List
 
+import torch
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
     retry,
@@ -24,7 +27,8 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemWriter,
     FileSystemBase,
 )
-import torch
+from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
+
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
@@ -32,6 +36,7 @@ from ..s3reader import (
     S3ReaderConstructor,
     DCPOptimizedConstructor,
     S3ReaderConstructorProtocol,
+    ItemRange
 )
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
@@ -60,7 +65,6 @@ class S3FileSystem(FileSystemBase):
         """
         self._path: Union[str, os.PathLike] = ""
         self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
-        self.file_ranges: Optional[Dict[str, List[ItemRange]]] = None
 
         # Get reader type string for user agent
         reader_type_string = S3ReaderConstructor.get_reader_type_string(
@@ -258,11 +262,6 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
-import dataclasses
-from dataclasses import dataclass
-
-
 @dataclass
 class StorageMetadata:
     """Metadata for S3 storage prefix."""
@@ -324,16 +323,6 @@ class S3StorageWriter(FileSystemWriter):
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
-import io
-from typing import Dict, List, Optional
-from dataclasses import dataclass
-from collections import defaultdict
-
-import torch
-from torch.distributed.checkpoint.filesystem import FileSystemReader
-from torch.distributed.checkpoint.planner import LoadPlan
-
-from s3torchconnector.s3reader.dcp_optimized import ItemRange
 
 
 class S3StorageReader(FileSystemReader):

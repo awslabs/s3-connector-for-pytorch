@@ -42,8 +42,9 @@ class DCPOptimizedS3Reader(S3Reader):
 
     REQUIRES:
     - DCP Loading - reader is only designed for usage via dcp_optimized reader_constructor for dcp.load()
-    - Load Ordering must be applied in prepare_local_plan to ensure sequential access patterns.
-    - Only supports reading exact ranges provided sequentially
+    - Load Ordering, applied automatically prepare_local_plan, to ensure sequential access patterns.
+    - item_ranges provided (List[ItemRange]) must be pre-sorted - also applied in prepare_local_plan.
+    - Only supports sequentially reading exact item_ranges provided - otherwise would result in errors.
     Non-sequential access will result in errors.
 
     """
@@ -52,7 +53,7 @@ class DCPOptimizedS3Reader(S3Reader):
         self,
         bucket: str,
         key: str,
-        ranges: List[ItemRange],
+        item_ranges: List[ItemRange],
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
         max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
@@ -63,15 +64,15 @@ class DCPOptimizedS3Reader(S3Reader):
         self._get_stream = get_stream
         self._max_gap_size = max_gap_size
 
-        if not ranges:
+        if not item_ranges:
             raise ValueError("ranges must be non-empty List[ItemRange] object")
         if max_gap_size < 0:
             raise ValueError("max_gap_size must be non-negative")
 
         # Coalesce ranges into range groups
-        # TODO: remove sort since pre-sorted in prepare_local_plan?
-        self._item_ranges = sorted(ranges, key=lambda r: r.start)
-        self._range_groups = self._validate_and_coalesce_ranges(
+        # TODO: add test/check that unsorted ranges would be detected and results in error
+        self._item_ranges: List[ItemRange] = item_ranges
+        self._range_groups: List[RangeGroup] = self._validate_and_coalesce_ranges(
             self._item_ranges, self._max_gap_size
         )
 
@@ -105,6 +106,7 @@ class DCPOptimizedS3Reader(S3Reader):
         groups: List[RangeGroup] = []
         current = [ranges[0]]
 
+        # TODO: Could this validation be done in constructor.py instead?
         if ranges[0].start < 0 or ranges[0].end < ranges[0].start:
             raise ValueError(f"Invalid range: {ranges[0].start}-{ranges[0].end}")
         for r in ranges[1:]:
@@ -133,6 +135,7 @@ class DCPOptimizedS3Reader(S3Reader):
             if item_range.start <= pos < item_range.end:
                 return i
 
+        # Error detected - construct and raise human-readable error message
         if self._current_item_idx < len(self._item_ranges):
             curr_range = self._item_ranges[self._current_item_idx]
             direction = "before" if pos < curr_range.start else "beyond"
@@ -156,6 +159,7 @@ class DCPOptimizedS3Reader(S3Reader):
                     self._leftover = b""
                 return
 
+        # Error detected - construct and raise human-readable error message
         if self._current_group_idx < len(self._range_groups):
             curr_group = self._range_groups[self._current_group_idx]
             direction = "before" if item.start < curr_group.start else "beyond"

@@ -54,18 +54,12 @@ def test_dcp_load_reads_tensors_in_sequential_order(
     This does not prevent backwards seek, since torch.load() would still call
     backwards seek operations.
 
-    SequentialS3Reader:
     pytorch/torch/serialization.py load() function will call _is_zipfile(), which
     includes this read() call: f.read(len(local_header_magic_number)). This is
     followed by readinto() calls on the actual tensor.
 
-    DCPOptimizedS3Reader:
-    DCPOptimizedS3Reader.seekable() returns false, hence PyTorch would use read()
-    calls and make it seekable with `seekable = io.BytesIO(transform_from.read(-1))` in
-    pytorch/torch/distributed/checkpoint/filesystem.py read_data() method.
-
     Hence we can track read() call positions to determine if load ordering is
-    being applied correctly for both cases.
+    being applied correctly.
     """
     region = checkpoint_directory.region
     s3_uri = checkpoint_directory.s3_uri
