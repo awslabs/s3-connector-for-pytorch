@@ -71,7 +71,7 @@ class DCPOptimizedS3Reader(S3Reader):
         # Coalesce ranges into range groups
         # TODO: remove sort since pre-sorted in prepare_local_plan?
         self._item_ranges = sorted(ranges, key=lambda r: r.start)
-        self._range_groups = self._coalesce_ranges(
+        self._range_groups = self._validate_and_coalesce_ranges(
             self._item_ranges, self._max_gap_size
         )
 
@@ -95,7 +95,7 @@ class DCPOptimizedS3Reader(S3Reader):
     def key(self) -> str:
         return self._key
 
-    def _coalesce_ranges(
+    def _validate_and_coalesce_ranges(
         self, ranges: List[ItemRange], max_gap_size: int
     ) -> List[RangeGroup]:
         """Coalescing nearby byte ranges within max_gap_size."""
@@ -105,7 +105,16 @@ class DCPOptimizedS3Reader(S3Reader):
         groups: List[RangeGroup] = []
         current = [ranges[0]]
 
+        if ranges[0].start < 0 or ranges[0].end < ranges[0].start:
+            raise ValueError(f"Invalid range: {ranges[0].start}-{ranges[0].end}")
         for r in ranges[1:]:
+            if r.end < r.start:  # Allow empty range
+                raise ValueError(f"Invalid range: {r.start}-{r.end}")
+            if r.start < current[-1].end:
+                raise ValueError(
+                    f"Overlapping ranges: {current[-1].start}-{current[-1].end} and {r.start}-{r.end}"
+                )
+            # Coalesce or create new group
             if r.start - current[-1].end <= max_gap_size:
                 current.append(r)
             else:
@@ -124,10 +133,13 @@ class DCPOptimizedS3Reader(S3Reader):
             if item_range.start <= pos < item_range.end:
                 return i
 
-        raise ValueError(
-            f"Position {pos} not found in item ranges beyond item {self._current_item_idx}. (byte-range: {self._item_ranges[self._current_item_idx].start}-{self._item_ranges[self._current_item_idx].end}). "
-            f"Ensure Load Ordering is applied in prepare_local_plan and access for ranges is sequential."
-        )
+        if self._current_item_idx < len(self._item_ranges):
+            curr_range = self._item_ranges[self._current_item_idx]
+            direction = "before" if pos < curr_range.start else "beyond"
+            range_info = f"current range {curr_range.start}-{curr_range.end}"
+            raise ValueError(f"Position {pos} {direction} {range_info}")
+        else:
+            raise ValueError(f"Position {pos} beyond all ranges")
 
     def _get_stream_for_item(self, item: ItemRange) -> None:
         """Find which RangeGroup contains the given position."""
@@ -144,11 +156,13 @@ class DCPOptimizedS3Reader(S3Reader):
                     self._leftover = b""
                 return
 
-        curr_group = self._range_groups[self._current_group_idx]
-        raise ValueError(
-            f"Item range {item.start}-{item.end} does not fit within any group beyond group {self._current_group_idx} with range {curr_group.start}-{curr_group.end}. "
-            f"Ensure Load Ordering is applied in prepare_local_plan and access for ranges is sequential."
-        )
+        if self._current_group_idx < len(self._range_groups):
+            curr_group = self._range_groups[self._current_group_idx]
+            direction = "before" if item.start < curr_group.start else "beyond"
+            group_info = f"current group {curr_group.start}-{curr_group.end}"
+            raise ValueError(f"Item {item.start}-{item.end} {direction} {group_info}")
+        else:
+            raise ValueError(f"Item {item.start}-{item.end} beyond all groups")
 
     def _load_item_buffer(self, item_idx: int) -> None:
         """Load entire item into BytesIO buffer from existing stream."""
@@ -226,12 +240,18 @@ class DCPOptimizedS3Reader(S3Reader):
             bytes: Bytes read from specified range.
 
         Raises:
-            S3Exception: An error occurred accessing S3.
+            NotImplementedError: If size is None or negative (full file reads not supported).
+            TypeError: If size is not an integer.
             ValueError: If position is outside valid DCP ranges.
+            S3Exception: An error occurred accessing S3.
         """
-        if size is not None and not isinstance(size, int):
+        if size is None or size < 0:
+            raise NotImplementedError(
+                "Size cannot be negative, full read is not supported."
+            )
+        if not isinstance(size, int):
             raise TypeError(f"argument should be integer or None, not {type(size)!r}")
-        if size is not None and size <= 0:
+        if size == 0:
             return b""
 
         item_idx = self._find_item_for_position(self._position)
@@ -261,8 +281,10 @@ class DCPOptimizedS3Reader(S3Reader):
         Raises:
             ValueError: If position is outside valid DCP ranges.
             TypeError: If buf is not writable.
+            S3Exception: An error occurred accessing S3.
         """
 
+        # TODO: remove for performance or simpler checks?
         try:
             view = memoryview(buf)
             if view.readonly:
@@ -302,6 +324,7 @@ class DCPOptimizedS3Reader(S3Reader):
             int: Current position of the stream
 
         Raises:
+            TypeError: If whence is not SEEK_SET or SEEK_CUR.
             ValueError: If seeking to negative position or accessing previous items.
             TypeError: If whence is not SEEK_SET or SEEK_CUR.
         """
@@ -312,10 +335,8 @@ class DCPOptimizedS3Reader(S3Reader):
             self._position = offset
         elif whence == SEEK_CUR:
             self._position += offset
-        elif isinstance(whence, int):
-            raise ValueError("Seek must be passed SEEK_CUR or SEEK_SET")
         else:
-            raise TypeError(f"integer argument expected, got {type(whence)!r}")
+            raise ValueError("Seek must be passed io SEEK_CUR or SEEK_SET integers")
 
         if self._position < 0:
             raise ValueError(f"negative seek value {self._position}")
