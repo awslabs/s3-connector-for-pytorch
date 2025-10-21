@@ -6,7 +6,11 @@ from .constructor import S3ReaderConstructor, DCPOptimizedConstructor
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
 from .dcp_optimized import DCPOptimizedS3Reader, ItemRange, RangeGroup
-from .protocol import GetStreamCallable, S3ReaderConstructorProtocol
+from .protocol import (
+    GetStreamCallable,
+    S3ReaderConstructorProtocol,
+    DCPS3ReaderConstructorProtocol,
+)
 
 __all__ = [
     "S3Reader",

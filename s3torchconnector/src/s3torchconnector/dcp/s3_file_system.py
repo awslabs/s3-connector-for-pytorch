@@ -36,7 +36,8 @@ from ..s3reader import (
     S3ReaderConstructor,
     DCPOptimizedConstructor,
     S3ReaderConstructorProtocol,
-    ItemRange
+    DCPS3ReaderConstructorProtocol,
+    ItemRange,
 )
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
@@ -323,15 +324,15 @@ class S3StorageWriter(FileSystemWriter):
         return S3FileSystem.validate_checkpoint_id(checkpoint_id)
 
 
-
-
 class S3StorageReader(FileSystemReader):
     def __init__(
         self,
         region: str,
         path: Union[str, os.PathLike],
         s3client_config: Optional[S3ClientConfig] = None,
-        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
+        reader_constructor: Optional[
+            Union[S3ReaderConstructorProtocol, DCPS3ReaderConstructorProtocol]
+        ] = None,  # TODO: union with DCP optimized protocol
     ) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
@@ -344,10 +345,11 @@ class S3StorageReader(FileSystemReader):
                 e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
         """
         super().__init__(path)
+        self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
         self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment]
             region,
             s3client_config=s3client_config,
-            reader_constructor=reader_constructor,
+            reader_constructor=self._reader_constructor,
         )
         self.path = self.fs.init_path(path)
         self.sync_files = False
@@ -371,17 +373,10 @@ class S3StorageReader(FileSystemReader):
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
 
         # Inject ranges if using DCP optimized reader constructor
-        if isinstance(self.fs._reader_constructor, DCPOptimizedConstructor):
-            # Calculate ranges per file
-            per_file_ranges = defaultdict(list)
-            for read_item in plan.items:
-                item_md = self.storage_data[read_item.storage_index]
-                # TODO: write test to check using filename works with S3PrefixStrategy if needed
-                filename = os.path.basename(item_md.relative_path)
-                per_file_ranges[filename].append(
-                    ItemRange(item_md.offset, item_md.offset + item_md.length)
-                )
-            self.fs._reader_constructor.set_file_ranges(per_file_ranges)
+        if isinstance(self._reader_constructor, DCPS3ReaderConstructorProtocol):
+            self._reader_constructor.set_item_ranges_by_file(
+                plan.items, self.storage_data
+            )
 
         return plan
 

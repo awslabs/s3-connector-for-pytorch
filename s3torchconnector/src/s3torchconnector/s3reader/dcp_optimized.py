@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 DEFAULT_MAX_GAP_SIZE = 32 * 1024 * 1024  # TODO tune this default
 
 
+# TODO: check if we can reuse dcp planner ReadItem instead
 @dataclass
 class ItemRange:
     """Byte range for a ReadItem; Inclusive start, exclusive end"""
