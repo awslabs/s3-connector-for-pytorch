@@ -27,8 +27,8 @@ class DCPOptimizedConstructor:
 
     def set_item_ranges_by_file(
         self,
-        plan_items: list[ReadItem],
-        storage_data: dict[MetadataIndex, _StorageInfo],
+        plan_items: List[ReadItem],
+        storage_data: Dict[MetadataIndex, _StorageInfo],
     ) -> None:
         # TODO: Check if we want to return DCPOptimizedConstructor for immutability here instead
         if not plan_items:
@@ -44,7 +44,7 @@ class DCPOptimizedConstructor:
 
     def __call__(self, bucket: str, key: str, get_object_info, get_stream) -> S3Reader:
         filename = os.path.basename(key)
-        if self._item_ranges_by_file and filename in self._item_ranges_by_file:
+        if filename in self._item_ranges_by_file:
             return DCPOptimizedS3Reader(
                 bucket,
                 key,
