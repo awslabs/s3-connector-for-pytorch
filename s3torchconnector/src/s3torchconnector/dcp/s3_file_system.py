@@ -6,7 +6,6 @@ import io
 import logging
 import os
 import urllib.parse
-from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -85,9 +84,7 @@ class S3FileSystem(FileSystemBase):
 
     @contextmanager
     def create_stream(
-        self,
-        path: Union[str, os.PathLike],
-        mode: str,
+        self, path: Union[str, os.PathLike], mode: str
     ) -> Generator[io.IOBase, None, None]:
         """
         Create a stream for reading or writing to S3.
@@ -110,6 +107,7 @@ class S3FileSystem(FileSystemBase):
             with self._client.put_object(bucket, key) as stream:
                 yield stream
         elif mode == "rb":  # read mode
+            logger.debug("create_stream readable for %s", path_str)
             with self._client.get_object(
                 bucket, key, reader_constructor=self._reader_constructor
             ) as stream:
@@ -332,7 +330,7 @@ class S3StorageReader(FileSystemReader):
         s3client_config: Optional[S3ClientConfig] = None,
         reader_constructor: Optional[
             Union[S3ReaderConstructorProtocol, DCPS3ReaderConstructorProtocol]
-        ] = None,  # TODO: union with DCP optimized protocol
+        ] = None,
     ) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
@@ -368,7 +366,6 @@ class S3StorageReader(FileSystemReader):
         Returns:
             LoadPlan: The same plan with items sorted by storage offset.
         """
-
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
 
