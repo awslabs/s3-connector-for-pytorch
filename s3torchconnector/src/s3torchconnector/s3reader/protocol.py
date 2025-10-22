@@ -1,7 +1,16 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-from typing import Protocol, Callable, Optional, Union, List, Dict, runtime_checkable
+from typing import (
+    TYPE_CHECKING,
+    Protocol,
+    Callable,
+    Optional,
+    Union,
+    List,
+    Dict,
+    runtime_checkable,
+)
 from .s3reader import S3Reader
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -9,9 +18,10 @@ from s3torchconnectorclient._mountpoint_s3_client import (
     HeadObjectResult,
 )
 
-from torch.distributed.checkpoint.planner import ReadItem
-from torch.distributed.checkpoint.metadata import MetadataIndex
-from torch.distributed.checkpoint.filesystem import _StorageInfo
+if TYPE_CHECKING:
+    from torch.distributed.checkpoint.planner import ReadItem
+    from torch.distributed.checkpoint.metadata import MetadataIndex
+    from torch.distributed.checkpoint.filesystem import _StorageInfo
 
 
 class GetStreamCallable(Protocol):
@@ -43,6 +53,6 @@ class DCPS3ReaderConstructorProtocol(Protocol):
 
     def set_item_ranges_by_file(
         self,
-        plan_items: List[ReadItem],
-        storage_data: Dict[MetadataIndex, _StorageInfo],
+        plan_items: "List[ReadItem]",
+        storage_data: "Dict[MetadataIndex, _StorageInfo]",
     ) -> None: ...

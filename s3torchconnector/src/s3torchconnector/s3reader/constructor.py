@@ -3,7 +3,7 @@
 
 import os
 from functools import partial
-from typing import Optional, List, Dict, Any
+from typing import TYPE_CHECKING, Optional, List, Dict, Any
 from collections import defaultdict
 
 from .s3reader import S3Reader
@@ -15,9 +15,10 @@ from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
 from .dcp_optimized import DCPOptimizedS3Reader, ItemRange, DEFAULT_MAX_GAP_SIZE
 
-from torch.distributed.checkpoint.planner import ReadItem
-from torch.distributed.checkpoint.metadata import MetadataIndex
-from torch.distributed.checkpoint.filesystem import _StorageInfo
+if TYPE_CHECKING:
+    from torch.distributed.checkpoint.planner import ReadItem
+    from torch.distributed.checkpoint.metadata import MetadataIndex
+    from torch.distributed.checkpoint.filesystem import _StorageInfo
 
 
 class DCPOptimizedConstructor:
@@ -27,8 +28,8 @@ class DCPOptimizedConstructor:
 
     def set_item_ranges_by_file(
         self,
-        plan_items: List[ReadItem],
-        storage_data: Dict[MetadataIndex, _StorageInfo],
+        plan_items: "List[ReadItem]",
+        storage_data: "Dict[MetadataIndex, _StorageInfo]",
     ) -> None:
         # TODO: Check if we want to return DCPOptimizedConstructor for immutability here instead
         if not plan_items:
