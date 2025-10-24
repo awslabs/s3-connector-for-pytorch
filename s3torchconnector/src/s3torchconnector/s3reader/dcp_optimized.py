@@ -64,6 +64,7 @@ class DCPOptimizedS3Reader(S3Reader):
         self._get_object_info = get_object_info
         self._get_stream = get_stream
         self._max_gap_size = max_gap_size
+        self._closed = False
 
         if not item_ranges:
             raise ValueError("ranges must be non-empty List[ItemRange] object")
@@ -97,6 +98,14 @@ class DCPOptimizedS3Reader(S3Reader):
     @property
     def key(self) -> str:
         return self._key
+
+    @property
+    def closed(self) -> bool:
+        """
+        Returns:
+            bool: Return whether the object is closed.
+        """
+        return self._closed
 
     def _validate_and_coalesce_ranges(
         self, ranges: List[ItemRange], max_gap_size: int
@@ -167,63 +176,69 @@ class DCPOptimizedS3Reader(S3Reader):
         self._leftover = b""
         return self._stream
 
-    def _load_item_buffer(self, item: ItemRange) -> None:
+    def _get_item_buffer(self, item: ItemRange) -> io.BytesIO:
         """Load entire item into BytesIO buffer from existing stream."""
 
         if item.start >= item.end:
-            self._current_item_buffer = io.BytesIO(b"")
-            return
+            return io.BytesIO(b"")
 
         # Get stream from the right RangeGroup for start_pos
         stream = self._get_stream_for_item(item)
 
-        current_pos = self._stream_pos
-        buffer = self._leftover
-        remaining = item.end - item.start
+        pos = self._stream_pos  # local copy
+        leftover = self._leftover  # local copy
+
+        bytes_left = item.end - item.start
         chunks: List[bytes] = []
 
-        # TODO: check BytesIO.write() vs b"".join() + BytesIO(data)
+        # 1. Read from leftover bytes if available and needed
+        len_leftover = len(leftover)
+        if leftover and pos <= item.start < pos + len_leftover:
+            start = item.start - pos
+            available_bytes = len_leftover - start
+            size = min(bytes_left, available_bytes)
+            end = start + size
 
-        # 1. Serve from buffered leftover bytes
-        if buffer and current_pos <= item.start < current_pos + len(buffer):
-            offset = item.start - current_pos
-            take = min(remaining, len(buffer) - offset)
-            chunks.append(buffer[offset : offset + take])
-            remaining -= take
-            current_pos = item.start + take
-            buffer = buffer[offset + take :] if offset + take < len(buffer) else b""
+            chunks.append(leftover[start:end])
+            bytes_left -= size
+            pos = item.start + size
+            leftover = leftover[end:] if end < len_leftover else b""
 
         # 2. Read more data from S3 stream
-        while remaining > 0:
+        while bytes_left > 0:
             try:
                 chunk = next(stream)
             except StopIteration:
                 break
 
-            # Skip ahead if behind target
-            if current_pos < item.start:
-                skip = min(item.start - current_pos, len(chunk))
-                chunk = chunk[skip:]
-                current_pos += skip
+            chunk_len = len(chunk)
+
+            # Skip past unwanted data (due to coalescing)
+            if pos < item.start:
+                skip_bytes = min(item.start - pos, len(chunk))
+                chunk = chunk[skip_bytes:]
+                pos += skip_bytes
+                chunk_len -= skip_bytes
 
             # Take needed part of chunk
-            if len(chunk) <= remaining:
+            if chunk_len <= bytes_left:
                 # Entire chunk needed - skip slicing
                 chunks.append(chunk)
-                remaining -= len(chunk)
-                current_pos += len(chunk)
+                bytes_left -= chunk_len
+                pos += chunk_len
             else:
                 # Only part of chunk needed
-                chunks.append(chunk[:remaining])
-                buffer = chunk[remaining:]
-                current_pos += remaining
-                remaining = 0
+                chunks.append(chunk[:bytes_left])
+                leftover = chunk[bytes_left:]
+                pos += bytes_left
+                bytes_left = 0
                 break
 
-        self._stream_pos = current_pos
-        self._leftover = buffer
+        self._stream_pos = pos
+        self._leftover = leftover
+        # TODO: check BytesIO.write() vs b"".join() + BytesIO(data)
         data = b"".join(chunks)
-        self._current_item_buffer = io.BytesIO(data)
+        return io.BytesIO(data)
 
     def read(self, size: Optional[int] = None) -> bytes:
         """
@@ -257,11 +272,10 @@ class DCPOptimizedS3Reader(S3Reader):
 
         if item is not self._current_item or self._current_item_buffer is None:
             self._current_item = item
-            self._load_item_buffer(item)
+            self._current_item_buffer = self._get_item_buffer(item)
 
         local_pos = self._position - item.start
 
-        assert self._current_item_buffer is not None
         self._current_item_buffer.seek(local_pos)
         data = self._current_item_buffer.read(size)
         self._position += len(data)
@@ -300,11 +314,10 @@ class DCPOptimizedS3Reader(S3Reader):
 
         if item is not self._current_item or self._current_item_buffer is None:
             self._current_item = item
-            self._load_item_buffer(item)
+            self._current_item_buffer = self._get_item_buffer(item)
 
         local_pos = self._position - item.start
 
-        assert self._current_item_buffer is not None
         self._current_item_buffer.seek(local_pos)
         bytes_read = self._current_item_buffer.readinto(buf)
         self._position += bytes_read
@@ -352,8 +365,10 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._position
 
     def close(self) -> None:
-        self._stream = None
-        self._leftover = b""
-        if self._current_item_buffer:
-            self._current_item_buffer.close()
-            self._current_item_buffer = None
+        if not self._closed:
+            self._closed = True
+            self._stream = None
+            self._leftover = b""
+            if self._current_item_buffer:
+                self._current_item_buffer.close()
+                self._current_item_buffer = None
