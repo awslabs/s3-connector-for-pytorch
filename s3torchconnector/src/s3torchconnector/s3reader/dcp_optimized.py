@@ -194,6 +194,7 @@ class DCPOptimizedS3Reader(S3Reader):
         # 1. Read from leftover bytes if available and needed
         len_leftover = len(leftover)
         if leftover and pos <= item.start < pos + len_leftover:
+            # Target inside leftover: slice it
             start = item.start - pos
             available_bytes = len_leftover - start
             size = min(bytes_left, available_bytes)
@@ -203,6 +204,10 @@ class DCPOptimizedS3Reader(S3Reader):
             bytes_left -= size
             pos = item.start + size
             leftover = leftover[end:] if end < len_leftover else b""
+        elif leftover and item.start >= pos + len_leftover:
+            # Target beyond leftover: advance pos
+            pos += len_leftover
+            leftover = b""
 
         # 2. Read more data from S3 stream
         while bytes_left > 0:
