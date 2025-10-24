@@ -4,7 +4,7 @@
 import io
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Union
+from typing import List, Optional, Callable, Union, Iterator
 from io import SEEK_SET, SEEK_CUR
 
 from s3torchconnectorclient._mountpoint_s3_client import (
@@ -32,7 +32,7 @@ class ItemRange:
 class RangeGroup:
     start: int
     end: int
-    requests: List[ItemRange]
+    item_ranges: List[ItemRange]
 
 
 class DCPOptimizedS3Reader(S3Reader):
@@ -78,13 +78,17 @@ class DCPOptimizedS3Reader(S3Reader):
         )
 
         # Stream state
-        self._current_group_idx: int = 0  # current group index
+        self._group_iter: Iterator[RangeGroup] = iter(self._range_groups)
+        self._current_group: RangeGroup = next(self._group_iter)
         self._stream: Optional[GetObjectStream] = None
-        self._stream_pos: int = 0  # absolute position at head of stream
+        self._stream_pos: int = (
+            self._current_group.start
+        )  # absolute position at head of stream
         self._leftover: bytes = b""
 
         # Item buffer state
-        self._current_item_idx: int = 0
+        self._item_iter: Iterator[ItemRange] = iter(self._item_ranges)
+        self._current_item: ItemRange = next(self._item_iter)
         self._current_item_buffer: Optional[io.BytesIO] = None
 
         self._position: int = 0
@@ -105,7 +109,7 @@ class DCPOptimizedS3Reader(S3Reader):
             return []
 
         groups: List[RangeGroup] = []
-        current = [ranges[0]]
+        items: List[ItemRange] = [ranges[0]]
 
         # TODO: Could this validation be done in constructor.py instead?
         if ranges[0].start < 0 or ranges[0].end < ranges[0].start:
@@ -113,69 +117,76 @@ class DCPOptimizedS3Reader(S3Reader):
         for r in ranges[1:]:
             if r.end < r.start:  # Allow empty range
                 raise ValueError(f"Invalid range: {r.start}-{r.end}")
-            if r.start < current[-1].end:
+            if r.start < items[-1].end:
                 raise ValueError(
-                    f"Overlapping ranges: {current[-1].start}-{current[-1].end} and {r.start}-{r.end}"
+                    f"Overlapping ranges: {items[-1].start}-{items[-1].end} and {r.start}-{r.end}"
                 )
             # Coalesce or create new group
-            if r.start - current[-1].end <= max_gap_size:
-                current.append(r)
+            if r.start - items[-1].end <= max_gap_size:
+                items.append(r)
             else:
-                groups.append(RangeGroup(current[0].start, current[-1].end, current))
-                current = [r]
+                groups.append(RangeGroup(items[0].start, items[-1].end, items))
+                items = [r]
 
-        groups.append(RangeGroup(current[0].start, current[-1].end, current))
+        groups.append(RangeGroup(items[0].start, items[-1].end, items))
         return groups
 
-    def _find_item_for_position(self, pos: int) -> int:
+    def _find_item_for_position(self, pos: int) -> ItemRange:
         """Find which item contains the given position with fast path optimization."""
 
-        # Forward search from current item (should always be current or next item)
-        for i in range(self._current_item_idx, len(self._item_ranges)):
-            item_range = self._item_ranges[i]
-            if item_range.start <= pos < item_range.end:
-                return i
+        # Check current
+        if self._current_item.start <= pos < self._current_item.end:
+            return self._current_item
+
+        # Try next item
+        try:
+            next_item = next(self._item_iter)
+            if next_item.start <= pos < next_item.end:
+                return next_item
+        except StopIteration:
+            raise ValueError(f"Position {pos} beyond all ranges")
 
         # Error detected - construct and raise human-readable error message
-        if self._current_item_idx < len(self._item_ranges):
-            curr_range = self._item_ranges[self._current_item_idx]
-            direction = "before" if pos < curr_range.start else "beyond"
-            range_info = f"current range {curr_range.start}-{curr_range.end}"
-            raise ValueError(f"Position {pos} {direction} {range_info}")
-        else:
-            raise ValueError(f"Position {pos} beyond all ranges")
+        curr_item = self._current_item
+        direction = "before" if pos < curr_item.start else "beyond"
+        range_info = f"current range {curr_item.start}-{curr_item.end}"
+        raise ValueError(f"Position {pos} {direction} {range_info}")
 
     def _get_stream_for_item(self, item: ItemRange) -> None:
         """Find which RangeGroup contains the given position."""
 
-        # Forward search from current RangeGroup (should always be current or next group)
-        for i in range(self._current_group_idx, len(self._range_groups)):
-            group = self._range_groups[i]
-            if group.start <= item.start <= item.end <= group.end:
-                # Create new stream if switching groups, or no stream exists (for group 0)
-                if self._stream is None or i != self._current_group_idx:
-                    self._current_group_idx = i
-                    self._stream = self._get_stream(group.start, group.end)
-                    self._stream_pos = group.start
-                    self._leftover = b""
-                return
+        # Check current stream
+        group = self._current_group
+        if group.start <= item.start <= item.end <= group.end:
+            if self._stream is None:
+                self._stream = self._get_stream(group.start, group.end)
+                self._stream_pos = group.start
+                self._leftover = b""
+            return
 
-        # Error detected - construct and raise human-readable error message
-        if self._current_group_idx < len(self._range_groups):
-            curr_group = self._range_groups[self._current_group_idx]
-            direction = "before" if item.start < curr_group.start else "beyond"
-            group_info = f"current group {curr_group.start}-{curr_group.end}"
-            raise ValueError(f"Item {item.start}-{item.end} {direction} {group_info}")
-        else:
+        # Try next stream
+        try:
+            group = next(self._group_iter)
+            if group.start <= item.start <= item.end <= group.end:
+                self._current_group = group
+                self._stream = self._get_stream(group.start, group.end)
+                self._stream_pos = group.start
+                self._leftover = b""
+                return
+        except StopIteration:
             raise ValueError(f"Item {item.start}-{item.end} beyond all groups")
 
-    def _load_item_buffer(self, item_idx: int) -> None:
+        # Error detected - construct and raise human-readable error message
+        curr_group = self._current_group
+        direction = "before" if item.start < curr_group.start else "beyond"
+        group_info = f"current group {curr_group.start}-{curr_group.end}"
+        raise ValueError(f"Item {item.start}-{item.end} {direction} {group_info}")
+
+    def _load_item_buffer(self, item: ItemRange) -> None:
         """Load entire item into BytesIO buffer from existing stream."""
 
-        item = self._item_ranges[item_idx]
         if item.start >= item.end:
             self._current_item_buffer = io.BytesIO(b"")
-            self._current_item_idx = item_idx
             return
 
         # Get stream from the right RangeGroup for start_pos
@@ -229,7 +240,6 @@ class DCPOptimizedS3Reader(S3Reader):
         self._leftover = buffer
         data = b"".join(chunks)
         self._current_item_buffer = io.BytesIO(data)
-        self._current_item_idx = item_idx
 
     def read(self, size: Optional[int] = None) -> bytes:
         """
@@ -259,12 +269,13 @@ class DCPOptimizedS3Reader(S3Reader):
         if size == 0:
             return b""
 
-        item_idx = self._find_item_for_position(self._position)
-        if item_idx != self._current_item_idx or self._current_item_buffer is None:
-            self._load_item_buffer(item_idx)
+        item = self._find_item_for_position(self._position)
 
-        item_range = self._item_ranges[self._current_item_idx]
-        local_pos = self._position - item_range.start
+        if item is not self._current_item or self._current_item_buffer is None:
+            self._current_item = item
+            self._load_item_buffer(item)
+
+        local_pos = self._position - item.start
 
         assert self._current_item_buffer is not None
         self._current_item_buffer.seek(local_pos)
@@ -289,7 +300,7 @@ class DCPOptimizedS3Reader(S3Reader):
             S3Exception: An error occurred accessing S3.
         """
 
-        # TODO: remove for performance or simpler checks?
+        # TODO: remove view = memoryview(buf) for performance or simpler checks
         try:
             view = memoryview(buf)
             if view.readonly:
@@ -301,12 +312,13 @@ class DCPOptimizedS3Reader(S3Reader):
                 f"argument must be a writable bytes-like object, not {type(buf).__name__}"
             )
 
-        item_idx = self._find_item_for_position(self._position)
-        if item_idx != self._current_item_idx or self._current_item_buffer is None:
-            self._load_item_buffer(item_idx)
+        item = self._find_item_for_position(self._position)
 
-        item_range = self._item_ranges[self._current_item_idx]
-        local_pos = self._position - item_range.start
+        if item is not self._current_item or self._current_item_buffer is None:
+            self._current_item = item
+            self._load_item_buffer(item)
+
+        local_pos = self._position - item.start
 
         assert self._current_item_buffer is not None
         self._current_item_buffer.seek(local_pos)
