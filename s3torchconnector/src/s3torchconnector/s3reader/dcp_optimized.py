@@ -1,11 +1,11 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-import io
+import bisect
 import logging
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Union, Iterator, Dict, cast
-from io import SEEK_SET, SEEK_CUR
+from io import SEEK_SET, SEEK_CUR, SEEK_END
 
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
@@ -33,6 +33,134 @@ class RangeGroup:
     start: int
     end: int
     item_ranges: List[ItemRange]
+
+
+# TODO: extend buffer for use in other S3Reader implementations after extensive testing
+class _ItemViewBuffer:
+    """
+    A tiny, zero-copy, read-only buffer built from multiple memoryview segments.
+    Replaces io.BytesIO which involved extra copies for creation and buffer growth.
+    """
+
+    __slots__ = ("_segments", "_offsets", "_lengths", "_size", "_pos", "_closed")
+
+    def __init__(self) -> None:
+        self._segments: List[memoryview] = []  # memoryview segments
+        self._offsets: List[int] = []  # start offset (within the item) of each segment
+        self._lengths: List[int] = []  # length of each segment
+        self._size: int = 0  # total item length (sum of _lengths)
+        self._pos: int = 0  # current read position within the item
+        self._closed: bool = False
+
+    def append_view(self, view: memoryview) -> None:
+        """Append a memoryview segment (ignored if empty)."""
+        # assert so it disappears with -O
+        assert not self._closed, "Buffer is closed"
+
+        seg_len = len(view)
+        if seg_len == 0:
+            return
+        self._segments.append(view)
+        self._offsets.append(self._size)
+        self._lengths.append(seg_len)
+        self._size += seg_len
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            self._segments.clear()
+            self._offsets.clear()
+            self._lengths.clear()
+            self._size = 0
+            self._pos = 0
+
+    def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
+        assert isinstance(offset, int), f"integer expected, got {type(offset)!r}"
+
+        if whence == SEEK_SET:
+            new_pos = offset
+        elif whence == SEEK_CUR:
+            new_pos = self._pos + offset
+        elif whence == SEEK_END:
+            new_pos = self._size + offset
+        else:
+            raise ValueError(
+                "Seek must be passed io SEEK_CUR, SEEK_SET, or SEEK_END integers"
+            )
+
+        assert new_pos >= 0, f"negative seek value {new_pos}"
+
+        # Seeking past EOF is allowed.
+        self._pos = new_pos
+        return self._pos
+
+    def tell(self) -> int:
+        """Return the current pos position (like BytesIO.tell)."""
+        return self._pos
+
+    def read(self, size: Optional[int] = None) -> bytes:
+        assert size is not None, "Size cannot be None; full read is not supported"
+        assert size >= 0, "Size cannot be negative; full read is not supported"
+
+        if size == 0:
+            return b""
+        remaining = max(0, self._size - self._pos)
+        nreq = min(size, remaining)
+        if nreq == 0:
+            return b""
+        out = bytearray(nreq)
+        n = self.readinto(out)
+
+        if n == size:
+            return bytes(out)  # TODO: eliminating bytes() conversion can save ~3% time?
+        else:
+            return memoryview(out)[:n].tobytes()
+
+    def readinto(self, buf) -> int:
+        # TODO: Check if we really need to wrap with memoryview
+        dest = buf if isinstance(buf, memoryview) else memoryview(buf)
+        assert not dest.readonly, "writable buffer required"
+
+        dest_len = len(dest)
+        size = self._size
+        pos = self._pos
+
+        if dest_len == 0 or pos >= size:
+            return 0
+
+        # Cache lists to avoid repeated calls
+        segments = self._segments
+        offsets = self._offsets
+        lengths = self._lengths
+
+        # Starting segment idx: last i where _offsets[i] <= _pos
+        seg_idx = bisect.bisect_right(offsets, pos) - 1
+        if seg_idx < 0:
+            seg_idx = 0
+
+        written = 0
+        bytes_to_read = min(dest_len, size - pos)
+
+        while written < bytes_to_read:
+            seg_start = offsets[seg_idx]
+            seg_len = lengths[seg_idx]
+            seg = segments[seg_idx]
+
+            offset_in_seg = pos - seg_start
+            available_in_seg = seg_len - offset_in_seg
+            bytes_left_to_read = bytes_to_read - written
+
+            copy_size = min(bytes_left_to_read, available_in_seg)
+            dest[written : written + copy_size] = seg[
+                offset_in_seg : offset_in_seg + copy_size
+            ]
+
+            written += copy_size
+            pos += copy_size
+            seg_idx += 1
+
+        self._pos += written
+        return written
 
 
 class DCPOptimizedS3Reader(S3Reader):
@@ -82,12 +210,12 @@ class DCPOptimizedS3Reader(S3Reader):
         # Stream state
         self._stream: Optional[GetObjectStream] = None
         self._stream_pos: int = -1  # position at head of stream - dummy int
-        self._leftover: bytes = b""
+        self._leftover: Optional[memoryview] = None
 
         # Item buffer state
         self._item_iter: Iterator[ItemRange] = iter(self._item_ranges)
         self._current_item: ItemRange = next(self._item_iter)
-        self._current_item_buffer: Optional[io.BytesIO] = None
+        self._current_item_buffer: Optional[_ItemViewBuffer] = None
 
         self._position: int = 0
 
@@ -173,67 +301,73 @@ class DCPOptimizedS3Reader(S3Reader):
         group = self._start_to_group[item.start]
         self._stream = self._get_stream(group.start, group.end)
         self._stream_pos = group.start
-        self._leftover = b""
+        self._leftover = None
         return self._stream
 
-    def _get_item_buffer(self, item: ItemRange) -> io.BytesIO:
-        """Load entire item into BytesIO buffer from existing stream."""
+    def _get_item_buffer(self, item: ItemRange) -> _ItemViewBuffer:
+        """Load entire item into a memoryview-segment buffer from existing stream."""
 
+        buffer = _ItemViewBuffer()
         if item.start >= item.end:
-            return io.BytesIO(b"")
+            return buffer
 
         # Get stream from the right RangeGroup for start_pos
         stream = self._get_stream_for_item(item)
-
         pos = self._stream_pos  # local copy
         leftover = self._leftover  # local copy
-
         bytes_left = item.end - item.start
-        chunks: List[bytes] = []
 
         # 1. Read from leftover bytes if available and needed
-        len_leftover = len(leftover)
-        if leftover and pos <= item.start < pos + len_leftover:
-            # Target inside leftover: slice it
-            start = item.start - pos
-            available_bytes = len_leftover - start
-            size = min(bytes_left, available_bytes)
-            end = start + size
+        if leftover:
+            lv_len = len(leftover)
+            lv_end = pos + lv_len
 
-            chunks.append(leftover[start:end])
-            bytes_left -= size
-            pos = item.start + size
-            leftover = leftover[end:] if end < len_leftover else b""
-        elif leftover and item.start >= pos + len_leftover:
-            # Target beyond leftover: advance pos
-            pos += len_leftover
-            leftover = b""
+            if pos <= item.start < lv_end:
+                # Item starts within leftover data
+                start = item.start - pos
+                available_bytes = lv_len - start
+                size = min(bytes_left, available_bytes)
+                end = start + size
+
+                # Extract needed portion
+                buffer.append_view(leftover[start:end])
+                bytes_left -= size
+                pos = item.start + size
+                leftover = leftover[end:] if end < lv_len else None
+            elif item.start >= lv_end:
+                # Item beyond leftover: advance pos to end of leftover
+                pos += lv_len
+                leftover = None
 
         # 2. Read more data from S3 stream
         while bytes_left > 0:
             try:
-                chunk = next(stream)
+                chunk = memoryview(next(stream))
             except StopIteration:
                 break
 
             chunk_len = len(chunk)
 
+            # TODO: separate skip part and take part for clearer logic
             # Skip past unwanted data (due to coalescing)
             if pos < item.start:
-                skip_bytes = min(item.start - pos, len(chunk))
+                skip_bytes = min(item.start - pos, chunk_len)
                 chunk = chunk[skip_bytes:]
                 pos += skip_bytes
                 chunk_len -= skip_bytes
+                if chunk_len == 0:
+                    continue
 
             # Take needed part of chunk
             if chunk_len <= bytes_left:
                 # Entire chunk needed - skip slicing
-                chunks.append(chunk)
+                buffer.append_view(chunk)
                 bytes_left -= chunk_len
                 pos += chunk_len
+                leftover = None
             else:
                 # Only part of chunk needed
-                chunks.append(chunk[:bytes_left])
+                buffer.append_view(chunk[:bytes_left])
                 leftover = chunk[bytes_left:]
                 pos += bytes_left
                 bytes_left = 0
@@ -241,9 +375,7 @@ class DCPOptimizedS3Reader(S3Reader):
 
         self._stream_pos = pos
         self._leftover = leftover
-        # TODO: check BytesIO.write() vs b"".join() + BytesIO(data)
-        data = b"".join(chunks)
-        return io.BytesIO(data)
+        return buffer
 
     def read(self, size: Optional[int] = None) -> bytes:
         """
@@ -273,12 +405,14 @@ class DCPOptimizedS3Reader(S3Reader):
         if size == 0:
             return b""
 
+        # TODO: Move _find_item_for_position and _get_item_buffer to seek()
         item = self._find_item_for_position(self._position)
 
         if item is not self._current_item or self._current_item_buffer is None:
             self._current_item = item
             self._current_item_buffer = self._get_item_buffer(item)
 
+        # TODO: Can handle offset in _ItemViewBuffer instead
         local_pos = self._position - item.start
 
         self._current_item_buffer.seek(local_pos)
@@ -302,18 +436,6 @@ class DCPOptimizedS3Reader(S3Reader):
             TypeError: If buf is not writable.
             S3Exception: An error occurred accessing S3.
         """
-
-        # TODO: remove view = memoryview(buf) for performance or simpler checks
-        try:
-            view = memoryview(buf)
-            if view.readonly:
-                raise TypeError(
-                    f"argument must be a writable bytes-like object, not {type(buf).__name__}"
-                )
-        except TypeError:
-            raise TypeError(
-                f"argument must be a writable bytes-like object, not {type(buf).__name__}"
-            )
 
         item = self._find_item_for_position(self._position)
 
@@ -373,7 +495,7 @@ class DCPOptimizedS3Reader(S3Reader):
         if not self._closed:
             self._closed = True
             self._stream = None
-            self._leftover = b""
+            self._leftover = None
             if self._current_item_buffer:
                 self._current_item_buffer.close()
                 self._current_item_buffer = None
