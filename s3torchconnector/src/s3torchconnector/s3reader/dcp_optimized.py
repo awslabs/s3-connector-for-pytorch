@@ -202,7 +202,9 @@ class DCPOptimizedS3Reader(S3Reader):
         # Coalesce ranges into range groups
         # TODO: add test/check that unsorted ranges would be detected and results in error
         self._item_ranges: List[ItemRange] = item_ranges
-        self._start_to_group: Dict[int, RangeGroup] = {}
+        self._group_start_to_group: Dict[int, RangeGroup] = (
+            {}
+        )  # Group lookup using group start offsets
         self._range_groups: List[RangeGroup] = self._validate_and_coalesce_ranges(
             self._item_ranges, self._max_gap_size
         )
@@ -261,11 +263,11 @@ class DCPOptimizedS3Reader(S3Reader):
             else:
                 group = RangeGroup(items[0].start, items[-1].end, items)
                 groups.append(group)
-                self._start_to_group[items[0].start] = group
+                self._group_start_to_group[items[0].start] = group
                 items = [r]
 
         final_group = RangeGroup(items[0].start, items[-1].end, items)
-        self._start_to_group[items[0].start] = final_group
+        self._group_start_to_group[items[0].start] = final_group
         groups.append(final_group)
         return groups
 
@@ -294,11 +296,11 @@ class DCPOptimizedS3Reader(S3Reader):
         """Find which RangeGroup contains the given position."""
 
         # Assuming stream exists if item is not at the start of any groups
-        if not item.start in self._start_to_group:
-            # 1st item always in _start_to_group - cast to reduce assert calls
+        if not item.start in self._group_start_to_group:
+            # 1st item always in _group_start_to_group - cast to reduce assert calls
             return cast(GetObjectStream, self._stream)
 
-        group = self._start_to_group[item.start]
+        group = self._group_start_to_group[item.start]
         self._stream = self._get_stream(group.start, group.end)
         self._stream_pos = group.start
         self._leftover = None
@@ -405,7 +407,6 @@ class DCPOptimizedS3Reader(S3Reader):
         if size == 0:
             return b""
 
-        # TODO: Move _find_item_for_position and _get_item_buffer to seek()
         item = self._find_item_for_position(self._position)
 
         if item is not self._current_item or self._current_item_buffer is None:
