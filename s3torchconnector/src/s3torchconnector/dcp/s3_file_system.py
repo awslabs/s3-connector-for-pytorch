@@ -1,15 +1,17 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import dataclasses
 import io
 import logging
 import os
 import urllib.parse
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, Union, Optional
-from typing import List
+from typing import Generator, Union, Optional, List
 
+import torch
 from s3torchconnectorclient._mountpoint_s3_client import S3Exception
 from tenacity import (
     retry,
@@ -24,11 +26,16 @@ from torch.distributed.checkpoint.filesystem import (
     FileSystemWriter,
     FileSystemBase,
 )
-import torch
+from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
+
 
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
-from ..s3reader import S3ReaderConstructor, S3ReaderConstructorProtocol
+from ..s3reader import (
+    S3ReaderConstructor,
+    S3ReaderConstructorProtocol,
+    DCPS3ReaderConstructorProtocol,
+)
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy
 from .._user_agent import UserAgent
@@ -252,11 +259,6 @@ class S3FileSystem(FileSystemBase):
         return "/".join(parts)
 
 
-from torch.distributed.checkpoint.planner import SavePlan, LoadPlan
-import dataclasses
-from dataclasses import dataclass
-
-
 @dataclass
 class StorageMetadata:
     """Metadata for S3 storage prefix."""
@@ -324,7 +326,9 @@ class S3StorageReader(FileSystemReader):
         region: str,
         path: Union[str, os.PathLike],
         s3client_config: Optional[S3ClientConfig] = None,
-        reader_constructor: Optional[S3ReaderConstructorProtocol] = None,
+        reader_constructor: Optional[
+            Union[S3ReaderConstructorProtocol, DCPS3ReaderConstructorProtocol]
+        ] = None,
     ) -> None:
         """
         Initialize an S3 reader for distributed checkpointing.
@@ -337,7 +341,12 @@ class S3StorageReader(FileSystemReader):
                 e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
         """
         super().__init__(path)
-        self.fs = S3FileSystem(region, s3client_config=s3client_config, reader_constructor=reader_constructor)  # type: ignore
+        self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
+        self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment]
+            region,
+            s3client_config=s3client_config,
+            reader_constructor=self._reader_constructor,
+        )
         self.path = self.fs.init_path(path)
         self.sync_files = False
 
@@ -357,6 +366,13 @@ class S3StorageReader(FileSystemReader):
         """
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
+
+        # Inject ranges if using DCP optimized reader constructor
+        if isinstance(self._reader_constructor, DCPS3ReaderConstructorProtocol):
+            self._reader_constructor.set_item_ranges_by_file(
+                plan.items, self.storage_data
+            )
+
         return plan
 
 

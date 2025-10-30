@@ -10,7 +10,7 @@ import torch.distributed.checkpoint as dcp
 
 from s3torchconnector import S3ReaderConstructor
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
-from s3torchconnector.s3reader.sequential import SequentialS3Reader
+from s3torchconnector.s3reader import SequentialS3Reader, DCPOptimizedS3Reader
 
 
 SIMPLE_MODEL = torch.nn.Sequential(
@@ -39,7 +39,16 @@ LARGER_MODEL = NeuralNetwork()
 
 
 @pytest.mark.parametrize("model", [SIMPLE_MODEL, LARGER_MODEL])
-def test_dcp_load_reads_tensors_in_sequential_order(checkpoint_directory, model):
+@pytest.mark.parametrize(
+    "reader_class,reader_constructor",
+    [
+        (SequentialS3Reader, S3ReaderConstructor.sequential()),
+        (DCPOptimizedS3Reader, S3ReaderConstructor.dcp_optimized()),
+    ],
+)
+def test_dcp_load_reads_tensors_in_sequential_order(
+    checkpoint_directory, model, reader_class, reader_constructor
+):
     """
     Test that prepare_local_plan allows dcp.load() to read items in offset order.
 
@@ -61,21 +70,17 @@ def test_dcp_load_reads_tensors_in_sequential_order(checkpoint_directory, model)
     dcp.save(state_dict, storage_writer=storage_writer)
 
     read_positions = []
-
-    original_read = SequentialS3Reader.read
+    original_read = reader_class.read
 
     def track_reads(self, size=None):
         if not self.key.endswith(".metadata"):
             read_positions.append(self._position)
         return original_read(self, size)
 
-    # Load with position tracking on read() (called at the start of each torch.load())
-    with patch.object(SequentialS3Reader, "read", track_reads):
+    with patch.object(reader_class, "read", track_reads):
         loaded_state_dict = {k: torch.empty_like(v) for k, v in state_dict.items()}
         storage_reader = S3StorageReader(
-            region=region,
-            path=s3_uri,
-            reader_constructor=S3ReaderConstructor.sequential(),
+            region=region, path=s3_uri, reader_constructor=reader_constructor
         )
         dcp.load(loaded_state_dict, storage_reader=storage_reader)
 

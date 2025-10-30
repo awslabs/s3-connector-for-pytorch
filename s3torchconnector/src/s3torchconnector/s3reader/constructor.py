@@ -1,12 +1,72 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import logging
 from functools import partial
-from typing import Optional
+from typing import TYPE_CHECKING, Optional, List, Dict, Any
+from collections import defaultdict
 
-from .protocol import S3ReaderConstructorProtocol
+from .s3reader import S3Reader
+from .protocol import (
+    S3ReaderConstructorProtocol,
+    DCPS3ReaderConstructorProtocol,
+)
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
+from .dcp_optimized import DCPOptimizedS3Reader, ItemRange, DEFAULT_MAX_GAP_SIZE
+
+if TYPE_CHECKING:
+    from torch.distributed.checkpoint.planner import ReadItem
+    from torch.distributed.checkpoint.metadata import MetadataIndex
+    from torch.distributed.checkpoint.filesystem import _StorageInfo
+
+log = logging.getLogger(__name__)
+
+
+class DCPOptimizedConstructor:
+    def __init__(self, max_gap_size: int = DEFAULT_MAX_GAP_SIZE) -> None:
+
+        if max_gap_size < 0:
+            raise ValueError("max_gap_size must be non-negative")
+
+        self._item_ranges_by_file: Dict[str, List[ItemRange]] = {}
+        self._max_gap_size = max_gap_size
+
+    def set_item_ranges_by_file(
+        self,
+        plan_items: "List[ReadItem]",
+        storage_data: "Dict[MetadataIndex, _StorageInfo]",
+    ) -> None:
+
+        # TODO: Check if we want to return DCPOptimizedConstructor for immutability here instead
+        if not plan_items:
+            return  # Allow lack of plan_items, for SequentialS3Reader fallbacks
+
+        self._item_ranges_by_file = defaultdict(list)
+        for read_item in plan_items:
+            item_md = storage_data[read_item.storage_index]
+            self._item_ranges_by_file[item_md.relative_path].append(
+                ItemRange(item_md.offset, item_md.offset + item_md.length)
+            )
+
+    def __call__(self, bucket: str, key: str, get_object_info, get_stream) -> S3Reader:
+        for relative_path in self._item_ranges_by_file.keys():
+            if key.endswith(relative_path):
+                return DCPOptimizedS3Reader(
+                    bucket,
+                    key,
+                    item_ranges=self._item_ranges_by_file[relative_path],
+                    get_object_info=get_object_info,
+                    get_stream=get_stream,
+                    max_gap_size=self._max_gap_size,
+                )
+
+        # Fallback if file_ranges unavailable (e.g. when reading .metadata)
+        # TODO: Warn users for fallbacks for non-'.metadata' files?
+        log.debug(
+            f"DCPOptimizedConstructor: No ranges found for {key}, falling back to SequentialS3Reader"
+        )
+        return SequentialS3Reader(bucket, key, get_object_info, get_stream)
 
 
 class S3ReaderConstructor:
@@ -79,6 +139,14 @@ class S3ReaderConstructor:
         return partial(RangedS3Reader, buffer_size=buffer_size)
 
     @staticmethod
+    def dcp_optimized(
+        max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
+    ) -> DCPS3ReaderConstructorProtocol:
+        """Creates a DCPOptimizedConstructor that uses DCPOptimizedS3Reader when ranges are available"""
+        # TODO update docstring with guide and requirements to use this reader for DCP
+        return DCPOptimizedConstructor(max_gap_size=max_gap_size)
+
+    @staticmethod
     def default() -> S3ReaderConstructorProtocol:
         """Creates default reader constructor (sequential)
 
@@ -97,10 +165,11 @@ class S3ReaderConstructor:
                 S3ReaderConstructor.default()
             )
 
-        if not isinstance(constructor, partial):
+        if isinstance(constructor, DCPOptimizedConstructor):
+            return "dcp_optimized"
+        elif not isinstance(constructor, partial):
             return "unknown"
-
-        if constructor.func == RangedS3Reader:
+        elif constructor.func == RangedS3Reader:
             return "range_based"
         elif constructor.func == SequentialS3Reader:
             return "sequential"
