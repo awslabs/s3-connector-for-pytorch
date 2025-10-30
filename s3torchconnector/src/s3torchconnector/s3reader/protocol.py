@@ -12,6 +12,7 @@ from typing import (
     runtime_checkable,
 )
 from .s3reader import S3Reader
+from .dcp_optimized import ItemRange
 from s3torchconnectorclient._mountpoint_s3_client import (
     ObjectInfo,
     GetObjectStream,
@@ -43,6 +44,8 @@ class S3ReaderConstructorProtocol(Protocol):
 
 @runtime_checkable
 class DCPS3ReaderConstructorProtocol(Protocol):
+    _item_ranges_by_file: Dict[str, List[ItemRange]]
+
     def __call__(
         self,
         bucket: str,
