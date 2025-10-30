@@ -33,10 +33,8 @@ from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from ..s3reader import (
     S3ReaderConstructor,
-    DCPOptimizedConstructor,
     S3ReaderConstructorProtocol,
     DCPS3ReaderConstructorProtocol,
-    ItemRange,
 )
 from .. import S3ClientConfig
 from .s3_prefix_strategy import S3PrefixStrategyBase, DefaultPrefixStrategy

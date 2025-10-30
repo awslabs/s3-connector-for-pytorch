@@ -19,7 +19,6 @@ log = logging.getLogger(__name__)
 DEFAULT_MAX_GAP_SIZE = 32 * 1024 * 1024  # TODO tune this default
 
 
-# TODO: check if we can reuse dcp planner ReadItem instead
 @dataclass
 class ItemRange:
     """Byte range for a ReadItem; Inclusive start, exclusive end"""
@@ -69,10 +68,6 @@ class _ItemViewBuffer:
         if not self._closed:
             self._closed = True
             self._segments.clear()
-            self._offsets.clear()
-            self._lengths.clear()
-            self._size = 0
-            self._pos = 0
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
         assert isinstance(offset, int), f"integer expected, got {type(offset)!r}"
@@ -104,17 +99,11 @@ class _ItemViewBuffer:
 
         if size == 0:
             return b""
-        remaining = max(0, self._size - self._pos)
-        nreq = min(size, remaining)
-        if nreq == 0:
-            return b""
-        out = bytearray(nreq)
-        n = self.readinto(out)
 
-        if n == size:
-            return bytes(out)  # TODO: eliminating bytes() conversion can save ~3% time?
-        else:
-            return memoryview(out)[:n].tobytes()
+        # Pass implementation to readinto()
+        out = bytearray(size)
+        n = self.readinto(out)
+        return bytes(out) if n == size else memoryview(out)[:n].tobytes()
 
     def readinto(self, buf) -> int:
         # TODO: Check if we really need to wrap with memoryview
@@ -128,7 +117,7 @@ class _ItemViewBuffer:
         if dest_len == 0 or pos >= size:
             return 0
 
-        # Cache lists to avoid repeated calls
+        # Cache to avoid repeated attribute calls
         segments = self._segments
         offsets = self._offsets
         lengths = self._lengths
@@ -141,16 +130,20 @@ class _ItemViewBuffer:
         written = 0
         bytes_to_read = min(dest_len, size - pos)
 
+        # Copy from segments to dest
         while written < bytes_to_read:
             seg_start = offsets[seg_idx]
             seg_len = lengths[seg_idx]
             seg = segments[seg_idx]
 
+            # Account for first chunk when pos > seg_start
             offset_in_seg = pos - seg_start
+
+            # Account for last chunk when bytes_to_read < seg_len
             available_in_seg = seg_len - offset_in_seg
             bytes_left_to_read = bytes_to_read - written
-
             copy_size = min(bytes_left_to_read, available_in_seg)
+
             dest[written : written + copy_size] = seg[
                 offset_in_seg : offset_in_seg + copy_size
             ]
