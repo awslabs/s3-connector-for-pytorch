@@ -1,7 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-import os
+import logging
 from functools import partial
 from typing import TYPE_CHECKING, Optional, List, Dict, Any
 from collections import defaultdict
@@ -20,9 +20,15 @@ if TYPE_CHECKING:
     from torch.distributed.checkpoint.metadata import MetadataIndex
     from torch.distributed.checkpoint.filesystem import _StorageInfo
 
+log = logging.getLogger(__name__)
+
 
 class DCPOptimizedConstructor:
     def __init__(self, max_gap_size: int = DEFAULT_MAX_GAP_SIZE) -> None:
+
+        if max_gap_size < 0:
+            raise ValueError("max_gap_size must be non-negative")
+
         self._item_ranges_by_file: Dict[str, List[ItemRange]] = {}
         self._max_gap_size = max_gap_size
 
@@ -31,30 +37,35 @@ class DCPOptimizedConstructor:
         plan_items: "List[ReadItem]",
         storage_data: "Dict[MetadataIndex, _StorageInfo]",
     ) -> None:
+
         # TODO: Check if we want to return DCPOptimizedConstructor for immutability here instead
         if not plan_items:
-            return
+            return  # Allow lack of plan_items, for SequentialS3Reader fallbacks
+
         self._item_ranges_by_file = defaultdict(list)
         for read_item in plan_items:
             item_md = storage_data[read_item.storage_index]
-            # TODO: write test to check using filename works with S3PrefixStrategy
-            filename = os.path.basename(item_md.relative_path)
-            self._item_ranges_by_file[filename].append(
+            self._item_ranges_by_file[item_md.relative_path].append(
                 ItemRange(item_md.offset, item_md.offset + item_md.length)
             )
 
     def __call__(self, bucket: str, key: str, get_object_info, get_stream) -> S3Reader:
-        filename = os.path.basename(key)
-        if filename in self._item_ranges_by_file:
-            return DCPOptimizedS3Reader(
-                bucket,
-                key,
-                item_ranges=self._item_ranges_by_file[filename],
-                get_object_info=get_object_info,
-                get_stream=get_stream,
-                max_gap_size=self._max_gap_size,
-            )
+        for relative_path in self._item_ranges_by_file.keys():
+            if key.endswith(relative_path):
+                return DCPOptimizedS3Reader(
+                    bucket,
+                    key,
+                    item_ranges=self._item_ranges_by_file[relative_path],
+                    get_object_info=get_object_info,
+                    get_stream=get_stream,
+                    max_gap_size=self._max_gap_size,
+                )
+
         # Fallback if file_ranges unavailable (e.g. when reading .metadata)
+        # TODO: Warn users for fallbacks for non-'.metadata' files?
+        log.debug(
+            f"DCPOptimizedConstructor: No ranges found for {key}, falling back to SequentialS3Reader"
+        )
         return SequentialS3Reader(bucket, key, get_object_info, get_stream)
 
 
