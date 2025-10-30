@@ -97,6 +97,12 @@ class _ItemViewBuffer:
         assert size is not None, "Size cannot be None; full read is not supported"
         assert size >= 0, "Size cannot be negative; full read is not supported"
 
+        # Fast path for read(4) at pos=0 (Optimizes pytorch/torch/serialization.py _is_zipfile())
+        if size == 4 and self._pos == 0 and self._lengths and self._lengths[0] >= 4:
+            self._pos = 4
+            # TODO: eliminating bytes() conversion can save ~3% time? Requires interface changes.
+            return bytes(self._segments[0][:4])
+
         if size == 0:
             return b""
 
