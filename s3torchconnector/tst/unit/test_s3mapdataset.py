@@ -19,8 +19,8 @@ from .test_s3dataset_common import (
     _create_mock_client_with_dummy_objects,
     S3_PREFIX,
     TEST_ENDPOINT,
-    READER_TYPE_STRING_TO_CLASS,
 )
+from ..conftest import READER_TYPE_STRING_TO_CLASS
 
 
 def test_dataset_creation_from_prefix_with_region(caplog):
