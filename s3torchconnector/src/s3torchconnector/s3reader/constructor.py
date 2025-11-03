@@ -3,7 +3,7 @@
 
 import logging
 from functools import partial
-from typing import TYPE_CHECKING, Optional, List, Dict, Any
+from typing import TYPE_CHECKING, Optional, List, Dict, Union
 from collections import defaultdict
 
 from .s3reader import S3Reader
@@ -24,13 +24,13 @@ log = logging.getLogger(__name__)
 
 
 class DCPOptimizedConstructor:
-    def __init__(self, max_gap_size: int = DEFAULT_MAX_GAP_SIZE) -> None:
+    def __init__(self, max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE) -> None:
 
         if max_gap_size < 0:
             raise ValueError("max_gap_size must be non-negative")
 
         self._item_ranges_by_file: Dict[str, List[ItemRange]] = {}
-        self._max_gap_size = max_gap_size
+        self._max_gap_size: Union[int, float] = max_gap_size
 
     def set_item_ranges_by_file(
         self,
@@ -140,9 +140,16 @@ class S3ReaderConstructor:
 
     @staticmethod
     def dcp_optimized(
-        max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
+        max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE,
     ) -> DCPS3ReaderConstructorProtocol:
-        """Creates a DCPOptimizedConstructor that uses DCPOptimizedS3Reader when ranges are available"""
+        """
+        Creates a DCPOptimizedConstructor that uses DCPOptimizedS3Reader when ranges are available
+
+        Args:
+        max_gap_size: Maximum gap size in bytes to coalesce ranges into multiple ranged-streams.
+                    Use float("inf") to coalesce all ranges regardless of gaps.
+                    Use 0 to disable coalescing.
+        """
         # TODO update docstring with guide and requirements to use this reader for DCP
         return DCPOptimizedConstructor(max_gap_size=max_gap_size)
 

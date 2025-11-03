@@ -17,6 +17,9 @@ from .s3reader import S3Reader
 log = logging.getLogger(__name__)
 
 DEFAULT_MAX_GAP_SIZE = 32 * 1024 * 1024  # TODO tune this default
+FIND_ITEM_ERROR_PREFIX = (
+    "DCPOptimizedS3Reader only supports sequentially accessing provided ranges: "
+)
 
 
 @dataclass
@@ -53,7 +56,6 @@ class _ItemViewBuffer:
 
     def append_view(self, view: memoryview) -> None:
         """Append a memoryview segment (ignored if empty)."""
-        # assert so it disappears with -O
         assert not self._closed, "Buffer is closed"
 
         seg_len = len(view)
@@ -112,7 +114,6 @@ class _ItemViewBuffer:
         return bytes(out) if n == size else memoryview(out)[:n].tobytes()
 
     def readinto(self, buf) -> int:
-        # TODO: Check if we really need to wrap with memoryview
         dest = buf if isinstance(buf, memoryview) else memoryview(buf)
         assert not dest.readonly, "writable buffer required"
 
@@ -184,8 +185,21 @@ class DCPOptimizedS3Reader(S3Reader):
         item_ranges: List[ItemRange],
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
-        max_gap_size: int = DEFAULT_MAX_GAP_SIZE,
+        max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE,
     ):
+        if not bucket:
+            raise ValueError("Bucket should be specified")
+        if not key:
+            raise ValueError("Key should be specified")
+        if not item_ranges:
+            raise ValueError("item_ranges must be a non-empty List[ItemRange] object")
+        if not isinstance(max_gap_size, (int, float)):
+            raise TypeError(
+                f"max_gap_size must be int or float, got {type(max_gap_size).__name__}"
+            )
+        if max_gap_size < 0:
+            raise ValueError("max_gap_size must be non-negative")
+
         self._bucket = bucket
         self._key = key
         self._get_object_info = get_object_info
@@ -193,17 +207,17 @@ class DCPOptimizedS3Reader(S3Reader):
         self._max_gap_size = max_gap_size
         self._closed = False
 
-        if not item_ranges:
-            raise ValueError("ranges must be non-empty List[ItemRange] object")
-        if max_gap_size < 0:
-            raise ValueError("max_gap_size must be non-negative")
+        # Filter zero-length ranges
+        self._item_ranges: List[ItemRange] = [
+            r for r in item_ranges if r.end != r.start
+        ]
+        if not self._item_ranges:
+            raise ValueError("No non-empty ranges to read (all ranges were length 0)")
 
         # Coalesce ranges into range groups
-        # TODO: add test/check that unsorted ranges would be detected and results in error
-        self._item_ranges: List[ItemRange] = item_ranges
         self._group_start_to_group: Dict[int, RangeGroup] = (
             {}
-        )  # Group lookup using group start offsets
+        )  # Group lookup using group start offset. for first item in each grou; populated below
         self._range_groups: List[RangeGroup] = self._validate_and_coalesce_ranges(
             self._item_ranges, self._max_gap_size
         )
@@ -237,25 +251,35 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._closed
 
     def _validate_and_coalesce_ranges(
-        self, ranges: List[ItemRange], max_gap_size: int
+        self,
+        ranges: List[ItemRange],
+        max_gap_size: Union[int, float],
     ) -> List[RangeGroup]:
-        """Coalescing nearby byte ranges within max_gap_size."""
+        """
+        This method:
+        1. Validates ranges are valid, sorted, and non-overlapping.
+        2. Coalesces nearby ItemRanges within max_gap_size into RangeGroups.
+        """
         if not ranges:
             return []
 
         groups: List[RangeGroup] = []
         items: List[ItemRange] = [ranges[0]]
 
-        # TODO: Could this validation be done in constructor.py instead?
         if ranges[0].start < 0 or ranges[0].end < ranges[0].start:
             raise ValueError(f"Invalid range: {ranges[0].start}-{ranges[0].end}")
         for r in ranges[1:]:
-            if r.end < r.start:  # Allow empty range
+            if r.end <= r.start:  # Empty ranges filtered out in __init__
                 raise ValueError(f"Invalid range: {r.start}-{r.end}")
             if r.start < items[-1].end:
-                raise ValueError(
-                    f"Overlapping ranges: {items[-1].start}-{items[-1].end} and {r.start}-{r.end}"
-                )
+                if r.start < items[-1].start:
+                    raise ValueError(
+                        f"Unsorted ranges: {items[-1].start}-{items[-1].end} and {r.start}-{r.end}"
+                    )
+                else:
+                    raise ValueError(
+                        f"Overlapping ranges: {items[-1].start}-{items[-1].end} and {r.start}-{r.end}"
+                    )
             # Coalesce or create new group
             if r.start - items[-1].end <= max_gap_size:
                 items.append(r)
@@ -271,46 +295,65 @@ class DCPOptimizedS3Reader(S3Reader):
         return groups
 
     def _find_item_for_position(self, pos: int) -> ItemRange:
-        """Find which item contains the given position with fast path optimization."""
+        """Find which item contains the given position with validations."""
 
-        # Check current
-        if self._current_item.start <= pos < self._current_item.end:
+        if pos < self._current_item.start:
+            raise ValueError(
+                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} before current range "
+                f"{self._current_item.start}-{self._current_item.end}"
+            )
+
+        # Return item if position still in current item
+        if pos < self._current_item.end:
             return self._current_item
 
-        # Try next item
+        # Iterate through remaining items
+        prev_item = self._current_item
         try:
-            next_item = next(self._item_iter)
-            if next_item.start <= pos < next_item.end:
-                return next_item
-        except StopIteration:
-            raise ValueError(f"Position {pos} beyond all ranges")
+            item = next(self._item_iter)
 
-        # Error detected - construct and raise human-readable error message
-        curr_item = self._current_item
-        direction = "before" if pos < curr_item.start else "beyond"
-        range_info = f"current range {curr_item.start}-{curr_item.end}"
-        raise ValueError(f"Position {pos} {direction} {range_info}")
+            if pos < item.start:
+                raise ValueError(
+                    f"{FIND_ITEM_ERROR_PREFIX}Position {pos} in gap between ranges "
+                    f"{prev_item.start}-{prev_item.end} and {item.start}-{item.end}"
+                )
+            # Return item if position is in new item
+            if pos < item.end:
+                return item
+            else:
+                raise ValueError(
+                    f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond next range "
+                    f"{item.start}-{item.end}"
+                )
+        except StopIteration:
+            raise ValueError(
+                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond last range "
+                f"{prev_item.start}-{prev_item.end}"
+            )
 
     def _get_stream_for_item(self, item: ItemRange) -> GetObjectStream:
         """Find which RangeGroup contains the given position."""
 
-        # Assuming stream exists if item is not at the start of any groups
-        if not item.start in self._group_start_to_group:
-            # 1st item always in _group_start_to_group - cast to reduce assert calls
-            return cast(GetObjectStream, self._stream)
+        # If item is the first item of a new group, create new stream
+        if item.start in self._group_start_to_group:
+            group = self._group_start_to_group[item.start]
+            self._stream = self._get_stream(group.start, group.end)
+            self._stream_pos = group.start
+            self._leftover = None
+            return self._stream
 
-        group = self._group_start_to_group[item.start]
-        self._stream = self._get_stream(group.start, group.end)
-        self._stream_pos = group.start
-        self._leftover = None
+        # Otherwise, we're still in same group - reuse stream created when reading 1st item
+        if self._stream is None:
+            raise ValueError(
+                f"{FIND_ITEM_ERROR_PREFIX}Attempted to read item {item.start}-{item.end} "
+                f"without starting at the first item of its range-group"
+            )
         return self._stream
 
     def _get_item_buffer(self, item: ItemRange) -> _ItemViewBuffer:
         """Load entire item into a memoryview-segment buffer from existing stream."""
 
         buffer = _ItemViewBuffer()
-        if item.start >= item.end:
-            return buffer
 
         # Get stream from the right RangeGroup for start_pos
         stream = self._get_stream_for_item(item)
@@ -392,17 +435,16 @@ class DCPOptimizedS3Reader(S3Reader):
             bytes: Bytes read from specified range.
 
         Raises:
-            NotImplementedError: If size is None or negative (full file reads not supported).
             TypeError: If size is not an integer.
-            ValueError: If position is outside valid DCP ranges.
+            ValueError: If position is outside valid DCP ranges, and if size is None or negative (full file reads not supported).
             S3Exception: An error occurred accessing S3.
         """
-        if size is None or size < 0:
-            raise NotImplementedError(
-                "Size cannot be negative, full read is not supported."
-            )
+        if size is None:
+            raise ValueError("Size cannot be None; full read not supported")
         if not isinstance(size, int):
             raise TypeError(f"argument should be integer or None, not {type(size)!r}")
+        if size < 0:
+            raise ValueError("Size cannot be negative; full read not supported")
         if size == 0:
             return b""
 
@@ -412,11 +454,10 @@ class DCPOptimizedS3Reader(S3Reader):
             self._current_item = item
             self._current_item_buffer = self._get_item_buffer(item)
 
-        # TODO: Can handle offset in _ItemViewBuffer instead
         local_pos = self._position - item.start
-
         self._current_item_buffer.seek(local_pos)
         data = self._current_item_buffer.read(size)
+
         self._position += len(data)
         return data
 
@@ -436,7 +477,6 @@ class DCPOptimizedS3Reader(S3Reader):
             TypeError: If buf is not writable.
             S3Exception: An error occurred accessing S3.
         """
-
         item = self._find_item_for_position(self._position)
 
         if item is not self._current_item or self._current_item_buffer is None:
@@ -444,9 +484,9 @@ class DCPOptimizedS3Reader(S3Reader):
             self._current_item_buffer = self._get_item_buffer(item)
 
         local_pos = self._position - item.start
-
         self._current_item_buffer.seek(local_pos)
         bytes_read = self._current_item_buffer.readinto(buf)
+
         self._position += bytes_read
         return bytes_read
 
@@ -477,7 +517,7 @@ class DCPOptimizedS3Reader(S3Reader):
         elif whence == SEEK_CUR:
             self._position += offset
         else:
-            raise ValueError("Seek must be passed io SEEK_CUR or SEEK_SET integers")
+            raise ValueError("whence must be SEEK_CUR or SEEK_SET integers")
 
         if self._position < 0:
             raise ValueError(f"negative seek value {self._position}")
