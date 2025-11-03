@@ -524,7 +524,7 @@ class TestStreamManagement:
             TEST_KEY,
             ranges,
             create_object_info_getter(test_data),
-            spy_get_stream,
+            spy_get_stream,  # type: ignore
             max_gap_size=10,
         )
 

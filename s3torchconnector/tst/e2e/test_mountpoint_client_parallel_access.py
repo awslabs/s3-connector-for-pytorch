@@ -5,8 +5,8 @@ import pytest
 from s3torchconnector._s3client import S3Client
 from s3torchconnectorclient._mountpoint_s3_client import MountpointS3Client
 
-from test_common import _get_fork_methods
-from conftest import getenv
+from .test_common import _get_fork_methods
+from .conftest import getenv
 
 NATIVE_S3_CLIENT = None
 
