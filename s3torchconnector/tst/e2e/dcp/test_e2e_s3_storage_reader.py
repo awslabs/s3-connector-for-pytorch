@@ -12,6 +12,8 @@ from s3torchconnector import S3ReaderConstructor
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector.s3reader import SequentialS3Reader, DCPOptimizedS3Reader
 
+from ...conftest import READER_TYPE_STRING_TO_CLASS
+
 SIMPLE_MODEL = torch.nn.Sequential(
     nn.Linear(5, 5),
     nn.Linear(20, 20),
@@ -38,15 +40,8 @@ LARGER_MODEL = NeuralNetwork()
 
 
 @pytest.mark.parametrize("model", [SIMPLE_MODEL, LARGER_MODEL])
-@pytest.mark.parametrize(
-    "reader_class,reader_constructor",
-    [
-        (SequentialS3Reader, S3ReaderConstructor.sequential()),
-        (DCPOptimizedS3Reader, S3ReaderConstructor.dcp_optimized()),
-    ],
-)
 def test_dcp_load_reads_tensors_in_sequential_order(
-    checkpoint_directory, model, reader_class, reader_constructor
+    dcp_reader_constructor, checkpoint_directory, model
 ):
     """
     Test that prepare_local_plan allows dcp.load() to read items in offset order.
@@ -68,6 +63,11 @@ def test_dcp_load_reads_tensors_in_sequential_order(
     storage_writer = S3StorageWriter(region=region, path=s3_uri, overwrite=True)
     dcp.save(state_dict, storage_writer=storage_writer)
 
+    reader_type_string = S3ReaderConstructor.get_reader_type_string(
+        dcp_reader_constructor
+    )
+    reader_class = READER_TYPE_STRING_TO_CLASS[reader_type_string]
+
     read_positions = []
     original_read = reader_class.read
 
@@ -79,7 +79,7 @@ def test_dcp_load_reads_tensors_in_sequential_order(
     with patch.object(reader_class, "read", track_reads):
         loaded_state_dict = {k: torch.empty_like(v) for k, v in state_dict.items()}
         storage_reader = S3StorageReader(
-            region=region, path=s3_uri, reader_constructor=reader_constructor
+            region=region, path=s3_uri, reader_constructor=dcp_reader_constructor
         )
         dcp.load(loaded_state_dict, storage_reader=storage_reader)
 

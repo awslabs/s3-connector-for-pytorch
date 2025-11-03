@@ -28,10 +28,6 @@ TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_PREFIX = f"s3://{TEST_BUCKET}"
 TEST_ENDPOINT = "https://s3.us-east-1.amazonaws.com"
-READER_TYPE_STRING_TO_CLASS = {
-    "sequential": SequentialS3Reader,
-    "range_based": RangedS3Reader,
-}
 
 
 @pytest.mark.parametrize(

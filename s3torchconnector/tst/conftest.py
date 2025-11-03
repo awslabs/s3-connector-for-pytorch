@@ -6,7 +6,16 @@ import pytest
 from s3torchconnector.s3reader import (
     S3ReaderConstructor,
     S3ReaderConstructorProtocol,
+    SequentialS3Reader,
+    RangedS3Reader,
+    DCPOptimizedS3Reader,
 )
+
+READER_TYPE_STRING_TO_CLASS = {
+    "sequential": SequentialS3Reader,
+    "range_based": RangedS3Reader,
+    "dcp_optimized": DCPOptimizedS3Reader,
+}
 
 # Shared reader constructors for parametrized tests
 # TODO: use this variable in test_distributed_training.py and test_multiprocess_dataloading.py
