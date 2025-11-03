@@ -19,8 +19,8 @@ from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnector.lightning import S3LightningCheckpoint
 from s3torchconnectorclient import S3Exception, __version__
 
-from models.net import Net
-from models.lightning_transformer import LightningTransformer, L
+from .models.net import Net
+from .models.lightning_transformer import LightningTransformer, L
 
 
 LIGHTNING_ACCELERATOR = "cpu"
