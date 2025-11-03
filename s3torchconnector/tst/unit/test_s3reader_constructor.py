@@ -2,6 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 
 import pytest
+import sys
 from unittest.mock import Mock
 
 from s3torchconnector import S3ReaderConstructor
@@ -112,11 +113,33 @@ def test_dcp_optimized_constructor_custom_max_gap_size(max_gap_size):
     assert s3reader._max_gap_size == max_gap_size
 
 
-def test_dcp_optimized_constructor_invalid_max_gap_size():
-    """Test parameter validation for max_gap_size"""
+@pytest.mark.parametrize("max_gap_size", [sys.maxsize, float("inf"), 0.5])
+def test_dcp_optimized_constructor_max_gap_size_edge_cases(max_gap_size):
+    """Test max_gap_size parameter defaults and propagation"""
 
-    with pytest.raises(ValueError):
-        S3ReaderConstructor.dcp_optimized(max_gap_size=-1)
+    constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=max_gap_size)
+    assert isinstance(constructor, DCPOptimizedConstructor)
+    assert constructor._max_gap_size == max_gap_size
+
+    constructor._item_ranges_by_file = {TEST_KEY: [ItemRange(0, 100)]}
+    s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
+    assert isinstance(s3reader, DCPOptimizedS3Reader)
+    assert s3reader._max_gap_size == max_gap_size
+
+
+@pytest.mark.parametrize(
+    "max_gap_size,expected_error",
+    [
+        (-1, ValueError),
+        ("1", TypeError),
+        ([1], TypeError),
+        (None, TypeError),
+    ],
+)
+def test_dcp_optimized_constructor_invalid_max_gap_size(max_gap_size, expected_error):
+    """Test parameter validation for max_gap_size"""
+    with pytest.raises(expected_error):
+        S3ReaderConstructor.dcp_optimized(max_gap_size)
 
 
 # * set_item_ranges_by_file()
