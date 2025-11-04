@@ -5,7 +5,7 @@ import torch
 import pytest
 
 from s3torchconnector import S3Checkpoint
-from .models.net import Net
+from models.net import Net
 
 
 @pytest.mark.parametrize(
