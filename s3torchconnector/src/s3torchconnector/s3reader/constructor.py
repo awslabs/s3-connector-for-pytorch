@@ -38,7 +38,6 @@ class DCPOptimizedConstructor:
         storage_data: "Dict[MetadataIndex, _StorageInfo]",
     ) -> None:
 
-        # TODO: Check if we want to return DCPOptimizedConstructor for immutability here instead
         if not plan_items:
             return  # Allow lack of plan_items, for SequentialS3Reader fallbacks
 
@@ -142,15 +141,43 @@ class S3ReaderConstructor:
     def dcp_optimized(
         max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE,
     ) -> DCPS3ReaderConstructorProtocol:
-        """
-        Creates a DCPOptimizedConstructor that uses DCPOptimizedS3Reader when ranges are available
+        """Creates a constructor for DCP-optimized readers for faster checkpoint loading.
+
+        The DCP-optimized reader provides up to 2x performance improvement over the default sequential reader through:
+
+        - Zero-copy buffer management by storing data as memoryview segments
+        - Sequential access optimization to reduce buffer sizes from file-level to item-level
+        - Range-based fetching that downloads only required byte ranges and coalesces nearby ranges to reduce S3 request latency
 
         Args:
-        max_gap_size: Maximum gap size in bytes to coalesce ranges into multiple ranged-streams.
-                    Use float("inf") to coalesce all ranges regardless of gaps.
-                    Use 0 to disable coalescing.
+            max_gap_size: Maximum gap size in bytes between ranges to coalesce into the same S3 read stream.
+                Most users should use the default value.
+
+                - Default: 32MB (``32 * 1024 * 1024``)
+                - Use ``float("inf")`` to coalesce all ranges regardless of gaps
+                - Use 0 to disable coalescing, which creates a new range-based stream for each gap
+
+        Returns:
+            DCPOptimizedConstructorProtocol:
+                Constructor that creates DCPOptimizedS3Reader when ranges are available, falling back to
+                SequentialS3Reader otherwise.
+
+        Requirements:
+            Should be used with S3StorageReader, in which ``prepare_local_plan()`` automatically handles:
+
+            - Load ordering: Sorts items by storage offset for sequential access
+            - Range injection: Provides byte ranges from DCP load plan to the reader
+
+            Advanced users implementing custom readers must include these optimizations
+            in their ``prepare_local_plan()``/``read_data()`` implementation to use the DCP-optimized reader.
+
+        Example::
+
+            reader_constructor = S3ReaderConstructor.dcp_optimized()
+            storage_reader = S3StorageReader(region, path, reader_constructor=reader_constructor)
+            DCP.load(state_dict, storage_reader=storage_reader)
+
         """
-        # TODO update docstring with guide and requirements to use this reader for DCP
         return DCPOptimizedConstructor(max_gap_size=max_gap_size)
 
     @staticmethod
