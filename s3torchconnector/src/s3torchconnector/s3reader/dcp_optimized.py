@@ -164,18 +164,38 @@ class _ItemViewBuffer:
 
 
 class DCPOptimizedS3Reader(S3Reader):
-    """
-    This reader optimizes PyTorch Distributed Checkpoint (DCP) partial loading by
-        1. exploiting sequential access patterns to avoid BytesIO buffer copy, and
-        2. only fetching required byte ranges instead of entire objects.
+    """S3 reader implementation optimized for PyTorch Distributed Checkpoint (DCP) loading.
 
-    REQUIRES:
-    - DCP Loading - reader is only designed for usage via dcp_optimized reader_constructor for dcp.load()
-    - Load Ordering, applied automatically prepare_local_plan, to ensure sequential access patterns.
-    - item_ranges provided (List[ItemRange]) must be pre-sorted - also applied in prepare_local_plan.
-    - Only supports sequentially reading exact item_ranges provided - otherwise would result in errors.
-    Non-sequential access will result in errors.
+    Provides up to 2x performance improvement over default sequential reader through:
 
+        1. **Zero-Copy Buffer**: Custom ``_ItemViewBuffer`` storing data as memoryview
+        segments to eliminate BytesIO allocation and copy overhead.
+
+        2. **Sequential Access Optimization**: Exploits sequential access patterns over tensor
+        enforced by ``S3StorageReader.prepare_local_plan()`` to reduce buffer sizes from file-level to
+        item-level.
+
+        3. **Range-based fetching**: For partial checkpoint loading, uses load plan item ranges information
+        to group nearby byte ranges within ``max_gap_size`` to minimize S3 first byte latency (compared to
+        range-based reader), while only fetching required byte ranges instead of entire files
+        (compared to sequential reader).
+
+    **Requirements**:
+
+    - DCP Loading - reader is only designed for usage via dcp_optimized reader_constructor for ``dcp.load()``
+    - Pre-sorted list of item_ranges, injected automatically in ``prepare_local_plan``.
+    - Sequential Access over exact item_ranges provided, also applied automatically by ``prepare_local_plan``
+
+    **Usage**:
+    Typically created automatically by ``DCPOptimizedConstructor`` when used with ``S3StorageReader`` and
+    ``S3ReaderConstructor.dcp_optimized()``:
+
+        reader_constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=32*1024*1024)
+        storage_reader = S3StorageReader(region, path, reader_constructor=reader_constructor)
+        DCP.load(state_dict, storage_reader=storage_reader)
+
+    **Error Handling**:
+        Non-sequential access attempts raise ValueError with descriptive messages.
     """
 
     def __init__(
@@ -392,7 +412,6 @@ class DCPOptimizedS3Reader(S3Reader):
 
             chunk_len = len(chunk)
 
-            # TODO: separate skip part and take part for clearer logic
             # Skip past unwanted data (due to coalescing)
             if pos < item.start:
                 skip_bytes = min(item.start - pos, chunk_len)
@@ -532,6 +551,9 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._position
 
     def close(self) -> None:
+        """
+        Close the stream and release resources.
+        """
         if not self._closed:
             self._closed = True
             self._stream = None
