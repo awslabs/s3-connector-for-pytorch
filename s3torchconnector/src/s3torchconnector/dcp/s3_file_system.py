@@ -44,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 
 class S3FileSystem(FileSystemBase):
+    """S3-based implementation of PyTorch's FileSystemBase for distributed checkpointing."""
+
     def __init__(
         self,
         region: str,
@@ -267,6 +269,8 @@ class StorageMetadata:
 
 
 class S3StorageWriter(FileSystemWriter):
+    """S3 implementation of PyTorch's FileSystemWriter for distributed checkpoints."""
+
     def __init__(
         self,
         region: str,
@@ -321,6 +325,8 @@ class S3StorageWriter(FileSystemWriter):
 
 
 class S3StorageReader(FileSystemReader):
+    """S3 implementation of PyTorch's FileSystemReader with configurable reader strategies."""
+
     def __init__(
         self,
         region: str,
@@ -356,13 +362,21 @@ class S3StorageReader(FileSystemReader):
 
     def prepare_local_plan(self, plan: LoadPlan) -> LoadPlan:
         """
-        Sort load items by storage offset for sequential access optimization.
+        Performs two key optimizations:
+
+            1. **Load Ordering**: Sorts load items by storage offset to enable sequential access
+
+            2. **Range Injection**: Provides byte range metadata to DCP reader constructors to enable
+            usage of DCPOptimizedS3Reader for range-based streams and range coalescing
 
         Args:
             plan (LoadPlan): The load plan from PyTorch DCP.
 
         Returns:
             LoadPlan: The same plan with items sorted by storage offset.
+
+        Note:
+            Both optimizations are required for DCPOptimizedS3Reader.
         """
         # Sort items in plan based on their offset in checkpoints shards
         plan.items.sort(key=lambda item: self.storage_data[item.storage_index].offset)
