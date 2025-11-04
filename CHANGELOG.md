@@ -1,5 +1,8 @@
 ## TBD
 
+### New features
+* Add DCP-optimized s3reader for 2x faster and partial DCP loading (#378)
+
 ### Bug fixes
 * Override S3Writer closed property and block writes after close (#360)
 * Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
