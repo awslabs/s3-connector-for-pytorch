@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from .conftest import BucketPrefixFixture, BucketPrefixData
 
 
-from .test_common import _get_fork_methods, _read_data, _set_start_method
+from test_common import _get_fork_methods, _read_data, _set_start_method
 
 start_methods = _get_fork_methods()
 

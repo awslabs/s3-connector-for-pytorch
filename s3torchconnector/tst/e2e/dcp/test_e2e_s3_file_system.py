@@ -28,7 +28,7 @@ import random
 from typing import Optional
 
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
-from ..test_common import _list_folders_in_bucket
+from test_common import _list_folders_in_bucket
 
 DEFAULT_USER_AGENT_PREFIX = UserAgent.get_default_prefix()
 
