@@ -36,7 +36,7 @@ test = [
     "flake8",
     "black",
     "mypy",
-    "importlib_metadata; python_version == '3.9'", # PyTorch 2.7.0+ DCP w/ Python 3.9 requires this module
+    "importlib_metadata; python_version == '3.9'", # PyTorch 2.7.0+ DCP w/ Python 3.9 requires this module; for dcp_optimized reader unit tests
 ]
 
 e2e = [
