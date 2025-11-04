@@ -22,8 +22,8 @@ from s3torchconnector.lightning import S3LightningCheckpoint
 from s3torchconnector._user_agent import UserAgent
 from s3torchconnectorclient import S3Exception, __version__
 
-from .models.net import Net
-from .models.lightning_transformer import LightningTransformer, L
+from models.net import Net
+from models.lightning_transformer import LightningTransformer, L
 
 DEFAULT_USER_AGENT_PREFIX = UserAgent.get_default_prefix()
 

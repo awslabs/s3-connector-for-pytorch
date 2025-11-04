@@ -19,8 +19,8 @@ from .test_s3dataset_common import (
     S3_PREFIX,
     TEST_REGION,
     TEST_ENDPOINT,
+    READER_TYPE_STRING_TO_CLASS,
 )
-from ..conftest import READER_TYPE_STRING_TO_CLASS
 
 
 def test_dataset_creation_from_prefix_with_region(caplog):
