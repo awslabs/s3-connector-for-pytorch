@@ -327,7 +327,7 @@ class DCPOptimizedS3Reader(S3Reader):
         if pos < self._current_item.end:
             return self._current_item
 
-        # Iterate through remaining items
+        # Check next item
         prev_item = self._current_item
         try:
             item = next(self._item_iter)
@@ -403,7 +403,42 @@ class DCPOptimizedS3Reader(S3Reader):
                 pos += lv_len
                 leftover = None
 
-        # 2. Read more data from S3 stream
+        # 2. Skip past unwanted data (due to coalescing)
+        while pos < item.start:
+            try:
+                chunk = memoryview(next(stream))
+            except StopIteration:
+                break
+
+            chunk_len = len(chunk)
+
+            if pos + chunk_len <= item.start:
+                # Entire chunk before item start - skip completely
+                pos += chunk_len
+                continue
+            else:
+                # Partial Skip - slice off unwanted part first
+                skip_bytes = item.start - pos
+                chunk = chunk[skip_bytes:]
+                pos = item.start
+                chunk_len -= skip_bytes
+
+                # Now process boundary chunk
+                if chunk_len <= bytes_left:
+                    # Entire chunk needed - skip slicing
+                    buffer.append_view(chunk)
+                    bytes_left -= chunk_len
+                    pos += chunk_len
+                    leftover = None
+                else:
+                    # Only part of chunk needed
+                    buffer.append_view(chunk[:bytes_left])
+                    leftover = chunk[bytes_left:]
+                    pos += bytes_left
+                    bytes_left = 0
+                    break
+
+        # 3. Take needed data for the item
         while bytes_left > 0:
             try:
                 chunk = memoryview(next(stream))
@@ -412,16 +447,6 @@ class DCPOptimizedS3Reader(S3Reader):
 
             chunk_len = len(chunk)
 
-            # Skip past unwanted data (due to coalescing)
-            if pos < item.start:
-                skip_bytes = min(item.start - pos, chunk_len)
-                chunk = chunk[skip_bytes:]
-                pos += skip_bytes
-                chunk_len -= skip_bytes
-                if chunk_len == 0:
-                    continue
-
-            # Take needed part of chunk
             if chunk_len <= bytes_left:
                 # Entire chunk needed - skip slicing
                 buffer.append_view(chunk)
