@@ -64,7 +64,7 @@ jobs:
               arch: x86_64
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         id: creds
@@ -134,7 +134,7 @@ jobs:
           - s3torchconnectorclient
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v6
         with:
