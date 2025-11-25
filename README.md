@@ -28,8 +28,12 @@ Amazon S3, without first saving to local storage.
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports pre-built wheels via Pip only for Linux and MacOS for now. For other platforms,
+Amazon S3 Connector for PyTorch supports pre-built wheels via Pip only for Linux and MacOS ARM64 (Apple Silicon). For other platforms,
 see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for build instructions.
+
+**Note for Mac users**: To check your Mac type, run `uname -m` in Terminal:
+- `arm64` = Apple Silicon (install via pip)
+- `x86_64` = Intel Mac (build from source)
 
 ### Configuration
 
