@@ -73,7 +73,7 @@ jobs:
     name: Rust tests
     strategy:
       matrix:
-        runner: [ubuntu-22.04, macos-13]
+        runner: [ubuntu-22.04, macos-14]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
