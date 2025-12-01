@@ -4,7 +4,7 @@
 from io import BytesIO
 from operator import eq
 from pathlib import Path
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 
 import hypothesis
 import pytest
@@ -89,18 +89,29 @@ def test_lightning_checkpointing_saves_untyped_storage(
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@pytest.mark.parametrize("weights_only", [None, False, True])
 @given(python_primitives, byteorders)
 def test_lightning_checkpointing_loads_python_primitives(
-    client, lightning_checkpoint, data, byteorder
+    client, lightning_checkpoint, weights_only, data, byteorder
 ):
-    _test_load(client, lightning_checkpoint, data, byteorder)
+    _test_load(client, lightning_checkpoint, data, byteorder, weights_only=weights_only)
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@pytest.mark.parametrize("weights_only", [None, False, True])
 @given(byteorders)
-def test_lightning_checkpointing_loads_tensor(client, lightning_checkpoint, byteorder):
+def test_lightning_checkpointing_loads_tensor(
+    client, lightning_checkpoint, weights_only, byteorder
+):
     tensor = torch.rand(2, 4)
-    _test_load(client, lightning_checkpoint, tensor, byteorder, equal=torch.equal)
+    _test_load(
+        client,
+        lightning_checkpoint,
+        tensor,
+        byteorder,
+        equal=torch.equal,
+        weights_only=weights_only,
+    )
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -178,6 +189,7 @@ def _test_load(
     byteorder: str,
     *,
     equal: Callable[[Any, Any], bool] = eq,
+    weights_only: Optional[bool] = None,
 ):
     # Put some data to mock bucket and use mock client
     serialised = BytesIO()
@@ -186,6 +198,8 @@ def _test_load(
     client.add_object(TEST_KEY, serialised.read())
 
     with _patch_byteorder(byteorder):
-        returned_data = checkpoint.load_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
+        returned_data = checkpoint.load_checkpoint(
+            f"s3://{TEST_BUCKET}/{TEST_KEY}", weights_only=weights_only
+        )
 
     assert equal(returned_data, data)
