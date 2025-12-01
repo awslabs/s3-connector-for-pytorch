@@ -55,12 +55,15 @@ class S3LightningCheckpoint(CheckpointIO):
         # We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems
         path: str,  # type: ignore
         map_location: Optional[Any] = None,
+        weights_only: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.
 
         Args:
             path (str): S3 uri to checkpoint
             map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
+            weights_only: If True, only loads tensors and primitive types (safer). If None, uses PyTorch default behavior.
+                See https://docs.pytorch.org/docs/main/notes/serialization.html for details.
 
         Returns:
             Dict[str, Any]: The loaded checkpoint
@@ -74,11 +77,14 @@ class S3LightningCheckpoint(CheckpointIO):
         # FIXME - io.BufferedIOBase and typing.IO aren't compatible
         #  See https://github.com/python/typeshed/issues/6077
 
-        # Explicitly set weights_only=False to:
+        # We no longer default weights_only=False since Lightning 2.6.0 now lets PyTorch decide on default behavior.
+        # This parameter can be passed through Trainer.{fit,validate,test,predict}.
+        # We PREVIOUSLY defaulted to weights_only=False to:
         # 1. Maintain backwards compatibility with older PyTorch versions where this was the default behavior
         # 2. Match PyTorch Lightning's implementation strategy for consistent behavior
         # Reference: https://github.com/Lightning-AI/pytorch-lightning/blob/master/src/lightning/fabric/utilities/cloud_io.py#L36
-        return torch.load(s3reader, map_location, weights_only=False)  # type: ignore
+
+        return torch.load(s3reader, map_location, weights_only=weights_only)  # type: ignore
 
     def remove_checkpoint(
         self,

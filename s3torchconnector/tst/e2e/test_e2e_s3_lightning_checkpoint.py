@@ -189,7 +189,10 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
     _verify_equal_state_dict(model.state_dict(), loaded_checkpoint["state_dict"])
 
 
-def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
+@pytest.mark.parametrize("weights_only", [None, False, True])
+def test_compatibility_with_lightning_checkpoint_load(
+    checkpoint_directory, weights_only
+):
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
     dataloader = DataLoader(dataset, num_workers=3)
@@ -206,7 +209,10 @@ def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
     checkpoint_key = "lightning_logs/version_0/checkpoints/epoch=0-step=3.ckpt"
     checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
     new_model = LightningTransformer(vocab_size=dataset.vocab_size)
-    trainer.fit(new_model, dataloader, ckpt_path=checkpoint_s3_uri)
+    # Test weights_only is passed from trainer.fit() to S3LightningCheckpoint.load_checkpoint()
+    trainer.fit(
+        new_model, dataloader, ckpt_path=checkpoint_s3_uri, weights_only=weights_only
+    )
     _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
 
 
