@@ -77,12 +77,8 @@ class S3LightningCheckpoint(CheckpointIO):
         # FIXME - io.BufferedIOBase and typing.IO aren't compatible
         #  See https://github.com/python/typeshed/issues/6077
 
-        # We no longer default weights_only=False since Lightning 2.6.0 now lets PyTorch decide on default behavior.
-        # This parameter can be passed through Trainer.{fit,validate,test,predict}.
-        # We PREVIOUSLY defaulted to weights_only=False to:
-        # 1. Maintain backwards compatibility with older PyTorch versions where this was the default behavior
-        # 2. Match PyTorch Lightning's implementation strategy for consistent behavior
-        # Reference: https://github.com/Lightning-AI/pytorch-lightning/blob/master/src/lightning/fabric/utilities/cloud_io.py#L36
+        # We no longer default weights_only=False since Lightning 2.6.0 lets PyTorch decide on default behavior
+        # weights_only can be passed to load_checkpoint through Trainer.{fit,validate,test,predict}
 
         return torch.load(s3reader, map_location, weights_only=weights_only)  # type: ignore
 

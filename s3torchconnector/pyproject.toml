@@ -52,7 +52,6 @@ lightning = [
 
 lightning-tests = [
     "s3torchconnector[lightning]",
-    "lightning >= 2.6.0",  # 2.6.0 exposes weights_only parameter for Trainer methods, which we use in tests
     "s3fs",
     "torchmetrics != 1.7.0, != 1.7.1", # version 1.7.0 and 1.7.1 breaks lightning checkpoints e2e tests during "lightning" module import
 ]

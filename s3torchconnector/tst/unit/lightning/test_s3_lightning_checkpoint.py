@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, Any, Optional
 
 import hypothesis
+import lightning
 import pytest
 import torch
 from hypothesis import given, HealthCheck
@@ -89,22 +90,53 @@ def test_lightning_checkpointing_saves_untyped_storage(
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-@pytest.mark.parametrize("weights_only", [None, False, True])
 @given(python_primitives, byteorders)
 def test_lightning_checkpointing_loads_python_primitives(
+    client, lightning_checkpoint, data, byteorder
+):
+    _test_load(client, lightning_checkpoint, data, byteorder)
+
+
+@pytest.mark.skipif(
+    tuple(map(int, lightning.__version__.split(".")[:2])) < (2, 6),
+    reason="weights_only parameter requires Lightning 2.6.0+",
+)
+@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@pytest.mark.parametrize("weights_only", [None, False, True])
+@given(python_primitives, byteorders)
+def test_lightning_checkpointing_loads_python_primitives_with_weights_only(
     client, lightning_checkpoint, weights_only, data, byteorder
 ):
-    _test_load(client, lightning_checkpoint, data, byteorder, weights_only=weights_only)
+    _test_load_with_weights_only(
+        client, lightning_checkpoint, data, byteorder, weights_only=weights_only
+    )
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(byteorders)
+def test_lightning_checkpointing_loads_tensor(client, lightning_checkpoint, byteorder):
+    tensor = torch.rand(2, 4)
+    _test_load(
+        client,
+        lightning_checkpoint,
+        tensor,
+        byteorder,
+        equal=torch.equal,
+    )
+
+
+@pytest.mark.skipif(
+    tuple(map(int, lightning.__version__.split(".")[:2])) < (2, 6),
+    reason="weights_only parameter requires Lightning 2.6.0+",
+)
+@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @pytest.mark.parametrize("weights_only", [None, False, True])
 @given(byteorders)
-def test_lightning_checkpointing_loads_tensor(
+def test_lightning_checkpointing_loads_tensor_with_weights_only(
     client, lightning_checkpoint, weights_only, byteorder
 ):
     tensor = torch.rand(2, 4)
-    _test_load(
+    _test_load_with_weights_only(
         client,
         lightning_checkpoint,
         tensor,
@@ -189,8 +221,30 @@ def _test_load(
     byteorder: str,
     *,
     equal: Callable[[Any, Any], bool] = eq,
+):
+    """Test checkpoint loading (compatible with lightning<2.6.0 without weights_only parameter)."""
+    # Put some data to mock bucket and use mock client
+    serialised = BytesIO()
+    save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format=True)
+    serialised.seek(0)
+    client.add_object(TEST_KEY, serialised.read())
+
+    with _patch_byteorder(byteorder):
+        returned_data = checkpoint.load_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
+
+    assert equal(returned_data, data)
+
+
+def _test_load_with_weights_only(
+    client,
+    checkpoint: CheckpointIO,
+    data,
+    byteorder: str,
+    *,
+    equal: Callable[[Any, Any], bool] = eq,
     weights_only: Optional[bool] = None,
 ):
+    """Test checkpoint loading with weights_only parameter (lightning>=2.6.0)."""
     # Put some data to mock bucket and use mock client
     serialised = BytesIO()
     save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format=True)
