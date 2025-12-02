@@ -189,8 +189,33 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
     _verify_equal_state_dict(model.state_dict(), loaded_checkpoint["state_dict"])
 
 
+def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
+    nonce = random.randrange(2**64)
+    dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
+    dataloader = DataLoader(dataset, num_workers=3)
+    model = LightningTransformer(vocab_size=dataset.vocab_size)
+    s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    trainer = L.Trainer(
+        accelerator=LIGHTNING_ACCELERATOR,
+        default_root_dir=checkpoint_directory.s3_uri,
+        plugins=[s3_lightning_checkpoint],
+        max_epochs=1,
+        max_steps=3,
+    )
+    trainer.fit(model, dataloader)
+    checkpoint_key = "lightning_logs/version_0/checkpoints/epoch=0-step=3.ckpt"
+    checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
+    new_model = LightningTransformer(vocab_size=dataset.vocab_size)
+    trainer.fit(new_model, dataloader, ckpt_path=checkpoint_s3_uri)
+    _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
+
+
+@pytest.mark.skipif(
+    tuple(map(int, lightning.__version__.split(".")[:2])) < (2, 6),
+    reason="weights_only parameter requires Lightning 2.6.0+",
+)
 @pytest.mark.parametrize("weights_only", [None, False, True])
-def test_compatibility_with_lightning_checkpoint_load(
+def test_compatibility_with_lightning_weights_only_parameter(
     checkpoint_directory, weights_only
 ):
     nonce = random.randrange(2**64)
@@ -209,10 +234,23 @@ def test_compatibility_with_lightning_checkpoint_load(
     checkpoint_key = "lightning_logs/version_0/checkpoints/epoch=0-step=3.ckpt"
     checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
     new_model = LightningTransformer(vocab_size=dataset.vocab_size)
+
     # Test weights_only is passed from trainer.fit() to S3LightningCheckpoint.load_checkpoint()
+    original_load = s3_lightning_checkpoint.load_checkpoint
+    call_args = []
+
+    def spy_load_checkpoint(*args, **kwargs):
+        call_args.append(kwargs.get("weights_only"))
+        return original_load(*args, **kwargs)
+
+    s3_lightning_checkpoint.load_checkpoint = spy_load_checkpoint
+
     trainer.fit(
         new_model, dataloader, ckpt_path=checkpoint_s3_uri, weights_only=weights_only
     )
+
+    assert len(call_args) == 1
+    assert call_args[0] == weights_only
     _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
 
 
