@@ -48,12 +48,14 @@ cover/
 
 # Environments
 .env
+.envrc
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+venv*/
 
 # mypy
 .mypy_cache/
@@ -82,3 +84,7 @@ s3torchconnectorclient/**/*.rs.bk
 
 # Sphinx documentation
 s3torchconnector/docs/
+
+# macOS
+.DS_Store
+._*
