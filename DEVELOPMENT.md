@@ -7,42 +7,48 @@ Python wrapper around MountpointS3Client that uses S3 CRT to optimize performanc
 Since MountpointS3Client is implemented in Rust, for development and building from source, you will need to install 
 `clang`, `cmake` and rust compiler (as detailed below). 
 
-Note: CLI commands for Ubuntu/Debian 
-#### Install Python 3.x and pip
+#### Install Python, pip, clang, and cmake
+
+See [README](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/README.md#prerequisites) for Python version requirements.
+
+Ubuntu/Debian:
 ```shell
 sudo apt update
-sudo apt install python3
-sudo apt install python3-pip
-```
-#### Clone project
-```shell
-  git clone git@github.com:awslabs/s3-connector-for-pytorch.git
-```
-#### Create a Python virtual environment
-```shell
-  cd /path/to/your/project
-  python3 -m venv virtual-env
-  source virtual-env/bin/activate
-```
-#### Install clang (needed to build the client)
-```shell
-  sudo apt install clang
-```
-#### Install cmake (needed to build the client)
-```shell
-  sudo apt install cmake
-```
-#### Install Rust compiler (needed to build the client)
-```shell
-  curl https://sh.rustup.rs -sSf | sh
-  source "$HOME/.cargo/env"
-```
-#### Install project modules in editable mode
-```shell
-  pip install -e s3torchconnectorclient
-  pip install -e s3torchconnector
+sudo apt install python3 python3-venv python3-pip
+sudo apt install clang cmake
 ```
 
+macOS:
+```shell
+brew update
+brew install python3
+brew install cmake
+xcode-select --install
+```
+
+#### Clone project
+```shell
+git clone https://github.com/awslabs/s3-connector-for-pytorch.git
+```
+
+#### Create a Python virtual environment
+```shell
+cd s3-connector-for-pytorch
+python3 -m venv venv
+source venv/bin/activate
+```
+
+#### Install Rust compiler (needed to build the client)
+```shell
+curl https://sh.rustup.rs -sSf | sh
+source "$HOME/.cargo/env"
+```
+
+#### Install project modules in editable mode
+```shell
+pip install -e s3torchconnectorclient
+pip install -e s3torchconnector
+```
 
 When you make changes to the Rust code, you need to run `pip install -e s3torchconnectorclient` before changes will 
 be viewable from Python.
