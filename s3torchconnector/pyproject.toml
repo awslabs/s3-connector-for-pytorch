@@ -38,16 +38,16 @@ test = [
 ]
 
 e2e = [
-    "torchdata<=0.9.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
+    "torchdata<=0.11.0", # we have dependency on deprecated DataPipes, which were removed in 0.10.0
     "Pillow>=10.3.0",
-    "boto3<1.37.2", # prevent conflict caused by aiobotocore that restrict version of botocore
-    "numpy < 2",
+    "boto3<1.42.5", # prevent conflict caused by aiobotocore that restrict version of botocore
+    "numpy < 3",
     "pytest-xdist",
-    "fsspec==2025.3.0; python_version == '3.8'", # pin fsspec version for Python 3.8 to prevent dataset e2e test failures
+    "fsspec==2025.10.0; python_version == '3.8'", # pin fsspec version for Python 3.8 to prevent dataset e2e test failures
 ]
 
 lightning = [
-    "lightning >= 2.0, <2.6" # FIXME: temporarily restrict until we implement weights_only support for S3LightningCheckpoint.load_checkpoint().
+    "lightning >= 2.0, < 2.7" # FIXME: temporarily restrict until we implement weights_only support for S3LightningCheckpoint.load_checkpoint().
 ]
 
 lightning-tests = [
