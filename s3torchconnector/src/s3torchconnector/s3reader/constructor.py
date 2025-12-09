@@ -24,6 +24,12 @@ log = logging.getLogger(__name__)
 
 
 class DCPOptimizedConstructor:
+    """Constructor for DCPOptimizedS3Reader instances with range metadata injection.
+
+    Created from S3ReaderConstructor, and used by S3StorageReader for PyTorch DCP.
+    Requires range metadata from DCP load plans to function properly.
+    """
+
     def __init__(self, max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE) -> None:
 
         if max_gap_size < 0:
@@ -37,10 +43,20 @@ class DCPOptimizedConstructor:
         plan_items: "List[ReadItem]",
         storage_data: "Dict[MetadataIndex, _StorageInfo]",
     ) -> None:
+        """Extract and store item ranges from DCP load plan.
+        Called by S3StorageReader.prepare_local_plan() to inject range metadata.
+        """
 
         if not plan_items:
-            return  # Allow lack of plan_items, for SequentialS3Reader fallbacks
+            raise ValueError(
+                "plan_items must not be empty; dcp_optimized reader requires ranges to function."
+            )
+        if not storage_data:
+            raise ValueError(
+                "storage_data must not be empty; required to map ReadItems to file ranges."
+            )
 
+        # Map: relative paths -> item ranges
         self._item_ranges_by_file = defaultdict(list)
         for read_item in plan_items:
             item_md = storage_data[read_item.storage_index]
@@ -49,7 +65,21 @@ class DCPOptimizedConstructor:
             )
 
     def __call__(self, bucket: str, key: str, get_object_info, get_stream) -> S3Reader:
-        for relative_path in self._item_ranges_by_file.keys():
+        """Match key to corresponding List[ItemRange] in _item_ranges_by_file.
+        Fallback when reading .metadata file if ranges are unavailable.
+        """
+
+        # Return SequentialS3Reader for .metadata (hardcoded name in FileSystemReader.read_metadata),
+        # since there are no ranges available for .metadata.
+        # TODO: alternatively configure DCPOptimizedS3Reader to use full file range for .metadata.
+        if key.endswith(".metadata"):
+            log.debug(f"Reading .metadata file {key} with SequentialS3Reader")
+            return SequentialS3Reader(bucket, key, get_object_info, get_stream)
+
+        # Return DCPOptimizedS3Reader for .distcp files with corresponding item ranges for key
+        for relative_path in self._item_ranges_by_file:
+            # Match corresponding relative path (e.g. shard1/epoch_5/__0_0.distcp) to match
+            # object key (e.g. ml_training/experiment1/shard1/epoch_5/__0_0.distcp)
             if key.endswith(relative_path):
                 return DCPOptimizedS3Reader(
                     bucket,
@@ -60,12 +90,10 @@ class DCPOptimizedConstructor:
                     max_gap_size=self._max_gap_size,
                 )
 
-        # Fallback if file_ranges unavailable (e.g. when reading .metadata)
-        # TODO: Warn users for fallbacks for non-'.metadata' files?
-        log.debug(
-            f"DCPOptimizedConstructor: No ranges found for {key}, falling back to SequentialS3Reader"
+        # Error for other files; warn users in case they override prepare_local_plan behavior
+        raise ValueError(
+            f"No ranges found for {key}. Make sure range injection is used in S3StorageReader.prepare_local_plan."
         )
-        return SequentialS3Reader(bucket, key, get_object_info, get_stream)
 
 
 class S3ReaderConstructor:

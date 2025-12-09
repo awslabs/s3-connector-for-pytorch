@@ -69,15 +69,10 @@ def test_s3readerconstructor_range_based_constructor_buffer_configurations(
 
 
 def test_s3readerconstructor_dcp_optimized_constructor():
-    """Test DCP optimized reader construction"""
+    """Test dcp_optimized reader construction"""
     constructor = S3ReaderConstructor.dcp_optimized()
     assert isinstance(constructor, DCPOptimizedConstructor)
 
-    # Without ranges, should fallback to SequentialS3Reader
-    s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, SequentialS3Reader)
-
-    # With ranges, should create DCPOptimizedS3Reader
     constructor._item_ranges_by_file = {TEST_KEY: [ItemRange(0, 100)]}
     s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, DCPOptimizedS3Reader)
@@ -142,15 +137,24 @@ def test_dcp_optimized_constructor_invalid_max_gap_size(max_gap_size, expected_e
         S3ReaderConstructor.dcp_optimized(max_gap_size)
 
 
-# * set_item_ranges_by_file()
+# * set_item_ranges_by_file tests
 
 
-def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_file():
-    """Test empty plan is allowed (disallowed during call)"""
+def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_plan_items():
+    """Test empty plan_items raises ValueError"""
     constructor = S3ReaderConstructor.dcp_optimized()
 
-    constructor.set_item_ranges_by_file([], {})
-    assert constructor._item_ranges_by_file == {}
+    with pytest.raises(ValueError, match="plan_items must not be empty"):
+        constructor.set_item_ranges_by_file([], {})
+
+
+def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_storage_data():
+    """Test empty storage_data raises ValueError"""
+    constructor = S3ReaderConstructor.dcp_optimized()
+    read_item = Mock(spec=ReadItem, storage_index=MetadataIndex("idx"))
+
+    with pytest.raises(ValueError, match="storage_data must not be empty"):
+        constructor.set_item_ranges_by_file([read_item], {})
 
 
 @pytest.mark.parametrize(
@@ -241,57 +245,54 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_multiple_calls():
 # * __call__ tests
 
 
-def test_dcp_optimized_constructor_call_with_invalid_ranges():
-    """Test dcp_optimized constructor __call__ falls back to SequentialS3Reader when no item ranges for the file"""
+def test_dcp_optimized_constructor_call_metadata():
+    """Test .metadata files use SequentialS3Reader"""
     constructor = S3ReaderConstructor.dcp_optimized()
-    assert isinstance(constructor, DCPOptimizedConstructor)
 
-    # Test with no ranges - should fallback
-    constructor._item_ranges_by_file = {}
-    s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
+    s3reader = constructor(TEST_BUCKET, "path/.metadata", MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, SequentialS3Reader)
 
-    # Test with ranges for different file - should fallback
-    constructor._item_ranges_by_file = {"not_test_key.distcp": [ItemRange(0, 100)]}
-    s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, SequentialS3Reader)
 
-    # Test with empty range - should raise error
-    constructor._item_ranges_by_file = {TEST_KEY: []}
-    with pytest.raises(ValueError):
-        s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
-
-
-def test_dcp_optimized_constructor_call_relative_path_matching():
-    """Test __call__ method with relative path matching"""
+@pytest.mark.parametrize(
+    "relative_path, full_key",
+    [
+        ("shard1/epoch_5/__0_0.distcp", "ml_training/shard1/epoch_5/__0_0.distcp"),
+        ("shard1/epoch_5/__0_0.distcp", "shard1/epoch_5/__0_0.distcp"),  # no base path
+        ("__0_0.distcp", "prefix/path/__0_0.distcp"),
+    ],
+)
+def test_dcp_optimized_constructor_call_successful_match(relative_path, full_key):
+    """Test matching relative paths return DCPOptimizedS3Reader"""
     constructor = S3ReaderConstructor.dcp_optimized()
-    constructor._item_ranges_by_file = {
-        "shard1/epoch_5/__0_0.distcp": [ItemRange(0, 100)]
-    }
+    constructor._item_ranges_by_file = {relative_path: [ItemRange(0, 100)]}
 
-    # Should match when key ends with relative_path
-    key = "base/shard1/epoch_5/__0_0.distcp"
-    s3reader = constructor(TEST_BUCKET, key, MOCK_OBJECT_INFO, MOCK_STREAM)
+    s3reader = constructor(TEST_BUCKET, full_key, MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, DCPOptimizedS3Reader)
-    assert s3reader.key == key
+    assert s3reader.key == full_key
 
-    key = "shard1/epoch_5/__0_0.distcp"
-    # Should also match shorter key that ends with relative_path
-    s3reader = constructor(TEST_BUCKET, key, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, DCPOptimizedS3Reader)
-    assert s3reader.key == key
 
-    # No match - should fallback to SequentialS3Reader
-    key = "different/path/__1_0.distcp"
-    s3reader = constructor(TEST_BUCKET, key, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, SequentialS3Reader)
-    assert s3reader.key == key
+@pytest.mark.parametrize(
+    "ranges, key",
+    [
+        # No files/ranges
+        ({}, TEST_KEY),
+        # Different file
+        ({"not_test_key.distcp": [ItemRange(0, 100)]}, TEST_KEY),
+        # No match
+        ({"file1.distcp": [ItemRange(0, 100)]}, "different/path/__1_0.distcp"),
+        # Same filename, different relative path
+        ({"shard1/__0_0.distcp": [ItemRange(0, 100)]}, "different/shard2/__0_0.distcp"),
+        # For match + empty ranges case, we have separate error raised in DCPOptimizedS3Reader
+        # ({TEST_KEY: []}, TEST_KEY),  # not tested since out of scope
+    ],
+)
+def test_dcp_optimized_constructor_call_no_ranges_error(ranges, key):
+    """Test non-.metadata files without matching ranges raise ValueError"""
+    constructor = S3ReaderConstructor.dcp_optimized()
+    constructor._item_ranges_by_file = ranges
 
-    # Same filename, different path - should fallback to SequentialS3Reader
-    key = "same/filename/different/path/__0_0.distcp"
-    s3reader = constructor(TEST_BUCKET, key, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, SequentialS3Reader)
-    assert s3reader.key == key
+    with pytest.raises(ValueError, match="No ranges found"):
+        constructor(TEST_BUCKET, key, MOCK_OBJECT_INFO, MOCK_STREAM)
 
 
 # ----------
