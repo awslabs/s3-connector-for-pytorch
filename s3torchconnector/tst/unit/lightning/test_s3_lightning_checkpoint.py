@@ -3,10 +3,13 @@
 
 from io import BytesIO
 from operator import eq
+from packaging import version
 from pathlib import Path
-from typing import Callable, Any
+from typing import Callable, Any, Optional
+from unittest.mock import patch
 
 import hypothesis
+import lightning
 import pytest
 import torch
 from hypothesis import given, HealthCheck
@@ -96,11 +99,75 @@ def test_lightning_checkpointing_loads_python_primitives(
     _test_load(client, lightning_checkpoint, data, byteorder)
 
 
+@pytest.mark.skipif(
+    version.parse(lightning.__version__) < version.parse("2.6.0"),
+    reason="weights_only parameter requires Lightning 2.6.0+",
+)
+@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@pytest.mark.parametrize("weights_only", [None, False, True])
+@given(python_primitives, byteorders)
+def test_lightning_checkpointing_loads_python_primitives_with_weights_only(
+    client, lightning_checkpoint, weights_only, data, byteorder
+):
+    _test_load_with_weights_only(
+        client, lightning_checkpoint, data, byteorder, weights_only=weights_only
+    )
+
+
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(byteorders)
 def test_lightning_checkpointing_loads_tensor(client, lightning_checkpoint, byteorder):
     tensor = torch.rand(2, 4)
-    _test_load(client, lightning_checkpoint, tensor, byteorder, equal=torch.equal)
+    _test_load(
+        client,
+        lightning_checkpoint,
+        tensor,
+        byteorder,
+        equal=torch.equal,
+    )
+
+
+@pytest.mark.skipif(
+    version.parse(lightning.__version__) < version.parse("2.6.0"),
+    reason="weights_only parameter requires Lightning 2.6.0+",
+)
+@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@pytest.mark.parametrize("weights_only", [None, False, True])
+@given(byteorders)
+def test_lightning_checkpointing_loads_tensor_with_weights_only(
+    client, lightning_checkpoint, weights_only, byteorder
+):
+    tensor = torch.rand(2, 4)
+    _test_load_with_weights_only(
+        client,
+        lightning_checkpoint,
+        tensor,
+        byteorder,
+        equal=torch.equal,
+        weights_only=weights_only,
+    )
+
+
+@pytest.mark.parametrize(
+    "lightning_version,expected_weights_only",
+    [("2.5.0", False), ("2.6.0", None)],
+)
+@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(byteorders)
+def test_lightning_checkpointing_weights_only_version_aware_defaults(
+    client, lightning_checkpoint, lightning_version, expected_weights_only, byteorder
+):
+    """Test version-aware weights_only defaults: False for Lightning <2.6, None for >=2.6."""
+    tensor = torch.rand(2, 4)
+
+    with patch.object(lightning, "__version__", lightning_version):
+        with patch("torch.load", wraps=torch.load) as mock_torch_load:
+            _test_load(
+                client, lightning_checkpoint, tensor, byteorder, equal=torch.equal
+            )
+
+            call_kwargs = mock_torch_load.call_args.kwargs
+            assert call_kwargs.get("weights_only") == expected_weights_only
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -179,6 +246,7 @@ def _test_load(
     *,
     equal: Callable[[Any, Any], bool] = eq,
 ):
+    """Test checkpoint loading (compatible with lightning<2.6.0 without weights_only parameter)."""
     # Put some data to mock bucket and use mock client
     serialised = BytesIO()
     save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format=True)
@@ -187,5 +255,29 @@ def _test_load(
 
     with _patch_byteorder(byteorder):
         returned_data = checkpoint.load_checkpoint(f"s3://{TEST_BUCKET}/{TEST_KEY}")
+
+    assert equal(returned_data, data)
+
+
+def _test_load_with_weights_only(
+    client,
+    checkpoint: CheckpointIO,
+    data,
+    byteorder: str,
+    *,
+    equal: Callable[[Any, Any], bool] = eq,
+    weights_only: Optional[bool] = None,
+):
+    """Test checkpoint loading with weights_only parameter (lightning>=2.6.0)."""
+    # Put some data to mock bucket and use mock client
+    serialised = BytesIO()
+    save_with_byteorder(data, serialised, byteorder, use_modern_pytorch_format=True)
+    serialised.seek(0)
+    client.add_object(TEST_KEY, serialised.read())
+
+    with _patch_byteorder(byteorder):
+        returned_data = checkpoint.load_checkpoint(
+            f"s3://{TEST_BUCKET}/{TEST_KEY}", weights_only=weights_only
+        )
 
     assert equal(returned_data, data)

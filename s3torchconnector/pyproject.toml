@@ -47,7 +47,8 @@ e2e = [
 ]
 
 lightning = [
-    "lightning >= 2.0, <2.6" # FIXME: temporarily restrict until we implement weights_only support for S3LightningCheckpoint.load_checkpoint().
+    "lightning >= 2.0",
+    "packaging",
 ]
 
 lightning-tests = [
