@@ -6,6 +6,7 @@ from operator import eq
 from packaging import version
 from pathlib import Path
 from typing import Callable, Any, Optional
+from unittest.mock import patch
 
 import hypothesis
 import lightning
@@ -145,6 +146,28 @@ def test_lightning_checkpointing_loads_tensor_with_weights_only(
         equal=torch.equal,
         weights_only=weights_only,
     )
+
+
+@pytest.mark.parametrize(
+    "lightning_version,expected_weights_only",
+    [("2.5.0", False), ("2.6.0", None)],
+)
+@hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(byteorders)
+def test_lightning_checkpointing_weights_only_version_aware_defaults(
+    client, lightning_checkpoint, lightning_version, expected_weights_only, byteorder
+):
+    """Test version-aware weights_only defaults: False for Lightning <2.6, None for >=2.6."""
+    tensor = torch.rand(2, 4)
+
+    with patch.object(lightning, "__version__", lightning_version):
+        with patch("torch.load", wraps=torch.load) as mock_torch_load:
+            _test_load(
+                client, lightning_checkpoint, tensor, byteorder, equal=torch.equal
+            )
+
+            call_kwargs = mock_torch_load.call_args.kwargs
+            assert call_kwargs.get("weights_only") == expected_weights_only
 
 
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])

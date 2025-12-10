@@ -48,13 +48,13 @@ e2e = [
 
 lightning = [
     "lightning >= 2.0",
+    "packaging",
 ]
 
 lightning-tests = [
     "s3torchconnector[lightning]",
     "s3fs",
     "torchmetrics != 1.7.0, != 1.7.1", # version 1.7.0 and 1.7.1 breaks lightning checkpoints e2e tests during "lightning" module import
-    "packaging",
 ]
 
 dcp = [
