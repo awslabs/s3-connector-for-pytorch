@@ -3,6 +3,7 @@
 
 from io import BytesIO
 from operator import eq
+from packaging import version
 from pathlib import Path
 from typing import Callable, Any, Optional
 
@@ -98,7 +99,7 @@ def test_lightning_checkpointing_loads_python_primitives(
 
 
 @pytest.mark.skipif(
-    tuple(map(int, lightning.__version__.split(".")[:2])) < (2, 6),
+    version.parse(lightning.__version__) < version.parse("2.6.0"),
     reason="weights_only parameter requires Lightning 2.6.0+",
 )
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -126,7 +127,7 @@ def test_lightning_checkpointing_loads_tensor(client, lightning_checkpoint, byte
 
 
 @pytest.mark.skipif(
-    tuple(map(int, lightning.__version__.split(".")[:2])) < (2, 6),
+    version.parse(lightning.__version__) < version.parse("2.6.0"),
     reason="weights_only parameter requires Lightning 2.6.0+",
 )
 @hypothesis.settings(suppress_health_check=[HealthCheck.function_scoped_fixture])

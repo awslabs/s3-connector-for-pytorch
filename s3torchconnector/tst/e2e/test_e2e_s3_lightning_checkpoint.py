@@ -5,6 +5,8 @@ import pytest
 import random
 import torch
 import platform
+from packaging import version
+from unittest.mock import patch
 
 from pathlib import Path
 from typing import Dict, Any
@@ -58,7 +60,7 @@ def test_save_compatibility_with_s3_checkpoint(checkpoint_directory):
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
     s3_lightning_checkpoint.save_checkpoint(tensor, s3_uri)
     checkpoint = S3Checkpoint(region=checkpoint_directory.region)
-    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri), weights_only=False)
+    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri), weights_only=True)
     assert torch.equal(tensor, loaded_checkpoint)
 
 
@@ -211,7 +213,7 @@ def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
 
 
 @pytest.mark.skipif(
-    tuple(map(int, lightning.__version__.split(".")[:2])) < (2, 6),
+    version.parse(lightning.__version__) < version.parse("2.6.0"),
     reason="weights_only parameter requires Lightning 2.6.0+",
 )
 @pytest.mark.parametrize("weights_only", [None, False, True])
@@ -236,21 +238,23 @@ def test_compatibility_with_lightning_weights_only_parameter(
     new_model = LightningTransformer(vocab_size=dataset.vocab_size)
 
     # Test weights_only is passed from trainer.fit() to S3LightningCheckpoint.load_checkpoint()
-    original_load = s3_lightning_checkpoint.load_checkpoint
-    call_args = []
+    with patch.object(
+        s3_lightning_checkpoint,
+        "load_checkpoint",
+        wraps=s3_lightning_checkpoint.load_checkpoint,
+    ) as mock:
 
-    def spy_load_checkpoint(*args, **kwargs):
-        call_args.append(kwargs.get("weights_only"))
-        return original_load(*args, **kwargs)
+        trainer.fit(
+            new_model,
+            dataloader,
+            ckpt_path=checkpoint_s3_uri,
+            weights_only=weights_only,
+        )
 
-    s3_lightning_checkpoint.load_checkpoint = spy_load_checkpoint
+        mock.assert_called_once()
+        call_kwargs = mock.call_args.kwargs
+        assert call_kwargs.get("weights_only") == weights_only
 
-    trainer.fit(
-        new_model, dataloader, ckpt_path=checkpoint_s3_uri, weights_only=weights_only
-    )
-
-    assert len(call_args) == 1
-    assert call_args[0] == weights_only
     _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
 
 

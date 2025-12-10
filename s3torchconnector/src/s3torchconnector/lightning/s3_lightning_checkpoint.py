@@ -62,7 +62,8 @@ class S3LightningCheckpoint(CheckpointIO):
         Args:
             path (str): S3 uri to checkpoint
             map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
-            weights_only: If True, only loads tensors and primitive types (safer). If None, uses PyTorch default behavior.
+            weights_only: If True, only loads tensors and primitive types (safer). If False, allows loading
+                arbitrary Python objects (less secure). If None, uses PyTorch default behavior.
                 See https://docs.pytorch.org/docs/main/notes/serialization.html for details.
 
         Returns:
@@ -78,7 +79,9 @@ class S3LightningCheckpoint(CheckpointIO):
         #  See https://github.com/python/typeshed/issues/6077
 
         # We no longer default weights_only=False since Lightning 2.6.0 lets PyTorch decide on default behavior
-        # weights_only can be passed to load_checkpoint through Trainer.{fit,validate,test,predict}
+        # weights_only can be passed to load_checkpoint through Trainer.{fit,validate,test,predict}.
+        # In PyTorch 2.3 and earlier, torch.load() requires non optional bool - however None acts as False in
+        # `if weights_only:` checks (default for PyTorch <2.6 or Lightning <2.6) for backwards compatibility.
 
         return torch.load(s3reader, map_location, weights_only=weights_only)  # type: ignore
 
