@@ -64,7 +64,7 @@ class S3LightningCheckpoint(CheckpointIO):
             path (str): S3 uri to checkpoint
             map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
             weights_only: If True, only loads tensors and primitive types (safer). If False, allows loading
-                arbitrary Python objects (less secure). If None, uses PyTorch default behavior.
+                arbitrary Python objects (less secure). If None, uses PyTorch Lightning default behavior.
                 See https://docs.pytorch.org/docs/main/notes/serialization.html for details.
 
         Returns:
