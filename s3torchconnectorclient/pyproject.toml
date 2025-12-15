@@ -110,7 +110,7 @@ manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 before-all = [
   "yum -y update",
-  "yum -y install openssl3 openssl3-devel",
+  "yum -y install openssl-devel",
   "yum install -y gcc-toolset-10-gcc",
   "yum install -y gcc-toolset-10-gcc-c++",
   "yum install -y clang clang-devel llvm-toolset",
