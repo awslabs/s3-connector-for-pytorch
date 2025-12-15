@@ -5,6 +5,8 @@ import pytest
 import random
 import torch
 import platform
+from packaging import version
+from unittest.mock import patch
 
 from pathlib import Path
 from typing import Dict, Any
@@ -58,7 +60,7 @@ def test_save_compatibility_with_s3_checkpoint(checkpoint_directory):
     s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_name}"
     s3_lightning_checkpoint.save_checkpoint(tensor, s3_uri)
     checkpoint = S3Checkpoint(region=checkpoint_directory.region)
-    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri), weights_only=False)
+    loaded_checkpoint = torch.load(checkpoint.reader(s3_uri), weights_only=True)
     assert torch.equal(tensor, loaded_checkpoint)
 
 
@@ -207,6 +209,52 @@ def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
     checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
     new_model = LightningTransformer(vocab_size=dataset.vocab_size)
     trainer.fit(new_model, dataloader, ckpt_path=checkpoint_s3_uri)
+    _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
+
+
+@pytest.mark.skipif(
+    version.parse(lightning.__version__) < version.parse("2.6.0"),
+    reason="weights_only parameter requires Lightning 2.6.0+",
+)
+@pytest.mark.parametrize("weights_only", [None, False, True])
+def test_compatibility_with_lightning_weights_only_parameter(
+    checkpoint_directory, weights_only
+):
+    nonce = random.randrange(2**64)
+    dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
+    dataloader = DataLoader(dataset, num_workers=3)
+    model = LightningTransformer(vocab_size=dataset.vocab_size)
+    s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
+    trainer = L.Trainer(
+        accelerator=LIGHTNING_ACCELERATOR,
+        default_root_dir=checkpoint_directory.s3_uri,
+        plugins=[s3_lightning_checkpoint],
+        max_epochs=1,
+        max_steps=3,
+    )
+    trainer.fit(model, dataloader)
+    checkpoint_key = "lightning_logs/version_0/checkpoints/epoch=0-step=3.ckpt"
+    checkpoint_s3_uri = f"{checkpoint_directory.s3_uri}{checkpoint_key}"
+    new_model = LightningTransformer(vocab_size=dataset.vocab_size)
+
+    # Test weights_only is passed from trainer.fit() to S3LightningCheckpoint.load_checkpoint()
+    with patch.object(
+        s3_lightning_checkpoint,
+        "load_checkpoint",
+        wraps=s3_lightning_checkpoint.load_checkpoint,
+    ) as mock:
+
+        trainer.fit(
+            new_model,
+            dataloader,
+            ckpt_path=checkpoint_s3_uri,
+            weights_only=weights_only,
+        )
+
+        mock.assert_called_once()
+        call_kwargs = mock.call_args.kwargs
+        assert call_kwargs.get("weights_only") == weights_only
+
     _verify_equal_state_dict(model.state_dict(), new_model.state_dict())
 
 

@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+from packaging import version
 from typing import Optional, Dict, Any
 
 import lightning
@@ -55,12 +56,16 @@ class S3LightningCheckpoint(CheckpointIO):
         # We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems
         path: str,  # type: ignore
         map_location: Optional[Any] = None,
+        weights_only: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.
 
         Args:
             path (str): S3 uri to checkpoint
             map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
+            weights_only: If True, only loads tensors and primitive types (safer). If False, allows loading
+                arbitrary Python objects (less secure). If None, uses PyTorch Lightning default behavior.
+                See https://docs.pytorch.org/docs/main/notes/serialization.html for details.
 
         Returns:
             Dict[str, Any]: The loaded checkpoint
@@ -74,11 +79,18 @@ class S3LightningCheckpoint(CheckpointIO):
         # FIXME - io.BufferedIOBase and typing.IO aren't compatible
         #  See https://github.com/python/typeshed/issues/6077
 
-        # Explicitly set weights_only=False to:
-        # 1. Maintain backwards compatibility with older PyTorch versions where this was the default behavior
-        # 2. Match PyTorch Lightning's implementation strategy for consistent behavior
-        # Reference: https://github.com/Lightning-AI/pytorch-lightning/blob/master/src/lightning/fabric/utilities/cloud_io.py#L36
-        return torch.load(s3reader, map_location, weights_only=False)  # type: ignore
+        # Maintain backward compatibility: Default to False for Lightning <2.6, and None for Lightning>=2.6.
+        # - Lightning >=2.6 lets PyTorch decide on default behavior. weights_only can now be set through Trainer.{fit,validate,test,predict}.
+        # - Lightning <2.6 defaults to weights_only=False: https://github.com/Lightning-AI/pytorch-lightning/blob/release/2.5.x/src/lightning/fabric/utilities/cloud_io.py#L37
+        if weights_only is None:
+            if version.parse(lightning.__version__) < version.parse("2.6.0"):
+                weights_only = False
+
+        # Note in PyTorch <2.4, torch.load() requires non optional bool - however None acts as False in
+        # `if weights_only:` checks (default for PyTorch <2.6 or Lightning <2.6) for backwards compatibility.
+        # As mitigation, users can set TORCH_FORCE_WEIGHTS_ONLY_LOAD (0 or 1) to control weights_only behavior.
+
+        return torch.load(s3reader, map_location, weights_only=weights_only)  # type: ignore
 
     def remove_checkpoint(
         self,

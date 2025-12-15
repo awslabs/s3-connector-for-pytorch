@@ -1,5 +1,8 @@
 ## TBD
 
+### New features
+* Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
+
 ### Bug fixes
 * Override S3Writer closed property and block writes after close (#360)
 * Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
