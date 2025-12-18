@@ -174,7 +174,7 @@ def load_data(
     )
 
     # Load using S3StorageReader
-    loaded_data_s3storagereader = {}
+    loaded_data_s3storagereader = {k: torch.empty_like(v) for k, v in test_data.items()}
     dcp_load(
         loaded_data_s3storagereader,
         S3StorageReader(
@@ -183,6 +183,11 @@ def load_data(
             reader_constructor=reader_constructor,
         ),
     )
+
+    # Check that loaded_data is equal to test_data
+    assert set(loaded_data_s3storagereader.keys()) == set(
+        test_data.keys()
+    ), f"Expected keys {set(test_data.keys())}, got {set(loaded_data_s3storagereader.keys())}"
 
     for key in loaded_data_s3storagereader.keys():
         assert torch.allclose(
