@@ -48,9 +48,12 @@ class DCPOptimizedConstructor:
         """
 
         if not plan_items:
-            raise ValueError(
-                "plan_items must not be empty; dcp_optimized reader requires ranges to function."
-            )
+            # Empty plan: no reads will happen since no-op in FileSystemReader.read_data
+            # To defend against multi-processing case where a rank doesn't need data.
+            log.debug("Empty plan for this rank - no DCP item ranges will be created.")
+            self._item_ranges_by_file = defaultdict(list)
+            return
+
         if not storage_data:
             raise ValueError(
                 "storage_data must not be empty; required to map ReadItems to file ranges."

@@ -141,11 +141,24 @@ def test_dcp_optimized_constructor_invalid_max_gap_size(max_gap_size, expected_e
 
 
 def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_plan_items():
-    """Test empty plan_items raises ValueError"""
+    """Test empty plan_items creates empty ranges (for no-op in read_data)."""
     constructor = S3ReaderConstructor.dcp_optimized()
 
-    with pytest.raises(ValueError, match="plan_items must not be empty"):
-        constructor.set_item_ranges_by_file([], {})
+    storage_data = {
+        MetadataIndex("idx1"): _StorageInfo(
+            relative_path="file1.distcp", offset=200, length=100
+        ),
+        MetadataIndex("idx2"): _StorageInfo(
+            relative_path="file2.distcp", offset=50, length=200
+        ),
+    }
+
+    # Empty plan_items (List[ReadItem])
+    constructor.set_item_ranges_by_file([], storage_data)
+
+    assert len(constructor._item_ranges_by_file) == 0
+    assert "file1.distcp" not in constructor._item_ranges_by_file
+    assert "file2.distcp" not in constructor._item_ranges_by_file
 
 
 def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_storage_data():
