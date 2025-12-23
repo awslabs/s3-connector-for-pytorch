@@ -1,5 +1,9 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+
+import platform
+import warnings
+
 from s3torchconnectorclient import S3Exception
 
 # The order of these imports is the same in which they will be rendered
@@ -24,3 +28,16 @@ __all__ = [
     "S3ClientConfig",
     "__version__",
 ]
+
+# Check for macOS x86_64 and issue deprecation warning
+try:
+    if platform.system() == "Darwin" and platform.machine() == "x86_64":
+        warnings.warn(
+            "macOS x86_64 wheel support will be deprecated in a future release. "
+            "Please refer to https://github.com/awslabs/s3-connector-for-pytorch/issues/398 for more details.",
+            FutureWarning,
+            stacklevel=2,
+        )
+except Exception:
+    # Continue if platform detection fails
+    pass
