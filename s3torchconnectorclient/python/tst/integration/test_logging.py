@@ -183,7 +183,8 @@ def _start_subprocess(
     process = subprocess.Popen(
         [
             sys.executable,
-            "-W", "ignore::FutureWarning",
+            "-W",
+            "ignore::FutureWarning",
             "-c",
             PYTHON_TEST_CODE,
             image_directory.s3_uri,
