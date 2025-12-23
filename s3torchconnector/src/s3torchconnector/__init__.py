@@ -41,3 +41,16 @@ try:
 except Exception:
     # Continue if platform detection fails
     pass
+
+# Check for Python 3.8 and issue deprecation warning
+try:
+    if platform.python_version().startswith("3.8"):
+        warnings.warn(
+            "Python 3.8 support will be deprecated in a future release. "
+            "Please refer to https://github.com/awslabs/s3-connector-for-pytorch/issues/399 for more details.",
+            FutureWarning,
+            stacklevel=2,
+        )
+except Exception:
+    # Continue if version detection fails
+    pass
