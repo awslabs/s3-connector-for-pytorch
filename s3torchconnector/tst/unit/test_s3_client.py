@@ -14,14 +14,12 @@ from s3torchconnector._user_agent import UserAgent
 from s3torchconnector._version import __version__
 from s3torchconnector._s3client import S3Client, MockS3Client, S3ClientConfig
 
+from .test_user_agent import DEFAULT_PREFIX as DEFAULT_USER_AGENT
+
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"
 TEST_REGION = "us-east-1"
 S3_URI = f"s3://{TEST_BUCKET}/{TEST_KEY}"
-PYTHON_VERSION = platform.python_version()
-DEFAULT_USER_AGENT = (
-    f"s3torchconnector/{__version__} ua/2.0 lang/python#{PYTHON_VERSION}"
-)
 
 KiB = 1 << 10
 MiB = 1 << 20

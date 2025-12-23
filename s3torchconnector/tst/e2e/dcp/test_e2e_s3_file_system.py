@@ -31,6 +31,16 @@ from typing import Optional
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
 
+# User Agent Default Prefix
+PYTHON_VERSION = platform.python_version()
+OS_NAME = platform.system().lower()
+if OS_NAME == "darwin":
+    OS_NAME = "macos"
+OS_VERSION = platform.release()
+ARCH = platform.machine().lower()
+PYTORCH_VERSION = torch.__version__
+DEFAULT_USER_AGENT_PREFIX = f"s3torchconnector/{__version__} ua/2.1 os/{OS_NAME}#{OS_VERSION} lang/python#{PYTHON_VERSION} md/arch#{ARCH} md/pytorch#{PYTORCH_VERSION}"
+
 
 def generate_random_port():
     return random.randint(1, 500)
@@ -130,11 +140,10 @@ def multi_process_dcp_save_load(
 
 
 def _verify_user_agent(s3fs: S3FileSystem):
-    python_version = platform.python_version()
     reader_type_string = S3ReaderConstructor.get_reader_type_string(
         s3fs._reader_constructor
     )
-    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (dcp; {torch.__version__}; md/reader_type#{reader_type_string})"
+    expected_user_agent = f"{DEFAULT_USER_AGENT_PREFIX} (dcp; {torch.__version__}; md/reader_type#{reader_type_string})"
     print(expected_user_agent)
     assert s3fs._client.user_agent_prefix == expected_user_agent
 
