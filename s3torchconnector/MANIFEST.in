@@ -1,0 +1,2 @@
+# MANIFEST.in
+global-include py.typed
