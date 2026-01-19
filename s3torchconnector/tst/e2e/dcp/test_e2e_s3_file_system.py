@@ -21,25 +21,16 @@ from s3torchconnector.s3reader import (
 )
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
+from s3torchconnector._user_agent import UserAgent
 from s3torchconnectorclient import __version__
 
-import os
 import random
-import platform
 from typing import Optional
 
 from s3torchconnector.dcp.s3_prefix_strategy import RoundRobinPrefixStrategy
 from test_common import _list_folders_in_bucket
 
-# User Agent Default Prefix
-PYTHON_VERSION = platform.python_version()
-OS_NAME = platform.system().lower()
-if OS_NAME == "darwin":
-    OS_NAME = "macos"
-OS_VERSION = platform.release()
-ARCH = platform.machine().lower()
-PYTORCH_VERSION = torch.__version__
-DEFAULT_USER_AGENT_PREFIX = f"s3torchconnector/{__version__} ua/2.1 os/{OS_NAME}#{OS_VERSION} lang/python#{PYTHON_VERSION} md/arch#{ARCH} md/pytorch#{PYTORCH_VERSION}"
+DEFAULT_USER_AGENT_PREFIX = UserAgent.get_default_prefix()
 
 
 def generate_random_port():

@@ -9,19 +9,35 @@ from ._version import __version__
 
 
 class UserAgent:
-    def __init__(self, comments: Optional[List[str]] = None):
-        if comments is not None and not isinstance(comments, list):
-            raise ValueError("Argument comments must be a List[str]")
+    @staticmethod
+    def _get_pytorch_version() -> str:
+        """Get PyTorch version if imported, else return 'unknown'."""
+        try:
+            import torch
 
+            return torch.__version__
+        except ImportError:
+            return "unknown"
+
+    @staticmethod
+    def get_default_prefix() -> str:
+        """
+        Get the default user agent prefix without any comments.
+
+        Format: s3torchconnector/{version} ua/2.1 os/{os}#{version}
+                lang/python#{version} md/arch#{arch} md/pytorch#{version}
+
+        Returns:
+            str: The default user agent prefix string
+        """
         os_name = platform.system().lower()
         if os_name == "darwin":
             os_name = "macos"
         os_version = platform.release()
         python_version = platform.python_version()
         arch = platform.machine().lower()
-        pytorch_version = self._get_pytorch_version()
+        pytorch_version = UserAgent._get_pytorch_version()
 
-        # Build user agent string parts
         parts = [
             f"{__package__}/{__version__}",
             "ua/2.1",
@@ -31,7 +47,13 @@ class UserAgent:
             f"md/pytorch#{pytorch_version}",
         ]
 
-        self._user_agent_prefix = " ".join(parts)
+        return " ".join(parts)
+
+    def __init__(self, comments: Optional[List[str]] = None):
+        if comments is not None and not isinstance(comments, list):
+            raise ValueError("Argument comments must be a List[str]")
+
+        self._user_agent_prefix = UserAgent.get_default_prefix()
         self._comments = comments or []
 
     @property
@@ -40,12 +62,3 @@ class UserAgent:
         if comments_str:
             return f"{self._user_agent_prefix} ({comments_str})"
         return self._user_agent_prefix
-
-    def _get_pytorch_version(self) -> str:
-        """Get PyTorch version if imported, else return None."""
-        try:
-            import torch
-
-            return torch.__version__
-        except ImportError:
-            return "unknown"

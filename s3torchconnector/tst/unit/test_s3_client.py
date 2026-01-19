@@ -14,7 +14,7 @@ from s3torchconnector._user_agent import UserAgent
 from s3torchconnector._version import __version__
 from s3torchconnector._s3client import S3Client, MockS3Client, S3ClientConfig
 
-from .test_user_agent import DEFAULT_PREFIX as DEFAULT_USER_AGENT
+DEFAULT_USER_AGENT = UserAgent.get_default_prefix()
 
 TEST_BUCKET = "test-bucket"
 TEST_KEY = "test-key"

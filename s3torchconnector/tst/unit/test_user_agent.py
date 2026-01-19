@@ -12,15 +12,7 @@ import torch
 from s3torchconnector._version import __version__
 from s3torchconnector._user_agent import UserAgent
 
-# User Agent Default Prefix
-PYTHON_VERSION = platform.python_version()
-OS_NAME = platform.system().lower()
-if OS_NAME == "darwin":
-    OS_NAME = "macos"
-OS_VERSION = platform.release()
-ARCH = platform.machine().lower()
-PYTORCH_VERSION = torch.__version__
-DEFAULT_PREFIX = f"s3torchconnector/{__version__} ua/2.1 os/{OS_NAME}#{OS_VERSION} lang/python#{PYTHON_VERSION} md/arch#{ARCH} md/pytorch#{PYTORCH_VERSION}"
+DEFAULT_PREFIX = UserAgent.get_default_prefix()
 
 
 @pytest.mark.parametrize(
