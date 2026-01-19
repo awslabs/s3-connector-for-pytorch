@@ -24,7 +24,6 @@ from s3torchconnectorclient import S3Exception, __version__
 from models.net import Net
 from models.lightning_transformer import LightningTransformer, L
 
-
 LIGHTNING_ACCELERATOR = "cpu"
 
 

@@ -12,7 +12,6 @@ from s3torchconnector import S3ReaderConstructor
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector.s3reader.sequential import SequentialS3Reader
 
-
 SIMPLE_MODEL = torch.nn.Sequential(
     nn.Linear(5, 5),
     nn.Linear(20, 20),
