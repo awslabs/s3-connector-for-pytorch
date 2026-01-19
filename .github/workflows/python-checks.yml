@@ -115,6 +115,7 @@ jobs:
         with:
           options: "--check --verbose"
           src: "."
+          version: "26.1.0"
       - name: Typecheck with mypy
         run: |
           mypy s3torchconnector/src

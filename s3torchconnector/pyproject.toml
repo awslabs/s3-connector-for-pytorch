@@ -33,7 +33,7 @@ test = [
     "pytest-timeout",
     "hypothesis",
     "flake8",
-    "black",
+    "black==26.1.0",
     "mypy"
 ]
 
