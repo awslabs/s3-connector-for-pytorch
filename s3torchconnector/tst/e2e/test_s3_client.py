@@ -35,8 +35,7 @@ def test_access_objects_with_profile(empty_directory):
 
     try:
         tmp_file = tempfile.NamedTemporaryFile()
-        tmp_file.write(
-            f"""[profile default]
+        tmp_file.write(f"""[profile default]
 aws_access_key_id = {os.getenv("AWS_ACCESS_KEY_ID")}
 aws_secret_access_key = {os.getenv("AWS_SECRET_ACCESS_KEY")}
 aws_session_token = {os.getenv("AWS_SESSION_TOKEN")}
@@ -44,8 +43,7 @@ aws_session_token = {os.getenv("AWS_SESSION_TOKEN")}
 [profile {TEST_PROFILE_NAME}]
 role_arn = {empty_directory.profile_arn}
 region = {empty_directory.region}
-source_profile = default""".encode()
-        )
+source_profile = default""".encode())
         tmp_file.flush()
         os.environ["AWS_CONFIG_FILE"] = tmp_file.name
 

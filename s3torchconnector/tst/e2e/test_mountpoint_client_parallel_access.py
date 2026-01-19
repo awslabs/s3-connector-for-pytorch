@@ -8,7 +8,6 @@ from s3torchconnectorclient._mountpoint_s3_client import MountpointS3Client
 from test_common import _get_fork_methods
 from conftest import getenv
 
-
 NATIVE_S3_CLIENT = None
 
 
