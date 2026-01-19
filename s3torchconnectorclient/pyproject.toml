@@ -31,7 +31,7 @@ test = [
     "pytest-timeout",
     "hypothesis",
     "flake8",
-    "black==26.1.0",
+    "black",
     "mypy",
     "Pillow<=11.2.1" # installation of the newer versions fails in manylinux2014 images
 ]

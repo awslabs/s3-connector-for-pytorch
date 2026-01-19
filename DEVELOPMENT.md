@@ -65,11 +65,7 @@ Then under the 'Copyright' section, create a new scope covering 'all', and assig
 Our CI uses `clippy` to lint Rust code changes. Use `cargo clippy --all-targets --all-features` to lint Rust before
 pushing new Rust commits.
 
-For Python code changes, install the correct tool versions via test extra:
-```bash
-pip install -e "s3torchconnector[test]"
-```
-Then run:
+For Python code changes, run 
 ```bash
 black --verbose .
 flake8 s3torchconnector/ --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -77,6 +73,7 @@ flake8 s3torchconnectorclient/python --count --select=E9,F63,F7,F82 --show-sourc
 mypy s3torchconnector/src
 mypy s3torchconnectorclient/python/src
 ```
+ to lint.
 
 To run mypy without `lightning` installed, run
 ```bash
