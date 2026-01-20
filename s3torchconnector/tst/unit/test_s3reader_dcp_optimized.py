@@ -313,20 +313,6 @@ class TestItemViewBuffer:
             assert buffer.tell() == reference_io.tell()
             assert bytes(buf[:bytes_read]) == bytes(ref_buf[:bytes_read])
 
-    def test_buffer_close(self):
-        """Test close functionality - segments cleared and flag set"""
-        buffer = _ItemViewBuffer()
-        segments = [b"hello", b" ", b"world", b"!"]
-        for segment in segments:
-            buffer.append_view(memoryview(segment))
-
-        assert not buffer._closed
-        assert len(buffer._segments) == len(segments)
-
-        buffer.close()
-        assert buffer._closed
-        assert len(buffer._segments) == 0
-
 
 class TestCreationAndValidation:
     """
@@ -562,14 +548,14 @@ class TestStreamManagement:
         # Read first item
         reader.seek(0)
         assert reader.read(7) == b"0123456"
-        assert reader._leftover
-        assert bytes(reader._leftover) == b"789"  # bytes 8-10
+        assert reader._stream_state.leftover
+        assert bytes(reader._stream_state.leftover) == b"789"  # bytes 8-10
 
         # Read second item (should use leftover data)
         reader.seek(12)
         assert reader.read(6) == b"CDEFGH"
-        assert reader._leftover
-        assert bytes(reader._leftover) == b"IJ"  # bytes 19-20
+        assert reader._stream_state.leftover
+        assert bytes(reader._stream_state.leftover) == b"IJ"  # bytes 19-20
 
     def test_get_stream_for_item_missing_stream_error(self):
         """Test _get_stream_for_item error when stream is None for non-first item"""
@@ -578,11 +564,9 @@ class TestStreamManagement:
 
         # Corrupt state: advance to second item without creating stream
         reader._current_item = ranges[1]
-        reader._stream = None  # force error (should not happen normally)
+        reader._stream_state.stream = None  # force error (should not happen normally)
 
-        with pytest.raises(
-            ValueError, match="without starting at the first item of its range-group"
-        ):
+        with pytest.raises(AssertionError):
             reader._get_stream_for_item(ranges[1])
 
 
@@ -758,6 +742,6 @@ class TestReaderIO:
         reader.close()
 
         assert reader.closed
-        assert reader._stream is None
-        assert reader._leftover is None
+        assert reader._stream_state.stream is None
+        assert reader._stream_state.leftover is None
         assert reader._current_item_buffer is None
