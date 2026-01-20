@@ -16,7 +16,8 @@ from .s3reader import S3Reader
 
 log = logging.getLogger(__name__)
 
-DEFAULT_MAX_GAP_SIZE = 32 * 1024 * 1024  # TODO tune this default
+# Raw loading throughput (~2500MB/s) multiplied by first byte latency (~200ms)
+DEFAULT_MAX_GAP_SIZE = 512 * 1024 * 1024
 FIND_ITEM_ERROR_PREFIX = (
     "DCPOptimizedS3Reader only supports sequentially accessing provided ranges: "
 )
@@ -37,6 +38,15 @@ class RangeGroup:
     item_ranges: List[ItemRange]
 
 
+@dataclass
+class _StreamState:
+    """Tracks S3 stream, its position and buffered data."""
+
+    stream: Optional[GetObjectStream] = None
+    position: int = -1  # dummy int
+    leftover: Optional[memoryview] = None
+
+
 # TODO: extend buffer for use in other S3Reader implementations after extensive testing
 class _ItemViewBuffer:
     """
@@ -49,14 +59,14 @@ class _ItemViewBuffer:
     def __init__(self) -> None:
         self._segments: List[memoryview] = []  # memoryview segments
         self._offsets: List[int] = []  # start offset (within the item) of each segment
-        self._lengths: List[int] = []  # length of each segment
+        self._lengths: List[int] = (
+            []
+        )  # length of each segment (avoid recalculations from offset)
         self._size: int = 0  # total item length (sum of _lengths)
         self._pos: int = 0  # current read position within the item
-        self._closed: bool = False
 
     def append_view(self, view: memoryview) -> None:
         """Append a memoryview segment (ignored if empty)."""
-        assert not self._closed, "Buffer is closed"
 
         seg_len = len(view)
         if seg_len == 0:
@@ -65,11 +75,6 @@ class _ItemViewBuffer:
         self._offsets.append(self._size)
         self._lengths.append(seg_len)
         self._size += seg_len
-
-    def close(self) -> None:
-        if not self._closed:
-            self._closed = True
-            self._segments.clear()
 
     def seek(self, offset: int, whence: int = SEEK_SET, /) -> int:
         assert isinstance(offset, int), f"integer expected, got {type(offset)!r}"
@@ -96,6 +101,7 @@ class _ItemViewBuffer:
         return self._pos
 
     def read(self, size: Optional[int] = None) -> bytes:
+        # We don't allow full read on full file, since used item data are discarded
         assert size is not None, "Size cannot be None; full read is not supported"
         assert size >= 0, "Size cannot be negative; full read is not supported"
 
@@ -187,7 +193,7 @@ class DCPOptimizedS3Reader(S3Reader):
     - Sequential Access over exact item_ranges provided, also applied automatically by ``prepare_local_plan``
 
     **Usage**:
-    Typically created automatically by ``DCPOptimizedConstructor`` when used with ``S3StorageReader`` and
+    Created automatically by ``DCPOptimizedConstructor`` when used with ``S3StorageReader`` and
     ``S3ReaderConstructor.dcp_optimized()``:
 
         reader_constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=32*1024*1024)
@@ -195,7 +201,7 @@ class DCPOptimizedS3Reader(S3Reader):
         DCP.load(state_dict, storage_reader=storage_reader)
 
     **Error Handling**:
-        Non-sequential access attempts raise ValueError with descriptive messages.
+        Non-sequential access attempts raise ValueError.
     """
 
     def __init__(
@@ -206,6 +212,7 @@ class DCPOptimizedS3Reader(S3Reader):
         get_object_info: Callable[[], Union[ObjectInfo, HeadObjectResult]],
         get_stream: Callable[[Optional[int], Optional[int]], GetObjectStream],
         max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE,
+        # added float type to allow float("inf") / sys.maxsize for max_gap_size
     ):
         if not bucket:
             raise ValueError("Bucket should be specified")
@@ -242,10 +249,8 @@ class DCPOptimizedS3Reader(S3Reader):
             self._item_ranges, self._max_gap_size
         )
 
-        # Stream state
-        self._stream: Optional[GetObjectStream] = None
-        self._stream_pos: int = -1  # position at head of stream - dummy int
-        self._leftover: Optional[memoryview] = None
+        # Stream state (stores stream, its position, and leftover buffered data)
+        self._stream_state: _StreamState = _StreamState()
 
         # Item buffer state
         self._item_iter: Iterator[ItemRange] = iter(self._item_ranges)
@@ -286,7 +291,7 @@ class DCPOptimizedS3Reader(S3Reader):
         groups: List[RangeGroup] = []
         items: List[ItemRange] = [ranges[0]]
 
-        if ranges[0].start < 0 or ranges[0].end < ranges[0].start:
+        if not 0 <= ranges[0].start <= ranges[0].end:
             raise ValueError(f"Invalid range: {ranges[0].start}-{ranges[0].end}")
         for r in ranges[1:]:
             if r.end <= r.start:  # Empty ranges filtered out in __init__
@@ -357,18 +362,16 @@ class DCPOptimizedS3Reader(S3Reader):
         # If item is the first item of a new group, create new stream
         if item.start in self._group_start_to_group:
             group = self._group_start_to_group[item.start]
-            self._stream = self._get_stream(group.start, group.end)
-            self._stream_pos = group.start
-            self._leftover = None
-            return self._stream
+            self._stream_state.stream = self._get_stream(group.start, group.end)
+            self._stream_state.position = group.start
+            self._stream_state.leftover = None
+            return self._stream_state.stream
 
         # Otherwise, we're still in same group - reuse stream created when reading 1st item
-        if self._stream is None:
-            raise ValueError(
-                f"{FIND_ITEM_ERROR_PREFIX}Attempted to read item {item.start}-{item.end} "
-                f"without starting at the first item of its range-group"
-            )
-        return self._stream
+        assert (
+            self._stream_state.stream is not None
+        ), "No stream found for item; first item of its range group likely not read"
+        return self._stream_state.stream
 
     def _get_item_buffer(self, item: ItemRange) -> _ItemViewBuffer:
         """Load entire item into a memoryview-segment buffer from existing stream."""
@@ -377,8 +380,8 @@ class DCPOptimizedS3Reader(S3Reader):
 
         # Get stream from the right RangeGroup for start_pos
         stream = self._get_stream_for_item(item)
-        pos = self._stream_pos  # local copy
-        leftover = self._leftover  # local copy
+        pos = self._stream_state.position  # local copy
+        leftover = self._stream_state.leftover  # local copy
         bytes_left = item.end - item.start
 
         # 1. Read from leftover bytes if available and needed
@@ -461,8 +464,8 @@ class DCPOptimizedS3Reader(S3Reader):
                 bytes_left = 0
                 break
 
-        self._stream_pos = pos
-        self._leftover = leftover
+        self._stream_state.position = pos
+        self._stream_state.leftover = leftover
         return buffer
 
     def read(self, size: Optional[int] = None) -> bytes:
@@ -473,7 +476,7 @@ class DCPOptimizedS3Reader(S3Reader):
         access across DCP items (sequential item access required).
 
         Args:
-            size (int | None): how many bytes to read.
+            size (int): how many bytes to read.
 
         Returns:
             bytes: Bytes read from specified range.
@@ -581,8 +584,7 @@ class DCPOptimizedS3Reader(S3Reader):
         """
         if not self._closed:
             self._closed = True
-            self._stream = None
-            self._leftover = None
+            self._stream_state.stream = None
+            self._stream_state.leftover = None
             if self._current_item_buffer:
-                self._current_item_buffer.close()
                 self._current_item_buffer = None

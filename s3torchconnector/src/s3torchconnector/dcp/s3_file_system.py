@@ -348,7 +348,7 @@ class S3StorageReader(FileSystemReader):
         """
         super().__init__(path)
         self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
-        self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment]
+        self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment] # since we overrode self.fs: FileSystem
             region,
             s3client_config=s3client_config,
             reader_constructor=self._reader_constructor,
