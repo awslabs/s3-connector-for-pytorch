@@ -13,7 +13,6 @@ from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
 from s3torchconnector.s3reader import SequentialS3Reader, DCPOptimizedS3Reader
 from s3torchconnector._s3client import S3Client
 
-
 SIMPLE_MODEL = torch.nn.Sequential(
     nn.Linear(5, 5),
     nn.Linear(20, 20),
