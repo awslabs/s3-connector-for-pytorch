@@ -19,7 +19,7 @@ def test_py_typed_exists():
     """Verify py.typed file exists (PEP 561).
 
     Note existence of py.typed file in source build is only tested in Build Wheels workflow
-    where the build arftifact itself was tested.
+    where the build artifact itself was tested.
     """
     package_path = importlib.resources.files(s3torchconnector)
     py_typed = package_path / "py.typed"
