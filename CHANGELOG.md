@@ -2,6 +2,7 @@
 
 ### New features
 * Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
+* Add py.typed file to enable external type checking (#406)
 
 ### Bug fixes
 * Override S3Writer closed property and block writes after close (#360)
