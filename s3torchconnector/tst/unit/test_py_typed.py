@@ -1,12 +1,20 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-import importlib.resources
+import sys
+import pytest
 
 import s3torchconnector
 from mypy import api
 
+if sys.version_info >= (3, 9):
+    import importlib.resources
 
+
+# TODO: remove the conditional skip/import after Python 3.8 deprecation
+@pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="importlib.resources.files is Python 3.9+"
+)
 def test_py_typed_exists():
     """Verify py.typed file exists (PEP 561).
 
