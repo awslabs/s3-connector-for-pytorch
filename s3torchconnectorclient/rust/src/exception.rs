@@ -40,11 +40,12 @@ pub fn python_exception(error: impl Error) -> PyErr {
 mod tests {
     use std::io;
 
+    use pyo3::Python;
     use crate::exception::python_exception;
 
     #[test]
     fn test_python_exception() {
-        pyo3::prepare_freethreaded_python();
+        Python::initialize();
 
         let err = io::Error::new(io::ErrorKind::InvalidData, "Test message");
         let pyerr = python_exception(err);

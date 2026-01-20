@@ -72,10 +72,10 @@ where
         let request = self.client.get_object(&bucket, &key, &params);
 
         // TODO - Look at use of `block_on` and see if we can future this.
-        let mut request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        let mut request = py.detach(|| block_on(request).map_err(python_exception))?;
 
         let closure = Box::new(move |py: Python| {
-            py.allow_threads(|| block_on(request.try_next()).map_err(python_exception))
+            py.detach(|| block_on(request.try_next()).map_err(python_exception))
         });
 
         // Extract start_offset from params if needed for RangedS3Reader
@@ -108,7 +108,7 @@ where
     ) -> PyResult<PutObjectStream> {
         let request = self.client.put_object(&bucket, &key, &params);
         // TODO - Look at use of `block_on` and see if we can future this.
-        let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        let request = py.detach(|| block_on(request).map_err(python_exception))?;
 
         Ok(PutObjectStream::new(request, bucket, key))
     }
@@ -117,7 +117,7 @@ where
         let request = self.client.head_object(&bucket, &key, &params);
 
         // TODO - Look at use of `block_on` and see if we can future this.
-        let request = py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        let request = py.detach(|| block_on(request).map_err(python_exception))?;
         Ok(PyHeadObjectResult::from_head_object_result(request))
     }
 
@@ -125,7 +125,7 @@ where
         let request = self.client.delete_object(&bucket, &key);
 
         // TODO - Look at use of `block_on` and see if we can future this.
-        py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        py.detach(|| block_on(request).map_err(python_exception))?;
         Ok(())
     }
 
@@ -147,7 +147,7 @@ where
             &params,
         );
 
-        py.allow_threads(|| block_on(request).map_err(python_exception))?;
+        py.detach(|| block_on(request).map_err(python_exception))?;
         Ok(())
     }
 }

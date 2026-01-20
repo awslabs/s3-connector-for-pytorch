@@ -16,7 +16,7 @@ path = "rust/src/lib.rs"
 built = "0.7"
 
 [dependencies]
-pyo3 = "0.24.1"
+pyo3 = "0.27.2"
 futures = "0.3.28"
 mountpoint-s3-client = { version = "0.14.1", features = ["mock"] }
 mountpoint-s3-crt-sys = { version = "0.13.0" }

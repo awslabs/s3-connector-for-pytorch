@@ -69,7 +69,7 @@ impl<T: PutObjectRequest> PutObjectRequestWrapperImpl<T> {
 impl<T: PutObjectRequest + Send + Sync> PutObjectRequestWrapper for PutObjectRequestWrapperImpl<T> {
     fn write(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
         if let Some(request) = self.request.as_mut() {
-            py.allow_threads(|| block_on(request.write(data)).map_err(python_exception))
+            py.detach(|| block_on(request.write(data)).map_err(python_exception))
         } else {
             Err(S3Exception::new_err("Cannot write to closed object"))
         }
@@ -77,7 +77,7 @@ impl<T: PutObjectRequest + Send + Sync> PutObjectRequestWrapper for PutObjectReq
 
     fn complete(&mut self, py: Python) -> PyResult<()> {
         if let Some(request) = self.request.take() {
-            py.allow_threads(|| block_on(request.complete()).map_err(python_exception))?;
+            py.detach(|| block_on(request.complete()).map_err(python_exception))?;
             Ok(())
         } else {
             Err(S3Exception::new_err("Cannot close object more than once"))
@@ -101,9 +101,9 @@ mod tests {
         let registry = tracing_subscriber::registry().with(layer);
         let _ = registry.try_init();
 
-        pyo3::prepare_freethreaded_python();
+        Python::initialize();
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let locals = [
                 (
                     "MountpointS3Client",
