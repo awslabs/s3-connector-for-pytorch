@@ -11,6 +11,7 @@
 ### Other changes
 * Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
 * Add load ordering optimization to S3StorageReader for sequential access patterns (#372)
+* Add os, arch, and PyTorch version to user agent string (#397)
 * Add benchmark to run DCP Loading Workloads (#357)
 * Add thread_count parameter to S3StorageWriter (#370)
 
