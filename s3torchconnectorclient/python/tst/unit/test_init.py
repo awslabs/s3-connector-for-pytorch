@@ -6,7 +6,7 @@ import warnings
 from unittest.mock import patch
 
 import pytest
-import s3torchconnector
+import s3torchconnectorclient
 
 
 @pytest.mark.parametrize(
@@ -24,7 +24,7 @@ def test_init_macos_x86_warning(system, machine, expect_warn):
         "platform.machine", return_value=machine
     ), warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        importlib.reload(s3torchconnector)
+        importlib.reload(s3torchconnectorclient)
 
         has_warning = any(
             "macOS x86_64 wheel support will be deprecated" in str(warning.message)
@@ -40,7 +40,7 @@ def test_init_platform_detection_exception():
     ), warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
 
-        importlib.reload(s3torchconnector)
+        importlib.reload(s3torchconnectorclient)
 
         assert not any(
             "macOS x86_64 wheel support will be deprecated" in str(warning.message)
@@ -63,7 +63,7 @@ def test_init_python38_warning(python_version, expect_warn):
         "platform.python_version", return_value=python_version
     ), warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        importlib.reload(s3torchconnector)
+        importlib.reload(s3torchconnectorclient)
 
         has_warning = any(
             "Python 3.8 support will be deprecated" in str(warning.message)
@@ -79,7 +79,7 @@ def test_init_python_version_detection_exception():
         side_effect=OSError("Python version detection failed"),
     ), warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        importlib.reload(s3torchconnector)
+        importlib.reload(s3torchconnectorclient)
 
         assert not any(
             "Python 3.8 support will be deprecated" in str(warning.message)
@@ -95,7 +95,7 @@ def test_init_multiple_warnings():
         record=True
     ) as w:
         warnings.simplefilter("always")
-        importlib.reload(s3torchconnector)
+        importlib.reload(s3torchconnectorclient)
 
         # Check exactly 2 deprecation warnings
         deprecation_warnings = [warn for warn in w if "deprecated" in str(warn.message)]
