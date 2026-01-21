@@ -97,8 +97,8 @@ def test_get_pytorch_version_available():
 
 
 def test_get_pytorch_version_unavailable():
-    """Test _get_pytorch_version when torch import fails."""
-    with patch("builtins.__import__", side_effect=ImportError):
+    """Test _get_pytorch_version when torch is not imported."""
+    with patch.dict("sys.modules", {"torch": None}):
         version = UserAgent._get_pytorch_version()
         assert version == "unknown"
 
