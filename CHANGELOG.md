@@ -14,6 +14,7 @@
 * Add os, arch, and PyTorch version to user agent string (#397)
 * Add benchmark to run DCP Loading Workloads (#357)
 * Add thread_count parameter to S3StorageWriter (#370)
+* Add macOS x86_64 and Python 3.8 deprecation warnings (#400)
 
 ## v1.4.3 (July 25, 2025)
 
