@@ -51,10 +51,12 @@ def test_init_platform_detection_exception():
 @pytest.mark.parametrize(
     "python_version,expect_warn",
     [
-        ("3.8.20", True),
         ("3.8.0", True),
+        ("3.8.20", True),
         ("3.9.7", False),
+        ("3.13.8", False),
         ("3.13.0t", False),
+        ("3.80.0", False),
     ],
 )
 def test_init_python38_warning(python_version, expect_warn):
