@@ -109,6 +109,8 @@ CXX = "/opt/rh/devtoolset-10/root/usr/bin/g++"
 select = "{cp313-*manylinux*,cp314-*manylinux*}"
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
+# Python 3.14 defaults to forkserver for multiprocessing, which shares memory with /dev/shm; lightning e2e test dataloaders need more shm for forkserver to work in docker (default 64MB).
+container-engine = "docker; create_args: --shm-size=1g"
 before-all = [
   "yum -y update",
   "yum -y install openssl-devel",
