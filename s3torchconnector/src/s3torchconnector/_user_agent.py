@@ -1,7 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import platform
-import sys
 from typing import List, Optional
 
 import torch
@@ -12,14 +11,6 @@ from ._version import __version__
 
 
 class UserAgent:
-    @staticmethod
-    def _get_pytorch_version() -> str:
-        """Get PyTorch version if imported, else return 'unknown'."""
-        torch = sys.modules.get("torch")
-        if torch is not None:
-            return torch.__version__
-        return "unknown"
-
     @staticmethod
     def get_default_prefix() -> str:
         """
@@ -37,7 +28,7 @@ class UserAgent:
         os_version = platform.release()
         python_version = platform.python_version()
         arch = platform.machine().lower()
-        pytorch_version = UserAgent._get_pytorch_version()
+        pytorch_version = torch.__version__
 
         parts = [
             f"{__package__}/{__version__}",

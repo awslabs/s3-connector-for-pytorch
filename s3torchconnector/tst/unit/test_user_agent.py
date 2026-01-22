@@ -92,18 +92,11 @@ def test_user_agent_architecture_field(arch_input, expected):
         assert f"md/arch#{expected}" in user_agent.prefix
 
 
-def test_get_pytorch_version_available():
-    """Test _get_pytorch_version when torch is available."""
-    version = UserAgent._get_pytorch_version()
-    assert version != "unknown"
-    assert isinstance(version, str)
-
-
-def test_get_pytorch_version_unavailable():
-    """Test _get_pytorch_version when torch is not imported."""
-    with patch.dict("sys.modules", {"torch": None}):
-        version = UserAgent._get_pytorch_version()
-        assert version == "unknown"
+def test_user_agent_pytorch_version():
+    """Test PyTorch version is included correctly."""
+    with patch("torch.__version__", "2.10.0"):
+        user_agent = UserAgent()
+        assert "md/pytorch#2.10.0" in user_agent.prefix
 
 
 @pytest.mark.parametrize("invalid_comment", [0, "string"])
