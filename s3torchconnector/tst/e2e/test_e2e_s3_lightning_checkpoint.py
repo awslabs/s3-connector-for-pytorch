@@ -19,10 +19,13 @@ from s3torchconnector import S3Checkpoint
 from s3torchconnector._s3client import S3Client
 from s3torchconnector._s3dataset_common import parse_s3_uri
 from s3torchconnector.lightning import S3LightningCheckpoint
+from s3torchconnector._user_agent import UserAgent
 from s3torchconnectorclient import S3Exception, __version__
 
 from models.net import Net
 from models.lightning_transformer import LightningTransformer, L
+
+DEFAULT_USER_AGENT_PREFIX = UserAgent.get_default_prefix()
 
 LIGHTNING_ACCELERATOR = "cpu"
 
@@ -306,6 +309,7 @@ def _verify_equal_state_dict(
 
 
 def _verify_user_agent(s3_lightning_checkpoint: S3LightningCheckpoint):
-    python_version = platform.python_version()
-    expected_user_agent = f"s3torchconnector/{__version__} ua/2.0 lang/python#{python_version} (lightning; {lightning.__version__})"
+    expected_user_agent = (
+        f"{DEFAULT_USER_AGENT_PREFIX} (lightning; {lightning.__version__})"
+    )
     assert s3_lightning_checkpoint._client.user_agent_prefix == expected_user_agent

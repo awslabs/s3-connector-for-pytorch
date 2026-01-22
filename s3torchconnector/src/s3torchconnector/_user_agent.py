@@ -1,7 +1,9 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
-from typing import List, Optional
 import platform
+from typing import List, Optional
+
+import torch
 
 from ._version import __version__
 
@@ -9,13 +11,41 @@ from ._version import __version__
 
 
 class UserAgent:
+    @staticmethod
+    def get_default_prefix() -> str:
+        """
+        Get the default user agent prefix without any comments.
+
+        Format: s3torchconnector/{version} ua/2.1 os/{os}#{version}
+                lang/python#{version} md/arch#{arch} md/pytorch#{version}
+
+        Returns:
+            str: The default user agent prefix string
+        """
+        os_name = platform.system().lower()
+        if os_name == "darwin":
+            os_name = "macos"
+        os_version = platform.release()
+        python_version = platform.python_version()
+        arch = platform.machine().lower()
+        pytorch_version = torch.__version__
+
+        parts = [
+            f"{__package__}/{__version__}",
+            "ua/2.1",
+            f"os/{os_name}#{os_version}",
+            f"lang/python#{python_version}",
+            f"md/arch#{arch}",
+            f"md/pytorch#{pytorch_version}",
+        ]
+
+        return " ".join(parts)
+
     def __init__(self, comments: Optional[List[str]] = None):
         if comments is not None and not isinstance(comments, list):
             raise ValueError("Argument comments must be a List[str]")
-        python_version = platform.python_version()
-        self._user_agent_prefix = (
-            f"{__package__}/{__version__} ua/2.0 lang/python#{python_version}"
-        )
+
+        self._user_agent_prefix = UserAgent.get_default_prefix()
         self._comments = comments or []
 
     @property
