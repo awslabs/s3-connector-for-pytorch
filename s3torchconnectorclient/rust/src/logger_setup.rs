@@ -69,11 +69,12 @@ mod tests {
         S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR,
     };
     use pyo3::PyResult;
+    use pyo3::Python;
     use rusty_fork::rusty_fork_test;
     use std::env;
 
     fn check_valid_log_level(log_level: &str) {
-        pyo3::prepare_freethreaded_python();
+        Python::initialize();
         env::set_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR, log_level);
         let result: PyResult<()> = setup_logging();
         assert!(result.is_ok());
@@ -82,7 +83,7 @@ mod tests {
     rusty_fork_test! {
         #[test]
         fn test_debug_log_environment_variable_unset() {
-            pyo3::prepare_freethreaded_python();
+            Python::initialize();
             env::remove_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR);
             let result: PyResult<()> = setup_logging();
             assert!(result.is_ok());
@@ -90,7 +91,7 @@ mod tests {
 
         #[test]
         fn test_logs_dir_environment_variable_unset() {
-            pyo3::prepare_freethreaded_python();
+            Python::initialize();
             env::remove_var(S3_TORCH_CONNECTOR_LOGS_DIR_PATH_ENV_VAR);
             let result: PyResult<()> = setup_logging();
             assert!(result.is_ok());
@@ -129,7 +130,7 @@ mod tests {
         #[test]
         #[ignore = "tracing-subscriber 0.3.20 EnvFilter parsing regression - see tokio-rs/tracing#3371"]
         fn test_invalid_logging_level() {
-            pyo3::prepare_freethreaded_python();
+            Python::initialize();
             env::set_var(S3_TORCH_CONNECTOR_DEBUG_LOGS_ENV_VAR, "invalid123.&/?");
             let result: PyResult<()> = setup_logging();
             assert!(result.is_err());

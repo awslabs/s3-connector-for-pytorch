@@ -80,9 +80,9 @@ mod tests {
         let registry = tracing_subscriber::registry().with(layer);
         let _ = registry.try_init();
 
-        pyo3::prepare_freethreaded_python();
+        Python::initialize();
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let locals = [
                 (
                     "MountpointS3Client",

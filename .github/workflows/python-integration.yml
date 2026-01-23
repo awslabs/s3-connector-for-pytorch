@@ -38,7 +38,7 @@ jobs:
       matrix:
         # macos-15-intel planned to end August 2027
         runner: [ubuntu-22.04, macos-15-intel, macos-14]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         test-run:
           - name: "S3"
             bucket: ${{ vars.S3_BUCKET }}
@@ -55,9 +55,11 @@ jobs:
             profile-role: ${{ vars.PROFILE_IAM_ROLE }}
             profile-bucket: ${{ vars.S3_EXPRESS_PROFILE_BUCKET }}
         exclude:
-          # For Python 3.13, PyTorch does not support macos-15-intel/x86_64, only macos-14/arm64.
+          # For Python 3.13/3.14, PyTorch does not support macos-15-intel/x86_64, only macos-14/arm64.
           - runner: macos-15-intel
             python-version: "3.13"
+          - runner: macos-15-intel
+            python-version: "3.14"
           - runner: macos-14
             python-version: "3.8"
           - runner: macos-14

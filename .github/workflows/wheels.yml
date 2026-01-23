@@ -39,6 +39,7 @@ jobs:
           - cp311
           - cp312
           - cp313
+          - cp314
         builder:
           - runner: codebuild-${{ vars.CODEBUILD_PROJECT_NAME }}-${{ github.run_id }}-${{ github.run_attempt }}-ubuntu-7.0-large
             kind: manylinux
@@ -56,9 +57,14 @@ jobs:
           - runner: macos-14
             kind: macosx
             arch: arm64
-        # cp313 macos-15-intel (x86_64) is not supported by PyTorch
+        # cp313/cp314 macos-15-intel (x86_64) is not supported by PyTorch
         exclude:
           - python: cp313
+            builder:
+              runner: macos-15-intel
+              kind: macosx
+              arch: x86_64
+          - python: cp314
             builder:
               runner: macos-15-intel
               kind: macosx

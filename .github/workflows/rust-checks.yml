@@ -2,6 +2,7 @@ name: Rust Checks
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -79,11 +80,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      # Use Python 3.13 since Python 3.14 requires pyo3 version bump from 0.24.0
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Set up stable Rust
         uses: dtolnay/rust-toolchain@stable

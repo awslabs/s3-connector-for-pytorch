@@ -53,7 +53,7 @@ impl ListObjectStream {
     }
 
     fn make_request(&self, py: Python) -> PyResult<ListObjectsResult> {
-        py.allow_threads(|| {
+        py.detach(|| {
             let client = &self.client;
             client.list_objects(
                 &self.bucket,
@@ -134,9 +134,9 @@ mod tests {
         let registry = tracing_subscriber::registry().with(layer);
         let _ = registry.try_init();
 
-        pyo3::prepare_freethreaded_python();
+        Python::initialize();
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let locals = [
                 (
                     "MountpointS3Client",
