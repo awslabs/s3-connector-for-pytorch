@@ -1,0 +1,402 @@
+s3torchconnector.s3reader
+=========================
+
+.. py:module:: s3torchconnector.s3reader
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/s3torchconnector/s3reader/constructor/index
+   /autoapi/s3torchconnector/s3reader/protocol/index
+   /autoapi/s3torchconnector/s3reader/ranged/index
+   /autoapi/s3torchconnector/s3reader/s3reader/index
+   /autoapi/s3torchconnector/s3reader/sequential/index
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.s3reader.S3Reader
+   s3torchconnector.s3reader.S3ReaderConstructor
+   s3torchconnector.s3reader.SequentialS3Reader
+   s3torchconnector.s3reader.RangedS3Reader
+
+
+Package Contents
+----------------
+
+.. py:class:: S3Reader
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`io.BufferedIOBase`
+
+
+   An abstract base class for read-only, file-like representation of a single object stored in S3.
+
+   This class defines the interface for S3 readers. Concrete implementations (SequentialS3Reader or
+   RangedS3Reader extend this class. S3ReaderConstructor creates partial functions of these
+   implementations, which are then completed by S3Client with the remaining required parameters.
+
+
+   .. py:property:: bucket
+      :type: str
+
+      :abstractmethod:
+
+
+
+   .. py:property:: key
+      :type: str
+
+      :abstractmethod:
+
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+      :abstractmethod:
+
+
+      Read and return up to n bytes.
+
+      If the argument is omitted, None, or negative, reads and
+      returns all data until EOF.
+
+      If the argument is positive, and the underlying raw stream is
+      not 'interactive', multiple raw reads may be issued to satisfy
+      the byte count (unless EOF is reached first).  But for
+      interactive raw streams (as well as sockets and pipes), at most
+      one raw read will be issued, and a short result does not imply
+      that EOF is imminent.
+
+      Returns an empty bytes object on EOF.
+
+      Returns None if the underlying raw stream was open in non-blocking
+      mode and no data is available at the moment.
+
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+      :abstractmethod:
+
+
+      Change stream position.
+
+      Change the stream position to the given byte offset. The offset is
+      interpreted relative to the position indicated by whence.  Values
+      for whence are:
+
+      * 0 -- start of stream (the default); offset should be zero or positive
+      * 1 -- current stream position; offset may be negative
+      * 2 -- end of stream; offset is usually negative
+
+      Return the new absolute position.
+
+
+
+   .. py:method:: tell() -> int
+      :abstractmethod:
+
+
+      Return current stream position.
+
+
+
+   .. py:method:: readinto(buf) -> int
+      :abstractmethod:
+
+
+
+   .. py:method:: seekable() -> bool
+
+      :returns: Return whether object supports seek operations.
+      :rtype: bool
+
+
+
+   .. py:method:: readable() -> bool
+
+      :returns: Return whether object was opened for reading.
+      :rtype: bool
+
+
+
+   .. py:method:: writable() -> bool
+
+      :returns: Return whether object was opened for writing.
+      :rtype: bool
+
+
+
+.. py:class:: S3ReaderConstructor
+
+   Constructor for creating ``partial(S3Reader)`` instances.
+
+   Creates partial ``S3Reader`` instances that will be completed by ``S3Client`` with the
+   remaining required parameters (e.g. ``bucket``, ``key``, ``get_object_info``, ``get_stream``).
+
+   The constructor provides factory methods for different reader types:
+
+   - ``sequential()``: Creates a constructor for sequential readers that buffer the entire object.
+     Best for full reads and repeated access.
+   - ``range_based()``: Creates a constructor for range-based readers that fetch specific byte ranges.
+     Suitable for sparse partial reads for large objects.
+
+
+   .. py:method:: sequential() -> s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol
+      :staticmethod:
+
+
+      Creates a constructor for sequential readers
+
+      :returns: Partial constructor for SequentialS3Reader
+      :rtype: S3ReaderConstructorProtocol
+
+      Example::
+
+          reader_constructor = S3ReaderConstructor.sequential()
+
+
+
+
+   .. py:method:: range_based(buffer_size: Optional[int] = None) -> s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol
+      :staticmethod:
+
+
+      Creates a constructor for range-based readers
+
+      :param buffer_size: Internal buffer size in bytes. If None, uses default 8MB.
+                          Set to 0 to disable buffering.
+
+      :returns: Partial constructor for RangedS3Reader
+      :rtype: S3ReaderConstructorProtocol
+
+      Range-based reader performs byte-range requests to read specific portions of S3 objects without
+      downloading the entire file.
+
+      Buffer size affects read performance:
+
+      * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer to reduce S3 API calls for small, sequential reads
+      * Large reads (≥ ``buffer_size``): bypass the buffer for direct transfer from S3
+      * Forward overlap reads: Reuses buffered data when reading ranges that extend beyond current buffer, and processes remaining
+      data according to size with logic above.
+
+      Configuration Guide:
+
+      * Use larger buffer sizes for workloads with many small, sequential reads of nearby bytes
+      * Use smaller buffer sizes or disable buffering for sparse partial reads
+      * Buffer can be disabled by setting ``buffer_size`` to 0
+      * If ``buffer_size`` is None, uses default 8MB buffer
+
+      Examples::
+
+          # Range-based reader with default 8MB buffer
+          reader_constructor = S3ReaderConstructor.range_based()
+
+          # Range-based reader with custom buffer size
+          reader_constructor = S3ReaderConstructor.range_based(buffer_size=16*1024*1024)
+
+          # Range-based reader with buffering disabled
+          reader_constructor = S3ReaderConstructor.range_based(buffer_size=0)
+
+
+
+   .. py:method:: default() -> s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol
+      :staticmethod:
+
+
+      Creates default reader constructor (sequential)
+
+      :returns: Partial constructor for SequentialS3Reader
+      :rtype: S3ReaderConstructorProtocol
+
+
+
+   .. py:method:: get_reader_type_string(constructor: Optional[s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol]) -> str
+      :staticmethod:
+
+
+      Returns the reader type string for the given constructor.
+
+
+
+.. py:class:: SequentialS3Reader(bucket: str, key: str, get_object_info: Callable[[], Union[s3torchconnectorclient._mountpoint_s3_client.ObjectInfo, s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult]], get_stream: Callable[[], s3torchconnectorclient._mountpoint_s3_client.GetObjectStream])
+
+   Bases: :py:obj:`s3torchconnector.s3reader.s3reader.S3Reader`
+
+
+   Sequential S3 reader implementation
+
+   Maintains an internal buffer for efficient sequential reads and repeated access.
+   Optimal for most use cases, including full object reads.
+
+
+   .. py:property:: bucket
+      :type: str
+
+
+
+   .. py:property:: key
+      :type: str
+
+
+
+   .. py:method:: prefetch() -> None
+
+      Start fetching data from S3.
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: readinto(buf) -> int
+
+      Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+      Return the number of bytes read. If no bytes are available, zero is returned.
+
+      :param buf: writable bytes-like object
+
+      :returns: numer of bytes read or zero, if no bytes available
+      :rtype: int
+
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+
+      Read up to size bytes from the object and return them.
+
+      If size is zero or positive, read that many bytes from S3, or until the end of the object.
+      If size is None or negative, read the entire file.
+
+      :param size: how many bytes to read.
+      :type size: int | None
+
+      :returns: Bytes read from S3 Object
+      :rtype: bytes
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+
+      Change the stream position to the given byte offset, interpreted relative to whence.
+
+      When seeking beyond the end of the file, always stay at EOF.
+      Seeking before the start of the file results in a ValueError.
+
+      :param offset: How many bytes to seek relative to whence.
+      :type offset: int
+      :param whence: One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET
+      :type whence: int
+
+      :returns: Current position of the stream
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: tell() -> int
+
+      :returns: Current stream position.
+      :rtype: int
+
+
+
+.. py:class:: RangedS3Reader(bucket: str, key: str, get_object_info: Callable[[], Union[s3torchconnectorclient._mountpoint_s3_client.ObjectInfo, s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult]], get_stream: Callable[[Optional[int], Optional[int]], s3torchconnectorclient._mountpoint_s3_client.GetObjectStream], buffer_size: Optional[int] = None)
+
+   Bases: :py:obj:`s3torchconnector.s3reader.s3reader.S3Reader`
+
+
+   Range-based S3 reader implementation with adaptive buffering.
+
+   Performs byte-range requests to read specific portions of S3 objects without
+   downloading the entire file. Includes optional adaptive buffer to reduce S3 API
+   calls for small, sequential reads while bypassing buffering for large reads.
+   Optimal for sparse partial reads of large objects.
+
+   Buffering behavior:
+
+   * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer, copies to user
+   * Large reads (>= ``buffer_size``): Direct S3 access, bypass buffer
+   * Forward overlapping reads: Reuses existing buffer data if possible when read range extends beyond current buffer
+   * Buffer can be disabled by setting ``buffer_size`` to 0
+   * If ``buffer_size`` is None, uses default 8MB buffer
+
+   :param bucket: S3 bucket name
+   :param key: S3 object key
+   :param get_object_info: Callable that returns object metadata
+   :param get_stream: Callable that returns stream for byte range requests
+   :param buffer_size: Internal buffer size in bytes, defaults to 8MB
+
+
+   .. py:property:: bucket
+      :type: str
+
+
+
+   .. py:property:: key
+      :type: str
+
+
+
+   .. py:method:: readinto(buf) -> int
+
+      Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+      Return the number of bytes read. If no bytes are available, zero is returned.
+
+      :param buf: writable bytes-like object
+
+      :returns: numer of bytes read or zero, if no bytes available
+      :rtype: int
+
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+
+      Read up to size bytes from the current position.
+
+      If size is zero or positive, read that many bytes from S3, or until the end of the object.
+      If size is None or negative, read until the end of the object.
+
+      :param size: how many bytes to read.
+      :type size: int | None
+
+      :returns: Bytes read from specified range.
+      :rtype: bytes
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+
+      Change the stream position to the given byte offset, interpreted relative to whence.
+
+      When seeking beyond the end of the file, always stay at EOF.
+      Seeking before the start of the file results in a ValueError.
+
+      :param offset: How many bytes to seek relative to whence.
+      :type offset: int
+      :param whence: One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET
+      :type whence: int
+
+      :returns: Current position of the stream
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: tell() -> int
+
+      :returns: Current stream position.
+      :rtype: int
+
+
+
