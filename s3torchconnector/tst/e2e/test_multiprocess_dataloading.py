@@ -10,6 +10,7 @@ from typing import Callable, TYPE_CHECKING
 import pytest
 from torch.utils.data import DataLoader, get_worker_info
 from torchdata.datapipes.iter import IterableWrapper
+import torch.multiprocessing as mp
 
 from s3torchconnector import (
     S3IterableDataset,
@@ -84,7 +85,12 @@ def test_s3iterable_dataset_multiprocess_torchdata(
     batch_size = 2
     num_workers = 3
 
-    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        multiprocessing_context=mp.get_context(),
+    )
 
     total_objects = 0
     uris_seen = Counter()
@@ -122,7 +128,9 @@ def test_s3iterable_dataset_multiprocess(
     num_epochs = 2
     num_images = len(image_directory.contents)
 
-    dataloader = DataLoader(dataset, num_workers=num_workers)
+    dataloader = DataLoader(
+        dataset, num_workers=num_workers, multiprocessing_context=mp.get_context()
+    )
     counter = 0
     for epoch in range(num_epochs):
         s3keys = Counter()
@@ -159,7 +167,9 @@ def test_s3mapdataset_multiprocess(
     num_epochs = 2
     num_images = len(image_directory.contents)
 
-    dataloader = DataLoader(dataset, num_workers=num_workers)
+    dataloader = DataLoader(
+        dataset, num_workers=num_workers, multiprocessing_context=mp.get_context()
+    )
 
     for epoch in range(num_epochs):
         s3keys = Counter()

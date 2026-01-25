@@ -14,6 +14,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.demos import WikiText2
 from lightning.pytorch.plugins import AsyncCheckpointIO
 from torch.utils.data import DataLoader
+import torch.multiprocessing as mp
 
 from s3torchconnector import S3Checkpoint
 from s3torchconnector._s3client import S3Client
@@ -83,7 +84,9 @@ def test_delete_checkpoint(checkpoint_directory):
 def test_load_trained_checkpoint(checkpoint_directory):
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
-    dataloader = DataLoader(dataset, num_workers=3)
+    dataloader = DataLoader(
+        dataset, num_workers=3, multiprocessing_context=mp.get_context()
+    )
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     trainer = L.Trainer(accelerator=LIGHTNING_ACCELERATOR, fast_dev_run=2)
     trainer.fit(model=model, train_dataloaders=dataloader)
@@ -99,7 +102,9 @@ def test_load_trained_checkpoint(checkpoint_directory):
 def test_compatibility_with_trainer_plugins(checkpoint_directory):
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
-    dataloader = DataLoader(dataset, num_workers=3)
+    dataloader = DataLoader(
+        dataset, num_workers=3, multiprocessing_context=mp.get_context()
+    )
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
     _verify_user_agent(s3_lightning_checkpoint)
@@ -125,7 +130,9 @@ def test_compatibility_with_trainer_plugins(checkpoint_directory):
 def test_compatibility_with_checkpoint_callback(checkpoint_directory):
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
-    dataloader = DataLoader(dataset, num_workers=3)
+    dataloader = DataLoader(
+        dataset, num_workers=3, multiprocessing_context=mp.get_context()
+    )
 
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(checkpoint_directory.region)
@@ -165,7 +172,9 @@ def test_compatibility_with_checkpoint_callback(checkpoint_directory):
 def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
-    dataloader = DataLoader(dataset, num_workers=3)
+    dataloader = DataLoader(
+        dataset, num_workers=3, multiprocessing_context=mp.get_context()
+    )
 
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(checkpoint_directory.region)
@@ -196,7 +205,9 @@ def test_compatibility_with_async_checkpoint_io(checkpoint_directory):
 def test_compatibility_with_lightning_checkpoint_load(checkpoint_directory):
     nonce = random.randrange(2**64)
     dataset = WikiText2(data_dir=Path(f"/tmp/data/{nonce}"))
-    dataloader = DataLoader(dataset, num_workers=3)
+    dataloader = DataLoader(
+        dataset, num_workers=3, multiprocessing_context=mp.get_context()
+    )
     model = LightningTransformer(vocab_size=dataset.vocab_size)
     s3_lightning_checkpoint = S3LightningCheckpoint(region=checkpoint_directory.region)
     trainer = L.Trainer(
