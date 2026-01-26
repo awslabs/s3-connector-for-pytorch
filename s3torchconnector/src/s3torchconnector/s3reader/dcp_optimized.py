@@ -54,7 +54,7 @@ class _ItemViewBuffer:
     Replaces io.BytesIO which involved extra copies for creation and buffer growth.
     """
 
-    __slots__ = ("_segments", "_offsets", "_lengths", "_size", "_pos", "_closed")
+    __slots__ = ("_segments", "_offsets", "_lengths", "_size", "_pos")
 
     def __init__(self) -> None:
         self._segments: List[memoryview] = []  # memoryview segments
@@ -86,9 +86,7 @@ class _ItemViewBuffer:
         elif whence == SEEK_END:
             new_pos = self._size + offset
         else:
-            raise ValueError(
-                "Seek must be passed io SEEK_CUR, SEEK_SET, or SEEK_END integers"
-            )
+            raise ValueError("Seek must be passed SEEK_CUR, SEEK_SET, or SEEK_END")
 
         assert new_pos >= 0, f"negative seek value {new_pos}"
 
@@ -120,6 +118,7 @@ class _ItemViewBuffer:
         return bytes(out) if n == size else memoryview(out)[:n].tobytes()
 
     def readinto(self, buf) -> int:
+        # Avoid creating new memoryview if input already is one
         dest = buf if isinstance(buf, memoryview) else memoryview(buf)
         assert not dest.readonly, "writable buffer required"
 
@@ -136,6 +135,7 @@ class _ItemViewBuffer:
         lengths = self._lengths
 
         # Starting segment idx: last i where _offsets[i] <= _pos
+        # Using bisect (no caching) since torch.load jumps around (magic bytes, zip dir, then tensor data)
         seg_idx = bisect.bisect_right(offsets, pos) - 1
         if seg_idx < 0:
             seg_idx = 0
@@ -497,6 +497,7 @@ class DCPOptimizedS3Reader(S3Reader):
 
         item = self._find_item_for_position(self._position)
 
+        # if item has been changed (or first item), then load new item to buffer
         if item is not self._current_item or self._current_item_buffer is None:
             self._current_item = item
             self._current_item_buffer = self._get_item_buffer(item)
@@ -526,6 +527,7 @@ class DCPOptimizedS3Reader(S3Reader):
         """
         item = self._find_item_for_position(self._position)
 
+        # if item has been changed (or first item), then load new item to buffer
         if item is not self._current_item or self._current_item_buffer is None:
             self._current_item = item
             self._current_item_buffer = self._get_item_buffer(item)
@@ -554,7 +556,6 @@ class DCPOptimizedS3Reader(S3Reader):
         Raises:
             TypeError: If whence is not SEEK_SET or SEEK_CUR.
             ValueError: If seeking to negative position or accessing previous items.
-            TypeError: If whence is not SEEK_SET or SEEK_CUR.
         """
         if not isinstance(offset, int):
             raise TypeError(f"integer argument expected, got {type(offset)!r}")
