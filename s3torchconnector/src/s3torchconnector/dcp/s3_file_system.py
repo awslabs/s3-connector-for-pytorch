@@ -384,7 +384,7 @@ class S3StorageReader(FileSystemReader):
         # Inject ranges if using DCP optimized reader constructor
         if isinstance(self._reader_constructor, DCPS3ReaderConstructorProtocol):
             self._reader_constructor.set_item_ranges_by_file(
-                plan.items, self.storage_data
+                plan.items, self.storage_data, self.path
             )
 
         return plan
