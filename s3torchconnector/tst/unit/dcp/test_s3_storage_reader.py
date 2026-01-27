@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import os
 from unittest.mock import Mock, patch
 from hypothesis import given
 from hypothesis.strategies import composite, integers, lists
@@ -83,7 +84,7 @@ def test_s3storage_reader_prepare_local_plan_calls_range_injection(
 
     with patch.object(constructor, "set_item_ranges_by_file") as mock_method:
         s3_storage_reader.prepare_local_plan(load_plan)
-        mock_method.assert_called_once_with(load_plan.items, storage_data)
+        mock_method.assert_called_once_with(load_plan.items, storage_data, TEST_PATH)
 
 
 @given(load_plan_with_offsets())
@@ -106,7 +107,8 @@ def test_s3storage_reader_prepare_local_plan_injects_ranges_correctly(
         relative_path = storage_info.relative_path
 
         expected_range = ItemRange(offset, offset + length)
-        assert expected_range in constructor._item_ranges_by_file[relative_path]
+        s3_uri = os.path.join(TEST_PATH, relative_path)
+        assert expected_range in constructor._item_ranges_by_file[s3_uri]
 
 
 @given(load_plan_with_offsets())

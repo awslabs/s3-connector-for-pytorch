@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import os
 from typing import (
     TYPE_CHECKING,
     Protocol,
@@ -58,4 +59,5 @@ class DCPS3ReaderConstructorProtocol(Protocol):
         self,
         plan_items: "List[ReadItem]",
         storage_data: "Dict[MetadataIndex, _StorageInfo]",
+        base_path: Union[str, os.PathLike],
     ) -> None: ...
