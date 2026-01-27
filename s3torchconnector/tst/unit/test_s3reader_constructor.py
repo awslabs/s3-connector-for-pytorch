@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import os
 import pytest
 import sys
 from unittest.mock import Mock
@@ -20,6 +21,8 @@ from torch.distributed.checkpoint.metadata import MetadataIndex
 from torch.distributed.checkpoint.filesystem import _StorageInfo
 
 from .test_s3reader_common import TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM
+
+TEST_PATH = f"s3://{TEST_BUCKET}/{TEST_KEY}"
 
 # ---------- basic constructor tests -----------
 
@@ -73,12 +76,12 @@ def test_s3readerconstructor_dcp_optimized_constructor():
     constructor = S3ReaderConstructor.dcp_optimized()
     assert isinstance(constructor, DCPOptimizedConstructor)
 
-    constructor._item_ranges_by_file = {TEST_KEY: [ItemRange(0, 100)]}
+    constructor._item_ranges_by_file = {TEST_PATH: [ItemRange(0, 100)]}
     s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, DCPOptimizedS3Reader)
 
 
-# * max_gap_size tests
+# * max_gap_size tests (Note TEST_PATH/TEST_KEY acts as the file path/key here)
 
 
 def test_dcp_optimized_constructor_default_max_gap_size():
@@ -88,7 +91,7 @@ def test_dcp_optimized_constructor_default_max_gap_size():
     assert isinstance(constructor, DCPOptimizedConstructor)
     assert constructor._max_gap_size == DEFAULT_MAX_GAP_SIZE
 
-    constructor._item_ranges_by_file = {TEST_KEY: [ItemRange(0, 100)]}
+    constructor._item_ranges_by_file = {TEST_PATH: [ItemRange(0, 100)]}
     s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, DCPOptimizedS3Reader)
     assert s3reader._max_gap_size == DEFAULT_MAX_GAP_SIZE
@@ -102,7 +105,7 @@ def test_dcp_optimized_constructor_custom_max_gap_size(max_gap_size):
     assert isinstance(constructor, DCPOptimizedConstructor)
     assert constructor._max_gap_size == max_gap_size
 
-    constructor._item_ranges_by_file = {TEST_KEY: [ItemRange(0, 100)]}
+    constructor._item_ranges_by_file = {TEST_PATH: [ItemRange(0, 100)]}
     s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, DCPOptimizedS3Reader)
     assert s3reader._max_gap_size == max_gap_size
@@ -116,7 +119,7 @@ def test_dcp_optimized_constructor_max_gap_size_edge_cases(max_gap_size):
     assert isinstance(constructor, DCPOptimizedConstructor)
     assert constructor._max_gap_size == max_gap_size
 
-    constructor._item_ranges_by_file = {TEST_KEY: [ItemRange(0, 100)]}
+    constructor._item_ranges_by_file = {TEST_PATH: [ItemRange(0, 100)]}
     s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
     assert isinstance(s3reader, DCPOptimizedS3Reader)
     assert s3reader._max_gap_size == max_gap_size
@@ -154,11 +157,11 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_plan_items():
     }
 
     # Empty plan_items (List[ReadItem])
-    constructor.set_item_ranges_by_file([], storage_data)
+    constructor.set_item_ranges_by_file([], storage_data, TEST_PATH)
 
     assert len(constructor._item_ranges_by_file) == 0
-    assert "file1.distcp" not in constructor._item_ranges_by_file
-    assert "file2.distcp" not in constructor._item_ranges_by_file
+    assert f"{TEST_PATH}/file1.distcp" not in constructor._item_ranges_by_file
+    assert f"{TEST_PATH}/file2.distcp" not in constructor._item_ranges_by_file
 
 
 def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_storage_data():
@@ -167,7 +170,7 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_storage_data():
     read_item = Mock(spec=ReadItem, storage_index=MetadataIndex("idx"))
 
     with pytest.raises(ValueError, match="storage_data must not be empty"):
-        constructor.set_item_ranges_by_file([read_item], {})
+        constructor.set_item_ranges_by_file([read_item], {}, TEST_PATH)
 
 
 @pytest.mark.parametrize(
@@ -181,7 +184,7 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_storage_data():
 def test_dcp_optimized_constructor_set_item_ranges_by_file_filename_extraction(
     relative_path,
 ):
-    """Test filename extraction from various path formats"""
+    """Test S3 URI construction from various path formats"""
     constructor = S3ReaderConstructor.dcp_optimized()
 
     metadata_index = MetadataIndex("idx")
@@ -190,8 +193,10 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_filename_extraction(
         metadata_index: _StorageInfo(relative_path=relative_path, offset=0, length=100)
     }
 
-    constructor.set_item_ranges_by_file([read_item], storage_data)
-    assert relative_path in constructor._item_ranges_by_file
+    constructor.set_item_ranges_by_file([read_item], storage_data, TEST_PATH)
+
+    expected_uri = os.path.join(TEST_PATH, relative_path)
+    assert expected_uri in constructor._item_ranges_by_file
 
 
 def test_dcp_optimized_constructor_set_item_ranges_by_file_multiple_items():
@@ -214,14 +219,16 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_multiple_items():
         ),
     }
 
-    constructor.set_item_ranges_by_file(read_items, storage_data)  # type: ignore
+    constructor.set_item_ranges_by_file(read_items, storage_data, TEST_PATH)  # type: ignore
 
-    assert "file1.distcp" in constructor._item_ranges_by_file
-    assert "file2.distcp" in constructor._item_ranges_by_file
-    assert len(constructor._item_ranges_by_file["file1.distcp"]) == 2
-    assert len(constructor._item_ranges_by_file["file2.distcp"]) == 1
-    assert constructor._item_ranges_by_file["file1.distcp"][0] == ItemRange(0, 100)
-    assert constructor._item_ranges_by_file["file1.distcp"][1] == ItemRange(100, 150)
+    file1_uri = os.path.join(TEST_PATH, "file1.distcp")
+    file2_uri = os.path.join(TEST_PATH, "file2.distcp")
+    assert file1_uri in constructor._item_ranges_by_file
+    assert file2_uri in constructor._item_ranges_by_file
+    assert len(constructor._item_ranges_by_file[file1_uri]) == 2
+    assert len(constructor._item_ranges_by_file[file2_uri]) == 1
+    assert constructor._item_ranges_by_file[file1_uri][0] == ItemRange(0, 100)
+    assert constructor._item_ranges_by_file[file1_uri][1] == ItemRange(100, 150)
 
 
 def test_dcp_optimized_constructor_set_item_ranges_by_file_multiple_calls():
@@ -236,7 +243,7 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_multiple_calls():
             relative_path="file1.distcp", offset=0, length=100
         )
     }
-    constructor.set_item_ranges_by_file([read_item1], storage_data1)
+    constructor.set_item_ranges_by_file([read_item1], storage_data1, TEST_PATH)
 
     # Second call should replace previous ranges
     metadata_index2 = MetadataIndex("idx2")
@@ -246,13 +253,16 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_multiple_calls():
             relative_path="file2.distcp", offset=0, length=200
         )
     }
-    constructor.set_item_ranges_by_file([read_item2], storage_data2)
+    constructor.set_item_ranges_by_file([read_item2], storage_data2, TEST_PATH)
 
     # Only second call's data should remain
-    assert "file1.distcp" not in constructor._item_ranges_by_file
-    assert "file2.distcp" in constructor._item_ranges_by_file
-    assert len(constructor._item_ranges_by_file["file2.distcp"]) == 1
-    assert constructor._item_ranges_by_file["file2.distcp"][0] == ItemRange(0, 200)
+
+    file1_uri = os.path.join(TEST_PATH, "file1.distcp")
+    file2_uri = os.path.join(TEST_PATH, "file2.distcp")
+    assert file1_uri not in constructor._item_ranges_by_file
+    assert file2_uri in constructor._item_ranges_by_file
+    assert len(constructor._item_ranges_by_file[file2_uri]) == 1
+    assert constructor._item_ranges_by_file[file2_uri][0] == ItemRange(0, 200)
 
 
 # * __call__ tests
@@ -267,36 +277,22 @@ def test_dcp_optimized_constructor_call_metadata():
 
 
 @pytest.mark.parametrize(
-    "relative_path, full_key",
-    [
-        ("shard1/epoch_5/__0_0.distcp", "ml_training/shard1/epoch_5/__0_0.distcp"),
-        ("shard1/epoch_5/__0_0.distcp", "shard1/epoch_5/__0_0.distcp"),  # no base path
-        ("__0_0.distcp", "prefix/path/__0_0.distcp"),
-    ],
-)
-def test_dcp_optimized_constructor_call_successful_match(relative_path, full_key):
-    """Test matching relative paths return DCPOptimizedS3Reader"""
-    constructor = S3ReaderConstructor.dcp_optimized()
-    constructor._item_ranges_by_file = {relative_path: [ItemRange(0, 100)]}
-
-    s3reader = constructor(TEST_BUCKET, full_key, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, DCPOptimizedS3Reader)
-    assert s3reader.key == full_key
-
-
-@pytest.mark.parametrize(
     "ranges, key",
     [
         # No files/ranges
         ({}, TEST_KEY),
         # Different file
-        ({"not_test_key.distcp": [ItemRange(0, 100)]}, TEST_KEY),
-        # No match
-        ({"file1.distcp": [ItemRange(0, 100)]}, "different/path/__1_0.distcp"),
-        # Same filename, different relative path
-        ({"shard1/__0_0.distcp": [ItemRange(0, 100)]}, "different/shard2/__0_0.distcp"),
-        # For match + empty ranges case, we have separate error raised in DCPOptimizedS3Reader
-        # ({TEST_KEY: []}, TEST_KEY),  # not tested since out of scope
+        ({f"s3://{TEST_BUCKET}/not_test_key.distcp": [ItemRange(0, 100)]}, TEST_KEY),
+        # No match - different path
+        (
+            {f"s3://{TEST_BUCKET}/file1.distcp": [ItemRange(0, 100)]},
+            "different/path/__1_0.distcp",
+        ),
+        # Same filename, different path
+        (
+            {f"s3://{TEST_BUCKET}/shard1/__0_0.distcp": [ItemRange(0, 100)]},
+            "shard2/__0_0.distcp",
+        ),
     ],
 )
 def test_dcp_optimized_constructor_call_no_ranges_error(ranges, key):

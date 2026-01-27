@@ -2,6 +2,7 @@
 #  // SPDX-License-Identifier: BSD
 
 import logging
+import os
 from functools import partial
 from typing import TYPE_CHECKING, Optional, List, Dict, Union
 from collections import defaultdict
@@ -42,6 +43,7 @@ class DCPOptimizedConstructor:
         self,
         plan_items: "List[ReadItem]",
         storage_data: "Dict[MetadataIndex, _StorageInfo]",
+        base_path: Union[str, os.PathLike],
     ) -> None:
         """Extract and store item ranges from DCP load plan.
         Called by S3StorageReader.prepare_local_plan() to inject range metadata.
@@ -59,11 +61,12 @@ class DCPOptimizedConstructor:
                 "storage_data must not be empty; required to map ReadItems to file ranges."
             )
 
-        # Map: relative paths -> item ranges
+        # Map: full S3 URI -> item ranges
         self._item_ranges_by_file = defaultdict(list)
         for read_item in plan_items:
             item_md = storage_data[read_item.storage_index]
-            self._item_ranges_by_file[item_md.relative_path].append(
+            s3_uri = os.path.join(base_path, item_md.relative_path)
+            self._item_ranges_by_file[s3_uri].append(
                 ItemRange(item_md.offset, item_md.offset + item_md.length)
             )
 
@@ -79,23 +82,21 @@ class DCPOptimizedConstructor:
             log.debug(f"Reading .metadata file {key} with SequentialS3Reader")
             return SequentialS3Reader(bucket, key, get_object_info, get_stream)
 
-        # Return DCPOptimizedS3Reader for .distcp files with corresponding item ranges for key
-        for relative_path in self._item_ranges_by_file:
-            # Match corresponding relative path (e.g. shard1/epoch_5/__0_0.distcp) to match
-            # object key (e.g. ml_training/experiment1/shard1/epoch_5/__0_0.distcp)
-            if key.endswith(relative_path):
-                return DCPOptimizedS3Reader(
-                    bucket,
-                    key,
-                    item_ranges=self._item_ranges_by_file[relative_path],
-                    get_object_info=get_object_info,
-                    get_stream=get_stream,
-                    max_gap_size=self._max_gap_size,
-                )
+        # Return DCPOptimizedS3Reader for .distcp files with corresponding item ranges for file uri
+        s3_uri = f"s3://{bucket}/{key}"
+        if s3_uri in self._item_ranges_by_file:
+            return DCPOptimizedS3Reader(
+                bucket,
+                key,
+                item_ranges=self._item_ranges_by_file[s3_uri],
+                get_object_info=get_object_info,
+                get_stream=get_stream,
+                max_gap_size=self._max_gap_size,
+            )
 
         # Error for other files; warn users in case they override prepare_local_plan behavior
         raise ValueError(
-            f"No ranges found for {key}. Make sure range injection is used in S3StorageReader.prepare_local_plan."
+            f"No ranges found for {s3_uri}. Make sure range injection is used in S3StorageReader.prepare_local_plan."
         )
 
 
