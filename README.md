@@ -440,8 +440,8 @@ Amazon S3 Connector for PyTorch supports three types of readers, configurable th
 #### 3. DCP-Optimized Reader (DCP only)
 
 - Specialized usage for PyTorch Distributed Checkpoint (DCP) loading.
-- Provides up to 2x performance improvement through zero-copy buffers and sequential access patterns.
-- Enables efficient partial checkpoint loading (e.g. model-only) through range-based streams and range coalescing.
+- Provides up to 2x performance improvement through per-item buffers and zero-copy buffer management.
+- Enables efficient partial checkpoint loading (e.g. model-only) through selective data fetching with range coalescing.
 - Automatically handles range metadata injection from DCP load plan.
 - Requires sequential access patterns (automatically enforced in `S3StorageReader.prepare_local_plan()`)
 
