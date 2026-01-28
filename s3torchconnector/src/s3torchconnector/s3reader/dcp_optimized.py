@@ -1,6 +1,28 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+"""
+DCP-Optimized S3 Reader provides these 3 optimizations:
+1. Selective data fetching with range coalescing to only fetch required byte ranges
+2. Per-item buffer management to reduce buffer allocation costs
+3. Eliminating buffer copy by storing S3 chunks as memoryview references
+
+Data Flow Overview:
+    DCP.load(model_state_dict, storage_reader=s3_storage_reader)
+        -> read_metadata()                                          # reads .metadata file
+        -> set_up_storage_reader(metadata)                          # populates storage_data
+        -> prepare_local_plan(plan)                                 # (patched) sorts items, injects ranges to constructor
+            -> DCPOptimizedConstructor.set_item_ranges_by_file()
+        -> read_data(plan)                                          # per-file loop below
+            -> DCPOptimizedS3Reader __init__
+                -> _validate_and_coalesce_ranges()                  # validates and groups ItemRanges into RangeGroups
+            -> DCPOptimizedS3Reader read()/readinto()
+                -> _find_item_for_position()                        # updates _current_item
+                -> [if new item] _get_item_buffer()                 # fetches item byte data
+                    -> [if new RangeGroup] _get_stream_for_item()   # creates new stream before fetching byte data
+                -> _ItemViewBuffer read()/readinto()                # returns data from buffer
+"""
+
 import bisect
 import logging
 from dataclasses import dataclass
@@ -16,7 +38,7 @@ from .s3reader import S3Reader
 
 log = logging.getLogger(__name__)
 
-# Raw loading throughput (~2500MB/s) multiplied by first byte latency (~200ms)
+# Based on: throughput (~2500MB/s) × first-byte latency (~200ms) = ~500MB
 DEFAULT_MAX_GAP_SIZE = 512 * 1024 * 1024
 FIND_ITEM_ERROR_PREFIX = (
     "DCPOptimizedS3Reader only supports sequentially accessing provided ranges: "
@@ -25,7 +47,7 @@ FIND_ITEM_ERROR_PREFIX = (
 
 @dataclass
 class ItemRange:
-    """Byte range for a ReadItem; Inclusive start, exclusive end"""
+    """Byte range for a single DCP ReadItem (tensor). Inclusive start, exclusive end."""
 
     start: int
     end: int
@@ -33,25 +55,43 @@ class ItemRange:
 
 @dataclass
 class RangeGroup:
-    start: int
-    end: int
-    item_ranges: List[ItemRange]
+    """Group of nearby ItemRanges that will share a single S3 range request.
+
+    Created by coalescing ItemRanges with gaps <= max_gap_size in _validate_and_coalesce_ranges.
+    One S3 stream will serve all items in the RangeGroup sequentially.
+    """
+
+    start: int  # First byte of the group (= first item's start)
+    end: int  # Last byte of the group (= last item's end)
+    item_ranges: List[ItemRange]  # Items within this group, in order
 
 
 @dataclass
 class _StreamState:
-    """Tracks S3 stream, its position and buffered data."""
+    """
+    Tracks S3 stream position in current RangeGroup and buffered data between item reads.
 
-    stream: Optional[GetObjectStream] = None
-    position: int = -1  # dummy int
-    leftover: Optional[memoryview] = None
+    A single S3 stream may serve multiple items in a RangeGroup. This state tracks
+        1. Where we are in that stream created for the current RangeGroup, and
+        2. any leftover bytes from the previous chunk that belong to the next item.
+    """
+
+    stream: Optional[GetObjectStream] = None  # Current S3 stream for active RangeGroup
+    position: int = -1  # Current byte position in the current stream; -1 as dummy int
+    leftover: Optional[memoryview] = None  # Unused bytes from last chunk read
 
 
 # TODO: extend buffer for use in other S3Reader implementations after extensive testing
 class _ItemViewBuffer:
     """
-    A tiny, zero-copy, read-only buffer built from multiple memoryview segments.
-    Replaces io.BytesIO which involved extra copies for creation and buffer growth.
+    A read-only buffer storing item data, in the form of multiple memoryview segments.
+
+    Instead of copying S3 chunks into a growing BytesIO buffer, this class stores
+    references to the original S3 chunks (typically 8MB parts) as memoryview segments.
+    This allows us to reduce buffer allocation costs, saving time and memory.
+
+    The buffer supports seek/read/readinto with logic that handles reads spanning
+    multiple segments, similar to the file-access interface in io.BytesIO.
     """
 
     __slots__ = ("_segments", "_offsets", "_lengths", "_size", "_pos")
@@ -99,11 +139,17 @@ class _ItemViewBuffer:
         return self._pos
 
     def read(self, size: Optional[int] = None) -> bytes:
-        # We don't allow full read on full file, since used item data are discarded
+        """Returns byte copy of data from the buffer, using readinto() logic.
+
+        Note that in DCP, only PyTorch's serialization.py:: _is_zipfile() magic
+        number check (read(4)) uses read() instead of readinto().
+        """
+
+        # DCPOptimizedS3Reader doesn't allow full read, and doesn't use full reads on items either.
         assert size is not None, "Size cannot be None; full read is not supported"
         assert size >= 0, "Size cannot be negative; full read is not supported"
 
-        # Fast path for read(4) at pos=0 (Optimizes pytorch/torch/serialization.py _is_zipfile())
+        # Fast path: PyTorch's serialization.py::_is_zipfile() reads first 4 bytes to check magic number.
         if size == 4 and self._pos == 0 and self._lengths and self._lengths[0] >= 4:
             self._pos = 4
             # TODO: eliminating bytes() conversion can save ~3% time? Requires interface changes.
@@ -118,6 +164,7 @@ class _ItemViewBuffer:
         return bytes(out) if n == size else memoryview(out)[:n].tobytes()
 
     def readinto(self, buf) -> int:
+        """Read into pre-allocated buffer, copying across segment boundaries as needed."""
         # Avoid creating new memoryview if input already is one
         dest = buf if isinstance(buf, memoryview) else memoryview(buf)
         assert not dest.readonly, "writable buffer required"
@@ -129,13 +176,13 @@ class _ItemViewBuffer:
         if dest_len == 0 or pos >= size:
             return 0
 
-        # Cache to avoid repeated attribute calls
+        # Cache to avoid repeated attribute lookups in the loop
         segments = self._segments
         offsets = self._offsets
         lengths = self._lengths
 
-        # Starting segment idx: last i where _offsets[i] <= _pos
-        # Using bisect (no caching) since torch.load jumps around (magic bytes, zip dir, then tensor data)
+        # Find starting segment using binary search: last i where offsets[i] <= pos
+        # Using bisect (not caching) since torch.load jumps around (magic bytes, zip dir, tensor data)
         seg_idx = bisect.bisect_right(offsets, pos) - 1
         if seg_idx < 0:
             seg_idx = 0
@@ -143,7 +190,7 @@ class _ItemViewBuffer:
         written = 0
         bytes_to_read = min(dest_len, size - pos)
 
-        # Copy from segments to dest
+        # Copy from segments to dest, handling segment boundaries
         while written < bytes_to_read:
             seg_start = offsets[seg_idx]
             seg_len = lengths[seg_idx]
@@ -174,17 +221,17 @@ class DCPOptimizedS3Reader(S3Reader):
 
     Provides up to 2x performance improvement over default sequential reader through:
 
-        1. **Zero-Copy Buffer**: Custom ``_ItemViewBuffer`` storing data as memoryview
-        segments to eliminate BytesIO allocation and copy overhead.
+        1. **Selective data fetching with range coalescing**: Uses byte range information from
+        PyTorch's ``LoadPlan`` to only fetch required data. Groups nearby ranges within
+        ``max_gap_size`` into single S3 streams to minimize first-byte latency while avoiding
+        unnecessary data transfer.
 
-        2. **Sequential Access Optimization**: Exploits sequential access patterns over tensor
-        enforced by ``S3StorageReader.prepare_local_plan()`` to reduce buffer sizes from file-level to
-        item-level.
+        2. **Per-item buffer management**: Buffers per-item (per-tensor) instead of per-file. Each
+        buffer stores only the required item's byte ranges and is discarded after PyTorch reads the
+        item, which removes overhead of resizing large buffers and re-copying data repeatedly.
 
-        3. **Range-based fetching**: For partial checkpoint loading, uses load plan item ranges information
-        to group nearby byte ranges within ``max_gap_size`` to minimize S3 first byte latency (compared to
-        range-based reader), while only fetching required byte ranges instead of entire files
-        (compared to sequential reader).
+        3. **Eliminate buffer copy**: Custom ``_ItemViewBuffer`` stores S3 chunks as memoryview
+        references instead of copying into BytesIO, avoiding allocation and copy overhead.
 
     **Requirements**:
 
@@ -234,6 +281,8 @@ class DCPOptimizedS3Reader(S3Reader):
         self._max_gap_size = max_gap_size
         self._closed = False
 
+        # --- Range Processing ---
+
         # Filter zero-length ranges
         self._item_ranges: List[ItemRange] = [
             r for r in item_ranges if r.end != r.start
@@ -241,22 +290,26 @@ class DCPOptimizedS3Reader(S3Reader):
         if not self._item_ranges:
             raise ValueError("No non-empty ranges to read (all ranges were length 0)")
 
-        # Coalesce ranges into range groups
-        self._group_start_to_group: Dict[int, RangeGroup] = (
-            {}
-        )  # Group lookup using group start offset. for first item in each grou; populated below
+        # Coalesce nearby ranges into range groups that share S3 streams
+        # _group_start_to_group: lookup dict for O(1) "is this item first in its group?" check
+        self._group_start_to_group: Dict[int, RangeGroup] = {}
         self._range_groups: List[RangeGroup] = self._validate_and_coalesce_ranges(
             self._item_ranges, self._max_gap_size
         )
 
-        # Stream state (stores stream, its position, and leftover buffered data)
+        # --- States ---
+
+        # Stream state (stores S3 stream, position, and leftover bytes between item reads)
         self._stream_state: _StreamState = _StreamState()
 
         # Item buffer state
-        self._item_iter: Iterator[ItemRange] = iter(self._item_ranges)
+        self._item_iter: Iterator[ItemRange] = iter(
+            self._item_ranges
+        )  # sequential access
         self._current_item: ItemRange = next(self._item_iter)
         self._current_item_buffer: Optional[_ItemViewBuffer] = None
 
+        # Current position in the overall S3 object
         self._position: int = 0
 
     @property
@@ -280,10 +333,10 @@ class DCPOptimizedS3Reader(S3Reader):
         ranges: List[ItemRange],
         max_gap_size: Union[int, float],
     ) -> List[RangeGroup]:
-        """
-        This method:
-        1. Validates ranges are valid, sorted, and non-overlapping.
-        2. Coalesces nearby ItemRanges within max_gap_size into RangeGroups.
+        """Validate ranges and coalesce nearby ranges into RangeGroups.
+
+        - Validate: 1/ start<=end, 2/ non-negative, 3/ sorted by start position, 4/ non-overlapping
+        - Coalesce: Group nearby ranges where gap <= max_gap_size into RangeGroup (one S3 stream).
         """
         if not ranges:
             return []
@@ -320,7 +373,11 @@ class DCPOptimizedS3Reader(S3Reader):
         return groups
 
     def _find_item_for_position(self, pos: int) -> ItemRange:
-        """Find which item contains the given position with validations."""
+        """Find which item contains the given position, enforcing sequential access.
+
+        Returns current item if position is within it, else advances to next item.
+        Raises ValueError if position would require non-sequential access.
+        """
 
         if pos < self._current_item.start:
             raise ValueError(
@@ -357,7 +414,10 @@ class DCPOptimizedS3Reader(S3Reader):
             )
 
     def _get_stream_for_item(self, item: ItemRange) -> GetObjectStream:
-        """Find which RangeGroup contains the given position."""
+        """Get or create S3 stream for the given item.
+
+        Creates new stream if item is first in its RangeGroup, otherwise reuse stream.
+        """
 
         # If item is the first item of a new group, create new stream
         if item.start in self._group_start_to_group:
@@ -374,7 +434,14 @@ class DCPOptimizedS3Reader(S3Reader):
         return self._stream_state.stream
 
     def _get_item_buffer(self, item: ItemRange) -> _ItemViewBuffer:
-        """Load entire item into a memoryview-segment buffer from existing stream."""
+        """Load entire item into a memoryview-segment buffer from existing stream.
+
+        1. Handles leftover bytes from previous reads
+        2. Skips gap data from coalescing within <=max_gap_size
+        3. Fetches item data from S3 stream into buffer
+
+        Returns buffer ready for read/readinto calls.
+        """
 
         buffer = _ItemViewBuffer()
 
@@ -384,7 +451,9 @@ class DCPOptimizedS3Reader(S3Reader):
         leftover = self._stream_state.leftover  # local copy
         bytes_left = item.end - item.start
 
-        # 1. Read from leftover bytes if available and needed
+        # --- Phase 1: Handle leftover bytes from previous chunk ---
+        # A chunk may contain data for multiple items. This phase handles any previous
+        # leftover bytes that may belong to gap data (discard) or the next item (use).
         if leftover:
             lv_len = len(leftover)
             lv_end = pos + lv_len
@@ -402,11 +471,13 @@ class DCPOptimizedS3Reader(S3Reader):
                 pos = item.start + size
                 leftover = leftover[end:] if end < lv_len else None
             elif item.start >= lv_end:
-                # Item beyond leftover: advance pos to end of leftover
+                # Item beyond leftover: discard leftover (it was gap data)
                 pos += lv_len
                 leftover = None
 
-        # 2. Skip past unwanted data (due to coalescing)
+        # --- Phase 2: Skip gap data (from coalescing) ---
+        # When ranges are coalesced (within max_gap_size), we may need to skip
+        # bytes between items.
         while pos < item.start:
             try:
                 chunk = memoryview(next(stream))
@@ -441,7 +512,8 @@ class DCPOptimizedS3Reader(S3Reader):
                     bytes_left = 0
                     break
 
-        # 3. Take needed data for the item
+        # --- Phase 3: Fetch item data ---
+        # Read chunks until we have all bytes for this item, and store leftover data.
         while bytes_left > 0:
             try:
                 chunk = memoryview(next(stream))

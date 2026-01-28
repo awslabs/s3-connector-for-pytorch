@@ -29,6 +29,23 @@ class DCPOptimizedConstructor:
 
     Created from S3ReaderConstructor, and used by S3StorageReader for PyTorch DCP.
     Requires range metadata from DCP load plans to function properly.
+
+    Usage Flow:
+        # User Setup
+        reader_constructor = S3ReaderConstructor.dcp_optimized()  -> DCPOptimizedConstructor
+        S3StorageReader(..., reader_constructor)                  -> stores in S3FileSystem
+
+        # During DCP.load()
+        S3StorageReader.prepare_local_plan(plan)
+            -> set_item_ranges_by_file(plan.items, storage_data, path)
+            -> builds _item_ranges_by_file: {s3_uri: [ItemRange, ...]}
+
+        # During read_data(), per file
+        S3FileSystem.create_stream(path, "rb")
+            -> S3Client.get_object(bucket, key, reader_constructor)
+                -> __call__(bucket, key, get_object_info, get_stream)
+                    -> .metadata: SequentialS3Reader (no ranges available for .metadata file)
+                    -> .distcp:   DCPOptimizedS3Reader(item_ranges) ranges from _item_ranges_by_file
     """
 
     def __init__(self, max_gap_size: Union[int, float] = DEFAULT_MAX_GAP_SIZE) -> None:
@@ -175,11 +192,11 @@ class S3ReaderConstructor:
     ) -> DCPS3ReaderConstructorProtocol:
         """Creates a constructor for DCP-optimized readers for faster checkpoint loading.
 
-        The DCP-optimized reader provides up to 2x performance improvement over the default sequential reader through:
+        The DCP-optimized reader provides up to performance improvement for DCP reading through:
 
-        - Zero-copy buffer management by storing data as memoryview segments
-        - Sequential access optimization to reduce buffer sizes from file-level to item-level
-        - Range-based fetching that downloads only required byte ranges and coalesces nearby ranges to reduce S3 request latency
+        - Selective data fetching with range coalescing to only fetch required byte ranges
+        - Per-item buffer management to reduce buffer allocation costs
+        - Eliminating buffer copy by storing S3 chunks as memoryview references
 
         Args:
             max_gap_size: Maximum gap size in bytes between ranges to coalesce into the same S3 read stream.
