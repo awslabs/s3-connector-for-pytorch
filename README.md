@@ -19,8 +19,7 @@ Amazon S3, without first saving to local storage.
 
 ### Prerequisites
 
-- Python 3.8-3.14 is supported. 
-  - Note: Python 3.8 support will be deprecated in a future release, see [#399](https://github.com/awslabs/s3-connector-for-pytorch/issues/399)
+- Python 3.9-3.14 is supported. 
 - PyTorch >= 2.0 (TODO: Check with PyTorch 1.x)
 
 ### Installation

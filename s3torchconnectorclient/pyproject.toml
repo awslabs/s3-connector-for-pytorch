@@ -6,12 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "s3torchconnectorclient"
 version = "1.4.3"
 description = "Internal S3 client implementation for s3torchconnector"
-requires-python = ">=3.8,<3.15"
+requires-python = ">=3.9,<3.15"
 readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -85,11 +84,11 @@ environment-pass = [
     "S3_EXPRESS_PROFILE_BUCKET"
 ]
 before-build = "cp README.md s3torchconnectorclient; cp LICENSE s3torchconnectorclient/; cp THIRD-PARTY-LICENSES s3torchconnectorclient/; cp NOTICE s3torchconnectorclient/"
-build = ["cp38*", "cp39*", "cp310*", "cp311*", "cp312*", "cp313*", "cp314*"]
+build = ["cp39*", "cp310*", "cp311*", "cp312*", "cp313*", "cp314*"]
 skip = "*musllinux* *i686*"
 
 [tool.cibuildwheel.linux]
-# Python 3.8-3.12: Use manylinux2014 (glibc 2.17)
+# Python 3.9-3.12: Use manylinux2014 (glibc 2.17)
 manylinux-x86_64-image = "manylinux2014"
 manylinux-aarch64-image = "manylinux2014"
 before-all = [
