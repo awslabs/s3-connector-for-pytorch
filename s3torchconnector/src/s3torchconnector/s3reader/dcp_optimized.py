@@ -20,6 +20,9 @@ Data Flow Overview:
                 -> _find_item_for_position()                        # updates _current_item
                 -> [if new item] _get_item_buffer()                 # fetches item byte data
                     -> [if new RangeGroup] _get_stream_for_item()   # creates new stream before fetching byte data
+                    -> 1: Handle leftover bytes from prev. chunk
+                    -> 2: Skip gap data from coalescing
+                    -> 3: Fetch remaining data from S3
                 -> _ItemViewBuffer read()/readinto()                # returns data from buffer
 """
 
@@ -77,8 +80,10 @@ class _StreamState:
     """
 
     stream: Optional[GetObjectStream] = None  # Current S3 stream for active RangeGroup
-    position: int = -1  # Current byte position in the current stream; -1 as dummy int
-    leftover: Optional[memoryview] = None  # Unused bytes from last chunk read
+    stream_position: int = (
+        -1
+    )  # Current byte position in S3 stream; -1 as dummy init value
+    leftover: Optional[memoryview] = None  # Unused bytes from end of last chunk read
 
 
 # TODO: extend buffer for use in other S3Reader implementations after extensive testing
@@ -376,7 +381,7 @@ class DCPOptimizedS3Reader(S3Reader):
         """Find which item contains the given position, enforcing sequential access.
 
         Returns current item if position is within it, else advances to next item.
-        Raises ValueError if position would require non-sequential access.
+        Raises ValueError if position is outside current or next items.
         """
 
         if pos < self._current_item.start:
@@ -403,6 +408,8 @@ class DCPOptimizedS3Reader(S3Reader):
             if pos < item.end:
                 return item
             else:
+                # Item beyond next item: We do not allow skipping because items are already
+                # in order, and therefore we can only read the next item.
                 raise ValueError(
                     f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond next range "
                     f"{item.start}-{item.end}"
@@ -423,7 +430,7 @@ class DCPOptimizedS3Reader(S3Reader):
         if item.start in self._group_start_to_group:
             group = self._group_start_to_group[item.start]
             self._stream_state.stream = self._get_stream(group.start, group.end)
-            self._stream_state.position = group.start
+            self._stream_state.stream_position = group.start
             self._stream_state.leftover = None
             return self._stream_state.stream
 
@@ -447,37 +454,84 @@ class DCPOptimizedS3Reader(S3Reader):
 
         # Get stream from the right RangeGroup for start_pos
         stream = self._get_stream_for_item(item)
-        pos = self._stream_state.position  # local copy
-        leftover = self._stream_state.leftover  # local copy
+        pos = self._stream_state.stream_position  # global offset in S3 object
+        leftover = self._stream_state.leftover  # leftover from previous chunk
         bytes_left = item.end - item.start
 
         # --- Phase 1: Handle leftover bytes from previous chunk ---
-        # A chunk may contain data for multiple items. This phase handles any previous
-        # leftover bytes that may belong to gap data (discard) or the next item (use).
+        #
+        # Leftover contains bytes from the end of the previous chunk (say 8MB) that weren't consumed.
+        # The leftover always ends at a chunk boundary (of 8MB parts - assume 8MB from now for explanation)
+        #
+        # Two cases:
+        #   A) item.start within leftover: extract needed portion, possibly
+        #      i) skipping a prefix (gap data from coalescing ranges within max_gap_size), and/or
+        #      ii) saving a suffix (next item's data) as new leftover
+        #   B) item.start beyond leftover: discard all (gap data from coalescing ranges)
+        #
+        # Case A visualization (item starts within leftover):
+        #
+        #   8MB chunks: ...====|================================|====...
+        #   leftover:                     |#####################|           (length: leftover_len)
+        #                                 ^                     ^
+        #                                pos             leftover_end_pos   (global position in object)
+        #   Slice offsets:                |gap|used|new_leftover|           (gap/new_leftover can be empty)
+        #                                     ^    ^
+        #                              item.start item.end                  (global position in object)
+        #                       start_in_leftover  end_in_leftover          (relative to leftover)
+        #   Lengths:                          |<--------------->|
+        #                                       available_bytes
+        #                                     |<-->|
+        #                                 bytes_to_extract
+        #
         if leftover:
-            lv_len = len(leftover)
-            lv_end = pos + lv_len
+            leftover_len = len(leftover)
+            leftover_end_pos = pos + leftover_len
 
-            if pos <= item.start < lv_end:
-                # Item starts within leftover data
-                start = item.start - pos
-                available_bytes = lv_len - start
-                size = min(bytes_left, available_bytes)
-                end = start + size
+            if pos <= item.start < leftover_end_pos:
+                # Case A: Item starts within leftover data:
+                # i) if there's gap data to skip, ignore it
+                start_in_leftover = item.start - pos
+                # ii) if more bytes than required, save suffix as new leftover
+                available_bytes = leftover_len - start_in_leftover
+                bytes_to_extract = min(bytes_left, available_bytes)
+                end_in_leftover = start_in_leftover + bytes_to_extract
 
-                # Extract needed portion
-                buffer.append_view(leftover[start:end])
-                bytes_left -= size
-                pos = item.start + size
-                leftover = leftover[end:] if end < lv_len else None
-            elif item.start >= lv_end:
-                # Item beyond leftover: discard leftover (it was gap data)
-                pos += lv_len
+                # Extract needed portion to buffer, and update leftover
+                buffer.append_view(leftover[start_in_leftover:end_in_leftover])
+                bytes_left -= bytes_to_extract
+                pos = item.start + bytes_to_extract
+                leftover = (  # Update 'new_leftover'
+                    leftover[end_in_leftover:]
+                    if end_in_leftover < leftover_len
+                    else None
+                )
+            elif item.start >= leftover_end_pos:
+                # Case B: Item beyond leftover: discard leftover (it was gap data)
+                pos += leftover_len
                 leftover = None
 
         # --- Phase 2: Skip gap data (from coalescing) ---
-        # When ranges are coalesced (within max_gap_size), we may need to skip
-        # bytes between items.
+        # Current state: pos is at chunk boundary of 8MB parts after any leftover is processed.
+        # When ranges are coalesced (within max_gap_size), there may be gap data to skip.
+        # So we iterate stream until chunk contains item.start.
+        #
+        # Two cases per chunk:
+        #   A) Full chunk is gap: discard entirely, continue till pos >= item.start
+        #   B) Boundary chunk: current chunk contains item.start
+        #
+        # Case B visualization (boundary chunk):
+        #
+        #   8MB chunks: ...====|================================|====...
+        #   Fetched chunk:     |################################|           (length: chunk_len)
+        #                      ^                                ^
+        #                     pos                          pos+chunk_len
+        #   Slice offsets:     | gap |   used   | new_leftover  |           (gap/new_leftover can be empty)
+        #                            ^          ^
+        #                     item.start     item.end                       (global position in object)
+        #   Lengths:           |<--->|
+        #                    skip_bytes
+        #
         while pos < item.start:
             try:
                 chunk = memoryview(next(stream))
@@ -512,8 +566,26 @@ class DCPOptimizedS3Reader(S3Reader):
                     bytes_left = 0
                     break
 
-        # --- Phase 3: Fetch item data ---
-        # Read chunks until we have all bytes for this item, and store leftover data.
+        # --- Phase 3: Fetch remaining item data ---
+        # Current state: pos is at chunk boundary, and pos == item.start + [bytes extracted]
+        # If bytes_left > 0, we still need more data for this item.
+        #
+        # Two cases per chunk:
+        #   A) Full chunk needed: add all used bytes to buffer, continue if bytes_left > 0
+        #   B) Partial chunk: item ends mid-chunk, add used bytes to buffer and update leftover
+        #
+        # Case B visualization (partial chunk):
+        #
+        #   8MB chunks: ...====|================================|====...
+        #   Fetched chunk:     |################################|           (length: chunk_len)
+        #                      ^                                ^
+        #                     pos                          pos+chunk_len
+        #   Slice offsets:     |  used  |      new_leftover     |
+        #                      ^        ^
+        #                     pos      item.end                             (global position in object)
+        #   Lengths:           |<------>|
+        #                      bytes_left                                   (bytes_left only if item ends here)
+        #
         while bytes_left > 0:
             try:
                 chunk = memoryview(next(stream))
@@ -531,12 +603,12 @@ class DCPOptimizedS3Reader(S3Reader):
             else:
                 # Only part of chunk needed
                 buffer.append_view(chunk[:bytes_left])
-                leftover = chunk[bytes_left:]
+                leftover = chunk[bytes_left:]  # new_leftover
                 pos += bytes_left
                 bytes_left = 0
                 break
 
-        self._stream_state.position = pos
+        self._stream_state.stream_position = pos
         self._stream_state.leftover = leftover
         return buffer
 
@@ -574,8 +646,9 @@ class DCPOptimizedS3Reader(S3Reader):
             self._current_item = item
             self._current_item_buffer = self._get_item_buffer(item)
 
-        local_pos = self._position - item.start
-        self._current_item_buffer.seek(local_pos)
+        # Convert global position to item-relative offset for buffer seek
+        local_pos_in_item_buffer = self._position - item.start
+        self._current_item_buffer.seek(local_pos_in_item_buffer)
         data = self._current_item_buffer.read(size)
 
         self._position += len(data)
@@ -604,8 +677,9 @@ class DCPOptimizedS3Reader(S3Reader):
             self._current_item = item
             self._current_item_buffer = self._get_item_buffer(item)
 
-        local_pos = self._position - item.start
-        self._current_item_buffer.seek(local_pos)
+        # Convert global position to item-relative offset for buffer seek
+        local_pos_in_item_buffer = self._position - item.start
+        self._current_item_buffer.seek(local_pos_in_item_buffer)
         bytes_read = self._current_item_buffer.readinto(buf)
 
         self._position += bytes_read
