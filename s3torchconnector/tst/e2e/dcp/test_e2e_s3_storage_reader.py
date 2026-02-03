@@ -101,6 +101,11 @@ def test_dcp_load_reads_tensors_in_sequential_order(
 @pytest.mark.parametrize(
     "max_gap_size,load_filter,filter_name,expected_streams",
     [
+        # Model tensors order:
+        # SIMPLE_MODEL tensors: ['0.bias', '0.weight', '1.bias', '1.weight', '2.bias', '2.weight']
+        # LARGER_MODEL tensors: ['linear_relu_stack.0.bias', 'linear_relu_stack.0.weight', 'linear_relu_stack.2.bias',
+        #                        'linear_relu_stack.2.weight', 'linear_relu_stack.4.bias', 'linear_relu_stack.4.weight']
+        # if max_gap_size=0, expect 1 extra stream per gap; and if max_gap_size==inf, expect 1 stream.
         # Full load - all tensors are consecutive, so always 1 stream
         (0, lambda k: True, "Full", 1),
         (float("inf"), lambda k: True, "Full", 1),
@@ -124,10 +129,6 @@ def test_dcp_optimized_loading_patterns(
 
     Validates that full loads use 1 stream, and partial load stream usage depends
     on max_gap_size and whether tensors are consecutive / neighbours.
-
-    SIMPLE_MODEL tensors: ['0.bias', '0.weight', '1.bias', '1.weight', '2.bias', '2.weight']
-    LARGER_MODEL tensors: ['linear_relu_stack.0.bias', 'linear_relu_stack.0.weight', 'linear_relu_stack.2.bias',
-                           'linear_relu_stack.2.weight', 'linear_relu_stack.4.bias', 'linear_relu_stack.4.weight']
     """
     region = checkpoint_directory.region
     s3_uri = checkpoint_directory.s3_uri

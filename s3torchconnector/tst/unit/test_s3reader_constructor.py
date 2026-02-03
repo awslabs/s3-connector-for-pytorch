@@ -97,23 +97,15 @@ def test_dcp_optimized_constructor_default_max_gap_size():
     assert s3reader._max_gap_size == DEFAULT_MAX_GAP_SIZE
 
 
-@pytest.mark.parametrize("max_gap_size", [0, 8 * 1024 * 1024, 1024 * 1024 * 1024])
+@pytest.mark.parametrize(
+    "max_gap_size",
+    [0, 8 * 1024 * 1024, 1024 * 1024 * 1024, sys.maxsize, float("inf"), 0.5],
+)
 def test_dcp_optimized_constructor_custom_max_gap_size(max_gap_size):
-    """Test max_gap_size parameter defaults and propagation"""
+    """Test max_gap_size parameter defaults and propagation
 
-    constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=max_gap_size)
-    assert isinstance(constructor, DCPOptimizedConstructor)
-    assert constructor._max_gap_size == max_gap_size
-
-    constructor._item_ranges_by_file = {TEST_PATH: [ItemRange(0, 100)]}
-    s3reader = constructor(TEST_BUCKET, TEST_KEY, MOCK_OBJECT_INFO, MOCK_STREAM)
-    assert isinstance(s3reader, DCPOptimizedS3Reader)
-    assert s3reader._max_gap_size == max_gap_size
-
-
-@pytest.mark.parametrize("max_gap_size", [sys.maxsize, float("inf"), 0.5])
-def test_dcp_optimized_constructor_max_gap_size_edge_cases(max_gap_size):
-    """Test max_gap_size parameter defaults and propagation"""
+    We allow float values (for float("inf")) and sys.maxsize - include those cases.
+    """
 
     constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=max_gap_size)
     assert isinstance(constructor, DCPOptimizedConstructor)
@@ -159,9 +151,8 @@ def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_plan_items():
     # Empty plan_items (List[ReadItem])
     constructor.set_item_ranges_by_file([], storage_data, TEST_PATH)
 
+    # Should create no ranges (plan has no items even though storage_data has them)
     assert len(constructor._item_ranges_by_file) == 0
-    assert f"{TEST_PATH}/file1.distcp" not in constructor._item_ranges_by_file
-    assert f"{TEST_PATH}/file2.distcp" not in constructor._item_ranges_by_file
 
 
 def test_dcp_optimized_constructor_set_item_ranges_by_file_empty_storage_data():

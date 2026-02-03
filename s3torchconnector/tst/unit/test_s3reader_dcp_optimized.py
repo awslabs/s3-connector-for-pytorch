@@ -8,7 +8,7 @@ from typing import List, Tuple, Optional
 
 import pytest
 from hypothesis import given, assume
-from hypothesis.strategies import integers, composite
+from hypothesis.strategies import integers, composite, lists, binary
 
 from s3torchconnector.s3reader.dcp_optimized import (
     DCPOptimizedS3Reader,
@@ -61,12 +61,17 @@ def dcp_ranges_and_stream(draw):
     for _ in range(num_ranges):
         # Random gap size and random length
         start = current_pos + draw(integers(min_value=0, max_value=2000))
-        length = draw(integers(min_value=100, max_value=1000))
+        length = draw(integers(min_value=1, max_value=1000))
         end = start + length
         ranges.append(ItemRange(start, end))
         current_pos = end
 
-    stream_data = [b"x" * current_pos]
+    # Split data into multiple equal-sized chunks
+    chunk_size = draw(integers(min_value=10, max_value=50000))
+    full_data = b"x" * current_pos
+    stream_data = [
+        full_data[i : i + chunk_size] for i in range(0, len(full_data), chunk_size)
+    ]
 
     return ranges, stream_data
 
@@ -105,7 +110,7 @@ class TestItemViewBuffer:
             # SEEK_SET
             (0, 5, SEEK_SET, 5),
             (3, 0, SEEK_SET, 0),
-            (5, 15, SEEK_SET, 15),  # Allow seeking past buffer end
+            (5, 15, SEEK_SET, 15),  # Allow seeking past buffer end, matching BytesIO
             # SEEK_CUR
             (3, 2, SEEK_CUR, 5),
             (5, -2, SEEK_CUR, 3),
@@ -117,6 +122,7 @@ class TestItemViewBuffer:
         ],
     )
     def test_buffer_seek_all_modes(self, start_pos, offset, whence, expected_pos):
+        """Test seek() all modes."""
         buffer = _ItemViewBuffer()
         buffer.append_view(memoryview(b"0123456789"))
         buffer.seek(start_pos)
@@ -124,6 +130,30 @@ class TestItemViewBuffer:
         pos = buffer.seek(offset, whence)
         assert pos == expected_pos
         assert buffer.tell() == expected_pos
+
+    @pytest.mark.parametrize("whence", [SEEK_SET, SEEK_CUR, SEEK_END])
+    @given(bytestream_and_positions())
+    def test_buffer_seek_hypothesis(
+        self, whence, stream_and_positions: Tuple[List[bytes], List[int]]
+    ):
+        """Test seek() operations against BytesIO equivalent with hypothesis."""
+        segments, positions = stream_and_positions
+
+        buffer = _ItemViewBuffer()
+        for segment in segments:
+            buffer.append_view(memoryview(segment))
+        reference_io = BytesIO(b"".join(segments))
+        assert buffer._size == reference_io.getbuffer().nbytes
+
+        for pos in positions:
+            buffer.seek(0)
+            reference_io.seek(0)
+
+            # For SEEK_END, use negative offset
+            offset = -pos if whence == SEEK_END else pos
+
+            assert buffer.seek(offset, whence) == reference_io.seek(offset, whence)
+            assert buffer.tell() == reference_io.tell()
 
     @pytest.mark.parametrize(
         "offset, whence, expected_error",
@@ -176,6 +206,32 @@ class TestItemViewBuffer:
         data = buffer.read(size)
         assert data == expected_data
         assert buffer.tell() == expected_pos
+
+    @given(
+        lists(binary(min_size=1, max_size=500), min_size=1, max_size=5),
+        integers(min_value=0, max_value=10000),
+        integers(min_value=0, max_value=5000),
+    )
+    def test_buffer_read_hypothesis(
+        self, segments: List[bytes], seek_pos: int, read_size: int
+    ):
+        """Test read() operations against BytesIO equivalent with hypothesis."""
+        buffer = _ItemViewBuffer()
+        for segment in segments:
+            buffer.append_view(memoryview(segment))
+        reference_io = BytesIO(b"".join(segments))
+        assert buffer._size == reference_io.getbuffer().nbytes
+
+        buffer.seek(seek_pos)
+        reference_io.seek(seek_pos)
+
+        assert buffer.tell() == reference_io.tell()
+
+        data = buffer.read(read_size)
+        ref_data = reference_io.read(read_size)
+
+        assert data == ref_data
+        assert buffer.tell() == reference_io.tell()
 
     @pytest.mark.parametrize(
         "segments",

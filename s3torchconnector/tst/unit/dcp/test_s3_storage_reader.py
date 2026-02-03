@@ -107,7 +107,7 @@ def test_s3storage_reader_prepare_local_plan_injects_ranges_correctly(
         relative_path = storage_info.relative_path
 
         expected_range = ItemRange(offset, offset + length)
-        s3_uri = os.path.join(TEST_PATH, relative_path)
+        s3_uri = f"{TEST_PATH}{relative_path}"
         assert expected_range in constructor._item_ranges_by_file[s3_uri]
 
 
