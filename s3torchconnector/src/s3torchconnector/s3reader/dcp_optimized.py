@@ -186,9 +186,11 @@ class _ItemViewBuffer:
         offsets = self._offsets
         lengths = self._lengths
 
-        # Find starting segment using binary search: last i where offsets[i] <= pos
-        # Using bisect (not caching) since torch.load jumps around (magic bytes, zip dir, tensor data)
+        # Find segment containing pos with binary search
+        # bisect_right gives insertion point where pos < offsets[i], -1 gives containing segment.
+        # No caching optimisation, since torch.load jumps around (magic bytes, zip dir, tensor data)
         seg_idx = bisect.bisect_right(offsets, pos) - 1
+        # Defensive clamp: shouldn't occur as _find_item_for_position makes sure pos >= 0
         if seg_idx < 0:
             seg_idx = 0
 
@@ -398,44 +400,53 @@ class DCPOptimizedS3Reader(S3Reader):
         prev_item = self._current_item
         try:
             item = next(self._item_iter)
-
-            if pos < item.start:
-                raise ValueError(
-                    f"{FIND_ITEM_ERROR_PREFIX}Position {pos} in gap between ranges "
-                    f"{prev_item.start}-{prev_item.end} and {item.start}-{item.end}"
-                )
-            # Return item if position is in new item
-            if pos < item.end:
-                return item
-            else:
-                # Item beyond next item: We do not allow skipping because items are already
-                # in order, and therefore we can only read the next item.
-                raise ValueError(
-                    f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond next range "
-                    f"{item.start}-{item.end}"
-                )
         except StopIteration:
             raise ValueError(
                 f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond last range "
                 f"{prev_item.start}-{prev_item.end}"
             )
 
+        if pos < item.start:
+            raise ValueError(
+                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} in gap between ranges "
+                f"{prev_item.start}-{prev_item.end} and {item.start}-{item.end}"
+            )
+        # Return item if position is in new item
+        if pos < item.end:
+            return item
+        else:
+            # Item beyond next item: We do not allow skipping because items are already
+            # in order, and therefore we can only read the next item.
+            raise ValueError(
+                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond next range "
+                f"{item.start}-{item.end}"
+            )
+
     def _get_stream_for_item(self, item: ItemRange) -> GetObjectStream:
         """Get or create S3 stream for the given item.
 
         Creates new stream if item is first in its RangeGroup, otherwise reuse stream.
+
+        Each RangeGroup maps to a contiguous byte range in S3, and items within a
+        RangeGroup are read sequentially from the same stream.
+
+        Sequential access is already enforced in _find_item_for_position, which runs
+        before _get_item_buffer (which calls this method). Reading the first item will
+        trigger stream creation, and subsequent reads will simply reuse the stream.
         """
 
         # If item is the first item of a new group, create new stream
         if item.start in self._group_start_to_group:
             group = self._group_start_to_group[item.start]
-            self._stream_state.stream = self._get_stream(group.start, group.end)
-            self._stream_state.stream_position = group.start
-            self._stream_state.leftover = None
+            self._stream_state = _StreamState(
+                stream=self._get_stream(group.start, group.end),
+                stream_position=group.start,
+                leftover=None,
+            )
             return self._stream_state.stream
 
         # Otherwise, we're still in same group - reuse stream created when reading 1st item
-        assert (
+        assert (  # Assert mainly serves for mypy checks.
             self._stream_state.stream is not None
         ), "No stream found for item; first item of its range group likely not read"
         return self._stream_state.stream
@@ -506,7 +517,7 @@ class DCPOptimizedS3Reader(S3Reader):
                     if end_in_leftover < leftover_len
                     else None
                 )
-            elif item.start >= leftover_end_pos:
+            elif leftover_end_pos <= item.start:
                 # Case B: Item beyond leftover: discard leftover (it was gap data)
                 pos += leftover_len
                 leftover = None
