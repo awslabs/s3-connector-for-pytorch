@@ -36,9 +36,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macos-15-intel planned to end August 2027
-        runner: [ubuntu-22.04, macos-15-intel, macos-14]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        runner: [ubuntu-22.04, macos-14]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         test-run:
           - name: "S3"
             bucket: ${{ vars.S3_BUCKET }}
@@ -54,22 +53,6 @@ jobs:
             endpoint-url: ""
             profile-role: ${{ vars.PROFILE_IAM_ROLE }}
             profile-bucket: ${{ vars.S3_EXPRESS_PROFILE_BUCKET }}
-        exclude:
-          # For Python 3.13/3.14, PyTorch does not support macos-15-intel/x86_64, only macos-14/arm64.
-          - runner: macos-15-intel
-            python-version: "3.13"
-          - runner: macos-15-intel
-            python-version: "3.14"
-          - runner: macos-14
-            python-version: "3.8"
-          - runner: macos-14
-            python-version: "3.9"
-          - runner: macos-14
-            python-version: "3.10"
-          - runner: macos-14
-            python-version: "3.11"
-          - runner: macos-14
-            python-version: "3.12"
 
     steps:
       - name: Checkout code
@@ -141,11 +124,9 @@ jobs:
           pytest s3torchconnector/tst/e2e/test_e2e_s3_lightning_checkpoint.py -n auto
 
       - name: Install DCP dependencies
-        if: matrix.runner != 'macos-15-intel'
         run: |
           python -m pip install './s3torchconnector[dcp-test]'
       - name: Run s3torchconnector DCP e2e tests
-        if: matrix.runner != 'macos-15-intel'
         run: |
           CI_REGION=${{ matrix.test-run.region }} \
           CI_BUCKET=${{ matrix.test-run.bucket }} \

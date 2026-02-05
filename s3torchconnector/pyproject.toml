@@ -6,12 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "s3torchconnector"
 version = "1.4.3"
 description = "S3 connector integration for PyTorch"
-requires-python = ">=3.8,<3.15"
+requires-python = ">=3.9,<3.15"
 readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -44,7 +43,6 @@ e2e = [
     "boto3<1.37.2", # prevent conflict caused by aiobotocore that restrict version of botocore
     "numpy < 2",
     "pytest-xdist",
-    "fsspec==2025.3.0; python_version == '3.8'", # pin fsspec version for Python 3.8 to prevent dataset e2e test failures
 ]
 
 lightning = [
