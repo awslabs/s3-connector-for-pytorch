@@ -704,7 +704,9 @@ class TestReaderIO:
 
         # Backward access to previous item should fail
         reader.seek(5)
-        with pytest.raises(ValueError, match="Position 5 before current range 20-30"):
+        with pytest.raises(
+            ValueError, match="Range 5-6 not contained in current item 20-30"
+        ):
             reader.read(1)
 
     def test_within_item_seeking(self):
@@ -720,29 +722,46 @@ class TestReaderIO:
         assert reader.read(3) == b"234"
 
     @pytest.mark.parametrize(
-        "pos, setup_reads, error_suffix",
+        "setup_reads, read_range, error_suffix",
         [
-            (5, [], "Position 5 before current range 10-20"),
-            (25, [10], "Position 25 in gap between ranges 10-20 and 30-40"),
-            (45, [10], "Position 45 beyond next range 30-40"),
-            (45, [10, 30], "Position 45 beyond last range 30-40"),
-            (15, [10, 30], "Position 15 before current range 30-40"),
+            # fmt: off
+            # Error 1: skip first item and read 2nd (buffer is None)
+            ([], (20, 5), "Range 20-25 not contained in current item 0-10"),
+            # Error 1: read pass current item
+            ([0], (5, 10), "Range 5-15 not contained in current item 0-10"),
+            # Error 1: seek back to previous item
+            ([0, 20], (5, 5), "Range 5-10 not contained in current item 20-30"),
+            # Error 2: read beyond last item
+            ([0, 20], (35, 5), "Range 35-40 not contained in last item with range 20-30"),
+            # Error 3: read in gap of current/next items
+            ([0], (12, 6), "Range 12-18 not contained in current item 0-10 nor the next item 20-30"),
+            # Error 3: read extends past next item
+            ([0], (25, 10), "Range 25-35 not contained in current item 0-10 nor the next item 20-30"),
+            # fmt: on
         ],
     )
-    def test_find_item_for_position_errors(self, pos, setup_reads, error_suffix):
-        """Test seeking to position outside valid ranges for _find_item_for_position"""
-        ranges = [ItemRange(10, 20), ItemRange(30, 40)]
-        reader = create_dcp_s3reader(ranges, [b"x" * 50])
+    @pytest.mark.parametrize("use_readinto", [False, True])
+    def test_find_item_for_range_errors(
+        self, setup_reads, read_range, error_suffix, use_readinto
+    ):
+        """Test _find_item_for_range error cases. Items: [0-10, 20-30]"""
+        ranges = [ItemRange(0, 10), ItemRange(20, 30)]
+        reader = create_dcp_s3reader(ranges, [b"x" * 40])
 
-        # Setup reads to advance iterator state
-        for read_pos in setup_reads:
-            reader.seek(read_pos)
+        for pos in setup_reads:
+            reader.seek(pos)
             reader.read(1)
 
-        reader.seek(pos)
-        expected_pattern = re.escape(FIND_ITEM_ERROR_PREFIX) + re.escape(error_suffix)
-        with pytest.raises(ValueError, match=expected_pattern):
-            reader.read(1)
+        seek_pos, read_size = read_range
+        reader.seek(seek_pos)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(FIND_ITEM_ERROR_PREFIX) + re.escape(error_suffix),
+        ):
+            if use_readinto:
+                reader.readinto(bytearray(read_size))
+            else:
+                reader.read(read_size)
 
     @pytest.mark.parametrize(
         "ranges, read_pattern, expected_data",
@@ -754,12 +773,6 @@ class TestReaderIO:
                 [ItemRange(0, 5), ItemRange(10, 15)],
                 [(0, 3), (3, 2), (10, 5)],
                 [b"012", b"34", b"abcde"],
-            ),
-            # Should stop at item boundary
-            (
-                [ItemRange(0, 5), ItemRange(10, 15)],
-                [(3, 5)],
-                [b"34"],
             ),
         ],
     )
