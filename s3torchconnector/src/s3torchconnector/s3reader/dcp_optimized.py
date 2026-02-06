@@ -444,6 +444,7 @@ class DCPOptimizedS3Reader(S3Reader):
                 stream_position=group.start,
                 leftover=None,
             )
+            assert self._stream_state.stream is not None
             return self._stream_state.stream
 
         # Otherwise, we're still in same group - reuse stream created when reading 1st item

@@ -192,7 +192,7 @@ class S3ReaderConstructor:
     ) -> DCPS3ReaderConstructorProtocol:
         """Creates a constructor for DCP-optimized readers for faster checkpoint loading.
 
-        The DCP-optimized reader provides up to performance improvement for DCP reading through:
+        The DCP-optimized reader provides performance improvements for DCP reading through:
 
         - Selective data fetching with range coalescing to only fetch required byte ranges
         - Per-item buffer management to reduce buffer allocation costs

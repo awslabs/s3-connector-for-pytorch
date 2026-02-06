@@ -132,7 +132,7 @@ Amazon S3 Connector for PyTorch provides robust support for PyTorch distributed 
 
 - `S3StorageReader`: Implementation of PyTorch's StorageReader interface. 
   - Supports configurable reading strategies via the `reader_constructor` parameter (see [Reader Configurations](#reader-configurations)). 
-  - `S3ReaderConstructor.dcp_optimized()` is recommended for up to 2x faster loading with partial checkpoint optimizations. 
+  - `S3ReaderConstructor.dcp_optimized()` is recommended for faster loading with partial checkpoint optimizations. 
 - `S3FileSystem`: An implementation of PyTorch's FileSystemBase.
 
 These tools enable seamless integration of Amazon S3 with 
@@ -440,7 +440,7 @@ Amazon S3 Connector for PyTorch supports three types of readers, configurable th
 #### 3. DCP-Optimized Reader (DCP only)
 
 - Specialized usage for PyTorch Distributed Checkpoint (DCP) loading.
-- Provides up to 2x performance improvement through per-item buffers and zero-copy buffer management.
+- Provides performance improvements through per-item buffers and zero-copy buffer management.
 - Enables efficient partial checkpoint loading (e.g. model-only) through selective data fetching with range coalescing.
 - Automatically handles range metadata injection from DCP load plan.
 - Requires sequential access patterns (automatically enforced in `S3StorageReader.prepare_local_plan()`)
