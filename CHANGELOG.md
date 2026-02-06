@@ -1,6 +1,7 @@
 ## TBD
 
 ### New features
+* Add DCP-optimized s3reader for faster and partial DCP loading (#378)
 * Add support for Python 3.14 (#408)
 * Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
 * Add py.typed file to enable external type checking (#406)
