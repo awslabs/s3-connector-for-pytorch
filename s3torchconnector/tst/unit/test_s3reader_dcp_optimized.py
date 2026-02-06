@@ -1,14 +1,34 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
+import itertools
+import random
 import re
 import sys
 from io import BytesIO, SEEK_SET, SEEK_CUR, SEEK_END
 from typing import List, Tuple, Optional
 
 import pytest
-from hypothesis import given, assume
-from hypothesis.strategies import integers, composite, lists, binary
+from hypothesis import given, assume, note, settings, Phase
+from hypothesis.strategies import (
+    integers,
+    composite,
+    lists,
+    binary,
+    tuples,
+    just,
+    one_of,
+    booleans,
+    data,
+)
+from hypothesis import note, settings, Phase
+from hypothesis.stateful import (
+    RuleBasedStateMachine,
+    rule,
+    initialize,
+    invariant,
+    precondition,
+)
 
 from s3torchconnector.s3reader.dcp_optimized import (
     DCPOptimizedS3Reader,
@@ -814,3 +834,391 @@ class TestReaderIO:
         assert reader._stream_state.stream is None
         assert reader._stream_state.leftover is None
         assert reader._current_item_buffer is None
+
+
+class DCPReaderStateMachine(RuleBasedStateMachine):
+    """State machine tests for DCPOptimizedS3Reader.
+
+    Uses hypothesis stateful testing to explore state transitions and verify:
+    - Sequential item access enforcement (across items)
+    - Random read access within current / next item buffer
+    - Data correctness against BytesIO reference for every read/readinto
+    - Error handling for invalid access patterns
+
+    This tests _find_item_for_range, _get_stream_for_item, and the 3-phase
+    buffer loading logic in _get_item_buffer (indirectly testing edge cases
+    through random ItemRanges/chunk_size/max_gap_size).
+
+    To view all notes/stats, run pytest with these flags:
+    pytest s3torchconnector/tst/unit/test_s3reader_dcp_optimized.py::TestDCPReaderStateMachine \
+        -vs --hypothesis-show-statistics --hypothesis-verbosity=verbose
+
+    State tracking:
+        current_item_idx = -1: Haven't read any item yet, can only read item 0
+        current_item_idx = 0:  Have read item 0, can read item 0 or 1
+        current_item_idx = n:  Have read item n, can read item n or n+1
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.reader: Optional[DCPOptimizedS3Reader] = None
+        self.reference_io: Optional[BytesIO] = None
+        self.ranges: List[ItemRange] = None
+        self.current_item_idx: int = -1  # -1 means no item read yet
+
+    # -------------------------------------------------------------------------
+    # Initialization
+    # -------------------------------------------------------------------------
+
+    @initialize(
+        gaps_and_lengths=lists(
+            tuples(
+                integers(min_value=0, max_value=5000),  # gap before item
+                integers(min_value=1, max_value=5000),  # item length
+            ),
+            min_size=1,
+            max_size=100,
+        ),
+        chunk_size=integers(min_value=1, max_value=5000),
+        max_gap_size=one_of(
+            *[integers(min_value=0, max_value=10000)] * 9,  # 90%: random
+            just(float("inf")),  # 10%: coalesce everything
+        ),
+    )
+    def init_reader(self, gaps_and_lengths, chunk_size, max_gap_size):
+        """Initialize reader with generated setup."""
+        # Build ItemRanges from (gap, length) tuples
+        item_ranges = []
+        pos = 0
+        for gap, length in gaps_and_lengths:
+            start = pos + gap
+            end = start + length
+            item_ranges.append(ItemRange(start, end))
+            pos = end
+
+        total_size = pos
+        self.ranges = item_ranges
+
+        # Generate random data of total_size (reproducable)
+        rng = random.Random(100)  # arbitrary seed
+        full_data = bytes(rng.getrandbits(8) for _ in range(total_size))
+        full_data = full_data[:total_size]
+        self.reference_io = BytesIO(full_data)
+        self.current_item_idx = -1  # No item read yet
+
+        def get_stream(start=None, end=None):
+            data = full_data[start:end]
+            return iter(
+                [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
+            )
+
+        self.reader = DCPOptimizedS3Reader(
+            bucket="TEST_BUCKET",
+            key="checkpoint/__0_0.distcp",
+            item_ranges=item_ranges,
+            get_object_info=lambda: None,
+            get_stream=get_stream,
+            max_gap_size=max_gap_size,
+        )
+
+        note(f"Items: {[(r.start, r.end) for r in item_ranges]}")
+        note(
+            f"Groups: {[(g.start, g.end, len(g.item_ranges)) for g in self.reader._range_groups]}"
+        )
+        note(f"max_gap_size={max_gap_size}, chunk_size={chunk_size}")
+
+    # -------------------------------------------------------------------------
+    # Helpers
+    # -------------------------------------------------------------------------
+
+    def _verify_read(self, size: int) -> bytes:
+        """Read from reader and verify against reference BytesIO."""
+        actual = self.reader.read(size)
+        expected = self.reference_io.read(size)
+
+        assert actual == expected
+        assert self.reader.tell() == self.reference_io.tell()
+
+    def _verify_readinto(self, size: int) -> int:
+        """Readinto buffer and verify against reference BytesIO."""
+        buf = bytearray(size)
+        bytes_read = self.reader.readinto(buf)
+
+        ref_buf = bytearray(size)
+        bytes_expected = self.reference_io.readinto(ref_buf)
+
+        assert bytes_read == bytes_expected
+        assert buf[:bytes_read] == ref_buf[:bytes_read]
+        assert self.reader.tell() == self.reference_io.tell()
+
+    def _save_reader_state(self):
+        """Save reader state for restoration after destructive operations."""
+        saved_iter, self.reader._item_iter = itertools.tee(self.reader._item_iter)
+
+        saved_stream = None
+        if self.reader._stream_state.stream is not None:
+            saved_stream, self.reader._stream_state.stream = itertools.tee(
+                self.reader._stream_state.stream
+            )
+
+        return {
+            "iter": saved_iter,
+            "stream": saved_stream,
+            "current_item": self.reader._current_item,
+            "position": self.reader._position,
+            "current_item_buffer": self.reader._current_item_buffer,
+            "stream_state_position": self.reader._stream_state.stream_position,
+            "stream_state_leftover": self.reader._stream_state.leftover,
+        }
+
+    def _restore_reader_state(self, state):
+        """Restore reader state after destructive operations."""
+        self.reader._item_iter = state["iter"]
+        self.reader._stream_state.stream = state["stream"]
+        self.reader._current_item = state["current_item"]
+        self.reader._position = state["position"]
+        self.reader._current_item_buffer = state["current_item_buffer"]
+        self.reader._stream_state.stream_position = state["stream_state_position"]
+        self.reader._stream_state.leftover = state["stream_state_leftover"]
+
+    # -------------------------------------------------------------------------
+    # Precondition helpers (+ fetching items)
+    # -------------------------------------------------------------------------
+
+    def _current_item(self) -> Optional[ItemRange]:
+        """Get current item, or None if no item read yet (idx=-1)."""
+        if self.current_item_idx < 0:
+            return None
+        return self.ranges[self.current_item_idx]
+
+    def _has_current_item(self) -> bool:
+        """Check if we have a current item (i.e. have started reading)."""
+        return self.current_item_idx >= 0  # i.e. not -1, the starting state
+
+    def _next_item(self) -> Optional[ItemRange]:
+        """Get next item (idx+1 if exists; item 0 when idx=-1)."""
+        next_idx = self.current_item_idx + 1
+        return self.ranges[next_idx] if next_idx < len(self.ranges) else None
+
+    def _has_next_item(self) -> bool:
+        """Check if there's a next item."""
+        return self.current_item_idx + 1 < len(self.ranges)
+
+    # -------------------------------------------------------------------------
+    # Invariants
+    # -------------------------------------------------------------------------
+
+    @invariant()
+    def position_is_consistent(self):
+        """Reader position == reference position after synced operations (not failure cases)."""
+        assert self.reader.tell() >= self.reference_io.tell()
+
+    # -------------------------------------------------------------------------
+    # Rules: Success cases - seek and read within current/next item
+    # -------------------------------------------------------------------------
+
+    @precondition(lambda self: self._has_current_item())
+    @rule(data=data(), use_readinto=booleans())
+    def seek_and_read_within_current_item(self, data, use_readinto):
+        """Success 1: Seek within current item, read ends within current item."""
+        note(f"CASE SUCCESS 1: Seek and read within current item")
+
+        item = self._current_item()
+
+        # Draw seek position within item
+        seek_pos = data.draw(
+            integers(
+                min_value=item.start, max_value=item.end - 1
+            ),  # note end is exclusive
+            label="seek_pos",
+        )
+        # Draw read size that stays within item
+        max_read = item.end - seek_pos
+        read_size = data.draw(
+            integers(min_value=1 if use_readinto else 0, max_value=max_read),
+            label="read_size",
+        )
+        # Note readinto requires non-zero-length buffers, so use 1 as min_value
+
+        note(
+            f"current_item_read: seek={seek_pos}, read={read_size}, item={item.start}-{item.end}"
+        )
+
+        self.reader.seek(seek_pos)
+        self.reference_io.seek(seek_pos)
+        if use_readinto:
+            self._verify_readinto(read_size)
+        else:
+            self._verify_read(read_size)
+
+    @precondition(lambda self: self._has_next_item())
+    @rule(data=data(), use_readinto=booleans())
+    def seek_and_read_within_next_item(self, data, use_readinto):
+        """Success 2: Seek within next item, read ends within next item."""
+        note(f"CASE SUCCESS 2: Seek and read within next item")
+
+        next_item = self._next_item()
+
+        # Draw seek position within next item
+        seek_pos = data.draw(
+            integers(
+                min_value=next_item.start, max_value=next_item.end - 1
+            ),  # note end is exclusive
+            label="seek_pos",
+        )
+        # Draw read size that stays within next item
+        max_read = next_item.end - seek_pos
+        read_size = data.draw(
+            integers(min_value=1 if use_readinto else 0, max_value=max_read),
+            label="read_size",
+        )
+        # Note readinto requires non-zero-length buffers, so use 1 as min_value
+
+        note(
+            f"next_item_read: seek={seek_pos}, read={read_size}, next={next_item.start}-{next_item.end}"
+        )
+
+        self.reader.seek(seek_pos)
+        self.reference_io.seek(seek_pos)
+        if use_readinto:
+            self._verify_readinto(read_size)
+        else:
+            self._verify_read(read_size)
+
+        # Advance counter to next item (sequential access means we can no longer read prev item,
+        # only the new current item and the item after this)
+        # Note 0 reads does not count as 'read next item' so will not iterate to next item, hence not included
+        self.current_item_idx += 1 if read_size else 0
+
+    # -------------------------------------------------------------------------
+    # Rules: Failure cases - read range partially/fully outside current/next items
+    # -------------------------------------------------------------------------
+
+    @precondition(lambda self: self._has_current_item())
+    @rule(data=data(), use_readinto=booleans())
+    def seek_current_read_beyond(self, data, use_readinto):
+        """Failure 1: Seek within current item, but read extends beyond it."""
+        note(f"CASE FAILURE 1: Seek within current item, but read extends beyond it")
+
+        item = self._current_item()
+        saved_state = self._save_reader_state()
+
+        # Draw seek position within item
+        seek_pos = data.draw(
+            integers(min_value=item.start, max_value=item.end - 1),
+            label="seek_pos",
+        )
+        # Read size that goes beyond item end
+        min_overflow = item.end - seek_pos + 1
+        read_size = data.draw(
+            integers(min_value=min_overflow, max_value=min_overflow + 10000),
+            label="read_size",
+        )
+
+        note(
+            f"current_overflow: seek={seek_pos}, read={read_size}, item={item.start}-{item.end}"
+        )
+
+        try:
+            self.reader.seek(seek_pos)
+            if use_readinto:
+                buf = bytearray(read_size)
+                self.reader.readinto(buf)
+            else:
+                self.reader.read(read_size)
+            assert False, f"Expected ValueError when reading past current item boundary"
+        except ValueError as e:
+            assert FIND_ITEM_ERROR_PREFIX in str(e)
+            note(f"Read failed as expected with error: {e}")
+        finally:
+            self._restore_reader_state(saved_state)
+
+    @precondition(lambda self: self._has_next_item())
+    @rule(data=data(), use_readinto=booleans())
+    def seek_next_read_beyond(self, data, use_readinto):
+        """Failure 2: Seek within next item, but read extends beyond it."""
+        note(f"CASE FAILURE 2: Seek within next item, but read extends beyond it")
+
+        next_item = self._next_item()
+        saved_state = self._save_reader_state()
+
+        # Draw seek position within next item
+        seek_pos = data.draw(
+            integers(min_value=next_item.start, max_value=next_item.end - 1),
+            label="seek_pos",
+        )
+        # Read size that goes beyond next item end
+        min_overflow = next_item.end - seek_pos + 1
+        read_size = data.draw(
+            integers(min_value=min_overflow, max_value=min_overflow + 10000),
+            label="read_size",
+        )
+
+        note(
+            f"next_overflow: seek={seek_pos}, read={read_size}, next={next_item.start}-{next_item.end}"
+        )
+
+        try:
+            self.reader.seek(seek_pos)
+            if use_readinto:
+                buf = bytearray(read_size)
+                self.reader.readinto(buf)
+            else:
+                self.reader.read(read_size)
+            assert False, f"Expected ValueError when reading past next item boundary"
+        except ValueError as e:
+            assert FIND_ITEM_ERROR_PREFIX in str(e)
+            note(f"Read failed as expected with error: {e}")
+        finally:
+            self._restore_reader_state(saved_state)
+
+    @precondition(lambda self: self._has_current_item() or self._has_next_item())
+    @rule(data=data(), use_readinto=booleans())
+    def seek_invalid_position_then_read(self, data, use_readinto):
+        """Failure 3: Seek to invalid position (gap, before, or beyond valid items), then read."""
+        note("CASE FAILURE 3: Seek to invalid position")
+
+        saved_state = self._save_reader_state()
+
+        # Build list of valid ranges
+        valid_ranges = []
+        if self._has_current_item():
+            valid_ranges.append(self._current_item())
+        if self._has_next_item():
+            valid_ranges.append(self._next_item())
+
+        # Generate position outside valid ranges
+        max_pos = valid_ranges[-1].end + 10000
+        seek_pos = data.draw(
+            integers(min_value=0, max_value=max_pos).filter(
+                lambda p: not any(r.start <= p < r.end for r in valid_ranges)
+            ),
+            label="seek_pos",
+        )
+        read_size = data.draw(integers(min_value=1, max_value=10000), label="read_size")
+        # Note 0 reads will not trigger the error
+
+        note(
+            f"invalid_seek: pos={seek_pos}, valid_ranges={[(r.start, r.end) for r in valid_ranges]}"
+        )
+
+        try:
+            self.reader.seek(seek_pos)
+            if use_readinto:
+                buf = bytearray(read_size)
+                self.reader.readinto(buf)
+            else:
+                self.reader.read(read_size)
+            assert False, f"Expected ValueError for invalid position {seek_pos}"
+        except ValueError as e:
+            assert FIND_ITEM_ERROR_PREFIX in str(e)
+            note(f"Invalid seek failed as expected with error: {e}")
+        finally:
+            self._restore_reader_state(saved_state)
+
+
+TestDCPReaderStateMachine = DCPReaderStateMachine.TestCase
+TestDCPReaderStateMachine.settings = settings(
+    max_examples=100,
+    stateful_step_count=100,
+)
