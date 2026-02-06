@@ -17,7 +17,7 @@ Data Flow Overview:
             -> DCPOptimizedS3Reader __init__
                 -> _validate_and_coalesce_ranges()                  # validates and groups ItemRanges into RangeGroups
             -> DCPOptimizedS3Reader read()/readinto()
-                -> _find_item_for_position()                        # updates _current_item
+                -> _find_item_for_range()                        # updates _current_item
                 -> [if new item] _get_item_buffer()                 # fetches item byte data
                     -> [if new RangeGroup] _get_stream_for_item()   # creates new stream before fetching byte data
                     -> 1: Handle leftover bytes from prev. chunk
@@ -190,7 +190,7 @@ class _ItemViewBuffer:
         # bisect_right gives insertion point where pos < offsets[i], -1 gives containing segment.
         # No caching optimisation, since torch.load jumps around (magic bytes, zip dir, tensor data)
         seg_idx = bisect.bisect_right(offsets, pos) - 1
-        # Defensive clamp: shouldn't occur as _find_item_for_position makes sure pos >= 0
+        # Defensive clamp: shouldn't occur as _find_item_for_range makes sure pos >= 0
         if seg_idx < 0:
             seg_idx = 0
 
@@ -379,48 +379,49 @@ class DCPOptimizedS3Reader(S3Reader):
         groups.append(final_group)
         return groups
 
-    def _find_item_for_position(self, pos: int) -> ItemRange:
-        """Find which item contains the given position, enforcing sequential access.
+    def _find_item_for_range(self, start: int, end: int) -> ItemRange:
+        """Find which item contains the requested range [start,end), enforcing sequential access.
 
-        Returns current item if position is within it, else advances to next item.
-        Raises ValueError if position is outside current or next items.
+        Returns current item if range is within it, and advances to / returns next item if the
+        range is within the next item.
+
+        Raises human-readable errors if the range is partially/fully outside of current or next items.
         """
 
-        if pos < self._current_item.start:
+        item = self._current_item
+
+        # Check if requested range is within current item
+        if item.start <= start and end <= item.end:
+            return item
+
+        # 1. If start < item.end and range not within current item, raise error
+        # 2. Protection against reading 2nd item before first item by checking if buffer
+        # contains any data (since we initialize with 1st item instead of None)
+        if start < item.end or self._current_item_buffer is None:
             raise ValueError(
-                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} before current range "
-                f"{self._current_item.start}-{self._current_item.end}"
+                f"{FIND_ITEM_ERROR_PREFIX}Range {start}-{end} not contained in "
+                f"current item {item.start}-{item.end}"
             )
 
-        # Return item if position still in current item
-        if pos < self._current_item.end:
-            return self._current_item
-
-        # Check next item
-        prev_item = self._current_item
+        # Advance to next item
+        prev_item = item
         try:
             item = next(self._item_iter)
         except StopIteration:
             raise ValueError(
-                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond last range "
-                f"{prev_item.start}-{prev_item.end}"
+                f"{FIND_ITEM_ERROR_PREFIX}Range {start}-{end} not contained in last item "
+                f"with range {prev_item.start}-{prev_item.end}"
             )
 
-        if pos < item.start:
-            raise ValueError(
-                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} in gap between ranges "
-                f"{prev_item.start}-{prev_item.end} and {item.start}-{item.end}"
-            )
-        # Return item if position is in new item
-        if pos < item.end:
+        # Check if requested range is within next item
+        if item.start <= start and end <= item.end:
             return item
-        else:
-            # Item beyond next item: We do not allow skipping because items are already
-            # in order, and therefore we can only read the next item.
-            raise ValueError(
-                f"{FIND_ITEM_ERROR_PREFIX}Position {pos} beyond next range "
-                f"{item.start}-{item.end}"
-            )
+
+        raise ValueError(
+            f"{FIND_ITEM_ERROR_PREFIX}Range {start}-{end} not contained in "
+            f"current item {prev_item.start}-{prev_item.end} nor the "
+            f"next item {item.start}-{item.end}."
+        )
 
     def _get_stream_for_item(self, item: ItemRange) -> GetObjectStream:
         """Get or create S3 stream for the given item.
@@ -430,7 +431,7 @@ class DCPOptimizedS3Reader(S3Reader):
         Each RangeGroup maps to a contiguous byte range in S3, and items within a
         RangeGroup are read sequentially from the same stream.
 
-        Sequential access is already enforced in _find_item_for_position, which runs
+        Sequential access is already enforced in _find_item_for_range, which runs
         before _get_item_buffer (which calls this method). Reading the first item will
         trigger stream creation, and subsequent reads will simply reuse the stream.
         """
@@ -650,7 +651,7 @@ class DCPOptimizedS3Reader(S3Reader):
         if size == 0:
             return b""
 
-        item = self._find_item_for_position(self._position)
+        item = self._find_item_for_range(self._position, self._position + size)
 
         # if item has been changed (or first item), then load new item to buffer
         if item is not self._current_item or self._current_item_buffer is None:
@@ -681,7 +682,7 @@ class DCPOptimizedS3Reader(S3Reader):
             TypeError: If buf is not writable.
             S3Exception: An error occurred accessing S3.
         """
-        item = self._find_item_for_position(self._position)
+        item = self._find_item_for_range(self._position, self._position + len(buf))
 
         # if item has been changed (or first item), then load new item to buffer
         if item is not self._current_item or self._current_item_buffer is None:
