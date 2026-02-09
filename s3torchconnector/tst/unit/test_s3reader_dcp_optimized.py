@@ -881,8 +881,8 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         ),
         chunk_size=integers(min_value=1, max_value=5000),
         max_gap_size=one_of(
-            *[integers(min_value=0, max_value=10000)] * 9,  # 90%: random
-            just(float("inf")),  # 10%: coalesce everything
+            integers(min_value=0, max_value=10000),
+            just(float("inf")),
         ),
     )
     def init_reader(self, gaps_and_lengths, chunk_size, max_gap_size):
@@ -1180,21 +1180,26 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
 
         saved_state = self._save_reader_state()
 
-        # Build list of valid ranges
+        # Build list of valid ranges (current item and/or next item)
         valid_ranges = []
         if self._has_current_item():
             valid_ranges.append(self._current_item())
         if self._has_next_item():
             valid_ranges.append(self._next_item())
 
-        # Generate position outside valid ranges
-        max_pos = valid_ranges[-1].end + 10000
-        seek_pos = data.draw(
-            integers(min_value=0, max_value=max_pos).filter(
-                lambda p: not any(r.start <= p < r.end for r in valid_ranges)
-            ),
-            label="seek_pos",
+        # Include 3 possible invalid ranges (in arrows): |<-->|current|<->|next|<--->|
+        invalid_ranges = []
+        if valid_ranges[0].start > 0:
+            invalid_ranges.append(integers(0, valid_ranges[0].start - 1))
+        if len(valid_ranges) == 2 and valid_ranges[1].start > valid_ranges[0].end:
+            invalid_ranges.append(
+                integers(valid_ranges[0].end, valid_ranges[1].start - 1)
+            )
+        invalid_ranges.append(
+            integers(valid_ranges[-1].end, valid_ranges[-1].end + 10000)
         )
+
+        seek_pos = data.draw(one_of(*invalid_ranges), label="seek_pos")
         read_size = data.draw(integers(min_value=1, max_value=10000), label="read_size")
         # Note 0 reads will not trigger the error
 
