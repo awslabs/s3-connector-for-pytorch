@@ -202,7 +202,7 @@ class S3ReaderConstructor:
             max_gap_size: Maximum gap size in bytes between ranges to coalesce into the same S3 read stream.
                 Most users should use the default value.
 
-                - Default: 512MB (``512 * 1024 * 1024``)
+                - Default: 32MB (``32 * 1024 * 1024``)
                 - Use ``float("inf")`` to coalesce all ranges regardless of gaps
                 - Use 0 to disable coalescing, which creates a new range-based stream for each gap
 

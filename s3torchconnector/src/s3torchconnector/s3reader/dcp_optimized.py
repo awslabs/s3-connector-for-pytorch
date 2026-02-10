@@ -41,8 +41,9 @@ from .s3reader import S3Reader
 
 log = logging.getLogger(__name__)
 
-# Based on: throughput (~2500MB/s) × first-byte latency (~200ms) = ~500MB
-DEFAULT_MAX_GAP_SIZE = 512 * 1024 * 1024
+DEFAULT_MAX_GAP_SIZE = (
+    32 * 1024 * 1024
+)  # default max gap between ranges such that they stay in the same stream
 FIND_ITEM_ERROR_PREFIX = (
     "DCPOptimizedS3Reader only supports sequentially accessing provided ranges: "
 )
