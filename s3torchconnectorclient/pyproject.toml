@@ -51,6 +51,8 @@ license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
 test-requires = ["./s3torchconnector[e2e]"]
 test-extras = "test"
 test-command = [
+    # Workaround for torch-2.10.0-1 macOS wheels missing executable permission on torch_shm_manager
+    "chmod +x $(python -c \"import torch; print(torch.__path__[0])\")/bin/torch_shm_manager || true",
     "pytest {package}/python/tst/unit",
     "pytest {package}/../s3torchconnector/tst/unit --ignore {package}/../s3torchconnector/tst/unit/lightning --ignore {package}/../s3torchconnector/tst/unit/dcp",
     "CI_STORAGE_CLASS='' CI_REGION=${S3_REGION} CI_BUCKET=${S3_BUCKET} CI_PREFIX=${S3_PREFIX} CI_CUSTOM_ENDPOINT_URL=${S3_CUSTOM_ENDPOINT_URL} CI_PROFILE_ROLE=${PROFILE_IAM_ROLE} CI_PROFILE_BUCKET=${S3_PROFILE_BUCKET} pytest {package}/python/tst/integration",
