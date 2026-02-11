@@ -19,8 +19,7 @@ Amazon S3, without first saving to local storage.
 
 ### Prerequisites
 
-- Python 3.8-3.14 is supported. 
-  - Note: Python 3.8 support will be deprecated in a future release, see [#399](https://github.com/awslabs/s3-connector-for-pytorch/issues/399)
+- Python 3.9-3.14 is supported. 
 - PyTorch >= 2.0 (TODO: Check with PyTorch 1.x)
 
 ### Installation
@@ -29,9 +28,12 @@ Amazon S3, without first saving to local storage.
 pip install s3torchconnector
 ```
 
-Amazon S3 Connector for PyTorch supports pre-built wheels via Pip only for Linux and MacOS for now. 
-(Note: macOS x86_64 wheel support will be deprecated in a future release, see [#398](https://github.com/awslabs/s3-connector-for-pytorch/issues/398)) 
-For other platforms, see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for build instructions.
+Amazon S3 Connector for PyTorch supports pre-built wheels via Pip only for Linux and MacOS ARM64 (Apple Silicon). For other platforms,
+see [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) for build instructions.
+
+**Note for Mac users**: To check your Mac type, run `uname -m` in Terminal:
+- `arm64` = Apple Silicon (install via pip)
+- `x86_64` = Intel Mac (build from source)
 
 ### Configuration
 
