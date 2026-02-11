@@ -5,6 +5,7 @@ import itertools
 import random
 import re
 import sys
+from contextlib import contextmanager
 from io import BytesIO, SEEK_SET, SEEK_CUR, SEEK_END
 from typing import List, Tuple, Optional
 
@@ -20,6 +21,7 @@ from hypothesis.strategies import (
     one_of,
     booleans,
     data,
+    sampled_from,
 )
 from hypothesis import note, settings, Phase
 from hypothesis.stateful import (
@@ -88,7 +90,8 @@ def dcp_ranges_and_stream(draw):
 
     # Split data into multiple equal-sized chunks
     chunk_size = draw(integers(min_value=10, max_value=50000))
-    full_data = b"x" * current_pos
+    rng = random.Random(100)
+    full_data = bytes(rng.getrandbits(8) for _ in range(current_pos))
     stream_data = [
         full_data[i : i + chunk_size] for i in range(0, len(full_data), chunk_size)
     ]
@@ -228,9 +231,10 @@ class TestItemViewBuffer:
         assert buffer.tell() == expected_pos
 
     @given(
-        lists(binary(min_size=1, max_size=500), min_size=1, max_size=5),
+        # Max size 5*1000=5000 bytes; use 10000 seek/read to cover edge cases
+        lists(binary(min_size=1, max_size=1000), min_size=1, max_size=5),
         integers(min_value=0, max_value=10000),
-        integers(min_value=0, max_value=5000),
+        integers(min_value=0, max_value=10000),
     )
     def test_buffer_read_hypothesis(
         self, segments: List[bytes], seek_pos: int, read_size: int
@@ -605,11 +609,24 @@ class TestStreamManagement:
         # Only 1 stream call so far for both ItemRanges
         assert stream_calls == [(0, 25)]
 
+        # Backwards seek and read current item again
+        reader.seek(20)
+        assert reader.read(5) == b"fghij"
+        # No new stream calls should happen
+        assert stream_calls == [(0, 25)]
+
         # Read from second group
         reader.seek(110)
         assert reader.read(10) == b"ABCDEFGHIJ"
         # 2 stream calls
         assert stream_calls == [(0, 25), (110, 120)]
+
+        # Backwards seek and read in previous group should result in error
+        reader.seek(20)
+        with pytest.raises(
+            ValueError, match="Range 20-25 not contained in current item 110-120"
+        ):
+            reader.read(5)
 
     def test_leftover_handling_with_chunks(self):
         """Test leftover data handling across items with chunk boundaries"""
@@ -740,6 +757,36 @@ class TestReaderIO:
         # Seek backward within same item
         reader.seek(2)
         assert reader.read(3) == b"234"
+
+    @pytest.mark.parametrize("stream_data_length", [50, 120])
+    def test_stream_exhaustion_before_item_start_raises_error(self, stream_data_length):
+        """Test error when S3 stream ends (StopIteration) before/while reading item data.
+        StopIteration errors in _get_item_buffer (Phase 2/3 respectively) expected when
+        reading second item.
+
+        |item0-20|---------------------------------------|#####item100-150#######|
+        Stream 1 ends at 50; StopIteration in phase 2 (skipping bytes) triggered:
+        |stream1---------------->|
+        Stream 2 ends at 120; StopIteration in phase 3 (reading bytes) triggered:
+        |stream2-------------------------------------------------->|
+        """
+        # Item range 100-150, but stream only has 0-50 / 0-120.
+        ranges = [ItemRange(0, 20), ItemRange(100, 150)]
+        short_data = [b"x" * stream_data_length]  # data does not cover all ranges
+        max_gap_size = 100  # should coalesce ranges into 1 stream
+        chunk_size = 7  # last iteration with 50mod7 / 120mod7 (both 1 bytes)
+
+        reader = create_dcp_s3reader(ranges, short_data, max_gap_size, chunk_size)
+
+        reader.read(10)  # a read on first item for sequential access.
+        # Note 20-100 are skip bytes.
+
+        with pytest.raises(
+            ValueError,
+            match=f"S3 stream exhausted at position {stream_data_length} before reaching item.start=100",
+        ):
+            reader.seek(100)
+            reader.read(50)
 
     @pytest.mark.parametrize(
         "setup_reads, read_range, error_suffix",
@@ -878,7 +925,7 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
             ),
             min_size=1,
             max_size=100,
-        ),
+        ),  # note max length is (5000+5000)*100 = 1M bytes
         chunk_size=integers(min_value=1, max_value=5000),
         max_gap_size=one_of(
             integers(min_value=0, max_value=10000),
@@ -931,16 +978,16 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
     # Helpers
     # -------------------------------------------------------------------------
 
-    def _verify_read(self, size: int) -> bytes:
-        """Read from reader and verify against reference BytesIO."""
+    def _verify_read(self, size: int):
+        """Read from reader and verify against reference BytesIO for Success cases."""
         actual = self.reader.read(size)
         expected = self.reference_io.read(size)
 
         assert actual == expected
         assert self.reader.tell() == self.reference_io.tell()
 
-    def _verify_readinto(self, size: int) -> int:
-        """Readinto buffer and verify against reference BytesIO."""
+    def _verify_readinto(self, size: int):
+        """Readinto buffer and verify against reference BytesIO for Success cases."""
         buf = bytearray(size)
         bytes_read = self.reader.readinto(buf)
 
@@ -981,6 +1028,26 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         self.reader._stream_state.stream_position = state["stream_state_position"]
         self.reader._stream_state.leftover = state["stream_state_leftover"]
 
+    @contextmanager
+    def _preserved_state(self):
+        """Context manager to save and restore reader state."""
+        saved_state = self._save_reader_state()
+        try:
+            yield
+        finally:
+            self._restore_reader_state(saved_state)
+
+    def _verify_read_fails(self, seek_pos: int, read_size: int, use_readinto: bool):
+        """Verify that reading at seek_pos raises ValueError for Failure Cases."""
+        with self._preserved_state():
+            self.reader.seek(seek_pos)
+            with pytest.raises(ValueError, match=FIND_ITEM_ERROR_PREFIX) as excinfo:
+                if use_readinto:
+                    self.reader.readinto(bytearray(read_size))
+                else:
+                    self.reader.read(read_size)
+            note(f"Read failed as expected: {excinfo.value}")
+
     # -------------------------------------------------------------------------
     # Precondition helpers (+ fetching items)
     # -------------------------------------------------------------------------
@@ -995,6 +1062,14 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         """Check if we have a current item (i.e. have started reading)."""
         return self.current_item_idx >= 0  # i.e. not -1, the starting state
 
+    def _has_current_item_and_remaining_data(self) -> bool:
+        """Check if there's remaining data to read in current item."""
+        if not self._has_current_item():
+            return False
+        item = self._current_item()
+        current_pos = self.reader.tell()
+        return item.start <= current_pos < item.end
+
     def _next_item(self) -> Optional[ItemRange]:
         """Get next item (idx+1 if exists; item 0 when idx=-1)."""
         next_idx = self.current_item_idx + 1
@@ -1005,7 +1080,7 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         return self.current_item_idx + 1 < len(self.ranges)
 
     # -------------------------------------------------------------------------
-    # Invariants
+    # Misc Invariants / Rules
     # -------------------------------------------------------------------------
 
     @invariant()
@@ -1013,13 +1088,24 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         """Reader position == reference position after synced operations (not failure cases)."""
         assert self.reader.tell() >= self.reference_io.tell()
 
+    @rule(seek_pos=integers(min_value=0))
+    def read_zero_at_any_position(self, seek_pos):
+        """read(0) never errors regardless of seek position."""
+        pos = self.reader.tell()
+        self.reader.seek(seek_pos)
+        assert self.reader.read(0) == b""
+        # Revert position
+        self.reader.seek(pos)
+
     # -------------------------------------------------------------------------
     # Rules: Success cases - seek and read within current/next item
     # -------------------------------------------------------------------------
 
     @precondition(lambda self: self._has_current_item())
-    @rule(data=data(), use_readinto=booleans())
-    def seek_and_read_within_current_item(self, data, use_readinto):
+    @rule(
+        data=data(), use_readinto=booleans(), whence=sampled_from([SEEK_SET, SEEK_CUR])
+    )
+    def seek_and_read_within_current_item(self, data, use_readinto, whence):
         """Success 1: Seek within current item, read ends within current item."""
         note(f"CASE SUCCESS 1: Seek and read within current item")
 
@@ -1044,16 +1130,44 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
             f"current_item_read: seek={seek_pos}, read={read_size}, item={item.start}-{item.end}"
         )
 
-        self.reader.seek(seek_pos)
-        self.reference_io.seek(seek_pos)
+        offset = seek_pos - self.reader.tell() if whence == SEEK_CUR else seek_pos
+        self.reader.seek(offset, whence)
+        self.reference_io.seek(offset, whence)
+        if use_readinto:
+            self._verify_readinto(read_size)
+        else:
+            self._verify_read(read_size)
+
+    @precondition(lambda self: self._has_current_item_and_remaining_data())
+    @rule(data=data(), use_readinto=booleans())
+    def continue_reading_current_item(self, data, use_readinto):
+        """Success 1a: Continue reading from current position without seeking.
+        This serves as simplification of Success 1 with no seeking.
+        """
+        note("CASE SUCCESS 1a: Continue reading without seeking")
+
+        item = self._current_item()
+        current_pos = self.reader.tell()
+        remaining = item.end - current_pos
+
+        read_size = data.draw(
+            integers(min_value=1, max_value=remaining), label="read_size"
+        )
+
+        note(
+            f"continue_read: pos={current_pos}, read={read_size}, remaining={remaining}"
+        )
+
         if use_readinto:
             self._verify_readinto(read_size)
         else:
             self._verify_read(read_size)
 
     @precondition(lambda self: self._has_next_item())
-    @rule(data=data(), use_readinto=booleans())
-    def seek_and_read_within_next_item(self, data, use_readinto):
+    @rule(
+        data=data(), use_readinto=booleans(), whence=sampled_from([SEEK_SET, SEEK_CUR])
+    )
+    def seek_and_read_within_next_item(self, data, use_readinto, whence):
         """Success 2: Seek within next item, read ends within next item."""
         note(f"CASE SUCCESS 2: Seek and read within next item")
 
@@ -1078,8 +1192,9 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
             f"next_item_read: seek={seek_pos}, read={read_size}, next={next_item.start}-{next_item.end}"
         )
 
-        self.reader.seek(seek_pos)
-        self.reference_io.seek(seek_pos)
+        offset = seek_pos - self.reader.tell() if whence == SEEK_CUR else seek_pos
+        self.reader.seek(offset, whence)
+        self.reference_io.seek(offset, whence)
         if use_readinto:
             self._verify_readinto(read_size)
         else:
@@ -1101,7 +1216,6 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         note(f"CASE FAILURE 1: Seek within current item, but read extends beyond it")
 
         item = self._current_item()
-        saved_state = self._save_reader_state()
 
         # Draw seek position within item
         seek_pos = data.draw(
@@ -1111,27 +1225,14 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         # Read size that goes beyond item end
         min_overflow = item.end - seek_pos + 1
         read_size = data.draw(
-            integers(min_value=min_overflow, max_value=min_overflow + 10000),
+            integers(min_value=min_overflow, max_value=min_overflow + 10 * 1024 * 1024),
             label="read_size",
         )
 
         note(
             f"current_overflow: seek={seek_pos}, read={read_size}, item={item.start}-{item.end}"
         )
-
-        try:
-            self.reader.seek(seek_pos)
-            if use_readinto:
-                buf = bytearray(read_size)
-                self.reader.readinto(buf)
-            else:
-                self.reader.read(read_size)
-            assert False, f"Expected ValueError when reading past current item boundary"
-        except ValueError as e:
-            assert FIND_ITEM_ERROR_PREFIX in str(e)
-            note(f"Read failed as expected with error: {e}")
-        finally:
-            self._restore_reader_state(saved_state)
+        self._verify_read_fails(seek_pos, read_size, use_readinto)
 
     @precondition(lambda self: self._has_next_item())
     @rule(data=data(), use_readinto=booleans())
@@ -1140,7 +1241,6 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         note(f"CASE FAILURE 2: Seek within next item, but read extends beyond it")
 
         next_item = self._next_item()
-        saved_state = self._save_reader_state()
 
         # Draw seek position within next item
         seek_pos = data.draw(
@@ -1150,35 +1250,19 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         # Read size that goes beyond next item end
         min_overflow = next_item.end - seek_pos + 1
         read_size = data.draw(
-            integers(min_value=min_overflow, max_value=min_overflow + 10000),
+            integers(min_value=min_overflow, max_value=min_overflow + 10 * 1024 * 1024),
             label="read_size",
         )
 
         note(
             f"next_overflow: seek={seek_pos}, read={read_size}, next={next_item.start}-{next_item.end}"
         )
+        self._verify_read_fails(seek_pos, read_size, use_readinto)
 
-        try:
-            self.reader.seek(seek_pos)
-            if use_readinto:
-                buf = bytearray(read_size)
-                self.reader.readinto(buf)
-            else:
-                self.reader.read(read_size)
-            assert False, f"Expected ValueError when reading past next item boundary"
-        except ValueError as e:
-            assert FIND_ITEM_ERROR_PREFIX in str(e)
-            note(f"Read failed as expected with error: {e}")
-        finally:
-            self._restore_reader_state(saved_state)
-
-    @precondition(lambda self: self._has_current_item() or self._has_next_item())
     @rule(data=data(), use_readinto=booleans())
     def seek_invalid_position_then_read(self, data, use_readinto):
         """Failure 3: Seek to invalid position (gap, before, or beyond valid items), then read."""
         note("CASE FAILURE 3: Seek to invalid position")
-
-        saved_state = self._save_reader_state()
 
         # Build list of valid ranges (current item and/or next item)
         valid_ranges = []
@@ -1200,26 +1284,15 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
         )
 
         seek_pos = data.draw(one_of(*invalid_ranges), label="seek_pos")
-        read_size = data.draw(integers(min_value=1, max_value=10000), label="read_size")
+        read_size = data.draw(
+            integers(min_value=1, max_value=10 * 1024 * 1024), label="read_size"
+        )
         # Note 0 reads will not trigger the error
 
         note(
             f"invalid_seek: pos={seek_pos}, valid_ranges={[(r.start, r.end) for r in valid_ranges]}"
         )
-
-        try:
-            self.reader.seek(seek_pos)
-            if use_readinto:
-                buf = bytearray(read_size)
-                self.reader.readinto(buf)
-            else:
-                self.reader.read(read_size)
-            assert False, f"Expected ValueError for invalid position {seek_pos}"
-        except ValueError as e:
-            assert FIND_ITEM_ERROR_PREFIX in str(e)
-            note(f"Invalid seek failed as expected with error: {e}")
-        finally:
-            self._restore_reader_state(saved_state)
+        self._verify_read_fails(seek_pos, read_size, use_readinto)
 
 
 TestDCPReaderStateMachine = DCPReaderStateMachine.TestCase

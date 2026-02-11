@@ -17,7 +17,7 @@ Data Flow Overview:
             -> DCPOptimizedS3Reader __init__
                 -> _validate_and_coalesce_ranges()                  # validates and groups ItemRanges into RangeGroups
             -> DCPOptimizedS3Reader read()/readinto()
-                -> _find_item_for_range()                        # updates _current_item
+                -> _find_item_for_range()                           # updates _current_item
                 -> [if new item] _get_item_buffer()                 # fetches item byte data
                     -> [if new RangeGroup] _get_stream_for_item()   # creates new stream before fetching byte data
                     -> 1: Handle leftover bytes from prev. chunk
@@ -191,9 +191,7 @@ class _ItemViewBuffer:
         # bisect_right gives insertion point where pos < offsets[i], -1 gives containing segment.
         # No caching optimisation, since torch.load jumps around (magic bytes, zip dir, tensor data)
         seg_idx = bisect.bisect_right(offsets, pos) - 1
-        # Defensive clamp: shouldn't occur as _find_item_for_range makes sure pos >= 0
-        if seg_idx < 0:
-            seg_idx = 0
+        assert seg_idx >= 0, f"Invalid segment index {seg_idx} for position {pos}"
 
         written = 0
         bytes_to_read = min(dest_len, size - pos)
@@ -520,7 +518,7 @@ class DCPOptimizedS3Reader(S3Reader):
                     if end_in_leftover < leftover_len
                     else None
                 )
-            elif leftover_end_pos <= item.start:
+            else:  # i.e. leftover_end_pos <= item.start:
                 # Case B: Item beyond leftover: discard leftover (it was gap data)
                 pos += leftover_len
                 leftover = None
@@ -550,7 +548,9 @@ class DCPOptimizedS3Reader(S3Reader):
             try:
                 chunk = memoryview(next(stream))
             except StopIteration:
-                break
+                raise ValueError(
+                    f"S3 stream exhausted at position {pos} before reaching {item.start=}"
+                )
 
             chunk_len = len(chunk)
 
@@ -604,7 +604,9 @@ class DCPOptimizedS3Reader(S3Reader):
             try:
                 chunk = memoryview(next(stream))
             except StopIteration:
-                break
+                raise ValueError(
+                    f"S3 stream exhausted at position {pos} before reaching {item.start=}"
+                )
 
             chunk_len = len(chunk)
 

@@ -64,6 +64,8 @@ class DCPOptimizedConstructor:
     ) -> None:
         """Extract and store item ranges from DCP load plan.
         Called by S3StorageReader.prepare_local_plan() to inject range metadata.
+
+        Note: This replaces any previously stored ranges (intentional for multi-call scenarios).
         """
 
         if not plan_items:
