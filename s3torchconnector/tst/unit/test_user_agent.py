@@ -101,5 +101,5 @@ def test_user_agent_pytorch_version():
 
 @pytest.mark.parametrize("invalid_comment", [0, "string"])
 def test_invalid_comments_argument(invalid_comment):
-    with pytest.raises(ValueError, match=r"Argument comments must be a List\[str\]"):
+    with pytest.raises(ValueError, match="Argument comments must be a List\[str\]"):
         UserAgent(invalid_comment)
