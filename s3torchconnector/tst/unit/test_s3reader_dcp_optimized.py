@@ -23,7 +23,6 @@ from hypothesis.strategies import (
     data,
     sampled_from,
 )
-from hypothesis import note, settings, Phase
 from hypothesis.stateful import (
     RuleBasedStateMachine,
     rule,
@@ -758,32 +757,52 @@ class TestReaderIO:
         reader.seek(2)
         assert reader.read(3) == b"234"
 
-    @pytest.mark.parametrize("stream_data_length", [50, 120])
-    def test_stream_exhaustion_before_item_start_raises_error(self, stream_data_length):
-        """Test error when S3 stream ends (StopIteration) before/while reading item data.
-        StopIteration errors in _get_item_buffer (Phase 2/3 respectively) expected when
-        reading second item.
+    def test_stream_exhaustion_phase2_while_skipping_bytes(self):
+        """Test error when S3 stream ends (StopIteration) before reading item data
+        in Phase 2.
 
+        Stream ends at 50; StopIteration in phase 2 (skipping bytes):
         |item0-20|---------------------------------------|#####item100-150#######|
-        Stream 1 ends at 50; StopIteration in phase 2 (skipping bytes) triggered:
-        |stream1---------------->|
-        Stream 2 ends at 120; StopIteration in phase 3 (reading bytes) triggered:
-        |stream2-------------------------------------------------->|
+        |stream----------------->|
         """
-        # Item range 100-150, but stream only has 0-50 / 0-120.
         ranges = [ItemRange(0, 20), ItemRange(100, 150)]
-        short_data = [b"x" * stream_data_length]  # data does not cover all ranges
-        max_gap_size = 100  # should coalesce ranges into 1 stream
-        chunk_size = 7  # last iteration with 50mod7 / 120mod7 (both 1 bytes)
+        short_data = [b"x" * 50]  # data ends during phase 2 (skipping bytes)
+        max_gap_size = 100  # coalesce ranges into 1 stream
+        chunk_size = 7  # last iteration with 50mod7 (1 byte)
 
         reader = create_dcp_s3reader(ranges, short_data, max_gap_size, chunk_size)
 
-        reader.read(10)  # a read on first item for sequential access.
+        reader.read(10)  # a read on first item for sequential access
         # Note 20-100 are skip bytes.
 
         with pytest.raises(
             ValueError,
-            match=f"S3 stream exhausted at position {stream_data_length} before reaching item.start=100",
+            match=r"S3 stream exhausted at position 50 before reaching item 100-150",
+        ):
+            reader.seek(100)
+            reader.read(50)
+
+    def test_stream_exhaustion_phase3_while_reading_item(self):
+        """Test error when S3 stream ends (StopIteration) while reading item data
+        in Phase 3.
+
+        Stream ends at 120; StopIteration in phase 3 (reading bytes):
+        |item0-20|---------------------------------------|#####item100-150#######|
+        |stream--------------------------------------------------->|
+        """
+        ranges = [ItemRange(0, 20), ItemRange(100, 150)]
+        short_data = [b"x" * 120]  # data ends during phase 3 (reading bytes)
+        max_gap_size = 100  # coalesce ranges into 1 stream
+        chunk_size = 7  # last iteration with 120mod7 (1 byte)
+
+        reader = create_dcp_s3reader(ranges, short_data, max_gap_size, chunk_size)
+
+        reader.read(10)  # a read on first item for sequential access
+        # Note 20-100 are skip bytes.
+
+        with pytest.raises(
+            ValueError,
+            match=r"S3 stream exhausted at position 120 while reading item 100-150",
         ):
             reader.seek(100)
             reader.read(50)

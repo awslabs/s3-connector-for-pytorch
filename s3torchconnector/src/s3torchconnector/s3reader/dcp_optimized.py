@@ -17,7 +17,7 @@ Data Flow Overview:
             -> DCPOptimizedS3Reader __init__
                 -> _validate_and_coalesce_ranges()                  # validates and groups ItemRanges into RangeGroups
             -> DCPOptimizedS3Reader read()/readinto()
-                -> _find_item_for_range()                           # updates _current_item
+                -> _find_item_for_range()                           # returns item for given read request
                 -> [if new item] _get_item_buffer()                 # fetches item byte data
                     -> [if new RangeGroup] _get_stream_for_item()   # creates new stream before fetching byte data
                     -> 1: Handle leftover bytes from prev. chunk
@@ -549,7 +549,7 @@ class DCPOptimizedS3Reader(S3Reader):
                 chunk = memoryview(next(stream))
             except StopIteration:
                 raise ValueError(
-                    f"S3 stream exhausted at position {pos} before reaching {item.start=}"
+                    f"S3 stream exhausted at position {pos} before reaching item {item.start}-{item.end}"
                 )
 
             chunk_len = len(chunk)
@@ -605,7 +605,7 @@ class DCPOptimizedS3Reader(S3Reader):
                 chunk = memoryview(next(stream))
             except StopIteration:
                 raise ValueError(
-                    f"S3 stream exhausted at position {pos} before reaching {item.start=}"
+                    f"S3 stream exhausted at position {pos} while reading item {item.start}-{item.end}"
                 )
 
             chunk_len = len(chunk)
