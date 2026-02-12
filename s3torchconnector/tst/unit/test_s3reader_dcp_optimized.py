@@ -1086,7 +1086,7 @@ class DCPReaderStateMachine(RuleBasedStateMachine):
     @invariant()
     def position_is_consistent(self):
         """Reader position == reference position after synced operations (not failure cases)."""
-        assert self.reader.tell() >= self.reference_io.tell()
+        assert self.reader.tell() == self.reference_io.tell()
 
     @rule(seek_pos=integers(min_value=0))
     def read_zero_at_any_position(self, seek_pos):
