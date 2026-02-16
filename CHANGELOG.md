@@ -1,12 +1,12 @@
-## TBD
+## v1.5.0 (February 17, 2026)
 
 ### New features
 * Add DCP-optimized s3reader for faster and partial DCP loading (#378)
 * Add support for Python 3.14 (#408)
 * Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
-* Add py.typed file to enable external type checking (#406)
 
 ### Bug fixes
+* Add py.typed file to enable external type checking (#406)
 * Override S3Writer closed property and block writes after close (#360)
 * Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
 
