@@ -48,7 +48,7 @@ target = "s3torchconnectorclient._mountpoint_s3_client"
 license-files = [ "LICENSE", "THIRD-PARTY-LICENSES", "NOTICE"]
 
 [tool.cibuildwheel]
-test-requires = ["./s3torchconnector[e2e]"]
+test-requires = ["./s3torchconnector[test,e2e]"]
 test-extras = "test"
 test-command = [
     "pytest {package}/python/tst/unit",
