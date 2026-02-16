@@ -1,22 +1,26 @@
 ## v1.5.0 (February 17, 2026)
 
-### New features
-* Add DCP-optimized s3reader for faster and partial DCP loading (#378)
+* Add DCPOptimizedS3Reader for faster and partial DCP loading (#378)
 * Add support for Python 3.14 (#408)
 * Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
 
 ### Bug fixes
+
 * Add py.typed file to enable external type checking (#406)
 * Override S3Writer closed property and block writes after close (#360)
-* Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
+* Fix SequentialS3Reader to stay at EOF when seeking beyond object size (#362)
 
 ### Other changes
+
 * Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
 * Add load ordering optimization to S3StorageReader for sequential access patterns (#372)
 * Add os, arch, and PyTorch version to user agent string (#397)
 * Add benchmark to run DCP Loading Workloads (#357)
 * Add thread_count parameter to S3StorageWriter (#370)
 * Add macOS x86_64 and Python 3.8 deprecation warnings (#400)
+
+### Breaking changes
+* No breaking changes.
 
 ## v1.4.3 (July 25, 2025)
 
