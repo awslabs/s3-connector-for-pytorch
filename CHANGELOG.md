@@ -1,7 +1,7 @@
 ## v1.5.0 (February 17, 2026)
 
 ### New features
-* Add DCPOptimizedS3Reader as new default for faster and partial DCP loading (#378) (#TODO)
+* Add DCPOptimizedS3Reader as new default for faster and partial DCP loading (#378, #419)
 * Add support for Python 3.14 (#408)
 * Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
 
