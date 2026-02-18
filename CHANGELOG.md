@@ -1,4 +1,4 @@
-## v1.5.0 (February 17, 2026)
+## v1.5.0 (February 19, 2026)
 
 ### New features
 * Add DCPOptimizedS3Reader as new default for faster and partial DCP loading (#378, #419)
