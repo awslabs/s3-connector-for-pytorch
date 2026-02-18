@@ -183,3 +183,93 @@ def test_dcp_optimized_loading_patterns(
     print(
         f"{filter_name} load, {coalesce}: {len(stream_calls)} streams, {len(filtered_keys)} tensors"
     )
+
+
+@pytest.mark.parametrize("model", [SIMPLE_MODEL, LARGER_MODEL])
+@pytest.mark.parametrize(
+    "reader_constructor_name,reader_constructor",
+    [
+        ("sequential", S3ReaderConstructor.sequential()),
+        ("range_based", S3ReaderConstructor.range_based()),
+        ("dcp_optimized", S3ReaderConstructor.dcp_optimized()),
+    ],
+)
+def test_zstd_compression_partial_load(
+    checkpoint_directory, model, reader_constructor_name, reader_constructor
+):
+    """Test ZStandard compression with partial load works for all readers.
+
+    Also verifies sequential access pattern for dcp_optimized reader.
+    """
+
+    # TODO Python 3.8 uses PyTorch 2.4 and does not have ZStandard; remove conditional import/skip after deprecating Python 3.8.
+    try:
+        from torch.distributed.checkpoint._extension import ZStandard
+    except ImportError:
+        pytest.skip("ZStandard extension not available in this PyTorch version")
+
+    region = checkpoint_directory.region
+    s3_uri = checkpoint_directory.s3_uri
+
+    state_dict = model.state_dict()
+    all_keys = list(state_dict.keys())
+
+    # Save with ZStandard compression
+    writer = S3StorageWriter(
+        region=region,
+        path=s3_uri,
+        overwrite=True,
+        _extensions=[ZStandard()],
+    )
+    dcp.save(state_dict, storage_writer=writer)
+
+    # Partial load - only weight tensors
+    keys_to_load = [k for k in all_keys if k.endswith(".weight")]
+    assert keys_to_load, "No weight keys found in model"
+    loaded = {k: torch.empty_like(state_dict[k]) for k in keys_to_load}
+
+    # Track read positions for dcp_optimized
+    read_calls = []
+    original_read = DCPOptimizedS3Reader.read
+    original_readinto = DCPOptimizedS3Reader.readinto
+
+    def track_reads(self, size=None):
+        if not self.key.endswith(".metadata"):
+            read_calls.append(("read", self._position, size, self.key))
+            print(f"read: pos={self._position}, size={size}, key={self.key}")
+        return original_read(self, size)
+
+    def track_readinto(self, buf):
+        if not self.key.endswith(".metadata"):
+            read_calls.append(("readinto", self._position, len(buf), self.key))
+            print(f"readinto: pos={self._position}, size={len(buf)}, key={self.key}")
+        return original_readinto(self, buf)
+
+    # Load with position tracking (only affects dcp_optimized)
+    with patch.object(DCPOptimizedS3Reader, "read", track_reads), patch.object(
+        DCPOptimizedS3Reader, "readinto", track_readinto
+    ):
+        reader = S3StorageReader(
+            region=region,
+            path=s3_uri,
+            reader_constructor=reader_constructor,
+        )
+        dcp.load(loaded, storage_reader=reader)
+
+    # Verify loaded tensors match
+    for key in keys_to_load:
+        assert torch.equal(loaded[key], state_dict[key]), f"Mismatch for {key}"
+
+    # Print summary and verify sequential access for dcp_optimized
+    if reader_constructor_name == "dcp_optimized" and read_calls:
+        read_positions = [call[1] for call in read_calls]
+        assert read_positions == sorted(
+            read_positions
+        ), "Read positions should be in ascending order"
+
+        print(f"\n{reader_constructor_name}: {len(keys_to_load)} tensors loaded")
+        print(f"  Total calls: {len(read_calls)}")
+        print(f"  read: {sum(1 for c in read_calls if c[0] == 'read')}")
+        print(f"  readinto: {sum(1 for c in read_calls if c[0] == 'readinto')}")
+    else:
+        print(f"{reader_constructor_name}: {len(keys_to_load)} tensors loaded")

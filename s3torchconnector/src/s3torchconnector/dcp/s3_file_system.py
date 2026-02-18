@@ -325,7 +325,15 @@ class S3StorageWriter(FileSystemWriter):
 
 
 class S3StorageReader(FileSystemReader):
-    """S3 implementation of PyTorch's FileSystemReader with configurable reader strategies."""
+    """S3 implementation of PyTorch's FileSystemReader with configurable reader strategies.
+
+    By default, uses DCPOptimizedS3Reader for improved checkpoint loading performance.
+    For unsupported or non-DCP access patterns, please use the generic reader:
+        storage_reader = S3StorageReader(
+            region, path,
+            reader_constructor=S3ReaderConstructor.default()
+        )
+    """
 
     def __init__(
         self,
@@ -343,11 +351,14 @@ class S3StorageReader(FileSystemReader):
             region (str): The AWS region for S3.
             path (Union[str, os.PathLike]): The S3 path to read checkpoints from.
             s3client_config (Optional[S3ClientConfig]): Optional S3ClientConfig with parameters for S3 client.
-            reader_constructor (Optional[S3ReaderConstructorProtocol]): Optional partial(S3Reader) created using S3ReaderConstructor
-                e.g. S3ReaderConstructor.sequential() or S3ReaderConstructor.range_based()
+            reader_constructor (Optional[S3ReaderConstructorProtocol]): Reader constructor created using
+                S3ReaderConstructor. Defaults to ``S3ReaderConstructor.dcp_optimized()`` for best performance.
+                Use ``S3ReaderConstructor.sequential()`` for unsupported/non-DCP access patterns.
         """
         super().__init__(path)
-        self._reader_constructor = reader_constructor or S3ReaderConstructor.default()
+        self._reader_constructor = (
+            reader_constructor or S3ReaderConstructor.dcp_optimized()
+        )
         self.fs: S3FileSystem = S3FileSystem(  # type: ignore[assignment] # since we overrode self.fs: FileSystem
             region,
             s3client_config=s3client_config,

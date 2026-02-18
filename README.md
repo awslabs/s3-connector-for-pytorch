@@ -132,7 +132,7 @@ Amazon S3 Connector for PyTorch provides robust support for PyTorch distributed 
 
 - `S3StorageReader`: Implementation of PyTorch's StorageReader interface. 
   - Supports configurable reading strategies via the `reader_constructor` parameter (see [Reader Configurations](#reader-configurations)). 
-  - `S3ReaderConstructor.dcp_optimized()` is recommended for faster loading with partial checkpoint optimizations. 
+  - Uses `DCPOptimizedS3Reader` by default for faster loading and partial checkpoint optimizations. 
 - `S3FileSystem`: An implementation of PyTorch's FileSystemBase.
 
 These tools enable seamless integration of Amazon S3 with 
@@ -155,7 +155,6 @@ can be found in the [examples/dcp](https://github.com/awslabs/s3-connector-for-p
 
 ```py
 from s3torchconnector.dcp import S3StorageWriter, S3StorageReader
-from s3torchconnector import S3ReaderConstructor
 
 import torchvision
 import torch.distributed.checkpoint as DCP
@@ -178,20 +177,37 @@ DCP.save(
 )
 
 # Load distributed checkpoint from S3
+# S3StorageReader uses DCPOptimizedS3Reader by default for improved performance
 model = torchvision.models.resnet18()
 model_state_dict = model.state_dict()
-# Use DCP-optimized reader for faster loading
-reader_constructor = S3ReaderConstructor.dcp_optimized()
 s3_storage_reader = S3StorageReader(
     region=REGION, 
     path=CHECKPOINT_URI,
-    reader_constructor=reader_constructor, # optional; constructor for S3Reader types
 )
 DCP.load(
     state_dict=model_state_dict,
     storage_reader=s3_storage_reader,
 )
 model.load_state_dict(model_state_dict)
+```
+
+### Troubleshooting DCPOptimizedS3Reader
+
+`S3StorageReader` uses `DCPOptimizedS3Reader` by default (v1.5.0+) for improved performance. See [PR #378 ](https://github.com/awslabs/s3-connector-for-pytorch/pull/378) for more details about the reader. 
+
+If you encounter errors with the default reader, please [submit a GitHub issue](https://github.com/awslabs/s3-connector-for-pytorch/issues) describing your use case. We'd like to understand your scenario and potentially extend `DCPOptimizedS3Reader` to support it, so you can benefit from the performance improvements.
+
+For unsupported or non-DCP access patterns, use the generic reader:
+
+```py
+from s3torchconnector import S3ReaderConstructor
+from s3torchconnector.dcp import S3StorageReader
+
+storage_reader = S3StorageReader(
+    region=REGION, 
+    path=CHECKPOINT_URI,
+    reader_constructor=S3ReaderConstructor.default()
+)
 ```
 
 ## S3 Prefix Strategies for Distributed Checkpointing
@@ -424,8 +440,9 @@ Amazon S3 Connector for PyTorch supports three types of readers, configurable th
 
 ### Reader Types
 
-#### 1. Sequential Reader (Default)
+#### 1. Sequential Reader
 
+- Default for non-DCP use cases.
 - Downloads and buffers the entire S3 object in memory.
 - Prioritizes performance over memory usage by buffering entire objects.
 
@@ -437,9 +454,9 @@ Amazon S3 Connector for PyTorch supports three types of readers, configurable th
   - **Small reads** (< `buffer_size`): Use internal buffer to reduce S3 API calls.
   - **Large reads** (≥ `buffer_size`): Bypass buffer for direct transfer.
 
-#### 3. DCP-Optimized Reader (DCP only)
+#### 3. DCP-Optimized Reader
 
-- Specialized usage for PyTorch Distributed Checkpoint (DCP) loading.
+- Default for PyTorch Distributed Checkpoint (DCP) loading with `S3StorageReader`.
 - Provides performance improvements through per-item buffers and zero-copy buffer management.
 - Enables efficient partial checkpoint loading (e.g. model-only) through selective data fetching with range coalescing.
 - Automatically handles range metadata injection from DCP load plan.
@@ -449,7 +466,7 @@ Amazon S3 Connector for PyTorch supports three types of readers, configurable th
 
 - **Sequential Reader**: For processing entire objects, and when repeated access to the data is required. Best for most general use cases.
 - **Range-based Reader**: For larger objects (100MB+) that require sparse partial reads, and in memory-constrained environments. 
-- **DCP-Optimized Reader**: For typical PyTorch Distributed Checkpoint loading scenarios for highest performance and memory-efficiency.
+- **DCP-Optimized Reader**: For typical PyTorch Distributed Checkpoint loading scenarios for highest performance and memory-efficiency. (Default for `S3StorageReader`)
 
 **Note**: S3Reader instances are not thread-safe and should not be shared across threads. For multiprocessing with DataLoader, each worker process creates its own S3Reader instance automatically.
 
@@ -484,6 +501,7 @@ DCP interface - `S3StorageReader` usage with dcp-optimized reader:
 from s3torchconnector.dcp import S3StorageReader
 from s3torchconnector import S3ReaderConstructor
 
+# dcp_optimized is already the default for S3StorageReader; demonstration purposes only. 
 reader_constructor = S3ReaderConstructor.dcp_optimized()
 s3_storage_reader = S3StorageReader(
     region=REGION, 
