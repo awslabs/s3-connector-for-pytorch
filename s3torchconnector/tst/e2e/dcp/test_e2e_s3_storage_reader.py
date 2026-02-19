@@ -199,7 +199,9 @@ def test_zstd_compression_partial_load(
 ):
     """Test ZStandard compression with partial load works for all readers.
 
-    Also verifies sequential access pattern for dcp_optimized reader.
+    Tests compatibility with PyTorch DCP's transform_from() which decompresses
+    incoming stream data when _extensions=[ZStandard()] is used on S3StorageWriter,
+    especially testing that it retains sequential access pattern for dcp_optimized reader.
     """
 
     # TODO Python 3.8 uses PyTorch 2.4 and does not have ZStandard; remove conditional import/skip after deprecating Python 3.8.
@@ -246,8 +248,9 @@ def test_zstd_compression_partial_load(
         return original_readinto(self, buf)
 
     # Load with position tracking (only affects dcp_optimized)
-    with patch.object(DCPOptimizedS3Reader, "read", track_reads), patch.object(
-        DCPOptimizedS3Reader, "readinto", track_readinto
+    with (
+        patch.object(DCPOptimizedS3Reader, "read", track_reads),
+        patch.object(DCPOptimizedS3Reader, "readinto", track_readinto),
     ):
         reader = S3StorageReader(
             region=region,
@@ -261,6 +264,8 @@ def test_zstd_compression_partial_load(
         assert torch.equal(loaded[key], state_dict[key]), f"Mismatch for {key}"
 
     # Print summary and verify sequential access for dcp_optimized
+    # This helps to manually verify sequential access is still enforced even with
+    # zstandard transform on each tensor for dcp_optimized reader to work.
     if reader_constructor_name == "dcp_optimized" and read_calls:
         read_positions = [call[1] for call in read_calls]
         assert read_positions == sorted(

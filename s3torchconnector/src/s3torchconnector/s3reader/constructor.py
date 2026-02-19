@@ -121,7 +121,7 @@ class DCPOptimizedConstructor:
         # Error for other files; warn users in case they override prepare_local_plan behavior
         raise ValueError(
             f"No ranges found for {s3_uri}. Make sure range injection is used in "
-            f"S3StorageReader.prepare_local_plan.{FALLBACK_GUIDANCE}"
+            f"'S3StorageReader.prepare_local_plan'.\n{FALLBACK_GUIDANCE}"
         )
 
 

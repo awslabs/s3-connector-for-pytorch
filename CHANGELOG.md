@@ -19,18 +19,18 @@
 * Add macOS x86_64 and Python 3.8 deprecation warnings (#400)
 
 ### Breaking changes
-* No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [Troubleshooting DCPOptimizedS3Reader](https://github.com/awslabs/s3-connector-for-pytorch/?tab=readme-ov-file#troubleshooting-dcpoptimizeds3reader) section in README for more details. 
+* No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [DCPOptimizedS3Reader Errors](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors) for more details.
 
 ## v1.4.3 (July 25, 2025)
 
 ### New features
-* Add support for Python 3.13 (#350
+* Add support for Python 3.13 (#350)
 
 ### Other changes
 * Modify test fixtures to mitigate CI/CD S3Express boto3 400 errors (#347)
 * Add profile config guide and improve docs (#349)
 
-### Breaking change
+### Breaking changes
 * No breaking changes.
 
 ## v1.4.2 (July 14, 2025)
