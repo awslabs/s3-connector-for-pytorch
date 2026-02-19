@@ -1,0 +1,416 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.s3reader.dcp_optimized &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="s3torchconnector.s3reader.protocol" href="../protocol/index.html" />
+    <link rel="prev" title="s3torchconnector.s3reader.constructor" href="../constructor/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html">s3torchconnector</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../../dcp/index.html">s3torchconnector.dcp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../lightning/index.html">s3torchconnector.lightning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3checkpoint/index.html">s3torchconnector.s3checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3iterable_dataset/index.html">s3torchconnector.s3iterable_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3map_dataset/index.html">s3torchconnector.s3map_dataset</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="../index.html">s3torchconnector.s3reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3writer/index.html">s3torchconnector.s3writer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#classes">Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#package-contents">Package Contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">s3torchconnector</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">s3torchconnector.s3reader</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.s3reader.dcp_optimized</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../../_sources/autoapi/s3torchconnector/s3reader/dcp_optimized/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-s3torchconnector.s3reader.dcp_optimized">
+<span id="s3torchconnector-s3reader-dcp-optimized"></span><h1>s3torchconnector.s3reader.dcp_optimized<a class="headerlink" href="#module-s3torchconnector.s3reader.dcp_optimized" title="Link to this heading"></a></h1>
+<p>DCP-Optimized S3 Reader provides these 3 optimizations:
+1. Selective data fetching with range coalescing to only fetch required byte ranges
+2. Per-item buffer management to reduce buffer allocation costs
+3. Eliminating buffer copy by storing S3 chunks as memoryview references</p>
+<dl>
+<dt>Data Flow Overview:</dt><dd><dl>
+<dt>DCP.load(model_state_dict, storage_reader=s3_storage_reader)</dt><dd><p>-&gt; read_metadata()                                          # reads .metadata file
+-&gt; set_up_storage_reader(metadata)                          # populates storage_data
+-&gt; prepare_local_plan(plan)                                 # (patched) sorts items, injects ranges to constructor</p>
+<blockquote>
+<div><p>-&gt; DCPOptimizedConstructor.set_item_ranges_by_file()</p>
+</div></blockquote>
+<dl>
+<dt>-&gt; read_data(plan)                                          # per-file loop below</dt><dd><dl>
+<dt>-&gt; DCPOptimizedS3Reader __init__</dt><dd><p>-&gt; _validate_and_coalesce_ranges()                  # validates and groups ItemRanges into RangeGroups</p>
+</dd>
+<dt>-&gt; DCPOptimizedS3Reader read()/readinto()</dt><dd><p>-&gt; _find_item_for_range()                           # returns item for given read request
+-&gt; [if new item] _get_item_buffer()                 # fetches item byte data</p>
+<blockquote>
+<div><p>-&gt; [if new RangeGroup] _get_stream_for_item()   # creates new stream before fetching byte data
+-&gt; 1: Handle leftover bytes from prev. chunk
+-&gt; 2: Skip gap data from coalescing
+-&gt; 3: Fetch remaining data from S3</p>
+</div></blockquote>
+<p>-&gt; _ItemViewBuffer read()/readinto()                # returns data from buffer</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+<section id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.log" title="s3torchconnector.s3reader.dcp_optimized.log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.DEFAULT_MAX_GAP_SIZE" title="s3torchconnector.s3reader.dcp_optimized.DEFAULT_MAX_GAP_SIZE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DEFAULT_MAX_GAP_SIZE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.FIND_ITEM_ERROR_PREFIX" title="s3torchconnector.s3reader.dcp_optimized.FIND_ITEM_ERROR_PREFIX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FIND_ITEM_ERROR_PREFIX</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.FALLBACK_GUIDANCE" title="s3torchconnector.s3reader.dcp_optimized.FALLBACK_GUIDANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FALLBACK_GUIDANCE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.ItemRange" title="s3torchconnector.s3reader.dcp_optimized.ItemRange"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ItemRange</span></code></a></p></td>
+<td><p>Byte range for a single DCP ReadItem (tensor). Inclusive start, exclusive end.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.RangeGroup" title="s3torchconnector.s3reader.dcp_optimized.RangeGroup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangeGroup</span></code></a></p></td>
+<td><p>Group of nearby ItemRanges that will share a single S3 range request.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader" title="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DCPOptimizedS3Reader</span></code></a></p></td>
+<td><p>S3 reader implementation optimized for PyTorch Distributed Checkpoint (DCP) loading.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.log">
+<span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">log</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.log" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DEFAULT_MAX_GAP_SIZE">
+<span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_MAX_GAP_SIZE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">33554432</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DEFAULT_MAX_GAP_SIZE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DEFAULT_MAX_GAP_SIZE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.FIND_ITEM_ERROR_PREFIX">
+<span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">FIND_ITEM_ERROR_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DCPOptimizedS3Reader</span> <span class="pre">only</span> <span class="pre">supports</span> <span class="pre">sequentially</span> <span class="pre">accessing</span> <span class="pre">provided</span> <span class="pre">ranges:</span> <span class="pre">'</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#FIND_ITEM_ERROR_PREFIX"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.FIND_ITEM_ERROR_PREFIX" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.FALLBACK_GUIDANCE">
+<span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">FALLBACK_GUIDANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Multiline-String</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#FALLBACK_GUIDANCE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.FALLBACK_GUIDANCE" title="Link to this definition"></a></dt>
+<dd><details><summary>Show Value</summary><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;If this error is encountered with the default DCP reader (S3ReaderConstructor.dcp_optimized()) added in s3torchconnector v1.5.0, please refer to the troubleshooting doc (https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors).</span>
+<span class="sd">For unsupported or non-DCP access patterns, use the generic reader: S3StorageReader(region, path, reader_constructor=S3ReaderConstructor.default())&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</details></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.ItemRange">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">ItemRange</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#ItemRange"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.ItemRange" title="Link to this definition"></a></dt>
+<dd><p>Byte range for a single DCP ReadItem (tensor). Inclusive start, exclusive end.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.ItemRange.start">
+<span class="sig-name descname"><span class="pre">start</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#ItemRange.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.ItemRange.start" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.ItemRange.end">
+<span class="sig-name descname"><span class="pre">end</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#ItemRange.end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.ItemRange.end" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.RangeGroup">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">RangeGroup</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#RangeGroup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.RangeGroup" title="Link to this definition"></a></dt>
+<dd><p>Group of nearby ItemRanges that will share a single S3 range request.</p>
+<p>Created by coalescing ItemRanges with gaps &lt;= max_gap_size in _validate_and_coalesce_ranges.
+One S3 stream will serve all items in the RangeGroup sequentially.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.RangeGroup.start">
+<span class="sig-name descname"><span class="pre">start</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#RangeGroup.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.RangeGroup.start" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.RangeGroup.end">
+<span class="sig-name descname"><span class="pre">end</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#RangeGroup.end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.RangeGroup.end" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.RangeGroup.item_ranges">
+<span class="sig-name descname"><span class="pre">item_ranges</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.ItemRange" title="s3torchconnector.s3reader.dcp_optimized.ItemRange"><span class="pre">ItemRange</span></a><span class="p"><span class="pre">]</span></span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#RangeGroup.item_ranges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.RangeGroup.item_ranges" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.dcp_optimized.</span></span><span class="sig-name descname"><span class="pre">DCPOptimizedS3Reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item_ranges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#s3torchconnector.s3reader.dcp_optimized.ItemRange" title="s3torchconnector.s3reader.dcp_optimized.ItemRange"><span class="pre">ItemRange</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_object_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.ObjectInfo</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.GetObjectStream</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_gap_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">DEFAULT_MAX_GAP_SIZE</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="../s3reader/index.html#s3torchconnector.s3reader.s3reader.S3Reader" title="s3torchconnector.s3reader.s3reader.S3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">s3torchconnector.s3reader.s3reader.S3Reader</span></code></a></p>
+<p>S3 reader implementation optimized for PyTorch Distributed Checkpoint (DCP) loading.</p>
+<p>Provides up to 2x performance improvement over default sequential reader through:</p>
+<blockquote>
+<div><p>1. <strong>Selective data fetching with range coalescing</strong>: Uses byte range information from
+PyTorch’s <code class="docutils literal notranslate"><span class="pre">LoadPlan</span></code> to only fetch required data. Groups nearby ranges within
+<code class="docutils literal notranslate"><span class="pre">max_gap_size</span></code> into single S3 streams to minimize first-byte latency while avoiding
+unnecessary data transfer.</p>
+<p>2. <strong>Per-item buffer management</strong>: Buffers per-item (per-tensor) instead of per-file. Each
+buffer stores only the required item’s byte ranges and is discarded after PyTorch reads the
+item, which removes overhead of resizing large buffers and re-copying data repeatedly.</p>
+<p>3. <strong>Eliminate buffer copy</strong>: Custom <code class="docutils literal notranslate"><span class="pre">_ItemViewBuffer</span></code> stores S3 chunks as memoryview
+references instead of copying into BytesIO, avoiding allocation and copy overhead.</p>
+</div></blockquote>
+<p><strong>Requirements</strong>:</p>
+<ul class="simple">
+<li><p>DCP Loading - reader is only designed for usage via dcp_optimized reader_constructor for <code class="docutils literal notranslate"><span class="pre">dcp.load()</span></code></p></li>
+<li><p>Pre-sorted list of item_ranges, injected automatically in <code class="docutils literal notranslate"><span class="pre">prepare_local_plan</span></code>.</p></li>
+<li><p>Sequential Access over exact item_ranges provided, also applied automatically by <code class="docutils literal notranslate"><span class="pre">prepare_local_plan</span></code></p></li>
+</ul>
+<p><strong>Usage</strong>:
+Created automatically by <code class="docutils literal notranslate"><span class="pre">DCPOptimizedConstructor</span></code> when used with <code class="docutils literal notranslate"><span class="pre">S3StorageReader</span></code> and
+<code class="docutils literal notranslate"><span class="pre">S3ReaderConstructor.dcp_optimized()</span></code>:</p>
+<blockquote>
+<div><p>reader_constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=32*1024*1024)
+storage_reader = S3StorageReader(region, path, reader_constructor=reader_constructor)
+DCP.load(state_dict, storage_reader=storage_reader)</p>
+</div></blockquote>
+<dl class="simple">
+<dt><strong>Error Handling</strong>:</dt><dd><p>Non-sequential access attempts raise ValueError.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.bucket">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.bucket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.bucket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.key">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.closed">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">closed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.closed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.closed" title="Link to this definition"></a></dt>
+<dd><p>Returns:
+bool: Return whether the object is closed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.read" title="Link to this definition"></a></dt>
+<dd><p>Read up to size bytes from the current position.</p>
+<p>Supports backward seeking within the current item buffer, but forward-only
+access across DCP items (sequential item access required).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>int</em>) – how many bytes to read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bytes read from specified range.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bytes</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If size is not an integer.</p></li>
+<li><p><strong>ValueError</strong> – If position is outside valid DCP ranges, and if size is None or negative (full file reads not supported).</p></li>
+<li><p><strong>S3Exception</strong> – An error occurred accessing S3.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.readinto">
+<span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.readinto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.readinto" title="Link to this definition"></a></dt>
+<dd><p>Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+Return the number of bytes read. If no bytes are available, zero is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>buf</strong> – writable bytes-like object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>number of bytes read or zero, if no bytes available</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If position is outside valid DCP ranges.</p></li>
+<li><p><strong>TypeError</strong> – If buf is not writable.</p></li>
+<li><p><strong>S3Exception</strong> – An error occurred accessing S3.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">SEEK_SET</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.seek"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.seek" title="Link to this definition"></a></dt>
+<dd><p>Change position within DCP ranges, interpreted relative to whence.</p>
+<p>Supports arbitrary seeking within current item buffer, but only forward
+sequential access across DCP items (cannot seek back to previous items).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>offset</strong> (<em>int</em>) – How many bytes to seek relative to whence.</p></li>
+<li><p><strong>whence</strong> (<em>int</em>) – One of SEEK_SET, and SEEK_CUR. SEEK_END not supported. Default: SEEK_SET.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Current position of the stream</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If whence is not SEEK_SET or SEEK_CUR.</p></li>
+<li><p><strong>ValueError</strong> – If seeking to negative position or accessing previous items.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.tell" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current absolute position in the object.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.dcp_optimized.DCPOptimizedS3Reader.close" title="Link to this definition"></a></dt>
+<dd><p>Close the stream and release resources.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../constructor/index.html" class="btn btn-neutral float-left" title="s3torchconnector.s3reader.constructor" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../protocol/index.html" class="btn btn-neutral float-right" title="s3torchconnector.s3reader.protocol" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

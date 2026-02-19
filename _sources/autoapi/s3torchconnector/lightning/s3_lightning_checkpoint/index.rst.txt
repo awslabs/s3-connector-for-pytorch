@@ -1,0 +1,75 @@
+s3torchconnector.lightning.s3_lightning_checkpoint
+==================================================
+
+.. py:module:: s3torchconnector.lightning.s3_lightning_checkpoint
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.lightning.s3_lightning_checkpoint.S3LightningCheckpoint
+
+
+Module Contents
+---------------
+
+.. py:class:: S3LightningCheckpoint(region: str, s3client_config: Optional[s3torchconnector._s3client.S3ClientConfig] = None, endpoint: Optional[str] = None)
+
+   Bases: :py:obj:`lightning.pytorch.plugins.io.CheckpointIO`
+
+
+   A checkpoint manager for S3 using the :class:`CheckpointIO` interface.
+
+
+   .. py:attribute:: region
+
+
+   .. py:method:: save_checkpoint(checkpoint: Dict[str, Any], path: str, storage_options: Optional[Any] = None) -> None
+
+      Save model/training states as a checkpoint file through state-dump and upload to S3.
+
+      :param checkpoint: Containing model and trainer state
+      :type checkpoint: Dict[str, Any]
+      :param path: Write-target S3 uri
+      :type path: str
+      :param storage_options: Optional parameters when saving the model/training states.
+
+
+
+   .. py:method:: load_checkpoint(path: str, map_location: Optional[Any] = None, weights_only: Optional[bool] = None) -> Dict[str, Any]
+
+      Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.
+
+      :param path: S3 uri to checkpoint
+      :type path: str
+      :param map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.
+      :param weights_only: If True, only loads tensors and primitive types (safer). If False, allows loading
+                           arbitrary Python objects (less secure). If None, uses PyTorch Lightning default behavior.
+                           See https://docs.pytorch.org/docs/main/notes/serialization.html for details.
+
+      :returns: The loaded checkpoint
+      :rtype: Dict[str, Any]
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: remove_checkpoint(path: str) -> None
+
+      Remove checkpoint file from the S3 uri.
+
+      :param path: S3 uri to checkpoint
+      :type path: str
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: teardown() -> None
+
+      This method is called to teardown the process.
+
+
+

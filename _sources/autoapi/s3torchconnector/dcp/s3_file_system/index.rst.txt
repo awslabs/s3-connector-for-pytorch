@@ -1,0 +1,217 @@
+s3torchconnector.dcp.s3_file_system
+===================================
+
+.. py:module:: s3torchconnector.dcp.s3_file_system
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   s3torchconnector.dcp.s3_file_system.logger
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.dcp.s3_file_system.S3FileSystem
+   s3torchconnector.dcp.s3_file_system.StorageMetadata
+   s3torchconnector.dcp.s3_file_system.S3StorageWriter
+   s3torchconnector.dcp.s3_file_system.S3StorageReader
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+
+.. py:class:: S3FileSystem(region: str, s3_client: Optional[s3torchconnector._s3client.S3Client] = None, s3client_config: Optional[s3torchconnector.S3ClientConfig] = None, reader_constructor: Optional[s3torchconnector.s3reader.S3ReaderConstructorProtocol] = None)
+
+   Bases: :py:obj:`torch.distributed.checkpoint.filesystem.FileSystemBase`
+
+
+   S3-based implementation of PyTorch's FileSystemBase for distributed checkpointing.
+
+
+   .. py:method:: create_stream(path: Union[str, os.PathLike], mode: str) -> Generator[io.IOBase, None, None]
+
+      Create a stream for reading or writing to S3.
+
+      :param path: The S3 path to read or write.
+      :type path: Union[str, os.PathLike]
+      :param mode: The mode for the stream. Supports 'rb' for read mode and 'wb' for write mode.
+      :type mode: str
+
+      :Yields: *io.BufferedIOBase* -- A stream for reading or writing to S3.
+
+      :raises ValueError: If the mode is not 'rb' or 'wb'.
+
+
+
+   .. py:method:: concat_path(path: Union[str, os.PathLike], suffix: str) -> str
+
+      Concatenate a suffix to the given path.
+
+      :param path: The base path.
+      :type path: Union[str, os.PathLike]
+      :param suffix: The suffix to concatenate.
+      :type suffix: str
+
+      :returns: The concatenated path.
+      :rtype: str
+
+
+
+   .. py:method:: init_path(path: Union[str, os.PathLike]) -> Union[str, os.PathLike]
+
+      Initialize the path for the filesystem.
+
+      :param path: The path to initialize.
+      :type path: Union[str, os.PathLike]
+
+      :returns: The initialized path.
+      :rtype: Union[str, os.PathLike]
+
+
+
+   .. py:method:: rename(old_path: Union[str, os.PathLike], new_path: Union[str, os.PathLike]) -> None
+
+      Rename an object in S3.
+
+      This is emulated by copying it to a new path and deleting the old path. The deletion part is retried (see also
+      :func:`S3FileSystem._delete_with_retry`).
+
+      :param old_path: The current path of the object.
+      :type old_path: Union[str, os.PathLike]
+      :param new_path: The new path for the object.
+      :type new_path: Union[str, os.PathLike]
+
+      :raises ValueError: If the old and new paths point to different buckets.
+      :raises S3Exception: If there is an error with the S3 client.
+
+
+
+   .. py:method:: mkdir(path: Union[str, os.PathLike]) -> None
+
+      No-op method for creating directories in S3 (not needed).
+
+
+
+   .. py:method:: exists(path: Union[str, os.PathLike]) -> bool
+
+
+   .. py:method:: rm_file(path: Union[str, os.PathLike]) -> None
+
+
+   .. py:method:: validate_checkpoint_id(checkpoint_id: Union[str, os.PathLike]) -> bool
+      :classmethod:
+
+
+
+.. py:class:: StorageMetadata
+
+   Metadata for S3 storage prefix.
+
+
+   .. py:attribute:: prefix
+      :type:  str
+
+
+.. py:class:: S3StorageWriter(region: str, path: str, s3client_config: Optional[s3torchconnector.S3ClientConfig] = None, prefix_strategy: Optional[s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase] = None, thread_count: int = 1, **kwargs)
+
+   Bases: :py:obj:`torch.distributed.checkpoint.filesystem.FileSystemWriter`
+
+
+   S3 implementation of PyTorch's FileSystemWriter for distributed checkpoints.
+
+
+   .. py:attribute:: fs
+
+
+   .. py:attribute:: path
+      :value: ''
+
+
+
+   .. py:attribute:: prefix_strategy
+
+
+   .. py:method:: prepare_global_plan(plans: List[torch.distributed.checkpoint.planner.SavePlan]) -> List[torch.distributed.checkpoint.planner.SavePlan]
+
+      Prepare save plans with S3-specific storage metadata.
+
+      :param plans: List of save plans to be processed.
+
+      :returns: Modified save plans with S3 storage metadata.
+
+
+
+   .. py:method:: validate_checkpoint_id(checkpoint_id: Union[str, os.PathLike]) -> bool
+      :classmethod:
+
+
+      Check if the given checkpoint_id is supported by the storage. This allow
+      us to enable automatic storage selection.
+
+
+
+.. py:class:: S3StorageReader(region: str, path: Union[str, os.PathLike], s3client_config: Optional[s3torchconnector.S3ClientConfig] = None, reader_constructor: Optional[Union[s3torchconnector.s3reader.S3ReaderConstructorProtocol, s3torchconnector.s3reader.DCPS3ReaderConstructorProtocol]] = None)
+
+   Bases: :py:obj:`torch.distributed.checkpoint.filesystem.FileSystemReader`
+
+
+   S3 implementation of PyTorch's FileSystemReader with configurable reader strategies.
+
+   By default, uses DCPOptimizedS3Reader for improved checkpoint loading performance.
+   For unsupported or non-DCP access patterns, please use the generic reader:
+       storage_reader = S3StorageReader(
+           region, path,
+           reader_constructor=S3ReaderConstructor.default()
+       )
+
+
+   .. py:attribute:: fs
+      :type:  S3FileSystem
+
+
+   .. py:attribute:: path
+      :value: ''
+
+
+
+   .. py:attribute:: sync_files
+      :value: False
+
+
+
+   .. py:method:: validate_checkpoint_id(checkpoint_id: Union[str, os.PathLike]) -> bool
+      :classmethod:
+
+
+      Check if the given checkpoint_id is supported by the storage. This allow
+      us to enable automatic storage selection.
+
+
+
+   .. py:method:: prepare_local_plan(plan: torch.distributed.checkpoint.planner.LoadPlan) -> torch.distributed.checkpoint.planner.LoadPlan
+
+      Performs two key optimizations:
+
+          1. **Load Ordering**: Sorts load items by storage offset to enable sequential access
+
+          2. **Range Injection**: Provides byte range metadata to DCP reader constructors to enable
+          usage of DCPOptimizedS3Reader for range-based streams and range coalescing
+
+      :param plan: The load plan from PyTorch DCP.
+      :type plan: LoadPlan
+
+      :returns: The same plan with items sorted by storage offset.
+      :rtype: LoadPlan
+
+      .. note:: Both optimizations are required for DCPOptimizedS3Reader.
+
+
+

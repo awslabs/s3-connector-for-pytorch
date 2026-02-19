@@ -1,0 +1,241 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.lightning.s3_lightning_checkpoint &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.lightning.s3_lightning_checkpoint</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for s3torchconnector.lightning.s3_lightning_checkpoint</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.</span>
+<span class="c1">#  // SPDX-License-Identifier: BSD</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">packaging</span><span class="w"> </span><span class="kn">import</span> <span class="n">version</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.plugins.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">CheckpointIO</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._s3client</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Client</span><span class="p">,</span> <span class="n">S3ClientConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._s3dataset_common</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_s3_uri</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._user_agent</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserAgent</span>
+
+
+<div class="viewcode-block" id="S3LightningCheckpoint">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.html#s3torchconnector.lightning.S3LightningCheckpoint">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3LightningCheckpoint</span><span class="p">(</span><span class="n">CheckpointIO</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A checkpoint manager for S3 using the :class:`CheckpointIO` interface.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">s3client_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ClientConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<div class="viewcode-block" id="S3LightningCheckpoint.region">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.html#s3torchconnector.lightning.S3LightningCheckpoint.region">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="n">region</span></div>
+
+        <span class="n">user_agent</span> <span class="o">=</span> <span class="n">UserAgent</span><span class="p">([</span><span class="s2">&quot;lightning&quot;</span><span class="p">,</span> <span class="n">lightning</span><span class="o">.</span><span class="n">__version__</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="n">S3Client</span><span class="p">(</span>
+            <span class="n">region</span><span class="p">,</span>
+            <span class="n">user_agent</span><span class="o">=</span><span class="n">user_agent</span><span class="p">,</span>
+            <span class="n">s3client_config</span><span class="o">=</span><span class="n">s3client_config</span><span class="p">,</span>
+            <span class="n">endpoint</span><span class="o">=</span><span class="n">endpoint</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="S3LightningCheckpoint.save_checkpoint">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.html#s3torchconnector.lightning.S3LightningCheckpoint.save_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">checkpoint</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="c1"># We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+        <span class="n">storage_options</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save model/training states as a checkpoint file through state-dump and upload to S3.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            checkpoint (Dict[str, Any]): Containing model and trainer state</span>
+<span class="sd">            path (str): Write-target S3 uri</span>
+<span class="sd">            storage_options: Optional parameters when saving the model/training states.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">as</span> <span class="n">s3writer</span><span class="p">:</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">,</span> <span class="n">s3writer</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="S3LightningCheckpoint.load_checkpoint">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.html#s3torchconnector.lightning.S3LightningCheckpoint.load_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_checkpoint</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="c1"># We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+        <span class="n">map_location</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">weights_only</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load checkpoint from an S3 location when resuming or loading ckpt for test/validate/predict stages.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (str): S3 uri to checkpoint</span>
+<span class="sd">            map_location: A function, :class:`torch.device`, string or a dict specifying how to remap storage locations.</span>
+<span class="sd">            weights_only: If True, only loads tensors and primitive types (safer). If False, allows loading</span>
+<span class="sd">                arbitrary Python objects (less secure). If None, uses PyTorch Lightning default behavior.</span>
+<span class="sd">                See https://docs.pytorch.org/docs/main/notes/serialization.html for details.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: The loaded checkpoint</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            S3Exception: An error occurred accessing S3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">s3reader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="c1"># FIXME - io.BufferedIOBase and typing.IO aren&#39;t compatible</span>
+        <span class="c1">#  See https://github.com/python/typeshed/issues/6077</span>
+
+        <span class="c1"># Maintain backward compatibility: Default to False for Lightning &lt;2.6, and None for Lightning&gt;=2.6.</span>
+        <span class="c1"># - Lightning &gt;=2.6 lets PyTorch decide on default behavior. weights_only can now be set through Trainer.{fit,validate,test,predict}.</span>
+        <span class="c1"># - Lightning &lt;2.6 defaults to weights_only=False: https://github.com/Lightning-AI/pytorch-lightning/blob/release/2.5.x/src/lightning/fabric/utilities/cloud_io.py#L37</span>
+        <span class="k">if</span> <span class="n">weights_only</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">lightning</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">version</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="s2">&quot;2.6.0&quot;</span><span class="p">):</span>
+                <span class="n">weights_only</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Note in PyTorch &lt;2.4, torch.load() requires non optional bool - however None acts as False in</span>
+        <span class="c1"># `if weights_only:` checks (default for PyTorch &lt;2.6 or Lightning &lt;2.6) for backwards compatibility.</span>
+        <span class="c1"># As mitigation, users can set TORCH_FORCE_WEIGHTS_ONLY_LOAD (0 or 1) to control weights_only behavior.</span>
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">s3reader</span><span class="p">,</span> <span class="n">map_location</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="n">weights_only</span><span class="p">)</span>  <span class="c1"># type: ignore</span></div>
+
+
+<div class="viewcode-block" id="S3LightningCheckpoint.remove_checkpoint">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.html#s3torchconnector.lightning.S3LightningCheckpoint.remove_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_checkpoint</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="c1"># We only support `str` arguments for `path`, as `Path` is explicitly for local filesystems</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove checkpoint file from the S3 uri.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (str): S3 uri to checkpoint</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            S3Exception: An error occurred accessing S3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">parse_s3_uri</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="S3LightningCheckpoint.teardown">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/lightning/s3_lightning_checkpoint/index.html#s3torchconnector.lightning.S3LightningCheckpoint.teardown">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This method is called to teardown the process.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> is not a supported type for &#39;path&#39;. Must be a string formatted as an S3 uri.&quot;</span>
+            <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

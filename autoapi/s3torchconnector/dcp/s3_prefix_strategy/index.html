@@ -1,0 +1,283 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.dcp.s3_prefix_strategy &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="s3torchconnector.lightning" href="../../lightning/index.html" />
+    <link rel="prev" title="s3torchconnector.dcp.s3_file_system" href="../s3_file_system/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html">s3torchconnector</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="../index.html">s3torchconnector.dcp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../lightning/index.html">s3torchconnector.lightning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3checkpoint/index.html">s3torchconnector.s3checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3iterable_dataset/index.html">s3torchconnector.s3iterable_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3map_dataset/index.html">s3torchconnector.s3map_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3reader/index.html">s3torchconnector.s3reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3writer/index.html">s3torchconnector.s3writer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#classes">Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#package-contents">Package Contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">s3torchconnector</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">s3torchconnector.dcp</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.dcp.s3_prefix_strategy</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../../_sources/autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-s3torchconnector.dcp.s3_prefix_strategy">
+<span id="s3torchconnector-dcp-s3-prefix-strategy"></span><h1>s3torchconnector.dcp.s3_prefix_strategy<a class="headerlink" href="#module-s3torchconnector.dcp.s3_prefix_strategy" title="Link to this heading"></a></h1>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase" title="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3PrefixStrategyBase</span></code></a></p></td>
+<td><p>Base class for S3 prefix generation strategies.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DefaultPrefixStrategy</span></code></a></p></td>
+<td><p>Default strategy for generating S3 prefixes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NumericPrefixStrategy</span></code></a></p></td>
+<td><p>Base class for numeric prefix generation strategies.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.BinaryPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.BinaryPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BinaryPrefixStrategy</span></code></a></p></td>
+<td><p>Binary (Base2) prefix generation strategy using only 0 and 1.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.HexPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.HexPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HexPrefixStrategy</span></code></a></p></td>
+<td><p>Hexadecimal-based prefix generation strategy.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoundRobinPrefixStrategy</span></code></a></p></td>
+<td><p>Strategy that distributes ranks across user-provided prefixes in round-robin fashion.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.</span></span><span class="sig-name descname"><span class="pre">S3PrefixStrategyBase</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#S3PrefixStrategyBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
+<p>Base class for S3 prefix generation strategies.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase.generate_prefix">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#S3PrefixStrategyBase.generate_prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase.generate_prefix" title="Link to this definition"></a></dt>
+<dd><p>Generate storage prefix for the given rank.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.</span></span><span class="sig-name descname"><span class="pre">DefaultPrefixStrategy</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#DefaultPrefixStrategy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase" title="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3PrefixStrategyBase</span></code></a></p>
+<p>Default strategy for generating S3 prefixes.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy.generate_prefix">
+<span class="sig-name descname"><span class="pre">generate_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#DefaultPrefixStrategy.generate_prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.DefaultPrefixStrategy.generate_prefix" title="Link to this definition"></a></dt>
+<dd><p>Generate simple rank-based name without prefix.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.</span></span><span class="sig-name descname"><span class="pre">NumericPrefixStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch_num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_prefix_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase" title="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3PrefixStrategyBase</span></code></a></p>
+<p>Base class for numeric prefix generation strategies.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.base">
+<span class="sig-name descname"><span class="pre">base</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy.base"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.base" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.epoch_num">
+<span class="sig-name descname"><span class="pre">epoch_num</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy.epoch_num"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.epoch_num" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.min_prefix_len">
+<span class="sig-name descname"><span class="pre">min_prefix_len</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy.min_prefix_len"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.min_prefix_len" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.prefix_count">
+<span class="sig-name descname"><span class="pre">prefix_count</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy.prefix_count"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.prefix_count" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.prefix_map">
+<span class="sig-name descname"><span class="pre">prefix_map</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy.prefix_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.prefix_map" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.generate_prefix">
+<span class="sig-name descname"><span class="pre">generate_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#NumericPrefixStrategy.generate_prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy.generate_prefix" title="Link to this definition"></a></dt>
+<dd><p>Generate numeric-based prefix with optional epoch number.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rank</strong> – Process rank in the distributed environment.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>&lt;pattern&gt;/epoch_&lt;num&gt;/__&lt;rank&gt;_
+or &lt;pattern&gt;/__&lt;rank&gt;_ if no epoch number is provided.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Prefix string in format</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.BinaryPrefixStrategy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.</span></span><span class="sig-name descname"><span class="pre">BinaryPrefixStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch_num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_prefix_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#BinaryPrefixStrategy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.BinaryPrefixStrategy" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NumericPrefixStrategy</span></code></a></p>
+<p>Binary (Base2) prefix generation strategy using only 0 and 1.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.HexPrefixStrategy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.</span></span><span class="sig-name descname"><span class="pre">HexPrefixStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch_num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_prefix_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#HexPrefixStrategy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.HexPrefixStrategy" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy" title="s3torchconnector.dcp.s3_prefix_strategy.NumericPrefixStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NumericPrefixStrategy</span></code></a></p>
+<p>Hexadecimal-based prefix generation strategy.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.</span></span><span class="sig-name descname"><span class="pre">RoundRobinPrefixStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_prefixes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch_num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#RoundRobinPrefixStrategy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase" title="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3PrefixStrategyBase</span></code></a></p>
+<p>Strategy that distributes ranks across user-provided prefixes in round-robin fashion.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy.user_prefixes">
+<span class="sig-name descname"><span class="pre">user_prefixes</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#RoundRobinPrefixStrategy.user_prefixes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy.user_prefixes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy.epoch_num">
+<span class="sig-name descname"><span class="pre">epoch_num</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#RoundRobinPrefixStrategy.epoch_num"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy.epoch_num" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy.generate_prefix">
+<span class="sig-name descname"><span class="pre">generate_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rank</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_prefix_strategy.html#RoundRobinPrefixStrategy.generate_prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_prefix_strategy.RoundRobinPrefixStrategy.generate_prefix" title="Link to this definition"></a></dt>
+<dd><p>Generate prefix for given rank using round-robin distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rank</strong> – Process rank in the distributed environment.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>&lt;user_prefix&gt;/epoch_&lt;num&gt;/__&lt;rank&gt;_
+or &lt;user_prefix&gt;/__&lt;rank&gt;_ if no epoch number is provided.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Prefix string in format</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../s3_file_system/index.html" class="btn btn-neutral float-left" title="s3torchconnector.dcp.s3_file_system" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../lightning/index.html" class="btn btn-neutral float-right" title="s3torchconnector.lightning" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

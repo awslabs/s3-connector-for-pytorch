@@ -1,0 +1,127 @@
+s3torchconnector.s3reader.protocol
+==================================
+
+.. py:module:: s3torchconnector.s3reader.protocol
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.s3reader.protocol.GetStreamCallable
+   s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol
+   s3torchconnector.s3reader.protocol.DCPS3ReaderConstructorProtocol
+
+
+Module Contents
+---------------
+
+.. py:class:: GetStreamCallable
+
+   Bases: :py:obj:`Protocol`
+
+
+   Base class for protocol classes.
+
+   Protocol classes are defined as::
+
+       class Proto(Protocol):
+           def meth(self) -> int:
+               ...
+
+   Such classes are primarily used with static type checkers that recognize
+   structural subtyping (static duck-typing), for example::
+
+       class C:
+           def meth(self) -> int:
+               return 0
+
+       def func(x: Proto) -> int:
+           return x.meth()
+
+       func(C())  # Passes static type check
+
+   See PEP 544 for details. Protocol classes decorated with
+   @typing.runtime_checkable act as simple-minded runtime protocols that check
+   only the presence of given attributes, ignoring their type signatures.
+   Protocol classes can be generic, they are defined as::
+
+       class GenProto(Protocol[T]):
+           def meth(self) -> T:
+               ...
+
+
+.. py:class:: S3ReaderConstructorProtocol
+
+   Bases: :py:obj:`Protocol`
+
+
+   Base class for protocol classes.
+
+   Protocol classes are defined as::
+
+       class Proto(Protocol):
+           def meth(self) -> int:
+               ...
+
+   Such classes are primarily used with static type checkers that recognize
+   structural subtyping (static duck-typing), for example::
+
+       class C:
+           def meth(self) -> int:
+               return 0
+
+       def func(x: Proto) -> int:
+           return x.meth()
+
+       func(C())  # Passes static type check
+
+   See PEP 544 for details. Protocol classes decorated with
+   @typing.runtime_checkable act as simple-minded runtime protocols that check
+   only the presence of given attributes, ignoring their type signatures.
+   Protocol classes can be generic, they are defined as::
+
+       class GenProto(Protocol[T]):
+           def meth(self) -> T:
+               ...
+
+
+.. py:class:: DCPS3ReaderConstructorProtocol
+
+   Bases: :py:obj:`Protocol`
+
+
+   Base class for protocol classes.
+
+   Protocol classes are defined as::
+
+       class Proto(Protocol):
+           def meth(self) -> int:
+               ...
+
+   Such classes are primarily used with static type checkers that recognize
+   structural subtyping (static duck-typing), for example::
+
+       class C:
+           def meth(self) -> int:
+               return 0
+
+       def func(x: Proto) -> int:
+           return x.meth()
+
+       func(C())  # Passes static type check
+
+   See PEP 544 for details. Protocol classes decorated with
+   @typing.runtime_checkable act as simple-minded runtime protocols that check
+   only the presence of given attributes, ignoring their type signatures.
+   Protocol classes can be generic, they are defined as::
+
+       class GenProto(Protocol[T]):
+           def meth(self) -> T:
+               ...
+
+
+   .. py:method:: set_item_ranges_by_file(plan_items: List[ReadItem], storage_data: Dict[MetadataIndex, _StorageInfo], base_path: Union[str, os.PathLike]) -> None
+
+

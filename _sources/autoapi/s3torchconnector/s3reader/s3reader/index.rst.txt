@@ -1,0 +1,118 @@
+s3torchconnector.s3reader.s3reader
+==================================
+
+.. py:module:: s3torchconnector.s3reader.s3reader
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.s3reader.s3reader.S3Reader
+
+
+Module Contents
+---------------
+
+.. py:class:: S3Reader
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`io.BufferedIOBase`
+
+
+   An abstract base class for read-only, file-like representation of a single object stored in S3.
+
+   This class defines the interface for S3 readers. Concrete implementations (SequentialS3Reader or
+   RangedS3Reader extend this class. S3ReaderConstructor creates partial functions of these
+   implementations, which are then completed by S3Client with the remaining required parameters.
+
+
+   .. py:property:: bucket
+      :type: str
+
+      :abstractmethod:
+
+
+
+   .. py:property:: key
+      :type: str
+
+      :abstractmethod:
+
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+      :abstractmethod:
+
+
+      Read and return up to n bytes.
+
+      If the argument is omitted, None, or negative, reads and
+      returns all data until EOF.
+
+      If the argument is positive, and the underlying raw stream is
+      not 'interactive', multiple raw reads may be issued to satisfy
+      the byte count (unless EOF is reached first).  But for
+      interactive raw streams (as well as sockets and pipes), at most
+      one raw read will be issued, and a short result does not imply
+      that EOF is imminent.
+
+      Returns an empty bytes object on EOF.
+
+      Returns None if the underlying raw stream was open in non-blocking
+      mode and no data is available at the moment.
+
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+      :abstractmethod:
+
+
+      Change stream position.
+
+      Change the stream position to the given byte offset. The offset is
+      interpreted relative to the position indicated by whence.  Values
+      for whence are:
+
+      * 0 -- start of stream (the default); offset should be zero or positive
+      * 1 -- current stream position; offset may be negative
+      * 2 -- end of stream; offset is usually negative
+
+      Return the new absolute position.
+
+
+
+   .. py:method:: tell() -> int
+      :abstractmethod:
+
+
+      Return current stream position.
+
+
+
+   .. py:method:: readinto(buf) -> int
+      :abstractmethod:
+
+
+
+   .. py:method:: seekable() -> bool
+
+      :returns: Return whether object supports seek operations.
+      :rtype: bool
+
+
+
+   .. py:method:: readable() -> bool
+
+      :returns: Return whether object was opened for reading.
+      :rtype: bool
+
+
+
+   .. py:method:: writable() -> bool
+
+      :returns: Return whether object was opened for writing.
+      :rtype: bool
+
+
+

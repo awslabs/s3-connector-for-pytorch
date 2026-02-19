@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.dcp.s3_file_system &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="s3torchconnector.dcp.s3_prefix_strategy" href="../s3_prefix_strategy/index.html" />
+    <link rel="prev" title="s3torchconnector.dcp" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html">s3torchconnector</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="../index.html">s3torchconnector.dcp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../lightning/index.html">s3torchconnector.lightning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3checkpoint/index.html">s3torchconnector.s3checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3iterable_dataset/index.html">s3torchconnector.s3iterable_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3map_dataset/index.html">s3torchconnector.s3map_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3reader/index.html">s3torchconnector.s3reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../s3writer/index.html">s3torchconnector.s3writer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#classes">Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../index.html#package-contents">Package Contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">s3torchconnector</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">s3torchconnector.dcp</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.dcp.s3_file_system</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../../_sources/autoapi/s3torchconnector/dcp/s3_file_system/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-s3torchconnector.dcp.s3_file_system">
+<span id="s3torchconnector-dcp-s3-file-system"></span><h1>s3torchconnector.dcp.s3_file_system<a class="headerlink" href="#module-s3torchconnector.dcp.s3_file_system" title="Link to this heading"></a></h1>
+<section id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_file_system.logger" title="s3torchconnector.dcp.s3_file_system.logger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">logger</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem" title="s3torchconnector.dcp.s3_file_system.S3FileSystem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3FileSystem</span></code></a></p></td>
+<td><p>S3-based implementation of PyTorch's FileSystemBase for distributed checkpointing.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_file_system.StorageMetadata" title="s3torchconnector.dcp.s3_file_system.StorageMetadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StorageMetadata</span></code></a></p></td>
+<td><p>Metadata for S3 storage prefix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter" title="s3torchconnector.dcp.s3_file_system.S3StorageWriter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3StorageWriter</span></code></a></p></td>
+<td><p>S3 implementation of PyTorch's FileSystemWriter for distributed checkpoints.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader" title="s3torchconnector.dcp.s3_file_system.S3StorageReader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3StorageReader</span></code></a></p></td>
+<td><p>S3 implementation of PyTorch's FileSystemReader with configurable reader strategies.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.logger">
+<span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_file_system.</span></span><span class="sig-name descname"><span class="pre">logger</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.logger" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_file_system.</span></span><span class="sig-name descname"><span class="pre">S3FileSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3_client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector._s3client.S3Client</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3client_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector.S3ClientConfig</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader_constructor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector.s3reader.S3ReaderConstructorProtocol</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.distributed.checkpoint.filesystem.FileSystemBase</span></code></p>
+<p>S3-based implementation of PyTorch’s FileSystemBase for distributed checkpointing.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.create_stream">
+<span class="sig-name descname"><span class="pre">create_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><span class="pre">io.IOBase</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.create_stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.create_stream" title="Link to this definition"></a></dt>
+<dd><p>Create a stream for reading or writing to S3.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>os.PathLike</em><em>]</em>) – The S3 path to read or write.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – The mode for the stream. Supports ‘rb’ for read mode and ‘wb’ for write mode.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>io.BufferedIOBase</em> – A stream for reading or writing to S3.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the mode is not ‘rb’ or ‘wb’.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.concat_path">
+<span class="sig-name descname"><span class="pre">concat_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.concat_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.concat_path" title="Link to this definition"></a></dt>
+<dd><p>Concatenate a suffix to the given path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>os.PathLike</em><em>]</em>) – The base path.</p></li>
+<li><p><strong>suffix</strong> (<em>str</em>) – The suffix to concatenate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The concatenated path.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.init_path">
+<span class="sig-name descname"><span class="pre">init_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.init_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.init_path" title="Link to this definition"></a></dt>
+<dd><p>Initialize the path for the filesystem.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>os.PathLike</em><em>]</em>) – The path to initialize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The initialized path.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[str, os.PathLike]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.rename">
+<span class="sig-name descname"><span class="pre">rename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.rename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.rename" title="Link to this definition"></a></dt>
+<dd><p>Rename an object in S3.</p>
+<p>This is emulated by copying it to a new path and deleting the old path. The deletion part is retried (see also
+<code class="xref py py-func docutils literal notranslate"><span class="pre">S3FileSystem._delete_with_retry()</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>old_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>os.PathLike</em><em>]</em>) – The current path of the object.</p></li>
+<li><p><strong>new_path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>os.PathLike</em><em>]</em>) – The new path for the object.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the old and new paths point to different buckets.</p></li>
+<li><p><strong>S3Exception</strong> – If there is an error with the S3 client.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.mkdir">
+<span class="sig-name descname"><span class="pre">mkdir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.mkdir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.mkdir" title="Link to this definition"></a></dt>
+<dd><p>No-op method for creating directories in S3 (not needed).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.exists">
+<span class="sig-name descname"><span class="pre">exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.exists"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.exists" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.rm_file">
+<span class="sig-name descname"><span class="pre">rm_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.rm_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.rm_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3FileSystem.validate_checkpoint_id">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">validate_checkpoint_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3FileSystem.validate_checkpoint_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem.validate_checkpoint_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.StorageMetadata">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_file_system.</span></span><span class="sig-name descname"><span class="pre">StorageMetadata</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#StorageMetadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.StorageMetadata" title="Link to this definition"></a></dt>
+<dd><p>Metadata for S3 storage prefix.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.StorageMetadata.prefix">
+<span class="sig-name descname"><span class="pre">prefix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#StorageMetadata.prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.StorageMetadata.prefix" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageWriter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_file_system.</span></span><span class="sig-name descname"><span class="pre">S3StorageWriter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3client_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector.S3ClientConfig</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix_strategy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../s3_prefix_strategy/index.html#s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase" title="s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase"><span class="pre">s3torchconnector.dcp.s3_prefix_strategy.S3PrefixStrategyBase</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thread_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageWriter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.distributed.checkpoint.filesystem.FileSystemWriter</span></code></p>
+<p>S3 implementation of PyTorch’s FileSystemWriter for distributed checkpoints.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageWriter.fs">
+<span class="sig-name descname"><span class="pre">fs</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageWriter.fs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter.fs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageWriter.path">
+<span class="sig-name descname"><span class="pre">path</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageWriter.path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter.path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageWriter.prefix_strategy">
+<span class="sig-name descname"><span class="pre">prefix_strategy</span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageWriter.prefix_strategy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter.prefix_strategy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageWriter.prepare_global_plan">
+<span class="sig-name descname"><span class="pre">prepare_global_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plans</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.distributed.checkpoint.planner.SavePlan</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.distributed.checkpoint.planner.SavePlan</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageWriter.prepare_global_plan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter.prepare_global_plan" title="Link to this definition"></a></dt>
+<dd><p>Prepare save plans with S3-specific storage metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plans</strong> – List of save plans to be processed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified save plans with S3 storage metadata.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageWriter.validate_checkpoint_id">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">validate_checkpoint_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageWriter.validate_checkpoint_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageWriter.validate_checkpoint_id" title="Link to this definition"></a></dt>
+<dd><p>Check if the given checkpoint_id is supported by the storage. This allow
+us to enable automatic storage selection.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageReader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.dcp.s3_file_system.</span></span><span class="sig-name descname"><span class="pre">S3StorageReader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3client_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector.S3ClientConfig</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader_constructor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">s3torchconnector.s3reader.S3ReaderConstructorProtocol</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">s3torchconnector.s3reader.DCPS3ReaderConstructorProtocol</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageReader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.distributed.checkpoint.filesystem.FileSystemReader</span></code></p>
+<p>S3 implementation of PyTorch’s FileSystemReader with configurable reader strategies.</p>
+<p>By default, uses DCPOptimizedS3Reader for improved checkpoint loading performance.
+For unsupported or non-DCP access patterns, please use the generic reader:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>storage_reader = S3StorageReader(</dt><dd><p>region, path,
+reader_constructor=S3ReaderConstructor.default()</p>
+</dd>
+</dl>
+<p>)</p>
+</div></blockquote>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageReader.fs">
+<span class="sig-name descname"><span class="pre">fs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#s3torchconnector.dcp.s3_file_system.S3FileSystem" title="s3torchconnector.dcp.s3_file_system.S3FileSystem"><span class="pre">S3FileSystem</span></a></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageReader.fs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader.fs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageReader.path">
+<span class="sig-name descname"><span class="pre">path</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageReader.path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader.path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageReader.sync_files">
+<span class="sig-name descname"><span class="pre">sync_files</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageReader.sync_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader.sync_files" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageReader.validate_checkpoint_id">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">validate_checkpoint_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageReader.validate_checkpoint_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader.validate_checkpoint_id" title="Link to this definition"></a></dt>
+<dd><p>Check if the given checkpoint_id is supported by the storage. This allow
+us to enable automatic storage selection.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.dcp.s3_file_system.S3StorageReader.prepare_local_plan">
+<span class="sig-name descname"><span class="pre">prepare_local_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.distributed.checkpoint.planner.LoadPlan</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.distributed.checkpoint.planner.LoadPlan</span></span></span><a class="reference internal" href="../../../../_modules/s3torchconnector/dcp/s3_file_system.html#S3StorageReader.prepare_local_plan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.dcp.s3_file_system.S3StorageReader.prepare_local_plan" title="Link to this definition"></a></dt>
+<dd><p>Performs two key optimizations:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><strong>Load Ordering</strong>: Sorts load items by storage offset to enable sequential access</p></li>
+</ol>
+<p>2. <strong>Range Injection</strong>: Provides byte range metadata to DCP reader constructors to enable
+usage of DCPOptimizedS3Reader for range-based streams and range coalescing</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plan</strong> (<em>LoadPlan</em>) – The load plan from PyTorch DCP.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The same plan with items sorted by storage offset.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>LoadPlan</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Both optimizations are required for DCPOptimizedS3Reader.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="s3torchconnector.dcp" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../s3_prefix_strategy/index.html" class="btn btn-neutral float-right" title="s3torchconnector.dcp.s3_prefix_strategy" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
