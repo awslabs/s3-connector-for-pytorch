@@ -68,6 +68,7 @@ dcp = [
 dcp-test = [
     "s3torchconnector[dcp]",
     "pytest",
+    "zstandard",
 ]
 
 [tool.setuptools.packages]

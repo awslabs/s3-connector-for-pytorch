@@ -47,6 +47,13 @@ DEFAULT_MAX_GAP_SIZE = (
 FIND_ITEM_ERROR_PREFIX = (
     "DCPOptimizedS3Reader only supports sequentially accessing provided ranges: "
 )
+FALLBACK_GUIDANCE = (
+    "If this error is encountered with the default DCP reader (S3ReaderConstructor.dcp_optimized()) "
+    "added in s3torchconnector v1.5.0, please refer to the troubleshooting doc "
+    "(https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors)."
+    "\nFor unsupported or non-DCP access patterns, use the generic reader: "
+    "S3StorageReader(region, path, reader_constructor=S3ReaderConstructor.default())"
+)
 
 
 @dataclass
@@ -399,7 +406,7 @@ class DCPOptimizedS3Reader(S3Reader):
         if start < item.end or self._current_item_buffer is None:
             raise ValueError(
                 f"{FIND_ITEM_ERROR_PREFIX}Range {start}-{end} not contained in "
-                f"current item {item.start}-{item.end}"
+                f"current item {item.start}-{item.end}.\n{FALLBACK_GUIDANCE}"
             )
 
         # Advance to next item
@@ -409,7 +416,7 @@ class DCPOptimizedS3Reader(S3Reader):
         except StopIteration:
             raise ValueError(
                 f"{FIND_ITEM_ERROR_PREFIX}Range {start}-{end} not contained in last item "
-                f"with range {prev_item.start}-{prev_item.end}"
+                f"with range {prev_item.start}-{prev_item.end}.\n{FALLBACK_GUIDANCE}"
             )
 
         # Check if requested range is within next item
@@ -419,7 +426,7 @@ class DCPOptimizedS3Reader(S3Reader):
         raise ValueError(
             f"{FIND_ITEM_ERROR_PREFIX}Range {start}-{end} not contained in "
             f"current item {prev_item.start}-{prev_item.end} nor the "
-            f"next item {item.start}-{item.end}."
+            f"next item {item.start}-{item.end}.\n{FALLBACK_GUIDANCE}"
         )
 
     def _get_stream_for_item(self, item: ItemRange) -> GetObjectStream:
@@ -647,11 +654,15 @@ class DCPOptimizedS3Reader(S3Reader):
             S3Exception: An error occurred accessing S3.
         """
         if size is None:
-            raise ValueError("Size cannot be None; full read not supported")
+            raise ValueError(
+                f"Size cannot be None; full read not supported.\n{FALLBACK_GUIDANCE}"
+            )
         if not isinstance(size, int):
             raise TypeError(f"argument should be integer or None, not {type(size)!r}")
         if size < 0:
-            raise ValueError("Size cannot be negative; full read not supported")
+            raise ValueError(
+                f"Size cannot be negative; full read not supported.\n{FALLBACK_GUIDANCE}"
+            )
         if size == 0:
             return b""
 

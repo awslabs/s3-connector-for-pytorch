@@ -14,7 +14,12 @@ from .protocol import (
 )
 from .sequential import SequentialS3Reader
 from .ranged import RangedS3Reader
-from .dcp_optimized import DCPOptimizedS3Reader, ItemRange, DEFAULT_MAX_GAP_SIZE
+from .dcp_optimized import (
+    DCPOptimizedS3Reader,
+    ItemRange,
+    DEFAULT_MAX_GAP_SIZE,
+    FALLBACK_GUIDANCE,
+)
 
 if TYPE_CHECKING:
     from torch.distributed.checkpoint.planner import ReadItem
@@ -115,7 +120,8 @@ class DCPOptimizedConstructor:
 
         # Error for other files; warn users in case they override prepare_local_plan behavior
         raise ValueError(
-            f"No ranges found for {s3_uri}. Make sure range injection is used in S3StorageReader.prepare_local_plan."
+            f"No ranges found for {s3_uri}. Make sure range injection is used in "
+            f"'S3StorageReader.prepare_local_plan'.\n{FALLBACK_GUIDANCE}"
         )
 
 
@@ -135,7 +141,9 @@ class S3ReaderConstructor:
 
     @staticmethod
     def sequential() -> S3ReaderConstructorProtocol:
-        """Creates a constructor for sequential readers
+        """Creates a constructor for sequential (generic) readers.
+
+        This reader is the generic reader that supports all access patterns.
 
         Returns:
             S3ReaderConstructorProtocol: Partial constructor for SequentialS3Reader
@@ -158,8 +166,8 @@ class S3ReaderConstructor:
         Returns:
             S3ReaderConstructorProtocol: Partial constructor for RangedS3Reader
 
-        Range-based reader performs byte-range requests to read specific portions of S3 objects without
-        downloading the entire file.
+        Range-based reader performs byte-range requests for each read/readinto call
+        to read specific portions of S3 objects without downloading the entire file.
 
         Buffer size affects read performance:
 
@@ -233,7 +241,9 @@ class S3ReaderConstructor:
 
     @staticmethod
     def default() -> S3ReaderConstructorProtocol:
-        """Creates default reader constructor (sequential)
+        """Creates the default generic reader constructor.
+
+        This creates a sequential (generic) reader that supports all access patterns.
 
         Returns:
             S3ReaderConstructorProtocol: Partial constructor for SequentialS3Reader

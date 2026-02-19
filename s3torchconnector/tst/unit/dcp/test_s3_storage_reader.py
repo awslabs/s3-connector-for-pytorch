@@ -10,6 +10,7 @@ from torch.distributed.checkpoint.planner import LoadPlan, ReadItem
 
 from s3torchconnector.dcp import S3StorageReader
 from s3torchconnector.s3reader import S3ReaderConstructor, ItemRange
+from s3torchconnector.s3reader.constructor import DCPOptimizedConstructor
 
 TEST_REGION = "eu-east-1"
 TEST_PATH = "s3://test-bucket/test-checkpoint/"
@@ -32,6 +33,12 @@ def load_plan_with_offsets(draw):
         items.append(Mock(spec=ReadItem, storage_index=storage_index))
 
     return LoadPlan(items), storage_data
+
+
+def test_s3storage_reader_default_uses_dcp_optimized():
+    """Verify S3StorageReader without explicit constructor uses dcp_optimized."""
+    reader = S3StorageReader(region=TEST_REGION, path=TEST_PATH)
+    assert isinstance(reader._reader_constructor, DCPOptimizedConstructor)
 
 
 def test_s3storage_reader_prepare_local_plan_empty():

@@ -1,7 +1,7 @@
-## v1.5.0 (February 17, 2026)
+## v1.5.0 (February 20, 2026)
 
 ### New features
-* Add DCPOptimizedS3Reader for faster and partial DCP loading (#378)
+* Add DCPOptimizedS3Reader as new default for faster and partial DCP loading (#378, #419)
 * Add support for Python 3.14 (#408)
 * Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
 
@@ -19,7 +19,7 @@
 * Add macOS x86_64 and Python 3.8 deprecation warnings (#400)
 
 ### Breaking changes
-* No breaking changes.
+* No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [DCPOptimizedS3Reader Errors](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors) for more details.
 
 ## v1.4.3 (July 25, 2025)
 
