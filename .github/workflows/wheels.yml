@@ -124,7 +124,7 @@ jobs:
           2>&1
         shell: bash
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           path: "./wheelhouse/*.whl"
           name: wheels-${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}
@@ -160,7 +160,7 @@ jobs:
           python -m pip install build
           python -m build --sdist
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           path: "./${{ matrix.build_target }}/dist/*"
           name: wheels-${{ matrix.build_target }}
@@ -172,7 +172,7 @@ jobs:
       - build_source_wheels
     steps:
       - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v6
+        uses: actions/upload-artifact/merge@v7
         with:
            name: wheels
            pattern: wheels-*
