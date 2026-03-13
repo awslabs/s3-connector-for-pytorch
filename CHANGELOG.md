@@ -1,13 +1,25 @@
 ## TBD
 
 ### New features
-* Add support for Python 3.14 (#408)
-* Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
-* Add py.typed file to enable external type checking (#406)
 
 ### Bug fixes
+
+### Other changes
+
+### Breaking changes
+* Remove macOS x86_64 wheels support: Pre-built wheels are no longer available for Intel Macs (x86_64), aligning with PyTorch's decision to drop Intel Mac support since [PyTorch v2.3.0](https://github.com/pytorch/pytorch/releases/tag/v2.3.0). Apple Silicon Macs (ARM64) remain fully supported, while Intel Mac users must build from source following the [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) guide. To check your Mac type, run `uname -m` in Terminal.
+
+## v1.5.0 (February 20, 2026)
+
+### New features
+* Add DCPOptimizedS3Reader as new default for faster and partial DCP loading (#378, #419)
+* Add support for Python 3.14 (#408)
+* Add weights_only parameter support for Lightning 2.6.0 compatibility (#388)
+
+### Bug fixes
+* Add py.typed file to enable external type checking (#406)
 * Override S3Writer closed property and block writes after close (#360)
-* Fix SequentialS3Reader seek beyond EOF to clamp position to object size (#362)
+* Fix SequentialS3Reader to stay at EOF when seeking beyond object size (#362)
 
 ### Other changes
 * Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
@@ -18,7 +30,7 @@
 * Add macOS x86_64 and Python 3.8 deprecation warnings (#400)
 
 ### Breaking changes
-* Remove macOS x86_64 wheels support: Pre-built wheels are no longer available for Intel Macs (x86_64), aligning with PyTorch's decision to drop Intel Mac support since [PyTorch v2.3.0](https://github.com/pytorch/pytorch/releases/tag/v2.3.0). Apple Silicon Macs (ARM64) remain fully supported, while Intel Mac users must build from source following the [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) guide. To check your Mac type, run `uname -m` in Terminal.
+* No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [DCPOptimizedS3Reader Errors](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors) for more details.
 
 ## v1.4.3 (July 25, 2025)
 

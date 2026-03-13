@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         id: creds
         with:
           role-to-assume: ${{ vars.ACTIONS_IAM_ROLE }}
@@ -64,7 +64,7 @@ jobs:
           # extend role time out to 2 hours
           role-duration-seconds: 7200
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -107,7 +107,7 @@ jobs:
           2>&1
         shell: bash
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           path: "./wheelhouse/*.whl"
           name: wheels-${{ matrix.python }}-${{ matrix.builder.kind }}_${{ matrix.builder.arch }}
@@ -126,7 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ needs.generate_third_party_licenses.outputs.artifact_name }}
 
@@ -143,7 +143,7 @@ jobs:
           python -m pip install build
           python -m build --sdist
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           path: "./${{ matrix.build_target }}/dist/*"
           name: wheels-${{ matrix.build_target }}
@@ -155,7 +155,7 @@ jobs:
       - build_source_wheels
     steps:
       - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v6
+        uses: actions/upload-artifact/merge@v7
         with:
            name: wheels
            pattern: wheels-*
