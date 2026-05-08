@@ -1,0 +1,121 @@
+s3torchconnector.s3reader.ranged
+================================
+
+.. py:module:: s3torchconnector.s3reader.ranged
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   s3torchconnector.s3reader.ranged.DEFAULT_BUFFER_SIZE
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   s3torchconnector.s3reader.ranged.RangedS3Reader
+
+
+Module Contents
+---------------
+
+.. py:data:: DEFAULT_BUFFER_SIZE
+   :value: 8388608
+
+
+.. py:class:: RangedS3Reader(bucket: str, key: str, get_object_info: Callable[[], Union[s3torchconnectorclient._mountpoint_s3_client.ObjectInfo, s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult]], get_stream: Callable[[Optional[int], Optional[int]], s3torchconnectorclient._mountpoint_s3_client.GetObjectStream], buffer_size: Optional[int] = None)
+
+   Bases: :py:obj:`s3torchconnector.s3reader.s3reader.S3Reader`
+
+
+   Range-based S3 reader implementation with adaptive buffering.
+
+   Performs byte-range requests to read specific portions of S3 objects without
+   downloading the entire file. Includes optional adaptive buffer to reduce S3 API
+   calls for small, sequential reads while bypassing buffering for large reads.
+   Optimal for sparse partial reads of large objects.
+
+   Buffering behavior:
+
+   * Small reads (< ``buffer_size``): Loads ``buffer_size`` bytes to buffer, copies to user
+   * Large reads (>= ``buffer_size``): Direct S3 access, bypass buffer
+   * Forward overlapping reads: Reuses existing buffer data if possible when read range extends beyond current buffer
+   * Buffer can be disabled by setting ``buffer_size`` to 0
+   * If ``buffer_size`` is None, uses default 8MB buffer
+
+   :param bucket: S3 bucket name
+   :param key: S3 object key
+   :param get_object_info: Callable that returns object metadata
+   :param get_stream: Callable that returns stream for byte range requests
+   :param buffer_size: Internal buffer size in bytes, defaults to 8MB
+
+
+   .. py:property:: bucket
+      :type: str
+
+
+
+   .. py:property:: key
+      :type: str
+
+
+
+   .. py:method:: readinto(buf) -> int
+
+      Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+      Return the number of bytes read. If no bytes are available, zero is returned.
+
+      :param buf: writable bytes-like object
+
+      :returns: numer of bytes read or zero, if no bytes available
+      :rtype: int
+
+
+
+   .. py:method:: read(size: Optional[int] = None) -> bytes
+
+      Read up to size bytes from the current position.
+
+      If size is zero or positive, read that many bytes from S3, or until the end of the object.
+      If size is None or negative, read until the end of the object.
+
+      :param size: how many bytes to read.
+      :type size: int | None
+
+      :returns: Bytes read from specified range.
+      :rtype: bytes
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: seek(offset: int, whence: int = SEEK_SET, /) -> int
+
+      Change the stream position to the given byte offset, interpreted relative to whence.
+
+      When seeking beyond the end of the file, always stay at EOF.
+      Seeking before the start of the file results in a ValueError.
+
+      :param offset: How many bytes to seek relative to whence.
+      :type offset: int
+      :param whence: One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET
+      :type whence: int
+
+      :returns: Current position of the stream
+      :rtype: int
+
+      :raises S3Exception: An error occurred accessing S3.
+
+
+
+   .. py:method:: tell() -> int
+
+      :returns: Current stream position.
+      :rtype: int
+
+
+

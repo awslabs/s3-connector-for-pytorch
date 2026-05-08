@@ -1,0 +1,356 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.dcp.s3_prefix_strategy &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.dcp.s3_prefix_strategy</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for s3torchconnector.dcp.s3_prefix_strategy</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.</span>
+<span class="c1">#  // SPDX-License-Identifier: BSD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.distributed</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dist</span>
+
+
+<div class="viewcode-block" id="S3PrefixStrategyBase">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.S3PrefixStrategyBase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3PrefixStrategyBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for S3 prefix generation strategies.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate prefix for given rank.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_prefix</span><span class="p">(</span><span class="n">rank</span><span class="p">)</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="S3PrefixStrategyBase.generate_prefix">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.S3PrefixStrategyBase.generate_prefix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_prefix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate storage prefix for the given rank.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="DefaultPrefixStrategy">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.DefaultPrefixStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DefaultPrefixStrategy</span><span class="p">(</span><span class="n">S3PrefixStrategyBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default strategy for generating S3 prefixes.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DefaultPrefixStrategy.generate_prefix">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.DefaultPrefixStrategy.generate_prefix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_prefix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate simple rank-based name without prefix.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;__</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">_&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="NumericPrefixStrategy">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NumericPrefixStrategy</span><span class="p">(</span><span class="n">S3PrefixStrategyBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for numeric prefix generation strategies.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">base</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">epoch_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">min_prefix_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">prefix_count</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Initialize numeric prefix strategy.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base (int): The numeric base for the prefix (e.g., 2 for binary, 16 for hex).</span>
+<span class="sd">            epoch_num (int, optional): Epoch number for checkpoint ordering. If None,</span>
+<span class="sd">                no epoch information will be included in the prefix. Defaults to None.</span>
+<span class="sd">            min_prefix_length (int): Minimum length of the generated prefix. Prefix will be</span>
+<span class="sd">                padded with trailing zeros if necessary. Must be positive. Defaults to 10.</span>
+<span class="sd">            prefix_count (int, optional): Number of unique prefixes to generate. If not provided,</span>
+<span class="sd">                world size will be used as default value. Defaults to None.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If epoch_num, min_prefix_length, or prefix_count are invalid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">min_prefix_length</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Minimum prefix length must be positive, got </span><span class="si">{</span><span class="n">min_prefix_length</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">epoch_num</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epoch_num</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Epoch number must be None or an integer, got </span><span class="si">{</span><span class="n">epoch_num</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">prefix_count</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prefix_count</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">prefix_count</span> <span class="o">&lt;</span> <span class="mi">1</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Prefix count must be a positive integer, got </span><span class="si">{</span><span class="n">prefix_count</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+<div class="viewcode-block" id="NumericPrefixStrategy.base">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy.base">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">base</span></div>
+
+<div class="viewcode-block" id="NumericPrefixStrategy.epoch_num">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy.epoch_num">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">epoch_num</span> <span class="o">=</span> <span class="n">epoch_num</span></div>
+
+<div class="viewcode-block" id="NumericPrefixStrategy.min_prefix_len">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy.min_prefix_len">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_prefix_len</span> <span class="o">=</span> <span class="n">min_prefix_length</span></div>
+
+
+<div class="viewcode-block" id="NumericPrefixStrategy.prefix_count">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy.prefix_count">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix_count</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+        <span class="k">if</span> <span class="n">prefix_count</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prefix_count</span> <span class="o">=</span> <span class="n">prefix_count</span>
+        <span class="k">elif</span> <span class="n">dist</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prefix_count</span> <span class="o">=</span> <span class="n">dist</span><span class="o">.</span><span class="n">get_world_size</span><span class="p">()</span>
+
+<div class="viewcode-block" id="NumericPrefixStrategy.prefix_map">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy.prefix_map">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_prefix_map</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="NumericPrefixStrategy.generate_prefix">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.NumericPrefixStrategy.generate_prefix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_prefix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate numeric-based prefix with optional epoch number.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rank: Process rank in the distributed environment.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Prefix string in format: &lt;pattern&gt;/epoch_&lt;num&gt;/__&lt;rank&gt;_</span>
+<span class="sd">            or &lt;pattern&gt;/__&lt;rank&gt;_ if no epoch number is provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">epoch_suffix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;epoch_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">epoch_num</span><span class="si">}</span><span class="s2">/&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch_num</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix_map</span><span class="p">[</span><span class="n">rank</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix_map</span><span class="p">)]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">epoch_suffix</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">_&quot;</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_prefix_map</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate mapping of ranks to numeric-based prefixes.&quot;&quot;&quot;</span>
+        <span class="n">minimum_required_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_prefix_length</span><span class="p">()</span>
+        <span class="n">adjusted_prefix_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">minimum_required_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_prefix_len</span><span class="p">)</span>
+
+        <span class="n">all_prefixes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format_number</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">adjusted_prefix_length</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix_count</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">all_prefixes</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_prefix_length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate minimum prefix length needed for unique combinations.&quot;&quot;&quot;</span>
+        <span class="n">prefix_length</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span>
+        <span class="k">while</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix_count</span><span class="p">:</span>
+            <span class="n">prefix_length</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">size</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span>
+        <span class="k">return</span> <span class="n">prefix_length</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_format_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Format a number to the appropriate base representation.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="BinaryPrefixStrategy">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.BinaryPrefixStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BinaryPrefixStrategy</span><span class="p">(</span><span class="n">NumericPrefixStrategy</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Binary (Base2) prefix generation strategy using only 0 and 1.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">epoch_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">min_prefix_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">prefix_count</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">base</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">epoch_num</span><span class="o">=</span><span class="n">epoch_num</span><span class="p">,</span>
+            <span class="n">min_prefix_length</span><span class="o">=</span><span class="n">min_prefix_length</span><span class="p">,</span>
+            <span class="n">prefix_count</span><span class="o">=</span><span class="n">prefix_count</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_format_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">format</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;0</span><span class="si">{</span><span class="n">length</span><span class="si">}</span><span class="s2">b&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="HexPrefixStrategy">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.HexPrefixStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HexPrefixStrategy</span><span class="p">(</span><span class="n">NumericPrefixStrategy</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hexadecimal-based prefix generation strategy.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">epoch_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">min_prefix_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">prefix_count</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">base</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+            <span class="n">epoch_num</span><span class="o">=</span><span class="n">epoch_num</span><span class="p">,</span>
+            <span class="n">min_prefix_length</span><span class="o">=</span><span class="n">min_prefix_length</span><span class="p">,</span>
+            <span class="n">prefix_count</span><span class="o">=</span><span class="n">prefix_count</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_format_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">format</span><span class="p">(</span><span class="n">number</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;0</span><span class="si">{</span><span class="n">length</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RoundRobinPrefixStrategy">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.RoundRobinPrefixStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RoundRobinPrefixStrategy</span><span class="p">(</span><span class="n">S3PrefixStrategyBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Strategy that distributes ranks across user-provided prefixes in round-robin fashion.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_prefixes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">epoch_num</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize round-robin prefix strategy.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            user_prefixes: List of prefixes to distribute ranks across.</span>
+<span class="sd">                          Must not be empty.</span>
+<span class="sd">            epoch_num: Epoch number for checkpoint ordering.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If user_prefixes is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user_prefixes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;user_prefixes must not be empty&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RoundRobinPrefixStrategy.user_prefixes">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.RoundRobinPrefixStrategy.user_prefixes">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_prefixes</span> <span class="o">=</span> <span class="n">user_prefixes</span></div>
+
+<div class="viewcode-block" id="RoundRobinPrefixStrategy.epoch_num">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.RoundRobinPrefixStrategy.epoch_num">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">epoch_num</span> <span class="o">=</span> <span class="n">epoch_num</span></div>
+
+
+<div class="viewcode-block" id="RoundRobinPrefixStrategy.generate_prefix">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/dcp/s3_prefix_strategy/index.html#s3torchconnector.dcp.RoundRobinPrefixStrategy.generate_prefix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_prefix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate prefix for given rank using round-robin distribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rank: Process rank in the distributed environment.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Prefix string in format: &lt;user_prefix&gt;/epoch_&lt;num&gt;/__&lt;rank&gt;_</span>
+<span class="sd">            or &lt;user_prefix&gt;/__&lt;rank&gt;_ if no epoch number is provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">epoch_suffix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;epoch_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">epoch_num</span><span class="si">}</span><span class="s2">/&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch_num</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">user_prefixes</span><span class="p">[</span><span class="n">rank</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">user_prefixes</span><span class="p">)]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">epoch_suffix</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">_&quot;</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
