@@ -79,7 +79,11 @@ def dataloader_for_map(
     )
     sampler = DistributedSampler(dataset)
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        sampler=sampler,
+        multiprocessing_context=mp.get_context(),
     )
     return dataloader
 
@@ -93,7 +97,12 @@ def dataloader_for_iterable(
         enable_sharding=True,
         reader_constructor=reader_constructor,
     )
-    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        multiprocessing_context=mp.get_context(),
+    )
     return dataloader
 
 
