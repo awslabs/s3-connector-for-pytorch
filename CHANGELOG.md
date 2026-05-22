@@ -1,3 +1,14 @@
+## TBD
+
+### New features
+
+### Bug fixes
+
+### Other changes
+
+### Breaking changes
+* Remove macOS x86_64 wheels support: Pre-built wheels are no longer available for Intel Macs (x86_64), aligning with PyTorch's decision to drop Intel Mac support since [PyTorch v2.3.0](https://github.com/pytorch/pytorch/releases/tag/v2.3.0). Apple Silicon Macs (ARM64) remain fully supported, while Intel Mac users must build from source following the [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) guide. To check your Mac type, run `uname -m` in Terminal.
+
 ## v1.5.0 (February 20, 2026)
 
 ### New features
