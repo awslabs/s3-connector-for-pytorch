@@ -149,9 +149,13 @@ class ModelInterface(ABC):
             yield from loader
             return
         world = dist.get_world_size()
+        rank = dist.get_rank()
+
+        logger.info(
+            f"Rank {rank}: capped_loader active (world_size={world})"
+        )
 
         try:
-            # For map style datasets we can use len as we know the size of the loader
             local_steps = len(loader)
         except TypeError:
             local_steps = None
@@ -160,29 +164,37 @@ class ModelInterface(ABC):
             counts = [None] * world
             dist.all_gather_object(counts, local_steps)
             min_steps = min(counts)
+            logger.info(
+                f"Rank {rank}: capped_loader using map-style cap: "
+                f"min_steps={min_steps} (local={local_steps}, all={counts})"
+            )
             yield from itertools.islice(loader, min_steps)
             return
 
-        # In the case of iterable datasets we can't use len() so need to to use iter
+        logger.info(
+            f"Rank {rank}: capped_loader using iterable-style per-batch synchronization"
+        )
         it = iter(loader)
-        # Use cuda with nccl if available for the purpose of using dist.all_reduce
+        batch_count = 0
         while True:
-            # Pull out one batch one at at time, if it works on all ranks then we yield else stop
             try:
                 batch = next(it)
                 pulled_batch = 1
-            except:
+            except StopIteration:
                 batch = None
                 pulled_batch = 0
 
             flags = [None] * world
-            # We use all_gather_objects as the objects are of small size and the serialization
-            # overhead is too small to use dist.all_reduce_objectss
             dist.all_gather_object(flags, pulled_batch)
 
             if all(flags):
                 yield batch
+                batch_count += 1
             else:
+                logger.info(
+                    f"Rank {rank}: capped_loader stopping after {batch_count} batches "
+                    f"(flags={flags})"
+                )
                 break
 
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
@@ -196,6 +208,8 @@ class ModelInterface(ABC):
             begin_training = perf_counter()
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
+                if hasattr(dataloader.sampler, "set_epoch"):
+                    dataloader.sampler.set_epoch(epoch)
                 if not dist.is_initialized() or dist.get_rank() == 0:
                     logger.info(f"Epoch #{epoch}/{epochs - 1}")
                 batch_count = 0

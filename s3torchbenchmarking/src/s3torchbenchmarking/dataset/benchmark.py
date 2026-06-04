@@ -1,6 +1,7 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import atexit
+import datetime
 import json
 import logging
 import os
@@ -37,7 +38,12 @@ def init_distributed(rank=0, world_size=1):
     """Initialize DDP Process group"""
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
-    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    dist.init_process_group(
+        backend="nccl",
+        rank=rank,
+        world_size=world_size,
+        timeout=datetime.timedelta(minutes=5),
+    )
 
 
 # TODO: add Structured Config (https://hydra.cc/docs/tutorials/structured_config/intro/)
@@ -47,7 +53,7 @@ def run_experiment(config: DictConfig) -> dict:
     num_gpus = (
         config.num_gpus if hasattr(config, "num_gpus") else torch.cuda.device_count()
     )
-    if num_gpus <= 0 or type(num_gpus) != int:
+    if not isinstance(num_gpus, int) or num_gpus <= 0:
         raise ValueError(
             "Invalid number of GPUs detected. Please specify a number of GPUs to use."
         )
@@ -80,8 +86,11 @@ def run_experiment(config: DictConfig) -> dict:
             )
             # Read results from file
             if os.path.exists(results_file):
-                with open(results_file, "r") as f:
-                    return json.load(f)
+                try:
+                    with open(results_file, "r") as f:
+                        return json.load(f)
+                except (json.JSONDecodeError, IOError):
+                    return {"metrics": "DDP training completed - results file corrupted"}
             else:
                 return {"metrics": "DDP training completed - no results file"}
 
@@ -148,17 +157,19 @@ def run_benchmark_experiment(config: DictConfig):
         region=config.s3.region,
         load_sample=model.load_sample,
     )
+    drop_last_cfg = config.get("drop_last", "auto")
     dataloader = make_dataloader(
         dataset=dataset,
         sampler=sampler,
         num_workers=config.dataloader.num_workers,
         batch_size=config.dataloader.batch_size,
+        drop_last=drop_last_cfg,
     )
     if dist.is_available() and dist.is_initialized():
         torch.cuda.set_device(rank)
         device_id = torch.cuda.current_device()
 
-        if model.model != None:
+        if model.model is not None:
             model.model = model.model.to(device_id)
             model.device = torch.device(f"cuda:{device_id}")
             model.model = torch.nn.parallel.DistributedDataParallel(
@@ -173,9 +184,8 @@ def run_benchmark_experiment(config: DictConfig):
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
         "training_duration_s": result["training_duration_s"],
-        "volume_mibs": result[
-            "volume"
-        ],  # Includes number of samples for context on how many images were processed in total
+        "volume_mibs": result["volume"],
+        "samples_per_epoch": result["volume"] / config.epochs,
         "epoch_durations_s": result["epoch_durations_s"],
         "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
     }
@@ -381,25 +391,27 @@ def create_fsspec_dataset(
     return dataset.map(load_sample)
 
 
-def make_dataloader(dataset: Dataset, num_workers: int, batch_size: int, sampler=None):
+def make_dataloader(
+    dataset: Dataset, num_workers: int, batch_size: int, sampler=None, drop_last="auto"
+):
+    use_ddp = dist.is_initialized() and dist.get_world_size() > 1
+    if drop_last == "auto":
+        use_drop_last = use_ddp
+    else:
+        use_drop_last = str(drop_last).lower() == "true"
+
     return DataLoader(
         dataset=dataset,
         batch_size=batch_size,
         sampler=sampler,
         shuffle=False,
-        drop_last=True,
+        drop_last=use_drop_last,
         num_workers=num_workers,
         collate_fn=default_collate,
-        pin_memory=False,
-        persistent_workers=True,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=num_workers > 0,
         prefetch_factor=2 if num_workers > 0 else None,
-        # We use fork here when using multiple GPUs otherwise this will cause a hang
-        # otherwise we use spawn
-        multiprocessing_context=(
-            "fork"
-            if torch.cuda.is_available() and torch.cuda.device_count() > 0
-            else "spawn"
-        ),
+        multiprocessing_context="fork" if use_ddp else None,
     )
 
 
