@@ -22,6 +22,7 @@
 * Fix SequentialS3Reader to stay at EOF when seeking beyond object size (#362)
 
 ### Other changes
+* Extended benchmarks to support multi-GPU Dataloading
 * Add seekable() method in S3Reader to eliminate tensor copies during DCP loading (#359)
 * Add load ordering optimization to S3StorageReader for sequential access patterns (#372)
 * Add os, arch, and PyTorch version to user agent string (#397)
@@ -31,9 +32,6 @@
 
 ### Breaking changes
 * No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [DCPOptimizedS3Reader Errors](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors) for more details.
-
-### Other changes
-* Extended benchmarks to support multi-GPU Dataloading
 
 ## v1.4.3 (July 25, 2025)
 
