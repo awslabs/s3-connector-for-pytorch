@@ -1,9 +1,11 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import pytest
 from hypothesis import given, example
 from hypothesis.strategies import integers, floats
 
 from s3torchconnector import S3ClientConfig
+from s3torchconnector._s3client.s3client_config import _MAX_ATTEMPTS_LIMIT
 from .test_s3_client import MiB, GiB
 
 
@@ -44,6 +46,32 @@ def test_throughput_target_gbps_setup(throughput_target_gbps: float):
 def test_max_attempts_setup(max_attempts: int):
     config = S3ClientConfig(max_attempts=max_attempts)
     assert config.max_attempts == max_attempts
+
+
+@given(max_attempts=integers(min_value=1, max_value=_MAX_ATTEMPTS_LIMIT))
+def test_max_attempts_valid_range(max_attempts: int):
+    config = S3ClientConfig(max_attempts=max_attempts)
+    assert config.max_attempts == max_attempts
+
+
+def test_max_attempts_zero_raises():
+    # See issue #361: max_attempts=0 panics inside the Rust constructor
+    # (NonZeroUsize::try_from(...).expect("max_attempts must be > 0")) as an
+    # uncatchable pyo3_runtime.PanicException. Guard it in pure Python instead.
+    with pytest.raises(ValueError):
+        S3ClientConfig(max_attempts=0)
+
+
+def test_max_attempts_negative_raises():
+    with pytest.raises(ValueError):
+        S3ClientConfig(max_attempts=-1)
+
+
+def test_max_attempts_above_cap_raises():
+    # See issue #361: values above the AWS CRT exponential-backoff retry-strategy
+    # limit panic inside the Rust constructor; reject them clearly in Python.
+    with pytest.raises(ValueError):
+        S3ClientConfig(max_attempts=_MAX_ATTEMPTS_LIMIT + 1)
 
 
 @given(
