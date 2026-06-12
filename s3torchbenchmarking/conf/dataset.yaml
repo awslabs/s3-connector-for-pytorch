@@ -40,17 +40,12 @@ hydra:
       dataloader.s3reader.type: sequential
       # buffer_size (bytes): only used with range_based s3reader
       dataloader.s3reader.buffer_size: 8*1024*1024
-      # Number of GPUs to use for training.
-      # When num_gpus > 1:
-      #   - Uses DDP (DistributedDataParallel) via mp.spawn
-      #   - S3IterableDataset enables sharding across ranks
-      #   - S3MapDataset uses DistributedSampler
-      #   - capped_loader ensures all ranks process the same number of batches
-      # When num_gpus = 1 (or model=entitlement):
-      #   - Single process, no DDP overhead
+      # Number of GPUs to use (default: 1 = single process, no DDP).
+      # Setting num_gpus > 1 enables DDP via mp.spawn. See README for details.
+      # Note: model=entitlement always forces num_gpus=1 (I/O-only, no training).
       +num_gpus: 1
-      # Whether to drop the last incomplete batch from each worker.
-      # "auto" (default): True for multi-GPU (required for DDP synchronization),
-      #                    False for single-GPU (all data is processed).
-      # Can be overridden to "true" or "false" explicitly.
+      # Whether to drop the last incomplete batch.
+      # "auto" (default): True when num_gpus > 1, False otherwise.
+      # Multi-GPU requires drop_last=true for DDP synchronization; setting it to
+      # false with num_gpus > 1 will cause training to hang.
       +drop_last: auto

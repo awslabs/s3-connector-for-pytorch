@@ -151,7 +151,7 @@ class ModelInterface(ABC):
         world = dist.get_world_size()
         rank = dist.get_rank()
 
-        logger.info(
+        logger.debug(
             f"Rank {rank}: capped_loader active (world_size={world})"
         )
 
@@ -164,14 +164,14 @@ class ModelInterface(ABC):
             counts = [None] * world
             dist.all_gather_object(counts, local_steps)
             min_steps = min(counts)
-            logger.info(
+            logger.debug(
                 f"Rank {rank}: capped_loader using map-style cap: "
                 f"min_steps={min_steps} (local={local_steps}, all={counts})"
             )
             yield from itertools.islice(loader, min_steps)
             return
 
-        logger.info(
+        logger.debug(
             f"Rank {rank}: capped_loader using iterable-style per-batch synchronization"
         )
         it = iter(loader)
@@ -191,7 +191,7 @@ class ModelInterface(ABC):
                 yield batch
                 batch_count += 1
             else:
-                logger.info(
+                logger.debug(
                     f"Rank {rank}: capped_loader stopping after {batch_count} batches "
                     f"(flags={flags})"
                 )
@@ -209,28 +209,20 @@ class ModelInterface(ABC):
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
                 if hasattr(dataloader.sampler, "set_epoch"):
+                    # DistributedSampler needs epoch to reseed its shuffle each epoch
                     dataloader.sampler.set_epoch(epoch)
                 if not dist.is_initialized() or dist.get_rank() == 0:
                     logger.info(f"Epoch #{epoch}/{epochs - 1}")
                 batch_count = 0
-                try:
-                    for batch_idx, (data, target) in enumerate(
-                        self.capped_loader(dataloader)
-                    ):
-                        logger.debug(f"Batch #{batch_idx}")
-                        result = self.train_batch(batch_idx, data, target)
-                        num_samples += len(data)
-                        batch_count += 1
-                        if batch_count % 1000 == 0:
-                            logger.info(
-                                f"Processed {batch_count} batches, {num_samples} samples"
-                            )
-                        if result:
-                            checkpoint_times.append(result)
-                except Exception as e:
-                    logger.error(f"Error in training loop at batch {batch_count}: {e}")
-                    raise
-                logger.info(f"Epoch {epoch} completed with {batch_count} batches")
+                for batch_idx, (data, target) in enumerate(
+                    self.capped_loader(dataloader)
+                ):
+                    logger.debug(f"Batch #{batch_idx}")
+                    result = self.train_batch(batch_idx, data, target)
+                    num_samples += len(data)
+                    batch_count += 1
+                    if result:
+                        checkpoint_times.append(result)
                 epoch_durations_s.append(time.perf_counter() - begin_epoch)
             training_duration_s = time.perf_counter() - begin_training
 
@@ -260,12 +252,8 @@ class Entitlement(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
-        try:
-            buffer = data.read()
-            return len(buffer), key
-        except Exception as e:
-            logger.warning(f"Failed to read sample {key}: {e}")
-            return 0, key
+        buffer = data.read()
+        return len(buffer), key
 
     def train_batch(self, batch_idx: int, data, target):
         pass
