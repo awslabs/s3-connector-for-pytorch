@@ -1,7 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 import atexit
-import datetime
 import json
 import logging
 import os
@@ -42,7 +41,6 @@ def init_distributed(rank=0, world_size=1):
         backend="nccl",
         rank=rank,
         world_size=world_size,
-        timeout=datetime.timedelta(minutes=5),
     )
 
 
@@ -72,34 +70,28 @@ def run_experiment(config: DictConfig) -> dict:
         os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, range(num_gpus)))
         torch.cuda.empty_cache()
 
-    # In the case of multiple GPU training we run run_ddp_process using mp.spawn for each of the ranks, which calls run_benchmark_experiment separately
-    # If single-rank training then it defaults to run_benchmark_experiment
     if num_gpus > 1 and not dist.is_initialized():
-        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
-            results_file = f.name
-        try:
-            mp.spawn(
-                run_ddp_process,
-                args=(num_gpus, config, results_file),
-                nprocs=num_gpus,
-                join=True,
-            )
-            # Read results from file
-            if os.path.exists(results_file):
-                try:
-                    with open(results_file, "r") as f:
-                        return json.load(f)
-                except (json.JSONDecodeError, IOError):
-                    return {"metrics": "DDP training completed - results file corrupted"}
-            else:
-                return {"metrics": "DDP training completed - no results file"}
-
-        finally:
-            # Cleanup
-            if os.path.exists(results_file):
-                os.unlink(results_file)
+        return run_distributed_experiment(num_gpus, config)
     else:
         return run_benchmark_experiment(config)
+
+
+def run_distributed_experiment(num_gpus: int, config: DictConfig) -> dict:
+    """Run benchmark across multiple GPUs using DDP via mp.spawn."""
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+        results_file = f.name
+    try:
+        mp.spawn(
+            run_ddp_process,
+            args=(num_gpus, config, results_file),
+            nprocs=num_gpus,
+            join=True,
+        )
+        with open(results_file, "r") as f:
+            return json.load(f)
+    finally:
+        if os.path.exists(results_file):
+            os.unlink(results_file)
 
 
 # DDP Process function for running only in multi-GPU cases
@@ -116,19 +108,19 @@ def run_ddp_process(rank, world_size, config, results_file):
         # Only rank 0 aggregates and writes results
         if rank == 0 and result:
             # Aggregate metrics
-            total_volume = sum(m.get("volume_mibs", 0) for m in all_metrics)
+            total_samples = sum(m.get("total_samples", 0) for m in all_metrics)
             avg_training_duration = (
                 sum(m["training_duration_s"] for m in all_metrics) / world_size
             )
 
             aggregated_metrics = {
                 "throughput_mibs": (
-                    total_volume / avg_training_duration
+                    total_samples / avg_training_duration
                     if avg_training_duration > 0
                     else 0
                 ),
                 "training_duration_s": avg_training_duration,
-                "volume_mibs": total_volume,
+                "total_samples": total_samples,
                 "per_rank_metrics": all_metrics,
                 "longest_training_time": max(
                     m["training_duration_s"] for m in all_metrics
@@ -149,7 +141,6 @@ def run_benchmark_experiment(config: DictConfig):
     fully_qualified_uri = (
         "s3://" + config.s3.bucket.strip("/") + "/" + config.dataset.strip("/") + "/"
     )
-    # We always return sample from make_dataset which could be None
     dataset, sampler = make_dataset(
         dataloader_config=config.dataloader,
         sharding=config.sharding,
@@ -184,7 +175,7 @@ def run_benchmark_experiment(config: DictConfig):
     metrics = {
         "throughput_mibs": result["volume"] / result["training_duration_s"],
         "training_duration_s": result["training_duration_s"],
-        "volume_mibs": result["volume"],
+        "total_samples": result["volume"],
         "samples_per_epoch": result["volume"] / config.epochs,
         "epoch_durations_s": result["epoch_durations_s"],
         "utilization": {k: v.summarize() for k, v in result["utilization"].items()},
@@ -315,7 +306,7 @@ def create_s3_iterable_dataset(
 ):
     reader_constructor = make_s3_reader_constructor(s3reader_config)
     enable_sharding = world_size > 1
-    logger.info(
+    logger.debug(
         f"Enabled sharding:  {enable_sharding}, because world_size is {world_size}"
     )
     dataset = S3IterableDataset.from_prefix(
@@ -355,7 +346,6 @@ def create_s3_map_dataset(
         transform=load_sample,
         reader_constructor=reader_constructor,
     )
-    dataset_size = len(dataset)
     if world_size > 1:
         sampler = DistributedSampler(
             dataset, num_replicas=world_size, rank=rank, drop_last=False, shuffle=False
@@ -408,10 +398,6 @@ def make_dataloader(
         drop_last=use_drop_last,
         num_workers=num_workers,
         collate_fn=default_collate,
-        pin_memory=torch.cuda.is_available(),
-        persistent_workers=num_workers > 0,
-        prefetch_factor=2 if num_workers > 0 else None,
-        multiprocessing_context="fork" if use_ddp else None,
     )
 
 

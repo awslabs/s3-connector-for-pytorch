@@ -93,6 +93,27 @@ Here are some sample dataset configurations that we ran our benchmarks against:
 s3torch-datagen -n 100k --shard-size 128MiB --s3-bucket my-bucket --region us-east-1
 ```
 
+## Multi-GPU dataset benchmarks
+
+Setting `num_gpus > 1` in `conf/dataset.yaml` enables multi-GPU benchmarking via DDP (DistributedDataParallel).
+This measures data loading throughput under realistic multi-GPU training conditions where multiple processes
+pull data from S3 simultaneously.
+
+**Behavior when `num_gpus > 1`:**
+
+- One process is spawned per GPU via `mp.spawn`
+- Each process runs the full training loop independently on its assigned GPU
+- A `capped_loader` ensures all ranks process the same number of batches to prevent DDP hangs:
+  - Map-style datasets (S3MapDataset): uses `DistributedSampler` to shard indices across ranks; `capped_loader` caps iteration to `min(len)` across all ranks
+  - Iterable datasets (S3IterableDataset): enables `enable_sharding` to split objects across ranks; `capped_loader` synchronizes per-batch and stops all ranks when any rank exhausts its data
+- `drop_last` is forced to `true` (DDP requires equal batch sizes across ranks)
+- Some samples may be skipped due to capping/dropping; check `volume` in metrics for actual count
+
+**Constraints:**
+
+- `model=entitlement` always runs single-GPU (I/O-only benchmark, no gradient sync needed)
+- Only `s3iterabledataset` and `s3mapdataset` support multi-GPU sharding; other backends run unsharded
+
 ## Running the benchmarks
 
 You can run the different benchmarks by editing their corresponding config files, then running one of those shell
