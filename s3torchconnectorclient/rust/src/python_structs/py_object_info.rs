@@ -15,7 +15,8 @@ use crate::PyRef;
 #[pyclass(
     name = "ObjectInfo",
     module = "s3torchconnectorclient._mountpoint_s3_client",
-    frozen
+    frozen,
+    skip_from_py_object
 )]
 #[derive(Debug, Clone)]
 pub struct PyObjectInfo {
