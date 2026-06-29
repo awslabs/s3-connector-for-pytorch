@@ -1,3 +1,14 @@
+## TBD
+
+### New features
+
+### Bug fixes
+
+### Other changes
+* Bump PyO3 from 0.27.2 to 0.29.0
+
+### Breaking changes
+
 ## v1.5.0 (February 20, 2026)
 
 ### New features
