@@ -1,3 +1,8 @@
+## TBD
+
+### New features
+* Add `requester_pays` option to `S3ClientConfig` to access Requester Pays buckets via the `x-amz-request-payer` header (#430)
+
 ## v1.5.0 (February 20, 2026)
 
 ### New features

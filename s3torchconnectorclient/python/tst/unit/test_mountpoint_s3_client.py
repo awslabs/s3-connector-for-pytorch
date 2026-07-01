@@ -294,6 +294,7 @@ def test_mountpoint_client_pickles():
     expected_throughput_target_gbps = 3.5
     expected_force_path_style = True
     expected_max_attempts = 5
+    expected_requester_pays = True
 
     client = MountpointS3Client(
         region=expected_region,
@@ -304,6 +305,7 @@ def test_mountpoint_client_pickles():
         unsigned=expected_unsigned,
         force_path_style=expected_force_path_style,
         max_attempts=expected_max_attempts,
+        requester_pays=expected_requester_pays,
     )
     dumped = pickle.dumps(client)
     loaded = pickle.loads(dumped)
@@ -325,6 +327,9 @@ def test_mountpoint_client_pickles():
         client.force_path_style == loaded.force_path_style == expected_force_path_style
     )
     assert client.max_attempts == loaded.max_attempts == expected_max_attempts
+    assert (
+        client.requester_pays == loaded.requester_pays == expected_requester_pays
+    )
 
 
 @pytest.mark.parametrize(

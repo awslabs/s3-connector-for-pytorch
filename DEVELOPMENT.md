@@ -153,6 +153,8 @@ Using S3ClientConfig you can set up the following parameters for the underlying 
 
 * `max_attempts(int)`: Number of retries for retriable errors
 
+* `requester_pays(bool)`: Set to true to send the `x-amz-request-payer: requester` header on all S3 requests, enabling access to Requester Pays buckets.
+
 For example, this can be passed in like: 
 ```py
 from s3torchconnector import S3MapDataset, S3ClientConfig
@@ -171,6 +173,10 @@ s3_lightning_checkpoint = S3LightningCheckpoint(region=REGION, s3client_config=c
 
 # Disable signing to make requests without AWS credentials
 config = S3ClientConfig(unsigned=True)
+s3_map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION, s3client_config=config)
+
+# Access a Requester Pays bucket
+config = S3ClientConfig(requester_pays=True)
 s3_map_dataset = S3MapDataset.from_prefix(DATASET_URI, region=REGION, s3client_config=config)
 ```
 

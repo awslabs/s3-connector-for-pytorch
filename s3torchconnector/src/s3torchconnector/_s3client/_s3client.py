@@ -144,6 +144,7 @@ class S3Client:
             unsigned=self._s3client_config.unsigned,
             force_path_style=self._s3client_config.force_path_style,
             max_attempts=self._s3client_config.max_attempts,
+            requester_pays=self._s3client_config.requester_pays,
         )
 
     def get_object(
