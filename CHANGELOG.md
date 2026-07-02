@@ -3,6 +3,13 @@
 ### New features
 * Add `requester_pays` option to `S3ClientConfig` to access Requester Pays buckets via the `x-amz-request-payer` header (#430)
 
+### Bug fixes
+
+### Other changes
+* Bump PyO3 from 0.27.2 to 0.29.0
+
+### Breaking changes
+
 ## v1.5.0 (February 20, 2026)
 
 ### New features

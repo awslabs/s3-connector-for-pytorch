@@ -13,7 +13,8 @@ use crate::PyRef;
 
 #[pyclass(
     name = "RestoreStatus",
-    module = "s3torchconnectorclient._mountpoint_s3_client"
+    module = "s3torchconnectorclient._mountpoint_s3_client",
+    from_py_object
 )]
 #[derive(Debug, Clone)]
 pub struct PyRestoreStatus {
