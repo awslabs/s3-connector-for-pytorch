@@ -14,7 +14,8 @@ use crate::MountpointS3Client;
 #[pyclass(
     name = "MockMountpointS3Client",
     module = "s3torchconnectorclient._mountpoint_s3_client",
-    frozen
+    frozen,
+    skip_from_py_object
 )]
 pub struct PyMockClient {
     mock_client: Arc<MockClient>,
