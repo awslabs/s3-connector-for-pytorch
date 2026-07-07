@@ -176,11 +176,6 @@ def test_requester_pays_s3_client():
     assert s3_client._client.requester_pays is True
 
 
-def test_requester_pays_s3_client_default():
-    s3_client = S3Client(region=TEST_REGION)
-    assert s3_client._client.requester_pays is False
-
-
 def test_s3_client_different_configs():
     s3_client_slow = S3Client(
         region=TEST_REGION,

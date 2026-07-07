@@ -1,5 +1,6 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
+import pytest
 from hypothesis import given, example
 from hypothesis.strategies import integers, floats
 
@@ -14,6 +15,7 @@ def test_default():
     assert config.force_path_style is False
     assert config.max_attempts == 10
     assert config.profile is None
+    assert config.requester_pays is False
 
 
 def test_enable_force_path_style():
@@ -24,6 +26,16 @@ def test_enable_force_path_style():
 def test_change_profile():
     config = S3ClientConfig(profile="test_profile")
     assert config.profile == "test_profile"
+
+
+def test_enable_requester_pays():
+    config = S3ClientConfig(requester_pays=True)
+    assert config.requester_pays is True
+
+
+def test_requester_pays_with_unsigned_raises():
+    with pytest.raises(ValueError):
+        S3ClientConfig(requester_pays=True, unsigned=True)
 
 
 @given(part_size=integers(min_value=5 * MiB, max_value=5 * GiB))
