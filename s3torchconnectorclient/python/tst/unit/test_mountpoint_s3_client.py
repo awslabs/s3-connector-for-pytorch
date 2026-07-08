@@ -327,9 +327,7 @@ def test_mountpoint_client_pickles():
         client.force_path_style == loaded.force_path_style == expected_force_path_style
     )
     assert client.max_attempts == loaded.max_attempts == expected_max_attempts
-    assert (
-        client.requester_pays == loaded.requester_pays == expected_requester_pays
-    )
+    assert client.requester_pays == loaded.requester_pays == expected_requester_pays
 
 
 @pytest.mark.parametrize(
