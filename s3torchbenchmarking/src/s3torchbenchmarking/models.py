@@ -151,9 +151,7 @@ class ModelInterface(ABC):
         world = dist.get_world_size()
         rank = dist.get_rank()
 
-        logger.debug(
-            f"Rank {rank}: capped_loader active (world_size={world})"
-        )
+        logger.debug(f"Rank {rank}: capped_loader active (world_size={world})")
 
         try:
             local_steps = len(loader)
