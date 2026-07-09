@@ -6,6 +6,7 @@
 
 ### Other changes
 * Bump PyO3 from 0.27.2 to 0.29.0
+* Extended benchmarks to support multi-GPU Dataloading (#356)
 
 ### Breaking changes
 
@@ -28,7 +29,6 @@
 * Add benchmark to run DCP Loading Workloads (#357)
 * Add thread_count parameter to S3StorageWriter (#370)
 * Add macOS x86_64 and Python 3.8 deprecation warnings (#400)
-* Extended benchmarks to support multi-GPU Dataloading (#356)
 
 ### Breaking changes
 * No breaking changes, but DCPOptimizedS3Reader as the new default reader for `S3StorageReader` might lead to behavioral changes. See [DCPOptimizedS3Reader Errors](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/docs/TROUBLESHOOTING.md#dcpoptimizeds3reader-errors) for more details.

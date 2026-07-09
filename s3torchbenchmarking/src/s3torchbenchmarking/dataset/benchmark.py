@@ -148,13 +148,12 @@ def run_benchmark_experiment(config: DictConfig):
         region=config.s3.region,
         load_sample=model.load_sample,
     )
-    drop_last_cfg = config.get("drop_last", "auto")
     dataloader = make_dataloader(
         dataset=dataset,
         sampler=sampler,
         num_workers=config.dataloader.num_workers,
         batch_size=config.dataloader.batch_size,
-        drop_last=drop_last_cfg,
+        drop_last=config.get("drop_last", "auto"),
     )
     if dist.is_available() and dist.is_initialized():
         torch.cuda.set_device(rank)
