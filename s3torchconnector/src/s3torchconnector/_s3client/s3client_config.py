@@ -3,6 +3,15 @@
 from dataclasses import dataclass
 from typing import Optional
 
+# Upper bound for `max_attempts`, enforced Python-side to avoid an opaque
+# pyo3_runtime.PanicException raised from inside the Rust client constructor
+# (see issue #361). The AWS CRT retry strategy uses exponential backoff and
+# rejects attempt counts above this limit. The exact value is a CRT-internal
+# constant; 63 matches the value cited by the maintainer. It is centralized
+# here so it can be adjusted in one place if the CRT limit is confirmed to
+# differ.
+_MAX_ATTEMPTS_LIMIT = 63
+
 
 @dataclass(frozen=True)
 class S3ClientConfig:
@@ -28,3 +37,18 @@ class S3ClientConfig:
     force_path_style: bool = False
     max_attempts: int = 10
     profile: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        # Validate `max_attempts` here so that invalid values raise a clear,
+        # catchable ValueError instead of an opaque pyo3_runtime.PanicException
+        # from inside the Rust client constructor (see issue #361). The Rust
+        # side calls NonZeroUsize::try_from(max_attempts).expect(...) (panics on
+        # 0) and the AWS CRT retry strategy panics on values above its
+        # exponential-backoff limit.
+        if self.max_attempts < 1:
+            raise ValueError("max_attempts must be a positive integer")
+        if self.max_attempts > _MAX_ATTEMPTS_LIMIT:
+            raise ValueError(
+                f"max_attempts must be between 1 and {_MAX_ATTEMPTS_LIMIT} "
+                "(AWS CRT retry-strategy limit)"
+            )
