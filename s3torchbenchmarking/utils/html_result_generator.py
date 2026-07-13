@@ -1,4 +1,5 @@
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 from typing import Any, Dict, List
 
 
@@ -58,7 +59,13 @@ class HtmlResultGenerator:
 """
 
     def __init__(self):
-        self.env = Environment(loader=FileSystemLoader("."))
+        self.env = Environment(
+            loader=FileSystemLoader("."),
+            autoescape=select_autoescape(
+                enabled_extensions=("html",),
+                default_for_string=True,
+            ),
+        )
         self.template = self.env.from_string(self.html_result_template)
 
     def get_cell(self, records, row_index, field_names, field, span_indexes):
@@ -66,11 +73,13 @@ class HtmlResultGenerator:
         if row_index < len(records):
             cell_position = row_index * len(field_names) + field_index
             if span_indexes[cell_position] == 0:
-                return ""
+                return Markup("")
             if span_indexes[cell_position] == 1:
-                return f"<td>{records[row_index][field]}</td>"
-            return f'<td rowspan="{span_indexes[cell_position]}">{records[row_index][field]}</td>'
-        return ""
+                return Markup("<td>{}</td>").format(records[row_index][field])
+            return Markup('<td rowspan="{}">{}</td>').format(
+                span_indexes[cell_position], records[row_index][field]
+            )
+        return Markup("")
 
     def generate_html(
         self,
