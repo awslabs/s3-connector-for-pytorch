@@ -33,12 +33,14 @@ pub struct PyMockClient {
     pub(crate) force_path_style: bool,
     #[pyo3(get)]
     max_attempts: usize,
+    #[pyo3(get)]
+    pub(crate) requester_pays: bool,
 }
 
 #[pymethods]
 impl PyMockClient {
     #[new]
-    #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string(), unsigned=false, force_path_style=false, max_attempts=10))]
+    #[pyo3(signature = (region, bucket, throughput_target_gbps = 10.0, part_size = 8 * 1024 * 1024, user_agent_prefix="mock_client".to_string(), unsigned=false, force_path_style=false, max_attempts=10, requester_pays=false))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         region: String,
@@ -49,6 +51,7 @@ impl PyMockClient {
         unsigned: bool,
         force_path_style: bool,
         max_attempts: usize,
+        requester_pays: bool,
     ) -> PyMockClient {
         let unordered_list_seed: Option<u64> = None;
         let config = MockClientConfig {
@@ -67,7 +70,8 @@ impl PyMockClient {
             user_agent_prefix,
             unsigned,
             force_path_style,
-            max_attempts
+            max_attempts,
+            requester_pays
         }
     }
 
@@ -83,6 +87,7 @@ impl PyMockClient {
             self.max_attempts,
             self.mock_client.clone(),
             None,
+            self.requester_pays,
         )
     }
 

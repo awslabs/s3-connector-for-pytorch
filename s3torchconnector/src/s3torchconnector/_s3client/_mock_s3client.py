@@ -40,6 +40,7 @@ class MockS3Client(S3Client):
             unsigned=self.s3client_config.unsigned,
             force_path_style=self.s3client_config.force_path_style,
             max_attempts=self.s3client_config.max_attempts,
+            requester_pays=self.s3client_config.requester_pays,
         )
 
     def add_object(self, key: str, data: bytes) -> None:

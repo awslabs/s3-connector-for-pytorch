@@ -20,6 +20,9 @@ class S3ClientConfig:
     force_path_style(bool): forceful path style addressing for S3 client.
     max_attempts(int): amount of retry attempts for retrieable errors.
     profile(str): Profile name to use for S3 authentication.
+    requester_pays(bool): Set to true to send the `x-amz-request-payer: requester` header on all
+        S3 requests, enabling access to Requester Pays buckets. Cannot be combined with
+        unsigned=True (requester pays requires authenticated requests).
     """
 
     throughput_target_gbps: float = 10.0
@@ -28,3 +31,11 @@ class S3ClientConfig:
     force_path_style: bool = False
     max_attempts: int = 10
     profile: Optional[str] = None
+    requester_pays: bool = False
+
+    def __post_init__(self):
+        if self.requester_pays and self.unsigned:
+            raise ValueError(
+                "requester_pays=True requires authenticated requests and cannot be combined with unsigned=True. "
+                "For more information, see https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html"
+            )
