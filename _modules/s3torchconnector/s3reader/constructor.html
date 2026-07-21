@@ -1,0 +1,401 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.s3reader.constructor &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.s3reader.constructor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for s3torchconnector.s3reader.constructor</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.</span>
+<span class="c1">#  // SPDX-License-Identifier: BSD</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.s3reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Reader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.protocol</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">S3ReaderConstructorProtocol</span><span class="p">,</span>
+    <span class="n">DCPS3ReaderConstructorProtocol</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.sequential</span><span class="w"> </span><span class="kn">import</span> <span class="n">SequentialS3Reader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.ranged</span><span class="w"> </span><span class="kn">import</span> <span class="n">RangedS3Reader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.dcp_optimized</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DCPOptimizedS3Reader</span><span class="p">,</span>
+    <span class="n">ItemRange</span><span class="p">,</span>
+    <span class="n">DEFAULT_MAX_GAP_SIZE</span><span class="p">,</span>
+    <span class="n">FALLBACK_GUIDANCE</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributed.checkpoint.planner</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReadItem</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributed.checkpoint.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetadataIndex</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributed.checkpoint.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">_StorageInfo</span>
+
+<div class="viewcode-block" id="log">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/constructor/index.html#s3torchconnector.log">[docs]</a>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DCPOptimizedConstructor">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/constructor/index.html#s3torchconnector.DCPOptimizedConstructor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DCPOptimizedConstructor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Constructor for DCPOptimizedS3Reader instances with range metadata injection.</span>
+
+<span class="sd">    Created from S3ReaderConstructor, and used by S3StorageReader for PyTorch DCP.</span>
+<span class="sd">    Requires range metadata from DCP load plans to function properly.</span>
+
+<span class="sd">    Usage Flow:</span>
+<span class="sd">        # User Setup</span>
+<span class="sd">        reader_constructor = S3ReaderConstructor.dcp_optimized()  -&gt; DCPOptimizedConstructor</span>
+<span class="sd">        S3StorageReader(..., reader_constructor)                  -&gt; stores in S3FileSystem</span>
+
+<span class="sd">        # During DCP.load()</span>
+<span class="sd">        S3StorageReader.prepare_local_plan(plan)</span>
+<span class="sd">            -&gt; set_item_ranges_by_file(plan.items, storage_data, path)</span>
+<span class="sd">            -&gt; builds _item_ranges_by_file: {s3_uri: [ItemRange, ...]}</span>
+
+<span class="sd">        # During read_data(), per file</span>
+<span class="sd">        S3FileSystem.create_stream(path, &quot;rb&quot;)</span>
+<span class="sd">            -&gt; S3Client.get_object(bucket, key, reader_constructor)</span>
+<span class="sd">                -&gt; __call__(bucket, key, get_object_info, get_stream)</span>
+<span class="sd">                    -&gt; .metadata: SequentialS3Reader (no ranges available for .metadata file)</span>
+<span class="sd">                    -&gt; .distcp:   DCPOptimizedS3Reader(item_ranges) ranges from _item_ranges_by_file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_gap_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEFAULT_MAX_GAP_SIZE</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">max_gap_size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_gap_size must be non-negative&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_item_ranges_by_file</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">ItemRange</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_gap_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_gap_size</span>
+
+<div class="viewcode-block" id="DCPOptimizedConstructor.set_item_ranges_by_file">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/constructor/index.html#s3torchconnector.DCPOptimizedConstructor.set_item_ranges_by_file">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_item_ranges_by_file</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">plan_items</span><span class="p">:</span> <span class="s2">&quot;List[ReadItem]&quot;</span><span class="p">,</span>
+        <span class="n">storage_data</span><span class="p">:</span> <span class="s2">&quot;Dict[MetadataIndex, _StorageInfo]&quot;</span><span class="p">,</span>
+        <span class="n">base_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract and store item ranges from DCP load plan.</span>
+<span class="sd">        Called by S3StorageReader.prepare_local_plan() to inject range metadata.</span>
+
+<span class="sd">        Note: This replaces any previously stored ranges (intentional for multi-call scenarios).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">plan_items</span><span class="p">:</span>
+            <span class="c1"># Empty plan: no reads will happen since no-op in FileSystemReader.read_data</span>
+            <span class="c1"># To defend against multi-processing case where a rank doesn&#39;t need data.</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Empty plan for this rank - no DCP item ranges will be created.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_item_ranges_by_file</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">storage_data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;storage_data must not be empty; required to map ReadItems to file ranges.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Map: full S3 URI -&gt; item ranges</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_item_ranges_by_file</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">read_item</span> <span class="ow">in</span> <span class="n">plan_items</span><span class="p">:</span>
+            <span class="n">item_md</span> <span class="o">=</span> <span class="n">storage_data</span><span class="p">[</span><span class="n">read_item</span><span class="o">.</span><span class="n">storage_index</span><span class="p">]</span>
+            <span class="n">s3_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">item_md</span><span class="o">.</span><span class="n">relative_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_item_ranges_by_file</span><span class="p">[</span><span class="n">s3_uri</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">ItemRange</span><span class="p">(</span><span class="n">item_md</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="n">item_md</span><span class="o">.</span><span class="n">offset</span> <span class="o">+</span> <span class="n">item_md</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">get_object_info</span><span class="p">,</span> <span class="n">get_stream</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S3Reader</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Match key to corresponding List[ItemRange] in _item_ranges_by_file.</span>
+<span class="sd">        Fallback when reading .metadata file if ranges are unavailable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Return SequentialS3Reader for .metadata (hardcoded name in FileSystemReader.read_metadata),</span>
+        <span class="c1"># since there are no ranges available for .metadata.</span>
+        <span class="c1"># TODO: alternatively configure DCPOptimizedS3Reader to use full file range for .metadata.</span>
+        <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.metadata&quot;</span><span class="p">):</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reading .metadata file </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> with SequentialS3Reader&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">SequentialS3Reader</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">get_object_info</span><span class="p">,</span> <span class="n">get_stream</span><span class="p">)</span>
+
+        <span class="c1"># Return DCPOptimizedS3Reader for .distcp files with corresponding item ranges for file uri</span>
+        <span class="n">s3_uri</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;s3://</span><span class="si">{</span><span class="n">bucket</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">s3_uri</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_item_ranges_by_file</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DCPOptimizedS3Reader</span><span class="p">(</span>
+                <span class="n">bucket</span><span class="p">,</span>
+                <span class="n">key</span><span class="p">,</span>
+                <span class="n">item_ranges</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_item_ranges_by_file</span><span class="p">[</span><span class="n">s3_uri</span><span class="p">],</span>
+                <span class="n">get_object_info</span><span class="o">=</span><span class="n">get_object_info</span><span class="p">,</span>
+                <span class="n">get_stream</span><span class="o">=</span><span class="n">get_stream</span><span class="p">,</span>
+                <span class="n">max_gap_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_max_gap_size</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Error for other files; warn users in case they override prepare_local_plan behavior</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No ranges found for </span><span class="si">{</span><span class="n">s3_uri</span><span class="si">}</span><span class="s2">. Make sure range injection is used in &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&#39;S3StorageReader.prepare_local_plan&#39;.</span><span class="se">\n</span><span class="si">{</span><span class="n">FALLBACK_GUIDANCE</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="S3ReaderConstructor">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/index.html#s3torchconnector.S3ReaderConstructor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S3ReaderConstructor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Constructor for creating ``partial(S3Reader)`` instances.</span>
+
+<span class="sd">    Creates partial ``S3Reader`` instances that will be completed by ``S3Client`` with the</span>
+<span class="sd">    remaining required parameters (e.g. ``bucket``, ``key``, ``get_object_info``, ``get_stream``).</span>
+
+<span class="sd">    The constructor provides factory methods for different reader types:</span>
+
+<span class="sd">    - ``sequential()``: Creates a constructor for sequential readers that buffer the entire object.</span>
+<span class="sd">      Best for full reads and repeated access.</span>
+<span class="sd">    - ``range_based()``: Creates a constructor for range-based readers that fetch specific byte ranges.</span>
+<span class="sd">      Suitable for sparse partial reads for large objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="S3ReaderConstructor.sequential">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/index.html#s3torchconnector.S3ReaderConstructor.sequential">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sequential</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">S3ReaderConstructorProtocol</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a constructor for sequential (generic) readers.</span>
+
+<span class="sd">        This reader is the generic reader that supports all access patterns.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            S3ReaderConstructorProtocol: Partial constructor for SequentialS3Reader</span>
+
+<span class="sd">        Example::</span>
+
+<span class="sd">            reader_constructor = S3ReaderConstructor.sequential()</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="n">SequentialS3Reader</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="S3ReaderConstructor.range_based">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/index.html#s3torchconnector.S3ReaderConstructor.range_based">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">range_based</span><span class="p">(</span><span class="n">buffer_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S3ReaderConstructorProtocol</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a constructor for range-based readers</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            buffer_size: Internal buffer size in bytes. If None, uses default 8MB.</span>
+<span class="sd">                         Set to 0 to disable buffering.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            S3ReaderConstructorProtocol: Partial constructor for RangedS3Reader</span>
+
+<span class="sd">        Range-based reader performs byte-range requests for each read/readinto call</span>
+<span class="sd">        to read specific portions of S3 objects without downloading the entire file.</span>
+
+<span class="sd">        Buffer size affects read performance:</span>
+
+<span class="sd">        * Small reads (&lt; ``buffer_size``): Loads ``buffer_size`` bytes to buffer to reduce S3 API calls for small, sequential reads</span>
+<span class="sd">        * Large reads (≥ ``buffer_size``): bypass the buffer for direct transfer from S3</span>
+<span class="sd">        * Forward overlap reads: Reuses buffered data when reading ranges that extend beyond current buffer, and processes remaining</span>
+<span class="sd">        data according to size with logic above.</span>
+
+<span class="sd">        Configuration Guide:</span>
+
+<span class="sd">        * Use larger buffer sizes for workloads with many small, sequential reads of nearby bytes</span>
+<span class="sd">        * Use smaller buffer sizes or disable buffering for sparse partial reads</span>
+<span class="sd">        * Buffer can be disabled by setting ``buffer_size`` to 0</span>
+<span class="sd">        * If ``buffer_size`` is None, uses default 8MB buffer</span>
+
+<span class="sd">        Examples::</span>
+
+<span class="sd">            # Range-based reader with default 8MB buffer</span>
+<span class="sd">            reader_constructor = S3ReaderConstructor.range_based()</span>
+
+<span class="sd">            # Range-based reader with custom buffer size</span>
+<span class="sd">            reader_constructor = S3ReaderConstructor.range_based(buffer_size=16*1024*1024)</span>
+
+<span class="sd">            # Range-based reader with buffering disabled</span>
+<span class="sd">            reader_constructor = S3ReaderConstructor.range_based(buffer_size=0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="n">RangedS3Reader</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="n">buffer_size</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="S3ReaderConstructor.dcp_optimized">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/index.html#s3torchconnector.S3ReaderConstructor.dcp_optimized">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dcp_optimized</span><span class="p">(</span>
+        <span class="n">max_gap_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEFAULT_MAX_GAP_SIZE</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DCPS3ReaderConstructorProtocol</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a constructor for DCP-optimized readers for faster checkpoint loading.</span>
+
+<span class="sd">        The DCP-optimized reader provides performance improvements for DCP reading through:</span>
+
+<span class="sd">        - Selective data fetching with range coalescing to only fetch required byte ranges</span>
+<span class="sd">        - Per-item buffer management to reduce buffer allocation costs</span>
+<span class="sd">        - Eliminating buffer copy by storing S3 chunks as memoryview references</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            max_gap_size: Maximum gap size in bytes between ranges to coalesce into the same S3 read stream.</span>
+<span class="sd">                Most users should use the default value.</span>
+
+<span class="sd">                - Default: 32MB (``32 * 1024 * 1024``)</span>
+<span class="sd">                - Use ``float(&quot;inf&quot;)`` to coalesce all ranges regardless of gaps</span>
+<span class="sd">                - Use 0 to disable coalescing, which creates a new range-based stream for each gap</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DCPOptimizedConstructorProtocol:</span>
+<span class="sd">                Constructor that creates DCPOptimizedS3Reader when ranges are available, falling back to</span>
+<span class="sd">                SequentialS3Reader otherwise.</span>
+
+<span class="sd">        Requirements:</span>
+<span class="sd">            Should be used with S3StorageReader, in which ``prepare_local_plan()`` automatically handles:</span>
+
+<span class="sd">            - Load ordering: Sorts items by storage offset for sequential access</span>
+<span class="sd">            - Range injection: Provides byte ranges from DCP load plan to the reader</span>
+
+<span class="sd">            Advanced users implementing custom readers must include these optimizations</span>
+<span class="sd">            in their ``prepare_local_plan()``/``read_data()`` implementation to use the DCP-optimized reader.</span>
+
+<span class="sd">        Example::</span>
+
+<span class="sd">            reader_constructor = S3ReaderConstructor.dcp_optimized()</span>
+<span class="sd">            storage_reader = S3StorageReader(region, path, reader_constructor=reader_constructor)</span>
+<span class="sd">            DCP.load(state_dict, storage_reader=storage_reader)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DCPOptimizedConstructor</span><span class="p">(</span><span class="n">max_gap_size</span><span class="o">=</span><span class="n">max_gap_size</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="S3ReaderConstructor.default">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/index.html#s3torchconnector.S3ReaderConstructor.default">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">S3ReaderConstructorProtocol</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates the default generic reader constructor.</span>
+
+<span class="sd">        This creates a sequential (generic) reader that supports all access patterns.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            S3ReaderConstructorProtocol: Partial constructor for SequentialS3Reader</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">sequential</span><span class="p">()</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="S3ReaderConstructor.get_reader_type_string">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/index.html#s3torchconnector.S3ReaderConstructor.get_reader_type_string">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_reader_type_string</span><span class="p">(</span>
+        <span class="n">constructor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">S3ReaderConstructorProtocol</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the reader type string for the given constructor.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">constructor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">get_reader_type_string</span><span class="p">(</span>
+                <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">default</span><span class="p">()</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">constructor</span><span class="p">,</span> <span class="n">DCPOptimizedConstructor</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;dcp_optimized&quot;</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">constructor</span><span class="p">,</span> <span class="n">partial</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="k">elif</span> <span class="n">constructor</span><span class="o">.</span><span class="n">func</span> <span class="o">==</span> <span class="n">RangedS3Reader</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;range_based&quot;</span>
+        <span class="k">elif</span> <span class="n">constructor</span><span class="o">.</span><span class="n">func</span> <span class="o">==</span> <span class="n">SequentialS3Reader</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;sequential&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

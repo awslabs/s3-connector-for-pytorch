@@ -1,0 +1,466 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.s3reader.ranged &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.s3reader.ranged</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for s3torchconnector.s3reader.ranged</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.</span>
+<span class="c1">#  // SPDX-License-Identifier: BSD</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">cached_property</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">SEEK_CUR</span><span class="p">,</span> <span class="n">SEEK_END</span><span class="p">,</span> <span class="n">SEEK_SET</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">s3torchconnectorclient._mountpoint_s3_client</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ObjectInfo</span><span class="p">,</span>
+    <span class="n">GetObjectStream</span><span class="p">,</span>
+    <span class="n">HeadObjectResult</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.s3reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3Reader</span>
+
+<div class="viewcode-block" id="DEFAULT_BUFFER_SIZE">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.DEFAULT_BUFFER_SIZE">[docs]</a>
+<span class="n">DEFAULT_BUFFER_SIZE</span> <span class="o">=</span> <span class="mi">8</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>  <span class="c1"># 8MB</span></div>
+
+
+
+<div class="viewcode-block" id="RangedS3Reader">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RangedS3Reader</span><span class="p">(</span><span class="n">S3Reader</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Range-based S3 reader implementation with adaptive buffering.</span>
+
+<span class="sd">    Performs byte-range requests to read specific portions of S3 objects without</span>
+<span class="sd">    downloading the entire file. Includes optional adaptive buffer to reduce S3 API</span>
+<span class="sd">    calls for small, sequential reads while bypassing buffering for large reads.</span>
+<span class="sd">    Optimal for sparse partial reads of large objects.</span>
+
+<span class="sd">    Buffering behavior:</span>
+
+<span class="sd">    * Small reads (&lt; ``buffer_size``): Loads ``buffer_size`` bytes to buffer, copies to user</span>
+<span class="sd">    * Large reads (&gt;= ``buffer_size``): Direct S3 access, bypass buffer</span>
+<span class="sd">    * Forward overlapping reads: Reuses existing buffer data if possible when read range extends beyond current buffer</span>
+<span class="sd">    * Buffer can be disabled by setting ``buffer_size`` to 0</span>
+<span class="sd">    * If ``buffer_size`` is None, uses default 8MB buffer</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        bucket: S3 bucket name</span>
+<span class="sd">        key: S3 object key</span>
+<span class="sd">        get_object_info: Callable that returns object metadata</span>
+<span class="sd">        get_stream: Callable that returns stream for byte range requests</span>
+<span class="sd">        buffer_size: Internal buffer size in bytes, defaults to 8MB</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">get_object_info</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">Union</span><span class="p">[</span><span class="n">ObjectInfo</span><span class="p">,</span> <span class="n">HeadObjectResult</span><span class="p">]],</span>
+        <span class="n">get_stream</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">GetObjectStream</span><span class="p">],</span>
+        <span class="n">buffer_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">bucket</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Bucket should be specified&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span> <span class="o">=</span> <span class="n">bucket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_key</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_object_info</span> <span class="o">=</span> <span class="n">get_object_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_stream</span> <span class="o">=</span> <span class="n">get_stream</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Buffer Parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_size</span><span class="p">:</span> <span class="nb">int</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enable_buffering</span><span class="p">:</span> <span class="nb">bool</span>
+        <span class="k">if</span> <span class="n">buffer_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># If None, use default buffer size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_size</span> <span class="o">=</span> <span class="n">DEFAULT_BUFFER_SIZE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_buffering</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># If integer, enable buffering if &gt; 0 (0 disables buffer)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_size</span> <span class="o">=</span> <span class="n">buffer_size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_buffering</span> <span class="o">=</span> <span class="n">buffer_size</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="c1"># Create reusable buffer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytearray</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">bytearray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_buffer_size</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_enable_buffering</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_view</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">memoryview</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">memoryview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="c1"># Track buffer byte range</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_end</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="RangedS3Reader.bucket">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader.bucket">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bucket</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span></div>
+
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="RangedS3Reader.key">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader.key">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key</span></div>
+
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_object_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_object_info</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load self._buffer with ranged request</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            start: Starting byte position to load into buffer</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">())</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_view</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># for type checker</span>
+        <span class="n">bytes_read</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Reuse buffer</span>
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_stream</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+            <span class="n">chunk_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_view</span><span class="p">[</span><span class="n">bytes_read</span> <span class="p">:</span> <span class="n">bytes_read</span> <span class="o">+</span> <span class="n">chunk_len</span><span class="p">]</span> <span class="o">=</span> <span class="n">chunk</span>
+            <span class="n">bytes_read</span> <span class="o">+=</span> <span class="n">chunk_len</span>
+
+        <span class="c1"># Update Buffer Boundaries</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_end</span> <span class="o">=</span> <span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">bytes_read</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_buffered</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nb">memoryview</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read data from internal buffer into the provided memoryview.</span>
+<span class="sd">        Loads buffer if buffer doesn&#39;t contain full data range.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            view: Target memoryview to write data into</span>
+<span class="sd">            start: Starting byte position in S3 object (inclusive)</span>
+<span class="sd">            end: Ending byte position in S3 object (exclusive)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: Number of bytes read</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_start</span> <span class="ow">or</span> <span class="n">end</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_end</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_buffer</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+
+        <span class="n">buffer_offset</span> <span class="o">=</span> <span class="n">start</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_start</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># for type checker</span>
+        <span class="n">view</span><span class="p">[:</span><span class="n">length</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">[</span><span class="n">buffer_offset</span> <span class="p">:</span> <span class="n">buffer_offset</span> <span class="o">+</span> <span class="n">length</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">length</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_unbuffered</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nb">memoryview</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a range-based stream and reads bytes from S3 into a memoryview.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            view: Target memoryview to write data into</span>
+<span class="sd">            start: Starting byte position in S3 object (inclusive)</span>
+<span class="sd">            end: Ending byte position in S3 object (exclusive)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: Number of bytes read</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="n">bytes_read</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_stream</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+            <span class="c1"># Safeguard for buffer overflow (stream size &gt; length)</span>
+            <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">),</span> <span class="n">length</span> <span class="o">-</span> <span class="n">bytes_read</span><span class="p">)</span>
+            <span class="n">chunk_view</span> <span class="o">=</span> <span class="nb">memoryview</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+            <span class="n">view</span><span class="p">[</span><span class="n">bytes_read</span> <span class="p">:</span> <span class="n">bytes_read</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">chunk_view</span><span class="p">[:</span><span class="n">chunk_size</span><span class="p">]</span>
+            <span class="n">bytes_read</span> <span class="o">+=</span> <span class="n">chunk_size</span>
+            <span class="c1"># Exit if finished reading</span>
+            <span class="k">if</span> <span class="n">bytes_read</span> <span class="o">==</span> <span class="n">length</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">bytes_read</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nb">memoryview</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reads into a memoryview from a specific byte range.</span>
+<span class="sd">        Dispatch read request to buffered or unbuffered implementation based on request size.</span>
+
+<span class="sd">        - Forward overlap optimization: When read range starts within current buffer and extends beyond it,</span>
+<span class="sd">        first uses the overlapped portion from buffer, then processes remaining portion according to size.</span>
+<span class="sd">        - Large (remaining) requests (&lt; buffer_size): bypass buffering to speed up data transfer</span>
+<span class="sd">        - Small (remaining) requests (&gt;= buffer_size): use buffering to reduce S3 API calls, anticipating next call</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            view: Target memoryview to write data into</span>
+<span class="sd">            start: Starting byte position in S3 object (inclusive)</span>
+<span class="sd">            end: Ending byte position in S3 object (exclusive)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: Number of bytes read</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">bytes_read</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Forward overlap case: load from overlapped part in buffer first</span>
+        <span class="c1"># Only apply when starting within buffer and extending beyond it, or exact match</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_start</span> <span class="o">&lt;=</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_end</span> <span class="o">&lt;=</span> <span class="n">end</span><span class="p">:</span>
+            <span class="c1"># Read overlapped portion from buffer</span>
+            <span class="n">overlap_read</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_buffered</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_end</span><span class="p">)</span>
+            <span class="c1"># Adjust start and view for the remaining portion</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_end</span>
+            <span class="n">view</span> <span class="o">=</span> <span class="n">view</span><span class="p">[</span><span class="n">overlap_read</span><span class="p">:]</span>
+            <span class="n">bytes_read</span> <span class="o">+=</span> <span class="n">overlap_read</span>
+
+        <span class="c1"># Handle remaining portion / full range based on size</span>
+        <span class="k">if</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer_size</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_enable_buffering</span><span class="p">:</span>
+            <span class="c1"># Large reads: return data directly</span>
+            <span class="n">bytes_read</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_unbuffered</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Small reads: buffer data and return from buffer</span>
+            <span class="n">bytes_read</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_buffered</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_position</span> <span class="o">+=</span> <span class="n">bytes_read</span>
+        <span class="k">return</span> <span class="n">bytes_read</span>
+
+<div class="viewcode-block" id="RangedS3Reader.readinto">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader.readinto">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">readinto</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buf</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.</span>
+<span class="sd">        Return the number of bytes read. If no bytes are available, zero is returned.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            buf : writable bytes-like object</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int : numer of bytes read or zero, if no bytes available</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">view</span> <span class="o">=</span> <span class="nb">memoryview</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">view</span><span class="o">.</span><span class="n">readonly</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;argument must be a writable bytes-like object, not </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;argument must be a writable bytes-like object, not </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">buf_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position_at_end</span><span class="p">()</span> <span class="ow">or</span> <span class="n">buf_size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># If no bytes are available or no place to write data, zero should be returned</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># Calculate the range to request</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="n">buf_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">())</span>
+
+        <span class="c1"># Return no data if zero-length range</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&gt;=</span> <span class="n">end</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_range</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RangedS3Reader.read">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader.read">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read up to size bytes from the current position.</span>
+
+<span class="sd">        If size is zero or positive, read that many bytes from S3, or until the end of the object.</span>
+<span class="sd">        If size is None or negative, read until the end of the object.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            size (int | None): how many bytes to read.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bytes: Bytes read from specified range.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            S3Exception: An error occurred accessing S3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;argument should be integer or None, not </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position_at_end</span><span class="p">():</span>
+            <span class="c1"># Invariant: if we&#39;re at EOF, it doesn&#39;t matter what `size` is, we&#39;ll always return no data and have no</span>
+            <span class="c1"># side effect.</span>
+            <span class="k">return</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># Calculate the range to request</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span>
+        <span class="k">if</span> <span class="n">size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">())</span>
+
+        <span class="c1"># Return no data if zero-length range</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&gt;=</span> <span class="n">end</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># Pre-allocate buffer</span>
+        <span class="n">byte_size</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="n">buffer</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">byte_size</span><span class="p">)</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="nb">memoryview</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read_range</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">view</span><span class="o">.</span><span class="n">tobytes</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="RangedS3Reader.seek">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader.seek">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">seek</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">whence</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">SEEK_SET</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change the stream position to the given byte offset, interpreted relative to whence.</span>
+
+<span class="sd">        When seeking beyond the end of the file, always stay at EOF.</span>
+<span class="sd">        Seeking before the start of the file results in a ValueError.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            offset (int): How many bytes to seek relative to whence.</span>
+<span class="sd">            whence (int): One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: Current position of the stream</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            S3Exception: An error occurred accessing S3.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;integer argument expected, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">whence</span> <span class="o">==</span> <span class="n">SEEK_END</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">offset</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">()</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">whence</span> <span class="o">==</span> <span class="n">SEEK_CUR</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position_at_end</span><span class="p">()</span> <span class="ow">and</span> <span class="n">offset</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span>
+        <span class="k">elif</span> <span class="n">whence</span> <span class="o">==</span> <span class="n">SEEK_SET</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">whence</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Seek must be passed SEEK_CUR, SEEK_SET, or SEEK_END&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;integer argument expected, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">whence</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">offset</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;negative seek value </span><span class="si">{</span><span class="n">offset</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Update position without prefetching.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_position</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_size</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_info</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_position_at_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="c1"># Code calling this must only be used for optimisation purposes.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># We can never be special cased to EOF if we never saw how long it is.</span>
+            <span class="c1"># If we _are_ at EOF, we&#39;ll just not take the early exits.</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span>
+
+<div class="viewcode-block" id="RangedS3Reader.tell">
+<a class="viewcode-back" href="../../../autoapi/s3torchconnector/s3reader/ranged/index.html#s3torchconnector.s3reader.RangedS3Reader.tell">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tell</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns:</span>
+<span class="sd">              int: Current stream position.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

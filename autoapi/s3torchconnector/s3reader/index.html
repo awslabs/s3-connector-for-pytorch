@@ -1,0 +1,802 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s3torchconnector.s3reader &mdash; Amazon S3 Connector for PyTorch 1.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=e0a75244"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="s3torchconnector.s3reader.constructor" href="constructor/index.html" />
+    <link rel="prev" title="s3torchconnector.s3map_dataset" href="../s3map_dataset/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Amazon S3 Connector for PyTorch
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html">s3torchconnector</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="../dcp/index.html">s3torchconnector.dcp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../lightning/index.html">s3torchconnector.lightning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3checkpoint/index.html">s3torchconnector.s3checkpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3iterable_dataset/index.html">s3torchconnector.s3iterable_dataset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3map_dataset/index.html">s3torchconnector.s3map_dataset</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">s3torchconnector.s3reader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../s3writer/index.html">s3torchconnector.s3writer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../index.html#classes">Classes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../index.html#package-contents">Package Contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Amazon S3 Connector for PyTorch</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">s3torchconnector</a></li>
+      <li class="breadcrumb-item active">s3torchconnector.s3reader</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/autoapi/s3torchconnector/s3reader/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-s3torchconnector.s3reader">
+<span id="s3torchconnector-s3reader"></span><h1>s3torchconnector.s3reader<a class="headerlink" href="#module-s3torchconnector.s3reader" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="constructor/index.html">s3torchconnector.s3reader.constructor</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dcp_optimized/index.html">s3torchconnector.s3reader.dcp_optimized</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/index.html">s3torchconnector.s3reader.protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ranged/index.html">s3torchconnector.s3reader.ranged</a></li>
+<li class="toctree-l1"><a class="reference internal" href="s3reader/index.html">s3torchconnector.s3reader.s3reader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sequential/index.html">s3torchconnector.s3reader.sequential</a></li>
+</ul>
+</div>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.S3Reader" title="s3torchconnector.s3reader.S3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3Reader</span></code></a></p></td>
+<td><p>An abstract base class for read-only, file-like representation of a single object stored in S3.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.S3ReaderConstructor" title="s3torchconnector.s3reader.S3ReaderConstructor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">S3ReaderConstructor</span></code></a></p></td>
+<td><p>Constructor for creating <code class="docutils literal notranslate"><span class="pre">partial(S3Reader)</span></code> instances.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.SequentialS3Reader" title="s3torchconnector.s3reader.SequentialS3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SequentialS3Reader</span></code></a></p></td>
+<td><p>Sequential S3 reader implementation</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.RangedS3Reader" title="s3torchconnector.s3reader.RangedS3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangedS3Reader</span></code></a></p></td>
+<td><p>Range-based S3 reader implementation with adaptive buffering.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader" title="s3torchconnector.s3reader.DCPOptimizedS3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DCPOptimizedS3Reader</span></code></a></p></td>
+<td><p>S3 reader implementation optimized for PyTorch Distributed Checkpoint (DCP) loading.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="package-contents">
+<h2>Package Contents<a class="headerlink" href="#package-contents" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.</span></span><span class="sig-name descname"><span class="pre">S3Reader</span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">io.BufferedIOBase</span></code></p>
+<p>An abstract base class for read-only, file-like representation of a single object stored in S3.</p>
+<p>This class defines the interface for S3 readers. Concrete implementations (SequentialS3Reader or
+RangedS3Reader extend this class. S3ReaderConstructor creates partial functions of these
+implementations, which are then completed by S3Client with the remaining required parameters.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.bucket">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.bucket" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Abstractmethod<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.key">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.key" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Abstractmethod<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.read">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.read" title="Link to this definition"></a></dt>
+<dd><p>Read and return up to n bytes.</p>
+<p>If the argument is omitted, None, or negative, reads and
+returns all data until EOF.</p>
+<p>If the argument is positive, and the underlying raw stream is
+not ‘interactive’, multiple raw reads may be issued to satisfy
+the byte count (unless EOF is reached first).  But for
+interactive raw streams (as well as sockets and pipes), at most
+one raw read will be issued, and a short result does not imply
+that EOF is imminent.</p>
+<p>Returns an empty bytes object on EOF.</p>
+<p>Returns None if the underlying raw stream was open in non-blocking
+mode and no data is available at the moment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.seek">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">SEEK_SET</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.seek"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.seek" title="Link to this definition"></a></dt>
+<dd><p>Change stream position.</p>
+<p>Change the stream position to the given byte offset. The offset is
+interpreted relative to the position indicated by whence.  Values
+for whence are:</p>
+<ul class="simple">
+<li><p>0 – start of stream (the default); offset should be zero or positive</p></li>
+<li><p>1 – current stream position; offset may be negative</p></li>
+<li><p>2 – end of stream; offset is usually negative</p></li>
+</ul>
+<p>Return the new absolute position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.tell">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.tell" title="Link to this definition"></a></dt>
+<dd><p>Return current stream position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.readinto">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.readinto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.readinto" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.seekable">
+<span class="sig-name descname"><span class="pre">seekable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.seekable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.seekable" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Return whether object supports seek operations.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.readable">
+<span class="sig-name descname"><span class="pre">readable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.readable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.readable" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Return whether object was opened for reading.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3Reader.writable">
+<span class="sig-name descname"><span class="pre">writable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/s3reader.html#S3Reader.writable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3Reader.writable" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Return whether object was opened for writing.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3ReaderConstructor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.</span></span><span class="sig-name descname"><span class="pre">S3ReaderConstructor</span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/constructor.html#S3ReaderConstructor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3ReaderConstructor" title="Link to this definition"></a></dt>
+<dd><p>Constructor for creating <code class="docutils literal notranslate"><span class="pre">partial(S3Reader)</span></code> instances.</p>
+<p>Creates partial <code class="docutils literal notranslate"><span class="pre">S3Reader</span></code> instances that will be completed by <code class="docutils literal notranslate"><span class="pre">S3Client</span></code> with the
+remaining required parameters (e.g. <code class="docutils literal notranslate"><span class="pre">bucket</span></code>, <code class="docutils literal notranslate"><span class="pre">key</span></code>, <code class="docutils literal notranslate"><span class="pre">get_object_info</span></code>, <code class="docutils literal notranslate"><span class="pre">get_stream</span></code>).</p>
+<p>The constructor provides factory methods for different reader types:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sequential()</span></code>: Creates a constructor for sequential readers that buffer the entire object.
+Best for full reads and repeated access.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">range_based()</span></code>: Creates a constructor for range-based readers that fetch specific byte ranges.
+Suitable for sparse partial reads for large objects.</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3ReaderConstructor.sequential">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sequential</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol"><span class="pre">s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol</span></a></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/constructor.html#S3ReaderConstructor.sequential"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3ReaderConstructor.sequential" title="Link to this definition"></a></dt>
+<dd><p>Creates a constructor for sequential (generic) readers.</p>
+<p>This reader is the generic reader that supports all access patterns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Partial constructor for SequentialS3Reader</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol">S3ReaderConstructorProtocol</a></p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">reader_constructor</span> <span class="o">=</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">sequential</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3ReaderConstructor.range_based">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">range_based</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol"><span class="pre">s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol</span></a></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/constructor.html#S3ReaderConstructor.range_based"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3ReaderConstructor.range_based" title="Link to this definition"></a></dt>
+<dd><p>Creates a constructor for range-based readers</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>buffer_size</strong> – Internal buffer size in bytes. If None, uses default 8MB.
+Set to 0 to disable buffering.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Partial constructor for RangedS3Reader</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol">S3ReaderConstructorProtocol</a></p>
+</dd>
+</dl>
+<p>Range-based reader performs byte-range requests for each read/readinto call
+to read specific portions of S3 objects without downloading the entire file.</p>
+<p>Buffer size affects read performance:</p>
+<ul class="simple">
+<li><p>Small reads (&lt; <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code>): Loads <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> bytes to buffer to reduce S3 API calls for small, sequential reads</p></li>
+<li><p>Large reads (≥ <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code>): bypass the buffer for direct transfer from S3</p></li>
+<li><p>Forward overlap reads: Reuses buffered data when reading ranges that extend beyond current buffer, and processes remaining</p></li>
+</ul>
+<p>data according to size with logic above.</p>
+<p>Configuration Guide:</p>
+<ul class="simple">
+<li><p>Use larger buffer sizes for workloads with many small, sequential reads of nearby bytes</p></li>
+<li><p>Use smaller buffer sizes or disable buffering for sparse partial reads</p></li>
+<li><p>Buffer can be disabled by setting <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> to 0</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> is None, uses default 8MB buffer</p></li>
+</ul>
+<p>Examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Range-based reader with default 8MB buffer</span>
+<span class="n">reader_constructor</span> <span class="o">=</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">range_based</span><span class="p">()</span>
+
+<span class="c1"># Range-based reader with custom buffer size</span>
+<span class="n">reader_constructor</span> <span class="o">=</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">range_based</span><span class="p">(</span><span class="n">buffer_size</span><span class="o">=</span><span class="mi">16</span><span class="o">*</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">)</span>
+
+<span class="c1"># Range-based reader with buffering disabled</span>
+<span class="n">reader_constructor</span> <span class="o">=</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">range_based</span><span class="p">(</span><span class="n">buffer_size</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3ReaderConstructor.dcp_optimized">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dcp_optimized</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_gap_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">DEFAULT_MAX_GAP_SIZE</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.DCPS3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.DCPS3ReaderConstructorProtocol"><span class="pre">s3torchconnector.s3reader.protocol.DCPS3ReaderConstructorProtocol</span></a></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/constructor.html#S3ReaderConstructor.dcp_optimized"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3ReaderConstructor.dcp_optimized" title="Link to this definition"></a></dt>
+<dd><p>Creates a constructor for DCP-optimized readers for faster checkpoint loading.</p>
+<p>The DCP-optimized reader provides performance improvements for DCP reading through:</p>
+<ul class="simple">
+<li><p>Selective data fetching with range coalescing to only fetch required byte ranges</p></li>
+<li><p>Per-item buffer management to reduce buffer allocation costs</p></li>
+<li><p>Eliminating buffer copy by storing S3 chunks as memoryview references</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>max_gap_size</strong> – <p>Maximum gap size in bytes between ranges to coalesce into the same S3 read stream.
+Most users should use the default value.</p>
+<ul class="simple">
+<li><p>Default: 32MB (<code class="docutils literal notranslate"><span class="pre">32</span> <span class="pre">*</span> <span class="pre">1024</span> <span class="pre">*</span> <span class="pre">1024</span></code>)</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">float(&quot;inf&quot;)</span></code> to coalesce all ranges regardless of gaps</p></li>
+<li><p>Use 0 to disable coalescing, which creates a new range-based stream for each gap</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Constructor that creates DCPOptimizedS3Reader when ranges are available, falling back to
+SequentialS3Reader otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DCPOptimizedConstructorProtocol</p>
+</dd>
+</dl>
+<dl>
+<dt>Requirements:</dt><dd><p>Should be used with S3StorageReader, in which <code class="docutils literal notranslate"><span class="pre">prepare_local_plan()</span></code> automatically handles:</p>
+<ul class="simple">
+<li><p>Load ordering: Sorts items by storage offset for sequential access</p></li>
+<li><p>Range injection: Provides byte ranges from DCP load plan to the reader</p></li>
+</ul>
+<p>Advanced users implementing custom readers must include these optimizations
+in their <code class="docutils literal notranslate"><span class="pre">prepare_local_plan()</span></code>/<code class="docutils literal notranslate"><span class="pre">read_data()</span></code> implementation to use the DCP-optimized reader.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">reader_constructor</span> <span class="o">=</span> <span class="n">S3ReaderConstructor</span><span class="o">.</span><span class="n">dcp_optimized</span><span class="p">()</span>
+<span class="n">storage_reader</span> <span class="o">=</span> <span class="n">S3StorageReader</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">reader_constructor</span><span class="o">=</span><span class="n">reader_constructor</span><span class="p">)</span>
+<span class="n">DCP</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">state_dict</span><span class="p">,</span> <span class="n">storage_reader</span><span class="o">=</span><span class="n">storage_reader</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3ReaderConstructor.default">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol"><span class="pre">s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol</span></a></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/constructor.html#S3ReaderConstructor.default"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3ReaderConstructor.default" title="Link to this definition"></a></dt>
+<dd><p>Creates the default generic reader constructor.</p>
+<p>This creates a sequential (generic) reader that supports all access patterns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Partial constructor for SequentialS3Reader</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol">S3ReaderConstructorProtocol</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.S3ReaderConstructor.get_reader_type_string">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_reader_type_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constructor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="protocol/index.html#s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol" title="s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol"><span class="pre">s3torchconnector.s3reader.protocol.S3ReaderConstructorProtocol</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/constructor.html#S3ReaderConstructor.get_reader_type_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.S3ReaderConstructor.get_reader_type_string" title="Link to this definition"></a></dt>
+<dd><p>Returns the reader type string for the given constructor.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.</span></span><span class="sig-name descname"><span class="pre">SequentialS3Reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_object_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.ObjectInfo</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.GetObjectStream</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/sequential.html#SequentialS3Reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="s3reader/index.html#s3torchconnector.s3reader.s3reader.S3Reader" title="s3torchconnector.s3reader.s3reader.S3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">s3torchconnector.s3reader.s3reader.S3Reader</span></code></a></p>
+<p>Sequential S3 reader implementation</p>
+<p>Maintains an internal buffer for efficient sequential reads and repeated access.
+Optimal for most use cases, including full object reads.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.bucket">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.bucket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.key">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.prefetch">
+<span class="sig-name descname"><span class="pre">prefetch</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/sequential.html#SequentialS3Reader.prefetch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.prefetch" title="Link to this definition"></a></dt>
+<dd><p>Start fetching data from S3.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.readinto">
+<span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/sequential.html#SequentialS3Reader.readinto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.readinto" title="Link to this definition"></a></dt>
+<dd><p>Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+Return the number of bytes read. If no bytes are available, zero is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>buf</strong> – writable bytes-like object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>numer of bytes read or zero, if no bytes available</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/sequential.html#SequentialS3Reader.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.read" title="Link to this definition"></a></dt>
+<dd><p>Read up to size bytes from the object and return them.</p>
+<p>If size is zero or positive, read that many bytes from S3, or until the end of the object.
+If size is None or negative, read the entire file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>int</em><em> | </em><em>None</em>) – how many bytes to read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bytes read from S3 Object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bytes</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">SEEK_SET</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/sequential.html#SequentialS3Reader.seek"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.seek" title="Link to this definition"></a></dt>
+<dd><p>Change the stream position to the given byte offset, interpreted relative to whence.</p>
+<p>When seeking beyond the end of the file, always stay at EOF.
+Seeking before the start of the file results in a ValueError.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>offset</strong> (<em>int</em>) – How many bytes to seek relative to whence.</p></li>
+<li><p><strong>whence</strong> (<em>int</em>) – One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Current position of the stream</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.SequentialS3Reader.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/sequential.html#SequentialS3Reader.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.SequentialS3Reader.tell" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current stream position.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.</span></span><span class="sig-name descname"><span class="pre">RangedS3Reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_object_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.ObjectInfo</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.GetObjectStream</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/ranged.html#RangedS3Reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="s3reader/index.html#s3torchconnector.s3reader.s3reader.S3Reader" title="s3torchconnector.s3reader.s3reader.S3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">s3torchconnector.s3reader.s3reader.S3Reader</span></code></a></p>
+<p>Range-based S3 reader implementation with adaptive buffering.</p>
+<p>Performs byte-range requests to read specific portions of S3 objects without
+downloading the entire file. Includes optional adaptive buffer to reduce S3 API
+calls for small, sequential reads while bypassing buffering for large reads.
+Optimal for sparse partial reads of large objects.</p>
+<p>Buffering behavior:</p>
+<ul class="simple">
+<li><p>Small reads (&lt; <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code>): Loads <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> bytes to buffer, copies to user</p></li>
+<li><p>Large reads (&gt;= <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code>): Direct S3 access, bypass buffer</p></li>
+<li><p>Forward overlapping reads: Reuses existing buffer data if possible when read range extends beyond current buffer</p></li>
+<li><p>Buffer can be disabled by setting <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> to 0</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">buffer_size</span></code> is None, uses default 8MB buffer</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bucket</strong> – S3 bucket name</p></li>
+<li><p><strong>key</strong> – S3 object key</p></li>
+<li><p><strong>get_object_info</strong> – Callable that returns object metadata</p></li>
+<li><p><strong>get_stream</strong> – Callable that returns stream for byte range requests</p></li>
+<li><p><strong>buffer_size</strong> – Internal buffer size in bytes, defaults to 8MB</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader.bucket">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader.bucket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader.key">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader.key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader.readinto">
+<span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/ranged.html#RangedS3Reader.readinto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader.readinto" title="Link to this definition"></a></dt>
+<dd><p>Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+Return the number of bytes read. If no bytes are available, zero is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>buf</strong> – writable bytes-like object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>numer of bytes read or zero, if no bytes available</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/ranged.html#RangedS3Reader.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader.read" title="Link to this definition"></a></dt>
+<dd><p>Read up to size bytes from the current position.</p>
+<p>If size is zero or positive, read that many bytes from S3, or until the end of the object.
+If size is None or negative, read until the end of the object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>int</em><em> | </em><em>None</em>) – how many bytes to read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bytes read from specified range.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bytes</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">SEEK_SET</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/ranged.html#RangedS3Reader.seek"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader.seek" title="Link to this definition"></a></dt>
+<dd><p>Change the stream position to the given byte offset, interpreted relative to whence.</p>
+<p>When seeking beyond the end of the file, always stay at EOF.
+Seeking before the start of the file results in a ValueError.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>offset</strong> (<em>int</em>) – How many bytes to seek relative to whence.</p></li>
+<li><p><strong>whence</strong> (<em>int</em>) – One of SEEK_SET, SEEK_CUR, and SEEK_END. Default: SEEK_SET</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Current position of the stream</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>S3Exception</strong> – An error occurred accessing S3.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.RangedS3Reader.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/ranged.html#RangedS3Reader.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.RangedS3Reader.tell" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current stream position.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">s3torchconnector.s3reader.</span></span><span class="sig-name descname"><span class="pre">DCPOptimizedS3Reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item_ranges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="dcp_optimized/index.html#s3torchconnector.s3reader.dcp_optimized.ItemRange" title="s3torchconnector.s3reader.dcp_optimized.ItemRange"><span class="pre">ItemRange</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_object_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.ObjectInfo</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.HeadObjectResult</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">s3torchconnectorclient._mountpoint_s3_client.GetObjectStream</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_gap_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">DEFAULT_MAX_GAP_SIZE</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="s3reader/index.html#s3torchconnector.s3reader.s3reader.S3Reader" title="s3torchconnector.s3reader.s3reader.S3Reader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">s3torchconnector.s3reader.s3reader.S3Reader</span></code></a></p>
+<p>S3 reader implementation optimized for PyTorch Distributed Checkpoint (DCP) loading.</p>
+<p>Provides up to 2x performance improvement over default sequential reader through:</p>
+<blockquote>
+<div><p>1. <strong>Selective data fetching with range coalescing</strong>: Uses byte range information from
+PyTorch’s <code class="docutils literal notranslate"><span class="pre">LoadPlan</span></code> to only fetch required data. Groups nearby ranges within
+<code class="docutils literal notranslate"><span class="pre">max_gap_size</span></code> into single S3 streams to minimize first-byte latency while avoiding
+unnecessary data transfer.</p>
+<p>2. <strong>Per-item buffer management</strong>: Buffers per-item (per-tensor) instead of per-file. Each
+buffer stores only the required item’s byte ranges and is discarded after PyTorch reads the
+item, which removes overhead of resizing large buffers and re-copying data repeatedly.</p>
+<p>3. <strong>Eliminate buffer copy</strong>: Custom <code class="docutils literal notranslate"><span class="pre">_ItemViewBuffer</span></code> stores S3 chunks as memoryview
+references instead of copying into BytesIO, avoiding allocation and copy overhead.</p>
+</div></blockquote>
+<p><strong>Requirements</strong>:</p>
+<ul class="simple">
+<li><p>DCP Loading - reader is only designed for usage via dcp_optimized reader_constructor for <code class="docutils literal notranslate"><span class="pre">dcp.load()</span></code></p></li>
+<li><p>Pre-sorted list of item_ranges, injected automatically in <code class="docutils literal notranslate"><span class="pre">prepare_local_plan</span></code>.</p></li>
+<li><p>Sequential Access over exact item_ranges provided, also applied automatically by <code class="docutils literal notranslate"><span class="pre">prepare_local_plan</span></code></p></li>
+</ul>
+<p><strong>Usage</strong>:
+Created automatically by <code class="docutils literal notranslate"><span class="pre">DCPOptimizedConstructor</span></code> when used with <code class="docutils literal notranslate"><span class="pre">S3StorageReader</span></code> and
+<code class="docutils literal notranslate"><span class="pre">S3ReaderConstructor.dcp_optimized()</span></code>:</p>
+<blockquote>
+<div><p>reader_constructor = S3ReaderConstructor.dcp_optimized(max_gap_size=32*1024*1024)
+storage_reader = S3StorageReader(region, path, reader_constructor=reader_constructor)
+DCP.load(state_dict, storage_reader=storage_reader)</p>
+</div></blockquote>
+<dl class="simple">
+<dt><strong>Error Handling</strong>:</dt><dd><p>Non-sequential access attempts raise ValueError.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.bucket">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.bucket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.key">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.closed">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">closed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.closed" title="Link to this definition"></a></dt>
+<dd><p>Returns:
+bool: Return whether the object is closed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.read" title="Link to this definition"></a></dt>
+<dd><p>Read up to size bytes from the current position.</p>
+<p>Supports backward seeking within the current item buffer, but forward-only
+access across DCP items (sequential item access required).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>int</em>) – how many bytes to read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bytes read from specified range.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bytes</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If size is not an integer.</p></li>
+<li><p><strong>ValueError</strong> – If position is outside valid DCP ranges, and if size is None or negative (full file reads not supported).</p></li>
+<li><p><strong>S3Exception</strong> – An error occurred accessing S3.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.readinto">
+<span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buf</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.readinto"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.readinto" title="Link to this definition"></a></dt>
+<dd><p>Read up to len(buf) bytes into a pre-allocated, writable bytes-like object buf.
+Return the number of bytes read. If no bytes are available, zero is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>buf</strong> – writable bytes-like object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>number of bytes read or zero, if no bytes available</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If position is outside valid DCP ranges.</p></li>
+<li><p><strong>TypeError</strong> – If buf is not writable.</p></li>
+<li><p><strong>S3Exception</strong> – An error occurred accessing S3.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">SEEK_SET</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.seek"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.seek" title="Link to this definition"></a></dt>
+<dd><p>Change position within DCP ranges, interpreted relative to whence.</p>
+<p>Supports arbitrary seeking within current item buffer, but only forward
+sequential access across DCP items (cannot seek back to previous items).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>offset</strong> (<em>int</em>) – How many bytes to seek relative to whence.</p></li>
+<li><p><strong>whence</strong> (<em>int</em>) – One of SEEK_SET, and SEEK_CUR. SEEK_END not supported. Default: SEEK_SET.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Current position of the stream</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If whence is not SEEK_SET or SEEK_CUR.</p></li>
+<li><p><strong>ValueError</strong> – If seeking to negative position or accessing previous items.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.tell" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current absolute position in the object.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="s3torchconnector.s3reader.DCPOptimizedS3Reader.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/s3torchconnector/s3reader/dcp_optimized.html#DCPOptimizedS3Reader.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#s3torchconnector.s3reader.DCPOptimizedS3Reader.close" title="Link to this definition"></a></dt>
+<dd><p>Close the stream and release resources.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../s3map_dataset/index.html" class="btn btn-neutral float-left" title="s3torchconnector.s3map_dataset" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="constructor/index.html" class="btn btn-neutral float-right" title="s3torchconnector.s3reader.constructor" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Amazon S3.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
