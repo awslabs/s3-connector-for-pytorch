@@ -7,6 +7,7 @@
 
 ### Other changes
 * Bump PyO3 from 0.27.2 to 0.29.0
+* Extended benchmarks to support multi-GPU Dataloading (#356)
 
 ### Breaking changes
 

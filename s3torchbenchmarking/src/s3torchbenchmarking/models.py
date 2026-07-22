@@ -20,6 +20,7 @@ from omegaconf import DictConfig
 from torch.nn import Module
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import v2  # type: ignore
+import itertools
 from transformers import (  # type: ignore
     ViTForImageClassification,
     ViTModel,
@@ -142,6 +143,58 @@ class ModelInterface(ABC):
     def train_batch(self, batch_idx: int, data, target) -> Optional[Any]:
         raise NotImplementedError
 
+    def capped_loader(self, loader):
+        """Cap the number of steps in the loader to the minimum number of steps across all ranks"""
+        if not dist.is_initialized():
+            yield from loader
+            return
+        world = dist.get_world_size()
+        rank = dist.get_rank()
+
+        logger.debug(f"Rank {rank}: capped_loader active (world_size={world})")
+
+        try:
+            local_steps = len(loader)
+        except TypeError:
+            local_steps = None
+
+        if local_steps is not None:
+            counts = [None] * world
+            dist.all_gather_object(counts, local_steps)
+            min_steps = min(counts)
+            logger.debug(
+                f"Rank {rank}: capped_loader using map-style cap: "
+                f"min_steps={min_steps} (local={local_steps}, all={counts})"
+            )
+            yield from itertools.islice(loader, min_steps)
+            return
+
+        logger.debug(
+            f"Rank {rank}: capped_loader using iterable-style per-batch synchronization"
+        )
+        it = iter(loader)
+        batch_count = 0
+        while True:
+            try:
+                batch = next(it)
+                pulled_batch = 1
+            except StopIteration:
+                batch = None
+                pulled_batch = 0
+
+            flags = [None] * world
+            dist.all_gather_object(flags, pulled_batch)
+
+            if all(flags):
+                yield batch
+                batch_count += 1
+            else:
+                logger.debug(
+                    f"Rank {rank}: capped_loader stopping after {batch_count} batches "
+                    f"(flags={flags})"
+                )
+                break
+
     def train(self, dataloader: DataLoader, epochs: int) -> ExperimentResult:
         """Train the model using given dataloader for number of epochs"""
 
@@ -153,11 +206,19 @@ class ModelInterface(ABC):
             begin_training = perf_counter()
             for epoch in range(epochs):
                 begin_epoch = time.perf_counter()
-                logger.info("Epoch #%i/%i", epoch, epochs - 1)
-                for batch_idx, (data, target) in enumerate(dataloader):
-                    logger.debug("Batch #%i", batch_idx)
+                if hasattr(dataloader.sampler, "set_epoch"):
+                    # DistributedSampler needs epoch to reseed its shuffle each epoch
+                    dataloader.sampler.set_epoch(epoch)
+                if not dist.is_initialized() or dist.get_rank() == 0:
+                    logger.info(f"Epoch #{epoch}/{epochs - 1}")
+                batch_count = 0
+                for batch_idx, (data, target) in enumerate(
+                    self.capped_loader(dataloader)
+                ):
+                    logger.debug(f"Batch #{batch_idx}")
                     result = self.train_batch(batch_idx, data, target)
                     num_samples += len(data)
+                    batch_count += 1
                     if result:
                         checkpoint_times.append(result)
                 epoch_durations_s.append(time.perf_counter() - begin_epoch)
@@ -185,6 +246,7 @@ class Entitlement(ModelInterface):
 
     def __init__(self, num_labels: Optional[int] = None):
         self.num_labels = num_labels
+        self.model = None
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         key, data = super().load_sample(sample)
@@ -299,7 +361,6 @@ class LightningAdapter(ModelInterface):
 
     def load_sample(self, sample: Union[S3Reader, Tuple[str, IOBase]]):
         _, data = super().load_sample(sample)
-
         return self.sample_transformer(data), self._get_random_label()
 
     def _get_random_label(self):
