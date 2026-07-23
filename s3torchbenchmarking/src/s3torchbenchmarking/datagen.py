@@ -118,9 +118,15 @@ class Utils:
             return int(width), int(height)
 
     @staticmethod
-    def upload_to_s3(region: str, data: io.BytesIO, bucket: str, key: str):
+    def upload_to_s3(
+        region: str, data: io.BytesIO, bucket: str, key: str,
+        endpoint: Optional[str] = None,
+    ):
         click.echo(f"Uploading to {key=}")
-        s3_client = boto3.client("s3", region_name=region)
+        client_kwargs = {"region_name": region}
+        if endpoint:
+            client_kwargs["endpoint_url"] = endpoint
+        s3_client = boto3.client("s3", **client_kwargs)
         s3_client.upload_fileobj(data, bucket, key)
 
     @staticmethod
@@ -205,7 +211,8 @@ def build_producers(
 
 
 def build_consumers(
-    num_workers: int, queue: Queue, disambiguator: str, region: str, s3_bucket: str
+    num_workers: int, queue: Queue, disambiguator: str, region: str, s3_bucket: str,
+    endpoint: Optional[str] = None,
 ) -> List[Thread]:
     return [
         Thread(
@@ -218,6 +225,7 @@ def build_consumers(
                     data=sample.data,
                     bucket=s3_bucket,
                     key=f"{disambiguator}/{sample.label}",
+                    endpoint=endpoint,
                 ),
             },
         )
@@ -293,6 +301,12 @@ def consumer(queue: Queue, activity: Callable[[Union[LabelledSample, Sentinel]],
     type=str,
     help="Region where the S3 bucket is hosted.",
 )
+@click.option(
+    "--endpoint",
+    default=None,
+    type=str,
+    help="Custom S3-compatible endpoint URL.",
+)
 def synthesize_dataset(
     num_samples: float,
     resolution: Tuple[int, int],
@@ -301,6 +315,7 @@ def synthesize_dataset(
     s3_bucket: str,
     s3_prefix: str,
     region: str,
+    endpoint: Optional[str],
 ):
     """Synthesizes a dataset that will be used for s3torchbenchmarking and uploads it to an S3 bucket."""
     num_workers = os.cpu_count() or 1
@@ -329,6 +344,7 @@ def synthesize_dataset(
         disambiguator=disambiguator,
         region=region,
         s3_bucket=s3_bucket,
+        endpoint=endpoint,
     )
 
     # kick off consumers and producers

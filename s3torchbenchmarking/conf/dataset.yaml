@@ -8,6 +8,8 @@ defaults:
 s3:
   region: ??? # e.g., eu-west-1
   bucket: ??? # e.g., my-bucket (*not* an S3 URI)
+  endpoint: null # optional: custom S3-compatible endpoint URL
+  force_path_style: false # use path-style addressing (required for most S3-compatible services)
 # Boolean flag to tell whether the dataset is sharded or not.
 sharding: True
 # Number of iterations for training a model.
