@@ -4,9 +4,11 @@
 * Add `requester_pays` option to `S3ClientConfig` to access Requester Pays buckets via the `x-amz-request-payer` header (#435)
 
 ### Bug fixes
+* Fix `requester_pays` not being applied to `CopyObject`, which made `S3FileSystem.rename` fail with 403 on Requester Pays buckets (#438)
 
 ### Other changes
 * Bump PyO3 from 0.27.2 to 0.29.0
+* Bump mountpoint-s3-client from 0.14.1 to 0.22.1 and mountpoint-s3-crt-sys from 0.13.0 to 0.17.1
 
 ### Breaking changes
 
