@@ -77,6 +77,11 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
+          # Required since actions/checkout v6.1.0 to check out fork PR code from the
+          # `pull_request_target` workflow in ci-integration-pr.yml. Safe here because
+          # this job sits behind `needs: approval`, a protected environment requiring
+          # maintainer review before any fork code runs.
+          allow-unsafe-pr-checkout: true
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
