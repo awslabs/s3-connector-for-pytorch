@@ -40,3 +40,11 @@ hydra:
       dataloader.s3reader.type: sequential
       # buffer_size (bytes): only used with range_based s3reader
       dataloader.s3reader.buffer_size: 8*1024*1024
+      # Number of GPUs to use (default: 1 = single process, no DDP).
+      # Setting num_gpus > 1 enables DDP via mp.spawn. See README for details.
+      # Note: model=entitlement always forces num_gpus=1 (I/O-only, no training).
+      +num_gpus: 1
+      # Whether each rank drops its final short batch (fewer than batch_size samples).
+      # "auto" (default): true under multi-GPU, false otherwise. See README for when
+      # to override and why false is still safe under multi-GPU.
+      +drop_last: auto
