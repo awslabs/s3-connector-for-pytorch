@@ -57,8 +57,13 @@ class SequentialS3Reader(S3Reader):
 
         Raises:
             S3Exception: An error occurred accessing S3.
+            ValueError: The reader is closed.
         """
 
+        # `close()` drops the stream, so without this check reading on would start a new GET from
+        # the beginning of the object and return the wrong data.
+        if self.closed:
+            raise ValueError("I/O operation on closed file.")
         if self._stream is None:
             self._stream = self._get_stream()
 
@@ -215,3 +220,14 @@ class SequentialS3Reader(S3Reader):
               int: Current stream position.
         """
         return self._position
+
+    def close(self) -> None:
+        """
+        Close the reader and release its stream.
+
+        Data the stream has downloaded but not yet returned sits in the CRT memory pool, which is
+        shared by every request on the client. Dropping the stream releases it now rather than when
+        the reader is garbage collected.
+        """
+        self._stream = None
+        super().close()

@@ -4,11 +4,15 @@
 * Add `requester_pays` option to `S3ClientConfig` to access Requester Pays buckets via the `x-amz-request-payer` header (#435)
 
 ### Bug fixes
+* Consume mountpoint-s3-client changes with support for AWS profiles that use `role_arn` with `web_identity_token_file` (common in EKS IRSA setups), directly or through `source_profile` (awslabs/aws-c-auth#298)
 
 ### Other changes
 * Bump PyO3 from 0.27.2 to 0.29.0
+* Bump mountpoint-s3-client from 0.14.1 to 0.22.1 and mountpoint-s3-crt-sys from 0.13.0 to 0.17.1, which makes `requester_pays` also apply to `CopyObject` (#438)
+* Consume mountpoint-s3-client changes that serve GET data from the CRT memory pool instead of copying it. This bounds memory use, but unread data counts against the pool, so a partially-read stream that is kept open can stall other requests on the same client until it is read or closed (awslabs/mountpoint-s3#1481)
 
 ### Breaking changes
+* Reading from a closed `SequentialS3Reader` now raises `ValueError`, as with other file objects, instead of reading on from the old stream
 
 ## v1.5.0 (February 20, 2026)
 

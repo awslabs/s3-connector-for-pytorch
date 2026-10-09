@@ -61,6 +61,34 @@ def test_s3reader_prefetch(stream):
     assert s3reader._stream is stream
 
 
+def test_s3reader_close_releases_stream():
+    s3reader = create_sequential_s3reader([b"1", b"2", b"3"])
+    assert s3reader.read(1) == b"1"
+    assert s3reader._stream is not None
+    s3reader.close()
+    assert s3reader.closed
+    assert s3reader._stream is None
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda s3reader: s3reader.read(1),
+        lambda s3reader: s3reader.read(),
+        lambda s3reader: s3reader.readinto(bytearray(1)),
+        lambda s3reader: s3reader.seek(3),
+        lambda s3reader: s3reader.prefetch(),
+    ],
+    ids=["read_size", "read_all", "readinto", "seek_forward", "prefetch"],
+)
+def test_s3reader_raises_after_close(operation):
+    s3reader = create_sequential_s3reader([b"1", b"2", b"3"])
+    assert s3reader.read(1) == b"1"
+    s3reader.close()
+    with pytest.raises(ValueError, match="closed file"):
+        operation(s3reader)
+
+
 @given(bytestream_and_positions())
 def test_s3reader_updates_buffer_position_during_sized_reads(
     stream_and_positions: Tuple[List[bytes], List[int]],
