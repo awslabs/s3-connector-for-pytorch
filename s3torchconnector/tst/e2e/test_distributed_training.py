@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import platform
 from collections import Counter
 from itertools import product
 from typing import Callable, TYPE_CHECKING
@@ -123,10 +122,6 @@ test_args = list(
 )
 
 
-@pytest.mark.skipif(
-    platform.system() == "Darwin" and platform.machine() == "x86_64",
-    reason="Temporarily disabled for macOS x86_64 due to long distributed training test execution times for macos-15 leading to credential timeout.",
-)
 @pytest.mark.parametrize(
     "start_method, dataset_builder, dataloader_builder, num_workers, num_processes, reader_constructor",
     test_args,

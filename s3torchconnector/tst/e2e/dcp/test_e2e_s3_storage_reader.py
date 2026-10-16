@@ -204,7 +204,7 @@ def test_zstd_compression_partial_load(
     especially testing that it retains sequential access pattern for dcp_optimized reader.
     """
 
-    # TODO Python 3.8 uses PyTorch 2.4 and does not have ZStandard; remove conditional import/skip after deprecating Python 3.8.
+    # torch < 2.7 (e.g. the manylinux2014 wheel test images for cp39–cp312) has no ZStandard.
     try:
         from torch.distributed.checkpoint._extension import ZStandard
     except ImportError:

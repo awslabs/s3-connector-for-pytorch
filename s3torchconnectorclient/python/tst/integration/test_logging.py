@@ -184,7 +184,7 @@ def _start_subprocess(
         [
             sys.executable,
             "-W",
-            "ignore::FutureWarning",
+            "ignore::FutureWarning",  # For deprecation warnings - kept for further deprecations
             "-c",
             PYTHON_TEST_CODE,
             image_directory.s3_uri,
