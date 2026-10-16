@@ -141,7 +141,8 @@ CC = "/opt/rh/gcc-toolset-10/root/usr/bin/gcc"
 CXX = "/opt/rh/gcc-toolset-10/root/usr/bin/g++"
 
 [tool.cibuildwheel.macos]
-environment = { MACOSX_DEPLOYMENT_TARGET = "10.12" }
+# macOS 11.0 is the minimum deployment target for Apple Silicon (arm64)
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [[tool.cibuildwheel.overrides]]
 # Using CPython 3.12.9 for MacOS to mitigate integration test hanging issue

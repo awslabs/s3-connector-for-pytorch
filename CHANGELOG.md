@@ -7,9 +7,11 @@
 
 ### Other changes
 * Bump PyO3 from 0.27.2 to 0.29.0
+* Remove macOS x86_64 and Python 3.8 deprecation warnings added in v1.5.0 (#400), as support for both has been removed (#390)
 
 ### Breaking changes
 * Remove macOS x86_64 wheels support: Pre-built wheels are no longer available for Intel Macs (x86_64), aligning with PyTorch's decision to drop Intel Mac support since [PyTorch v2.3.0](https://github.com/pytorch/pytorch/releases/tag/v2.3.0). Apple Silicon Macs (ARM64) remain fully supported, while Intel Mac users must build from source following the [DEVELOPMENT](https://github.com/awslabs/s3-connector-for-pytorch/blob/main/DEVELOPMENT.md) guide. To check your Mac type, run `uname -m` in Terminal.
+* Remove Python 3.8 support: Python 3.8 reached [end-of-life](https://devguide.python.org/versions/) in October 2024. The minimum supported Python version is now 3.9, and pre-built wheels are no longer available for Python 3.8. Python 3.8 users can continue to use v1.5.0 or earlier. Note: we will likely also remove Python 3.9 support with the same process in the future.
 
 ## v1.5.0 (February 20, 2026)
 

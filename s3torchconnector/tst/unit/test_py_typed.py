@@ -1,14 +1,10 @@
 #  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  // SPDX-License-Identifier: BSD
 
-import sys
-import pytest
+import importlib.resources
 
 import s3torchconnector
 from mypy import api
-
-if sys.version_info >= (3, 9):
-    import importlib.resources
 
 
 def test_py_typed_exists():
