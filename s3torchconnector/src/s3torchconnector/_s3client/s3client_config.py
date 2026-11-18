@@ -23,6 +23,7 @@ class S3ClientConfig:
     requester_pays(bool): Set to true to send the `x-amz-request-payer: requester` header on all
         S3 requests, enabling access to Requester Pays buckets. Cannot be combined with
         unsigned=True (requester pays requires authenticated requests).
+    event_loop_threads(int): Threads per CRT event-loop group; None uses the CRT default.
     """
 
     throughput_target_gbps: float = 10.0
@@ -32,6 +33,7 @@ class S3ClientConfig:
     max_attempts: int = 10
     profile: Optional[str] = None
     requester_pays: bool = False
+    event_loop_threads: Optional[int] = None
 
     def __post_init__(self):
         if self.requester_pays and self.unsigned:

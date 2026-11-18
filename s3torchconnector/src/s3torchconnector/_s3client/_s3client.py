@@ -145,6 +145,7 @@ class S3Client:
             force_path_style=self._s3client_config.force_path_style,
             max_attempts=self._s3client_config.max_attempts,
             requester_pays=self._s3client_config.requester_pays,
+            event_loop_threads=self._s3client_config.event_loop_threads,
         )
 
     def get_object(

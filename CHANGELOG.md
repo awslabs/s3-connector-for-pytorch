@@ -2,6 +2,7 @@
 
 ### New features
 * Add `requester_pays` option to `S3ClientConfig` to access Requester Pays buckets via the `x-amz-request-payer` header (#435)
+* Add `event_loop_threads` to `S3ClientConfig` to configure threads per CRT event-loop group
 
 ### Bug fixes
 

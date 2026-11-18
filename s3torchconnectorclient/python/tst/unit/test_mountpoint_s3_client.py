@@ -306,6 +306,7 @@ def test_mountpoint_client_pickles():
         force_path_style=expected_force_path_style,
         max_attempts=expected_max_attempts,
         requester_pays=expected_requester_pays,
+        event_loop_threads=2,
     )
     dumped = pickle.dumps(client)
     loaded = pickle.loads(dumped)
@@ -328,6 +329,7 @@ def test_mountpoint_client_pickles():
     )
     assert client.max_attempts == loaded.max_attempts == expected_max_attempts
     assert client.requester_pays == loaded.requester_pays == expected_requester_pays
+    assert client.event_loop_threads == loaded.event_loop_threads == 2
 
 
 @pytest.mark.parametrize(

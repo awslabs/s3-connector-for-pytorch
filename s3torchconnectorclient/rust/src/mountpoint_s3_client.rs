@@ -14,8 +14,8 @@ use mountpoint_s3_crt_sys::{aws_thread_join_all_managed, aws_thread_set_managed_
 use pyo3::marker::Python;
 use pyo3::types::PyTuple;
 use pyo3::{pyclass, pyfunction, pymethods, Bound, PyErr, PyRef, PyResult, IntoPyObject, IntoPyObjectExt};
+use std::num::{NonZeroU16, NonZeroUsize};
 use std::sync::Arc;
-use std::num::NonZeroUsize;
 
 use crate::exception::python_exception;
 use crate::get_object_stream::GetObjectStream;
@@ -54,6 +54,8 @@ pub struct MountpointS3Client {
     max_attempts: usize,
     #[pyo3(get)]
     requester_pays: bool,
+    #[pyo3(get)]
+    event_loop_threads: Option<NonZeroU16>,
 }
 
 /// Waits for all managed CRT threads to complete, with a specified timeout.
@@ -100,8 +102,9 @@ pub fn join_all_managed_threads(py: Python<'_>, timeout_secs: f64) -> PyResult<(
 
 #[pymethods]
 impl MountpointS3Client {
+    // Keep the override last so existing positional calls and pickles can omit it.
     #[new]
-    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None, force_path_style=false, max_attempts=10, requester_pays=false))]
+    #[pyo3(signature = (region, user_agent_prefix="".to_string(), throughput_target_gbps=10.0, part_size=8*1024*1024, profile=None, unsigned=false, endpoint=None, force_path_style=false, max_attempts=10, requester_pays=false, event_loop_threads=None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new_s3_client(
         region: String,
@@ -114,6 +117,7 @@ impl MountpointS3Client {
         force_path_style: bool,
         max_attempts: usize,
         requester_pays: bool,
+        event_loop_threads: Option<NonZeroU16>,
     ) -> PyResult<Self> {
         // TODO: Mountpoint has logic for guessing based on instance type. It may be worth having
         // similar logic if we want to exceed 10Gbps reading for larger instances
@@ -145,6 +149,9 @@ impl MountpointS3Client {
             .auth_config(auth_config)
             .endpoint_config(endpoint_config)
             .max_attempts(NonZeroUsize::try_from(max_attempts).expect("max_attempts must be > 0"));
+        if let Some(threads) = event_loop_threads {
+            config = config.event_loop_threads(threads.get());
+        }
         if requester_pays {
             config = config.request_payer("requester");
         }
@@ -162,6 +169,7 @@ impl MountpointS3Client {
             crt_client,
             endpoint,
             requester_pays,
+            event_loop_threads,
         ))
     }
 
@@ -246,6 +254,8 @@ impl MountpointS3Client {
             slf.force_path_style.into_py_any(py)?.bind(py).to_owned(),
             slf.max_attempts.into_pyobject(py)?.into_any(),
             slf.requester_pays.into_py_any(py)?.bind(py).to_owned(),
+            // Pass the original override back to the constructor when unpickling.
+            slf.event_loop_threads.into_pyobject(py)?,
         ];
         PyTuple::new(py, state)
     }
@@ -266,6 +276,7 @@ impl MountpointS3Client {
         client: Arc<Client>,
         endpoint: Option<String>,
         requester_pays: bool,
+        event_loop_threads: Option<NonZeroU16>,
     ) -> Self
     where
         Client: ObjectClient + Sync + Send + 'static,
@@ -284,6 +295,7 @@ impl MountpointS3Client {
             user_agent_prefix,
             endpoint,
             requester_pays,
+            event_loop_threads,
         }
     }
 }

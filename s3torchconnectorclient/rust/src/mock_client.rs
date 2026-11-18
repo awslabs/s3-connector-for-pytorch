@@ -88,6 +88,7 @@ impl PyMockClient {
             self.mock_client.clone(),
             None,
             self.requester_pays,
+            None,
         )
     }
 
