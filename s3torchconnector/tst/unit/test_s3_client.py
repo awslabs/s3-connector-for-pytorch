@@ -168,6 +168,18 @@ def test_force_path_style_s3_client():
     assert s3_client._client.force_path_style is True
 
 
+@pytest.mark.parametrize("event_loop_threads", [None, 2])
+def test_s3_client_event_loop_threads(event_loop_threads):
+    s3_client = S3Client(
+        region=TEST_REGION,
+        s3client_config=S3ClientConfig(
+            unsigned=True, event_loop_threads=event_loop_threads
+        ),
+    )
+
+    assert s3_client._client.event_loop_threads == event_loop_threads
+
+
 def test_requester_pays_s3_client():
     s3_client = S3Client(
         region=TEST_REGION,

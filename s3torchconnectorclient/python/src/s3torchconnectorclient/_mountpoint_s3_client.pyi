@@ -16,6 +16,7 @@ class MountpointS3Client:
     user_agent_prefix: str
     endpoint: str
     requester_pays: bool
+    event_loop_threads: Optional[int]
 
     def __init__(
         self,
@@ -29,6 +30,7 @@ class MountpointS3Client:
         force_path_style: Optional[bool] = False,
         max_attempts: int = 10,
         requester_pays: bool = False,
+        event_loop_threads: Optional[int] = None,
     ): ...
     def get_object(
         self,
